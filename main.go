@@ -51,6 +51,9 @@ func main() {
 		}
 		fmt.Println(port)
 		fmt.Println(url)
+		/*
+			placeholder for http or https check with or without payload download
+		*/
 	} else {
 		if !*udp {
 			addr := flag.Args()[0] + ":" + flag.Args()[1]
