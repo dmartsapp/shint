@@ -13,10 +13,12 @@ var (
 	payload    bool
 	iterations int
 	udp        *bool
+	timeout    int
 )
 
 func init() {
 	flag.IntVar(&iterations, "n", 1, "Number of times to check")
+	flag.IntVar(&timeout, "t", 5, "Timeout in seconds to connect")
 	flag.BoolVar(&payload, "payload", false, "Check if payload can be downloaded")
 	udp = flag.Bool("udp", false, "Use UDP instead of tcp to connect to endpoint")
 }
@@ -29,15 +31,15 @@ func main() {
 	}
 	if !*udp {
 		addr := flag.Args()[0] + ":" + flag.Args()[1]
-		tcp, err := net.ResolveTCPAddr("tcp", addr)
+
+		start := time.Now()
+		_, err := net.DialTimeout("tcp", addr, time.Duration(timeout)*time.Second)
+		end := time.Now()
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println(err)
 			os.Exit(1)
 		}
-		start := time.Now()
-		_, err = net.DialTCP("tcp", nil, tcp)
-		end := time.Now()
-		fmt.Printf("lo %v", strconv.Itoa(int(end.Sub(start).Milliseconds())))
+		fmt.Printf("%v", strconv.Itoa(int(end.Sub(start).Milliseconds())))
 	}
 
 }
