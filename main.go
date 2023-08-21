@@ -54,16 +54,38 @@ func main() {
 	} else {
 		if !*udp {
 			addr := flag.Args()[0] + ":" + flag.Args()[1]
-
 			start := time.Now()
-			_, err := net.DialTimeout("tcp", addr, time.Duration(timeout)*time.Second)
+			tcpaddr, err := net.ResolveTCPAddr("tcp", addr)
 			end := time.Now()
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println(err.Error())
 				os.Exit(1)
 			}
-			fmt.Printf("%v", strconv.Itoa(int(end.Sub(start).Milliseconds())))
+			fmt.Println("Resolved IP:Port of '" + addr + "' to " + tcpaddr.String() + " in " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+			// var wg sync.WaitGroup
+			for i := 0; i < iterations; i++ {
+				// resp := dialNow("tcp", addr, timeout, &wg)
+				resp := dialNow("tcp", addr, timeout)
+				fmt.Println("TCP port checked successfully for '" + addr + "' in: " + strconv.Itoa(resp) + "ms")
+			}
+			// wg.Wait()
+
 		}
 	}
 
+}
+
+// func dialNow(protocol string, addressport string, timeout int, wg *sync.WaitGroup) int {
+func dialNow(protocol string, addressport string, timeout int) int {
+	start := time.Now()
+	connect, err := net.DialTimeout(protocol, addressport, time.Duration(timeout)*time.Second)
+	end := time.Now()
+	if err != nil {
+		fmt.Println(err)
+		// wg.Done()
+		os.Exit(1)
+	}
+	connect.Close()
+	// wg.Done()
+	return int((end.Sub(start)).Milliseconds())
 }
