@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"net"
@@ -53,14 +52,9 @@ func main() {
 		}
 
 		resp, _ := http.Get(url.String())
-		scanner := bufio.NewScanner(resp.Body)
+
 		fmt.Println(resp.StatusCode)
-		datasize := 0
-		for scanner.Scan() {
-			scanner.Bytes()
-			datasize++
-		}
-		fmt.Println(datasize)
+
 		/*
 			placeholder for http or https check with or without payload download
 		*/
