@@ -23,14 +23,25 @@ func init() {
 	flag.IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect")
 	flag.BoolVar(&payload, "download", false, "Check if payload can be downloaded")
 	udp = flag.Bool("udp", false, "Use UDP instead of tcp to connect to endpoint")
+
+	flag.Usage = func() {
+		fmt.Println("Usage: " + os.Args[0] + " [options] <URL|fqdn|IP>:port")
+		fmt.Println("options:")
+		flag.PrintDefaults()
+		fmt.Println()
+		fmt.Println("Example (URL): " + os.Args[0] + " https://google.com:443")
+		fmt.Println("Example (fqdn): " + os.Args[0] + " google.com:443")
+		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10:443")
+		os.Exit(0)
+	}
 }
 
 func main() {
 
 	flag.Parse()
 	if len(flag.Args()) < 1 {
-		flag.PrintDefaults()
-		os.Exit(0)
+		flag.Usage()
+
 	}
 	if len(flag.Args()) == 1 {
 		url, err := url.Parse(flag.Args()[0])
