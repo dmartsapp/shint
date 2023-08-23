@@ -13,4 +13,4 @@ This is a hobby application that solves specific problem of:
 - Some specific need, such as report time taken to reach an address or site responsiveness and also 
 - bandwidth taken to download the content
 
-# Repeating again, THIS IS NOT REPLACEMENT FOR THE ACTUAL TELNET CLIENT
+# Repeating, THIS IS NOT REPLACEMENT FOR THE ACTUAL TELNET CLIENT
