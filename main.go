@@ -106,8 +106,10 @@ func main() {
 
 		} else {
 			// this is regular TCP telnet
-			timetaken := dialNow("tcp", ip+":"+port, timeout)
-			fmt.Println("Successfully reached '" + ip + ":" + port + "' in " + strconv.Itoa(timetaken) + "ms.")
+			for i := 0; i < iterations; i++ {
+				timetaken := dialNow("tcp", ip+":"+port, timeout)
+				fmt.Println("Successfully reached '" + ip + ":" + port + "' in " + strconv.Itoa(timetaken) + "ms.")
+			}
 			os.Exit(0)
 		}
 	} else {
