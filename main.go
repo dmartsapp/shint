@@ -72,11 +72,12 @@ func main() {
 
 	if !*udp {
 		ip := flag.Args()[0]
+		port := flag.Args()[1]
 		if regex.MatchString(flag.Args()[0]) {
 			start := time.Now()
 			ip = resolveName(flag.Args()[0]).String()
 			end := time.Now()
-			fmt.Println("Resolved '" + flag.Args()[0] + "' to '" + ip + "' in " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+			fmt.Println("Successfully resolved '" + flag.Args()[0] + "' to '" + ip + "' in " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 
 		}
 
@@ -92,7 +93,7 @@ func main() {
 				getpath = path
 			}
 
-			url := scheme + "://" + ip + ":" + flag.Args()[1] + getpath
+			url := scheme + "://" + ip + ":" + port + getpath
 			fmt.Println(url)
 			if *download {
 				fmt.Println("Placeholder for web request download")
@@ -105,7 +106,9 @@ func main() {
 
 		} else {
 			// this is regular TCP telnet
-			fmt.Println("Placeholder for regular TCP")
+			timetaken := dialNow("tcp", ip+":"+port, timeout)
+			fmt.Println("Successfully reached '" + ip + ":" + port + "' in " + strconv.Itoa(timetaken) + "ms.")
+			os.Exit(0)
 		}
 	} else {
 		// this is for UDP request
@@ -173,11 +176,14 @@ func dialNow(protocol string, addressport string, timeout int) int {
 	connect, err := net.DialTimeout(protocol, addressport, time.Duration(timeout)*time.Second)
 	end := time.Now()
 	if err != nil {
-		fmt.Println(err)
+
+		fmt.Println(err.Error())
+		connect.Close()
 		// wg.Done()
 		os.Exit(1)
 	}
 	connect.Close()
+
 	// wg.Done()
 	return int((end.Sub(start)).Milliseconds())
 }
