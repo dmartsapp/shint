@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,13 @@ var (
 	httpOnly   *bool
 	web        *bool
 	path       string
+)
+
+const (
+	SuccessNoError  uint8 = 0
+	NoSuchHostError uint8 = 2
+	TimeoutError    uint8 = 3
+	UnknownError    uint8 = 1
 )
 
 func init() {
@@ -37,7 +45,7 @@ func init() {
 		fmt.Println("Example (fqdn): " + os.Args[0] + " google.com 443")
 		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10 443")
 		fmt.Println("Example (fqdn with -web and -http flags to send 'http' request to path '/pages/index.html' as 'web' client): " + os.Args[0] + " -web -http -path '/pages/index.html' 10.10.10.10 443")
-		os.Exit(0)
+		os.Exit(int(SuccessNoError))
 	}
 }
 
@@ -56,7 +64,11 @@ func resolveName(ipaddress string) *net.IPAddr {
 	ip, err := net.ResolveIPAddr("", ipaddress)
 	if err != nil {
 		fmt.Println(err.Error())
-		os.Exit(1)
+		if strings.Contains(err.Error(), "no such host") {
+			os.Exit(int(NoSuchHostError))
+		}
+		os.Exit(int(UnknownError))
+
 	}
 	return ip
 }
@@ -105,12 +117,13 @@ func main() {
 			}
 
 		} else {
+
 			// this is regular TCP telnet
 			for i := 0; i < iterations; i++ {
 				timetaken := dialNow("tcp", ip+":"+port, timeout)
 				fmt.Println("Successfully reached '" + ip + ":" + port + "' in " + strconv.Itoa(timetaken) + "ms.")
 			}
-			os.Exit(0)
+			os.Exit(int(SuccessNoError))
 		}
 	} else {
 		// this is for UDP request
@@ -179,10 +192,13 @@ func dialNow(protocol string, addressport string, timeout int) int {
 	end := time.Now()
 	if err != nil {
 
-		fmt.Println(err.Error())
-		connect.Close()
+		if strings.Contains(err.Error(), "timeout") {
+			fmt.Println("Unreachable port. Timeout after " + strconv.Itoa(timeout) + " seconds")
+			os.Exit(int(TimeoutError))
+		}
 		// wg.Done()
-		os.Exit(1)
+		fmt.Println(err.Error())
+		os.Exit(int(UnknownError))
 	}
 	connect.Close()
 
