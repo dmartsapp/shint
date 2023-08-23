@@ -92,11 +92,15 @@ func main() {
 				getpath = path
 			}
 
-			url := scheme + "://" + flag.Args()[0] + ":" + flag.Args()[1] + getpath
+			url := scheme + "://" + ip + ":" + flag.Args()[1] + getpath
 			fmt.Println(url)
 			if *download {
 				fmt.Println("Placeholder for web request download")
 				// this is for downloading entire payload; No summary
+
+				return
+			} else {
+				fmt.Println("Placeholder for summary of web request")
 			}
 
 		} else {
