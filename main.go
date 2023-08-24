@@ -24,11 +24,12 @@ var (
 )
 
 const (
-	SuccessNoError  uint8 = 0
-	NoSuchHostError uint8 = 2
-	TimeoutError    uint8 = 3
-	HttpGetError    uint8 = 4
-	UnknownError    uint8 = 1
+	SuccessNoError   uint8 = 0
+	NoSuchHostError  uint8 = 2
+	TimeoutError     uint8 = 3
+	UnreachableError uint8 = 5
+	HttpGetError     uint8 = 4
+	UnknownError     uint8 = 1
 )
 
 func init() {
@@ -109,38 +110,47 @@ func main() {
 			}
 
 			url := scheme + "://" + ip + ":" + port + getpath
-			fmt.Println("Trying to access URL: " + url)
+			// fmt.Println("Trying to access URL: " + url)
 			if *download {
 				fmt.Println("Placeholder for web request download")
 				// this is for downloading entire payload; No summary
 
 				return
 			} else {
-				httpClient := &http.Client{}
+				httpClient := &http.Client{Timeout: time.Second * time.Duration(timeout)}
 				if !*httpOnly {
 					httpsTransport := &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 					}
-					httpClient = &http.Client{Transport: httpsTransport}
+					httpClient = &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
 				}
-				for i := 0; i < *&iterations; i++ {
+				ret := int(SuccessNoError)
+				for i := 0; i < iterations; i++ {
 					start := time.Now()
 					resp, err := httpClient.Get(url)
-
+					end := time.Now()
 					if err != nil {
+						if strings.Contains(err.Error(), "refused") {
+							fmt.Println(url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
+							os.Exit(int(UnreachableError))
+						}
+						if strings.Contains(err.Error(), "Client.Timeout") {
+							fmt.Println(url + " is down within elasped timeout. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+							os.Exit(int(TimeoutError))
+						}
 						fmt.Println(err.Error())
 						os.Exit(int(HttpGetError))
 					}
 
 					// payload, _ := ioutil.ReadAll(resp.Body)
 
-					end := time.Now()
 					fmt.Println("HTTP Response code: " + resp.Status)
 					// fmt.Printf("%v bytes\n", len(payload))
-
+					defer resp.Body.Close()
 					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
-					resp.Body.Close()
+					ret = int(resp.StatusCode)
 				}
+				os.Exit(int(ret))
 
 			}
 
@@ -169,6 +179,10 @@ func dialNow(protocol string, addressport string, timeout int) int {
 		if strings.Contains(err.Error(), "timeout") {
 			fmt.Println("Unreachable port. Timeout after " + strconv.Itoa(timeout) + " seconds")
 			os.Exit(int(TimeoutError))
+		}
+		if strings.Contains(err.Error(), "refused") {
+			fmt.Println(addressport + " combination is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
+			os.Exit(int(UnreachableError))
 		}
 		// wg.Done()
 		fmt.Println(err.Error())
