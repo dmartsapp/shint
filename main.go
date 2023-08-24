@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -124,14 +125,22 @@ func main() {
 					}
 					httpClient = &http.Client{Transport: httpsTransport}
 				}
+				start := time.Now()
 				resp, err := httpClient.Get(url)
 
 				if err != nil {
 					fmt.Println(err.Error())
 					os.Exit(int(HttpGetError))
 				}
-				fmt.Println(resp.Status)
 
+				payload, _ := ioutil.ReadAll(resp.Body)
+
+				end := time.Now()
+				fmt.Println(resp.Status)
+				fmt.Printf("%v bytes\n", len(payload))
+
+				fmt.Println((end.Sub(start)).Milliseconds())
+				resp.Body.Close()
 			}
 
 		} else {
