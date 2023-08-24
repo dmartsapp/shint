@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -110,14 +109,13 @@ func main() {
 			}
 
 			url := scheme + "://" + ip + ":" + port + getpath
-			fmt.Println(url)
+			fmt.Println("Trying to access URL: " + url)
 			if *download {
 				fmt.Println("Placeholder for web request download")
 				// this is for downloading entire payload; No summary
 
 				return
 			} else {
-				fmt.Println("Placeholder for summary of web request")
 				httpClient := &http.Client{}
 				if !*httpOnly {
 					httpsTransport := &http.Transport{
@@ -125,22 +123,25 @@ func main() {
 					}
 					httpClient = &http.Client{Transport: httpsTransport}
 				}
-				start := time.Now()
-				resp, err := httpClient.Get(url)
+				for i := 0; i < *&iterations; i++ {
+					start := time.Now()
+					resp, err := httpClient.Get(url)
 
-				if err != nil {
-					fmt.Println(err.Error())
-					os.Exit(int(HttpGetError))
+					if err != nil {
+						fmt.Println(err.Error())
+						os.Exit(int(HttpGetError))
+					}
+
+					// payload, _ := ioutil.ReadAll(resp.Body)
+
+					end := time.Now()
+					fmt.Println("HTTP Response code: " + resp.Status)
+					// fmt.Printf("%v bytes\n", len(payload))
+
+					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+					resp.Body.Close()
 				}
 
-				payload, _ := ioutil.ReadAll(resp.Body)
-
-				end := time.Now()
-				fmt.Println(resp.Status)
-				fmt.Printf("%v bytes\n", len(payload))
-
-				fmt.Println((end.Sub(start)).Milliseconds())
-				resp.Body.Close()
 			}
 
 		} else {
