@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -25,6 +27,7 @@ const (
 	SuccessNoError  uint8 = 0
 	NoSuchHostError uint8 = 2
 	TimeoutError    uint8 = 3
+	HttpGetError    uint8 = 4
 	UnknownError    uint8 = 1
 )
 
@@ -114,6 +117,21 @@ func main() {
 				return
 			} else {
 				fmt.Println("Placeholder for summary of web request")
+				httpClient := &http.Client{}
+				if !*httpOnly {
+					httpsTransport := &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					}
+					httpClient = &http.Client{Transport: httpsTransport}
+				}
+				resp, err := httpClient.Get(url)
+
+				if err != nil {
+					fmt.Println(err.Error())
+					os.Exit(int(HttpGetError))
+				}
+				fmt.Println(resp.Status)
+
 			}
 
 		} else {
