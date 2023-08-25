@@ -33,7 +33,7 @@ const (
 )
 
 func init() {
-	flag.IntVar(&iterations, "iterations", 1, "Number of times to check")
+	flag.IntVar(&iterations, "count", 1, "Number of times to check")
 	flag.IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect")
 	udp = flag.Bool("udp", false, "Flag option (Doesn't expect any value after option). Use UDP instead of tcp to connect to endpoint")
 	flag.StringVar(&path, "path", "/", "Path to send web request to. Requires 'web' flag set first.")
