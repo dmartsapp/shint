@@ -84,6 +84,25 @@ func main() {
 		flag.Usage()
 	}
 
+	// var ip *net.IPAddr
+
+	// to := time.AfterFunc(time.Duration(0*int(time.Second)), func() {
+	// 	IP, err := net.ResolveIPAddr("", flag.Args()[0])
+	// 	if err != nil {
+	// 		fmt.Println(err.Error())
+	// 		if strings.Contains(err.Error(), "no such host") {
+	// 			os.Exit(int(NoSuchHostError))
+	// 		}
+	// 		os.Exit(int(UnknownError))
+
+	// 	}
+	// 	ip = IP
+	// })
+	// fmt.Println(time.Now())
+	// time.Sleep(time.Duration(timeout * int(time.Second)))
+	// to.Stop()
+	// fmt.Println(ip)
+
 	regex, _ := regexp.Compile("[a-z|A-Z]")
 
 	if !*udp {
