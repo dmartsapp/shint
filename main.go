@@ -112,7 +112,7 @@ func main() {
 			start := time.Now()
 			ip = resolveName(flag.Args()[0]).String()
 			end := time.Now()
-			fmt.Println("Successfully resolved '" + flag.Args()[0] + "' to '" + ip + "' in " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+			fmt.Println("Successfully resolved '" + flag.Args()[0] + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 
 		}
 
@@ -163,10 +163,10 @@ func main() {
 
 					// payload, _ := ioutil.ReadAll(resp.Body)
 
-					fmt.Println("HTTP Response code: " + resp.Status)
+					fmt.Print("HTTP Response code: " + resp.Status)
 					// fmt.Printf("%v bytes\n", len(payload))
 					defer resp.Body.Close()
-					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+					fmt.Println(". Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 					ret = int(resp.StatusCode)
 				}
 				os.Exit(int(ret))
@@ -178,7 +178,12 @@ func main() {
 			// this is regular TCP telnet
 			for i := 0; i < iterations; i++ {
 				timetaken := dialNow("tcp", ip+":"+port, timeout)
-				fmt.Println("Successfully reached '" + ip + ":" + port + "' in " + strconv.Itoa(timetaken) + "ms.")
+				if timetaken >= 0 {
+					fmt.Println("Successfully reached '" + ip + ":" + port + "' in: " + strconv.Itoa(timetaken) + "ms.")
+				} else {
+					fmt.Println("Unable to reach '" + ip + ":" + port + "'")
+				}
+
 			}
 			os.Exit(int(SuccessNoError))
 		}
@@ -196,16 +201,16 @@ func dialNow(protocol string, addressport string, timeout int) int {
 	if err != nil {
 
 		if strings.Contains(err.Error(), "timeout") {
-			fmt.Println("Unreachable port. Timeout after " + strconv.Itoa(timeout) + " seconds")
-			os.Exit(int(TimeoutError))
+			return -1
+
 		}
 		if strings.Contains(err.Error(), "refused") {
 			fmt.Println(addressport + " combination is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
-			os.Exit(int(UnreachableError))
+			return -1
 		}
 		// wg.Done()
 		fmt.Println(err.Error())
-		os.Exit(int(UnknownError))
+		return -1
 	}
 	connect.Close()
 
