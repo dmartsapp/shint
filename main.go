@@ -136,10 +136,51 @@ func main() {
 			url := scheme + "://" + ip + ":" + port + getpath
 			// fmt.Println("Trying to access URL: " + url)
 			if *download {
-				fmt.Println("Placeholder for web request download")
-				// this is for downloading entire payload; No summary
+				httpClient := &http.Client{Timeout: time.Second * time.Duration(timeout)}
+				if !*httpOnly {
+					httpsTransport := &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					}
+					httpClient = &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
+				}
+				ret := int(SuccessNoError)
+				fmt.Println(`Trying to access url: ` + url)
+				for i := 0; i < iterations; i++ {
+					start := time.Now()
+					resp, err := httpClient.Get(url)
+					end := time.Now()
+					if err != nil {
+						if strings.Contains(err.Error(), "refused") {
+							fmt.Println(url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
+							os.Exit(int(UnreachableError))
+						}
+						if strings.Contains(err.Error(), "Client.Timeout") {
+							fmt.Println(url + " is down within elasped timeout. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+							os.Exit(int(TimeoutError))
+						}
+						if strings.Contains(err.Error(), "reset by peer") {
+							fmt.Println(url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+							os.Exit(int(TimeoutError))
+						}
+						fmt.Println(err.Error())
+						os.Exit(int(HttpGetError))
+					}
 
-				return
+					payload, _ := io.ReadAll(resp.Body)
+					fmt.Println("\nHeaders")
+					for key, value := range resp.Header {
+						fmt.Println(key + ":" + strings.Join(value, ""))
+					}
+					fmt.Println("\n\n")
+					fmt.Println(string(payload))
+
+					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
+					defer resp.Body.Close()
+					fmt.Print("HTTP Response code: " + resp.Status + ". ")
+					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+					ret = int(resp.StatusCode)
+				}
+				os.Exit(int(ret))
 			} else {
 				httpClient := &http.Client{Timeout: time.Second * time.Duration(timeout)}
 				if !*httpOnly {
