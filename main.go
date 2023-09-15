@@ -84,26 +84,6 @@ func main() {
 	if len(flag.Args()) != 2 {
 		flag.Usage()
 	}
-
-	// var ip *net.IPAddr
-
-	// to := time.AfterFunc(time.Duration(0*int(time.Second)), func() {
-	// 	IP, err := net.ResolveIPAddr("", flag.Args()[0])
-	// 	if err != nil {
-	// 		fmt.Println(err.Error())
-	// 		if strings.Contains(err.Error(), "no such host") {
-	// 			os.Exit(int(NoSuchHostError))
-	// 		}
-	// 		os.Exit(int(UnknownError))
-
-	// 	}
-	// 	ip = IP
-	// })
-	// fmt.Println(time.Now())
-	// time.Sleep(time.Duration(timeout * int(time.Second)))
-	// to.Stop()
-	// fmt.Println(ip)
-
 	regex, _ := regexp.Compile("[a-z|A-Z]")
 
 	if !*udp {
@@ -171,7 +151,8 @@ func main() {
 					for key, value := range resp.Header {
 						fmt.Println(key + ":" + strings.Join(value, ""))
 					}
-					fmt.Println("\n\n")
+					fmt.Println("")
+					fmt.Println("")
 					fmt.Println(string(payload))
 
 					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
@@ -213,12 +194,6 @@ func main() {
 					}
 
 					payload, _ := io.ReadAll(resp.Body)
-					// fmt.Println("\nHeaders")
-					// for key, value := range resp.Header {
-					// 	fmt.Println(key + ":" + strings.Join(value, ""))
-					// }
-					// fmt.Println("\nBody")
-					// fmt.Println(string(payload))
 
 					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
 					defer resp.Body.Close()
