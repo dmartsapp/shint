@@ -128,7 +128,11 @@ func main() {
 			if optionExists("path") {
 				getpath = path
 			}
-
+			test := dialNow("tcp", ip+":"+port, 2)
+			if test == -1 {
+				fmt.Println("Could not establish tcp connection to the IP port")
+				os.Exit(1)
+			}
 			url := scheme + "://" + ip + ":" + port + getpath
 			// fmt.Println("Trying to access URL: " + url)
 			if *download {
@@ -159,6 +163,10 @@ func main() {
 							fmt.Println(url + " is down within elasped timeout. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
 							os.Exit(int(TimeoutError))
 						}
+						if strings.Contains(err.Error(), "reset by peer") {
+							fmt.Println(url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+							os.Exit(int(TimeoutError))
+						}
 						fmt.Println(err.Error())
 						os.Exit(int(HttpGetError))
 					}
@@ -173,7 +181,7 @@ func main() {
 
 					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
 					defer resp.Body.Close()
-					fmt.Print("HTTP Response code: " + resp.Status)
+					fmt.Print("HTTP Response code: " + resp.Status + ". ")
 					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 					ret = int(resp.StatusCode)
 				}
