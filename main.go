@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -144,6 +145,7 @@ func main() {
 					httpClient = &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
 				}
 				ret := int(SuccessNoError)
+				fmt.Println(`Trying to access url: ` + url)
 				for i := 0; i < iterations; i++ {
 					start := time.Now()
 					resp, err := httpClient.Get(url)
@@ -161,12 +163,18 @@ func main() {
 						os.Exit(int(HttpGetError))
 					}
 
-					// payload, _ := ioutil.ReadAll(resp.Body)
+					payload, _ := io.ReadAll(resp.Body)
+					// fmt.Println("\nHeaders")
+					// for key, value := range resp.Header {
+					// 	fmt.Println(key + ":" + strings.Join(value, ""))
+					// }
+					// fmt.Println("\nBody")
+					// fmt.Println(string(payload))
 
-					fmt.Print("HTTP Response code: " + resp.Status)
-					// fmt.Printf("%v bytes\n", len(payload))
+					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
 					defer resp.Body.Close()
-					fmt.Println(". Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+					fmt.Print("HTTP Response code: " + resp.Status)
+					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 					ret = int(resp.StatusCode)
 				}
 				os.Exit(int(ret))
