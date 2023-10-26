@@ -8,20 +8,16 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
 var (
-	download   *bool
 	iterations int
 	udp        *bool
 	timeout    int
-	httpOnly   *bool
 	web        *bool
-	path       string
 )
 
 const (
@@ -37,10 +33,7 @@ func init() {
 	flag.IntVar(&iterations, "count", 1, "Number of times to check")
 	flag.IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect")
 	udp = flag.Bool("udp", false, "Flag option (Doesn't expect any value after option). Use UDP instead of tcp to connect to endpoint")
-	flag.StringVar(&path, "path", "/", "Path to send web request to. Requires 'web' flag set first.")
-	download = flag.Bool("download", false, "Flag option (Doesn't expect any value after option). Download the contents of web request and print to STDOUT. Requires 'web' flag.")
-	httpOnly = flag.Bool("http", false, "Flag option (Doesn't expect any value after option). Use http instead of default https for web requests. Requires 'web' flag.")
-	web = flag.Bool("web", false, "Flag option (Doesn't expect any value after option). Use web request on top of regular telnet. 'http' and 'download' flags and 'path' option only works if this flag is used.")
+	web = flag.Bool("web", false, "Flag option (Doesn't expect any value after option). Use web request.")
 
 	flag.Usage = func() {
 		fmt.Println("Usage: " + os.Args[0] + " [options] <fqdn|IP> port")
@@ -49,7 +42,7 @@ func init() {
 		fmt.Println()
 		fmt.Println("Example (fqdn): " + os.Args[0] + " google.com 443")
 		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10 443")
-		fmt.Println("Example (fqdn with -web and -http flags to send 'http' request to path '/pages/index.html' as 'web' client): " + os.Args[0] + " -web -http -path '/pages/index.html' 10.10.10.10 443")
+		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as 'web' client): " + os.Args[0] + " -web https://google.com/pages/index.html")
 		os.Exit(int(SuccessNoError))
 	}
 }
@@ -84,130 +77,16 @@ func main() {
 	if len(flag.Args()) != 2 {
 		flag.Usage()
 	}
-	regex, _ := regexp.Compile("[a-z|A-Z]")
 
 	if !*udp {
-		ip := flag.Args()[0]
-		port := flag.Args()[1]
-		if regex.MatchString(flag.Args()[0]) {
-			start := time.Now()
-			ip = resolveName(flag.Args()[0]).String()
-			end := time.Now()
-			fmt.Println("Successfully resolved '" + flag.Args()[0] + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
-
-		}
-
-		if *web {
-			// this is web request; Check for other flags
-			scheme := "https"
-			getpath := "/"
-
-			if *httpOnly {
-				scheme = "http"
-			}
-			if optionExists("path") {
-				getpath = path
-			}
-			test := dialNow("tcp", ip+":"+port, 2)
-			if test == -1 {
-				fmt.Println("Could not establish tcp connection to the IP port")
-				os.Exit(1)
-			}
-			url := scheme + "://" + ip + ":" + port + getpath
-			// fmt.Println("Trying to access URL: " + url)
-			if *download {
-				httpClient := &http.Client{Timeout: time.Second * time.Duration(timeout)}
-				if !*httpOnly {
-					httpsTransport := &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-					}
-					httpClient = &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
-				}
-				ret := int(SuccessNoError)
-				fmt.Println(`Trying to access url: ` + url)
-				for i := 0; i < iterations; i++ {
-					start := time.Now()
-					resp, err := httpClient.Get(url)
-					end := time.Now()
-					if err != nil {
-						if strings.Contains(err.Error(), "refused") {
-							fmt.Println(url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
-							os.Exit(int(UnreachableError))
-						}
-						if strings.Contains(err.Error(), "Client.Timeout") {
-							fmt.Println(url + " is down within elasped timeout. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
-							os.Exit(int(TimeoutError))
-						}
-						if strings.Contains(err.Error(), "reset by peer") {
-							fmt.Println(url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
-							os.Exit(int(TimeoutError))
-						}
-						fmt.Println(err.Error())
-						os.Exit(int(HttpGetError))
-					}
-
-					payload, _ := io.ReadAll(resp.Body)
-					fmt.Println("\nHeaders")
-					for key, value := range resp.Header {
-						fmt.Println(key + ":" + strings.Join(value, ""))
-					}
-					fmt.Println("")
-					fmt.Println("")
-					fmt.Println(string(payload))
-
-					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
-					defer resp.Body.Close()
-					fmt.Print("HTTP Response code: " + resp.Status + ". ")
-					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
-					ret = int(resp.StatusCode)
-				}
-				os.Exit(int(ret))
-			} else {
-				httpClient := &http.Client{Timeout: time.Second * time.Duration(timeout)}
-				if !*httpOnly {
-					httpsTransport := &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-					}
-					httpClient = &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
-				}
-				ret := int(SuccessNoError)
-				fmt.Println(`Trying to access url: ` + url)
-				for i := 0; i < iterations; i++ {
-					start := time.Now()
-					resp, err := httpClient.Get(url)
-					end := time.Now()
-					if err != nil {
-						if strings.Contains(err.Error(), "refused") {
-							fmt.Println(url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
-							os.Exit(int(UnreachableError))
-						}
-						if strings.Contains(err.Error(), "Client.Timeout") {
-							fmt.Println(url + " is down within elasped timeout. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
-							os.Exit(int(TimeoutError))
-						}
-						if strings.Contains(err.Error(), "reset by peer") {
-							fmt.Println(url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
-							os.Exit(int(TimeoutError))
-						}
-						fmt.Println(err.Error())
-						os.Exit(int(HttpGetError))
-					}
-
-					payload, _ := io.ReadAll(resp.Body)
-
-					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
-					defer resp.Body.Close()
-					fmt.Print("HTTP Response code: " + resp.Status + ". ")
-					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
-					ret = int(resp.StatusCode)
-				}
-				os.Exit(int(ret))
-
-			}
-
-		} else {
-
+		if !*web {
 			// this is regular TCP telnet
+			port := flag.Args()[1]
+			start := time.Now()
+			ip := resolveName(flag.Args()[0]).String()
+			end := time.Now()
+			fmt.Println("Successfully resolved '" + ip + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+
 			for i := 0; i < iterations; i++ {
 				timetaken := dialNow("tcp", ip+":"+port, timeout)
 				if timetaken >= 0 {
@@ -215,9 +94,54 @@ func main() {
 				} else {
 					fmt.Println("Unable to reach '" + ip + ":" + port + "'")
 				}
+			}
+		}
+
+		if *web {
+			// this is web request; Check for other flags
+			url := flag.Args()[0]
+			fmt.Println("Trying to access URL: " + url)
+			{
+				httpsTransport := &http.Transport{
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				}
+				httpClient := &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
+
+				ret := int(SuccessNoError)
+				fmt.Println(`Trying to access url: ` + url)
+				for i := 0; i < iterations; i++ {
+					start := time.Now()
+					resp, err := httpClient.Get(url)
+					end := time.Now()
+					if err != nil {
+						if strings.Contains(err.Error(), "refused") {
+							fmt.Println(url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
+							os.Exit(int(UnreachableError))
+						}
+						if strings.Contains(err.Error(), "Client.Timeout") {
+							fmt.Println(url + " is down within elasped timeout. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+							os.Exit(int(TimeoutError))
+						}
+						if strings.Contains(err.Error(), "reset by peer") {
+							fmt.Println(url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+							os.Exit(int(TimeoutError))
+						}
+						fmt.Println(err.Error())
+						os.Exit(int(HttpGetError))
+					}
+
+					payload, _ := io.ReadAll(resp.Body)
+
+					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
+					defer resp.Body.Close()
+					fmt.Print("HTTP Response code: " + resp.Status + ". ")
+					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+					ret = int(resp.StatusCode)
+				}
+				os.Exit(int(ret))
 
 			}
-			os.Exit(int(SuccessNoError))
+
 		}
 	} else {
 		// this is for UDP request
