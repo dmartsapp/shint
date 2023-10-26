@@ -74,8 +74,10 @@ func resolveName(ipaddress string) *net.IPAddr {
 func main() {
 
 	flag.Parse()
-	if len(flag.Args()) != 2 {
-		flag.Usage()
+	if !*web {
+		if len(flag.Args()) != 2 {
+			flag.Usage()
+		}
 	}
 
 	if !*udp {
@@ -108,7 +110,6 @@ func main() {
 				httpClient := &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
 
 				ret := int(SuccessNoError)
-				fmt.Println(`Trying to access url: ` + url)
 				for i := 0; i < iterations; i++ {
 					start := time.Now()
 					resp, err := httpClient.Get(url)
@@ -139,7 +140,6 @@ func main() {
 					ret = int(resp.StatusCode)
 				}
 				os.Exit(int(ret))
-
 			}
 
 		}
