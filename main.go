@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -103,11 +104,16 @@ func main() {
 			// this is web request; Check for other flags
 			url := flag.Args()[0]
 			fmt.Println("Trying to access URL: " + url)
-			{
-				httpsTransport := &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			if matches, _ := regexp.MatchString(`(?:https?://)`, url); matches {
+
+				httpClient := &http.Client{Timeout: time.Second * time.Duration(timeout)}
+
+				if strings.Contains(url, "https") {
+					httpsTransport := &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+					}
+					httpClient = &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
 				}
-				httpClient := &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
 
 				ret := int(SuccessNoError)
 				for i := 0; i < iterations; i++ {
@@ -117,29 +123,31 @@ func main() {
 					if err != nil {
 						if strings.Contains(err.Error(), "refused") {
 							fmt.Println(url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
-							os.Exit(int(UnreachableError))
+							ret = (int(UnreachableError))
 						}
 						if strings.Contains(err.Error(), "Client.Timeout") {
 							fmt.Println(url + " is down within elasped timeout. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
-							os.Exit(int(TimeoutError))
+							ret = (int(TimeoutError))
 						}
 						if strings.Contains(err.Error(), "reset by peer") {
 							fmt.Println(url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
-							os.Exit(int(TimeoutError))
+							ret = (int(TimeoutError))
 						}
-						fmt.Println(err.Error())
-						os.Exit(int(HttpGetError))
+						//fmt.Println(err.Error())
+						os.Exit(ret)
 					}
 
 					payload, _ := io.ReadAll(resp.Body)
 
-					fmt.Printf("\nRead: %v bytes.\n", len(string(payload)))
+					fmt.Printf("Read: %v bytes.", len(string(payload)))
 					defer resp.Body.Close()
-					fmt.Print("HTTP Response code: " + resp.Status + ". ")
-					fmt.Println("Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+					fmt.Print(" HTTP Response code: " + resp.Status + ". ")
+					fmt.Println(" Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 					ret = int(resp.StatusCode)
 				}
 				os.Exit(int(ret))
+			} else {
+				fmt.Println(url + " is a not valid http/https url")
 			}
 
 		}
