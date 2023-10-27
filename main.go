@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -16,7 +17,9 @@ import (
 
 var (
 	iterations int
+	delay      int
 	udp        *bool
+	throttle   *bool
 	timeout    int
 	web        *bool
 )
@@ -33,8 +36,10 @@ const (
 func init() {
 	flag.IntVar(&iterations, "count", 1, "Number of times to check")
 	flag.IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect")
+	flag.IntVar(&delay, "delay", 1, "Delay between each iteration of count")
 	udp = flag.Bool("udp", false, "Flag option (Doesn't expect any value after option). Use UDP instead of tcp to connect to endpoint")
 	web = flag.Bool("web", false, "Flag option (Doesn't expect any value after option). Use web request.")
+	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
 
 	flag.Usage = func() {
 		fmt.Println("Usage: " + os.Args[0] + " [options] <fqdn|IP> port")
@@ -82,18 +87,23 @@ func main() {
 	}
 
 	if !*udp {
+		THROTTLE_MAX := 10 // this is the max in seconds to wait if throttle is true and delay isn't 0
+		rand.Seed(time.Now().UnixNano())
 		if !*web {
 			// this is regular TCP telnet
 			port := flag.Args()[1]
 			start := time.Now()
 			ip := resolveName(flag.Args()[0]).String()
 			end := time.Now()
-			fmt.Println("Successfully resolved '" + ip + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
-
+			fmt.Println(time.Now().Local().String() + ". Successfully resolved '" + ip + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+			if *throttle {
+				delay = delay * rand.Intn(THROTTLE_MAX)
+			}
 			for i := 0; i < iterations; i++ {
+				time.Sleep(time.Second * time.Duration(delay))
 				timetaken := dialNow("tcp", ip+":"+port, timeout)
 				if timetaken >= 0 {
-					fmt.Println("Successfully reached '" + ip + ":" + port + "' in: " + strconv.Itoa(timetaken) + "ms.")
+					fmt.Println(time.Now().Local().String() + ". Successfully reached '" + ip + ":" + port + "' in: " + strconv.Itoa(timetaken) + "ms.")
 				} else {
 					fmt.Println("Unable to reach '" + ip + ":" + port + "'")
 				}
@@ -114,12 +124,16 @@ func main() {
 					}
 					httpClient = &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
 				}
+				if *throttle {
+					delay = delay * rand.Intn(THROTTLE_MAX)
+				}
 
 				ret := int(SuccessNoError)
 				for i := 0; i < iterations; i++ {
 					start := time.Now()
 					resp, err := httpClient.Get(url)
 					end := time.Now()
+					time.Sleep(time.Second * time.Duration(delay))
 					if err != nil {
 						if strings.Contains(err.Error(), "refused") {
 							fmt.Println(url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
@@ -139,7 +153,7 @@ func main() {
 
 					payload, _ := io.ReadAll(resp.Body)
 
-					fmt.Printf("Read: %v bytes.", len(string(payload)))
+					fmt.Printf(time.Now().Local().String()+". Read: %v bytes.", len(string(payload)))
 					defer resp.Body.Close()
 					fmt.Print(" HTTP Response code: " + resp.Status + ". ")
 					fmt.Println(" Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
