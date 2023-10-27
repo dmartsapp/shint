@@ -25,20 +25,21 @@ var (
 )
 
 const (
-	SuccessNoError   uint8 = 0
-	NoSuchHostError  uint8 = 2
-	TimeoutError     uint8 = 3
-	UnreachableError uint8 = 5
-	HttpGetError     uint8 = 4
-	UnknownError     uint8 = 1
+	SuccessNoError   uint8  = 0
+	NoSuchHostError  uint8  = 2
+	TimeoutError     uint8  = 3
+	UnreachableError uint8  = 5
+	HttpGetError     uint8  = 4
+	UnknownError     uint8  = 1
+	HTTP_CLIENT      string = "dmarts.app-http-v0.1"
 )
 
 func init() {
-	flag.IntVar(&iterations, "count", 1, "Number of times to check")
+	flag.IntVar(&iterations, "count", 1, "Number of times to check connectivity")
 	flag.IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect")
-	flag.IntVar(&delay, "delay", 1, "Delay between each iteration of count")
+	flag.IntVar(&delay, "delay", 0, "Seconds delay between each iteration given in count")
 	udp = flag.Bool("udp", false, "Flag option (Doesn't expect any value after option). Use UDP instead of tcp to connect to endpoint")
-	web = flag.Bool("web", false, "Flag option (Doesn't expect any value after option). Use web request.")
+	web = flag.Bool("web", false, "Use web request as a web client.")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
 
 	flag.Usage = func() {
@@ -48,21 +49,21 @@ func init() {
 		fmt.Println()
 		fmt.Println("Example (fqdn): " + os.Args[0] + " google.com 443")
 		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10 443")
-		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as 'web' client): " + os.Args[0] + " -web https://google.com/pages/index.html")
+		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as client with user-agent set as '" + HTTP_CLIENT + "'): " + os.Args[0] + " -web https://google.com/pages/index.html")
 		os.Exit(int(SuccessNoError))
 	}
 }
 
-func optionExists(flagname string) bool {
-	found := false
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == flagname {
-			found = true
-		}
-	})
+// func optionExists(flagname string) bool {
+// 	found := false
+// 	flag.Visit(func(f *flag.Flag) {
+// 		if f.Name == flagname {
+// 			found = true
+// 		}
+// 	})
 
-	return found
-}
+// 	return found
+// }
 
 func resolveName(ipaddress string) *net.IPAddr {
 	ip, err := net.ResolveIPAddr("", ipaddress)
@@ -88,7 +89,7 @@ func main() {
 
 	if !*udp {
 		THROTTLE_MAX := 10 // this is the max in seconds to wait if throttle is true and delay isn't 0
-		rand.Seed(time.Now().UnixNano())
+
 		if !*web {
 			// this is regular TCP telnet
 			port := flag.Args()[1]
@@ -129,9 +130,13 @@ func main() {
 				}
 
 				ret := int(SuccessNoError)
+
+				req, _ := http.NewRequest(http.MethodGet, url, nil)
+				req.Header.Add("User-Agent", HTTP_CLIENT)
 				for i := 0; i < iterations; i++ {
 					start := time.Now()
-					resp, err := httpClient.Get(url)
+					//resp, err := httpClient.Get(url)
+					resp, err := httpClient.Do(req)
 					end := time.Now()
 					time.Sleep(time.Second * time.Duration(delay))
 					if err != nil {
