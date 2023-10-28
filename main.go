@@ -8,8 +8,10 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	URL "net/url"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -97,25 +99,54 @@ func main() {
 			ip := resolveName(flag.Args()[0]).String()
 			end := time.Now()
 			fmt.Println(time.Now().Local().String() + ". Successfully resolved '" + ip + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
-			if *throttle {
-				delay = delay * rand.Intn(THROTTLE_MAX)
-			}
+			statistics := make([]int, 0, iterations)
 			for i := 0; i < iterations; i++ {
-				time.Sleep(time.Second * time.Duration(delay))
+				delay1 := 0
+				if *throttle {
+					delay1 = delay * rand.Intn(THROTTLE_MAX)
+				}
+				time.Sleep(time.Second * time.Duration(delay1))
 				timetaken := dialNow("tcp", ip+":"+port, timeout)
+
 				if timetaken >= 0 {
 					fmt.Println(time.Now().Local().String() + ". Successfully reached '" + ip + ":" + port + "' in: " + strconv.Itoa(timetaken) + "ms.")
+					statistics = append(statistics, timetaken)
 				} else {
-					fmt.Println("Unable to reach '" + ip + ":" + port + "'")
+					fmt.Println(time.Now().Local().String() + ". Unable to reach '" + ip + ":" + port + "'")
 				}
 			}
+			slices.Sort(statistics)
+			{
+				avg := 0
+				for _, val := range statistics {
+					avg = avg + val
+				}
+				fmt.Println("------------- Statistics of telnet to '" + flag.Args()[0] + "' on port '" + port + "' -------------")
+				fmt.Printf("%v requests transmitted, %v failed, %v%% success, ", iterations, (iterations - len(statistics)), (len(statistics) * 100 / iterations))
+				if len(statistics) == 0 {
+					fmt.Printf("min/max/avg = 0/0/0\n")
+				} else {
+					fmt.Printf("min/avg/max = %v/%v/%vms latency\n", slices.Min(statistics), avg/len(statistics), slices.Max(statistics))
+				}
+
+			}
+			//fmt.Println(slices.Max(statistics))
 		}
 
 		if *web {
 			// this is web request; Check for other flags
 			url := flag.Args()[0]
-			fmt.Println("Trying to access URL: " + url)
 			if matches, _ := regexp.MatchString(`(?:https?://)`, url); matches {
+				urlarg, err := URL.Parse(url)
+				if err != nil {
+					fmt.Println(err.Error())
+					os.Exit(1)
+				}
+
+				start := time.Now()
+				ip := resolveName(urlarg.Hostname())
+				end := time.Now()
+				fmt.Println(time.Now().Local().String() + ". Successfully resolved '" + urlarg.Hostname() + "' to '" + ip.String() + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 
 				httpClient := &http.Client{Timeout: time.Second * time.Duration(timeout)}
 
@@ -125,45 +156,66 @@ func main() {
 					}
 					httpClient = &http.Client{Transport: httpsTransport, Timeout: time.Second * time.Duration(timeout)}
 				}
-				if *throttle {
-					delay = delay * rand.Intn(THROTTLE_MAX)
-				}
 
 				ret := int(SuccessNoError)
-
+				statistics := make([]int, 0, iterations)
 				req, _ := http.NewRequest(http.MethodGet, url, nil)
 				req.Header.Add("User-Agent", HTTP_CLIENT)
 				for i := 0; i < iterations; i++ {
 					start := time.Now()
-					//resp, err := httpClient.Get(url)
 					resp, err := httpClient.Do(req)
 					end := time.Now()
-					time.Sleep(time.Second * time.Duration(delay))
+					delay1 := 0
+					if *throttle {
+						delay1 = delay * rand.Intn(THROTTLE_MAX)
+					}
+					time.Sleep(time.Second * time.Duration(delay1))
 					if err != nil {
 						if strings.Contains(err.Error(), "refused") {
-							fmt.Println(url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
+							fmt.Println(time.Now().Local().String() + ". " + url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
 							ret = (int(UnreachableError))
+							continue
 						}
 						if strings.Contains(err.Error(), "Client.Timeout") {
-							fmt.Println(url + " is down within elasped timeout. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+							fmt.Println(time.Now().Local().String() + ". " + url + " is down within timeout (" + strconv.Itoa(timeout) + "s). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
 							ret = (int(TimeoutError))
+							continue
 						}
 						if strings.Contains(err.Error(), "reset by peer") {
-							fmt.Println(url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+							fmt.Println(time.Now().Local().String() + ". " + url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
 							ret = (int(TimeoutError))
+							continue
 						}
 						//fmt.Println(err.Error())
-						os.Exit(ret)
+						//os.Exit(ret)
 					}
 
 					payload, _ := io.ReadAll(resp.Body)
 
 					fmt.Printf(time.Now().Local().String()+". Read: %v bytes.", len(string(payload)))
-					defer resp.Body.Close()
+
 					fmt.Print(" HTTP Response code: " + resp.Status + ". ")
 					fmt.Println(" Response received in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+					resp.Body.Close()
+					statistics = append(statistics, int(end.Sub(start).Milliseconds()))
 					ret = int(resp.StatusCode)
 				}
+				slices.Sort(statistics)
+				{
+					avg := 0
+					for _, val := range statistics {
+						avg = avg + val
+					}
+					fmt.Println("------------- Statistics of web request to '" + url + "' -------------")
+					fmt.Printf("%v requests transmitted, %v failed, %v%% success, ", iterations, (iterations - len(statistics)), (len(statistics) * 100 / iterations))
+					if len(statistics) == 0 {
+						fmt.Printf("min/max/avg = 0/0/0\n")
+					} else {
+						fmt.Printf("min/avg/max = %v/%v/%vms latency\n", slices.Min(statistics), avg/len(statistics), slices.Max(statistics))
+					}
+
+				}
+
 				os.Exit(int(ret))
 			} else {
 				fmt.Println(url + " is a not valid http/https url")
@@ -188,7 +240,7 @@ func dialNow(protocol string, addressport string, timeout int) int {
 
 		}
 		if strings.Contains(err.Error(), "refused") {
-			fmt.Println(addressport + " combination is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
+			//fmt.Println(addressport + " combination is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
 			return -1
 		}
 		// wg.Done()
