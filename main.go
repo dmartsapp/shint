@@ -101,7 +101,7 @@ func main() {
 			fmt.Println(time.Now().Local().String() + ". Successfully resolved '" + ip + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 			statistics := make([]int, 0, iterations)
 			for i := 0; i < iterations; i++ {
-				delay1 := 0
+				delay1 := delay
 				if *throttle {
 					delay1 = delay * rand.Intn(THROTTLE_MAX)
 				}
@@ -165,7 +165,7 @@ func main() {
 					start := time.Now()
 					resp, err := httpClient.Do(req)
 					end := time.Now()
-					delay1 := 0
+					delay1 := delay
 					if *throttle {
 						delay1 = delay * rand.Intn(THROTTLE_MAX)
 					}
