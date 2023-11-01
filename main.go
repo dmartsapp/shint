@@ -174,18 +174,19 @@ func main() {
 						if strings.Contains(err.Error(), "refused") {
 							fmt.Println(time.Now().Local().String() + ". " + url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
 							ret = (int(UnreachableError))
-							continue
+
 						}
 						if strings.Contains(err.Error(), "Client.Timeout") {
 							fmt.Println(time.Now().Local().String() + ". " + url + " is down within timeout (" + strconv.Itoa(timeout) + "s). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
 							ret = (int(TimeoutError))
-							continue
+
 						}
 						if strings.Contains(err.Error(), "reset by peer") {
 							fmt.Println(time.Now().Local().String() + ". " + url + ": unable to connect within elasped timeout (Possible protocol mismatch, e.g. http vs https). Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
 							ret = (int(TimeoutError))
-							continue
+
 						}
+						continue
 						//fmt.Println(err.Error())
 						//os.Exit(ret)
 					}
