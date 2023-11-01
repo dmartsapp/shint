@@ -171,6 +171,9 @@ func main() {
 					}
 					time.Sleep(time.Second * time.Duration(delay1))
 					if err != nil {
+						if strings.Contains(err.Error(), "HTTP response to HTTPS client") {
+							fmt.Println(time.Now().Local().String() + ". " + url + " is probably http instead of https. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Seconds())) + "s")
+						}
 						if strings.Contains(err.Error(), "refused") {
 							fmt.Println(time.Now().Local().String() + ". " + url + " is down. Elapsed time: " + strconv.Itoa(int(end.Sub(start).Microseconds())) + "µs")
 							ret = (int(UnreachableError))
