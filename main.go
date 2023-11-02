@@ -15,6 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 )
 
 var (
@@ -80,6 +83,32 @@ func resolveName(ipaddress string) *net.IPAddr {
 	return ip
 }
 
+func Ping(target_ip string) {
+	ping, err := icmp.ListenPacket("udp4", "0.0.0.0")
+	if err != nil {
+
+	}
+	defer ping.Close()
+	msg := icmp.Message{
+		Type: ipv4.ICMPTypeEcho, Code: 0,
+		Body: &icmp.Echo{
+			ID: os.Getpid() & 0xffff, Seq: 1,
+			Data: []byte(""),
+		},
+	}
+	msg_bytes, err := msg.Marshal(nil)
+	if err != nil {
+		fmt.Printf("Error on Marshal %v", msg_bytes)
+		panic(err)
+	}
+
+	// Write the message to the listening connection
+	if _, err := ping.WriteTo(msg_bytes, &net.UDPAddr{IP: net.ParseIP(target_ip)}); err != nil {
+		fmt.Printf("Error on WriteTo %v", err)
+		panic(err)
+	}
+}
+
 func main() {
 
 	flag.Parse()
@@ -98,7 +127,7 @@ func main() {
 			start := time.Now()
 			ip := resolveName(flag.Args()[0]).String()
 			end := time.Now()
-			fmt.Println(time.Now().Local().String() + ". Successfully resolved '" + ip + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+			fmt.Println(time.Now().Local().String() + ". Successfully resolved '" + flag.Args()[0] + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
 			statistics := make([]int, 0, iterations)
 			for i := 0; i < iterations; i++ {
 				delay1 := delay
@@ -109,10 +138,10 @@ func main() {
 				timetaken := dialNow("tcp", ip+":"+port, timeout)
 
 				if timetaken >= 0 {
-					fmt.Println(time.Now().Local().String() + ". Successfully reached '" + ip + ":" + port + "' in: " + strconv.Itoa(timetaken) + "ms.")
+					fmt.Println(time.Now().Local().String() + ". Successfully reached '" + flag.Args()[0] + ":" + port + "' in: " + strconv.Itoa(timetaken) + "ms.")
 					statistics = append(statistics, timetaken)
 				} else {
-					fmt.Println(time.Now().Local().String() + ". Unable to reach '" + ip + ":" + port + "'")
+					fmt.Println(time.Now().Local().String() + ". Unable to reach '" + flag.Args()[0] + ":" + port + "'")
 				}
 			}
 			slices.Sort(statistics)
