@@ -27,6 +27,9 @@ var (
 	throttle   *bool
 	timeout    int
 	web        *bool
+	nmap       *bool
+	fromport   int
+	endport    int
 )
 
 const (
@@ -46,6 +49,9 @@ func init() {
 	udp = flag.Bool("udp", false, "Flag option (Doesn't expect any value after option). Use UDP instead of tcp to connect to endpoint")
 	web = flag.Bool("web", false, "Use web request as a web client.")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
+	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -fromport and -endport, if mentioned.")
+	flag.IntVar(&fromport, "fromport", 1, "Start port to begin TCP scan from")
+	flag.IntVar(&endport, "endport", 80, "End port to run TCP scan to")
 
 	flag.Usage = func() {
 		fmt.Println("Usage: " + os.Args[0] + " [options] <fqdn|IP> port")
@@ -58,17 +64,6 @@ func init() {
 		os.Exit(int(SuccessNoError))
 	}
 }
-
-// func optionExists(flagname string) bool {
-// 	found := false
-// 	flag.Visit(func(f *flag.Flag) {
-// 		if f.Name == flagname {
-// 			found = true
-// 		}
-// 	})
-
-// 	return found
-// }
 
 func resolveName(ipaddress string) *net.IPAddr {
 	ip, err := net.ResolveIPAddr("", ipaddress)
