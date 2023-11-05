@@ -49,7 +49,7 @@ func init() {
 	udp = flag.Bool("udp", false, "Flag option (Doesn't expect any value after option). Use UDP instead of tcp to connect to endpoint")
 	web = flag.Bool("web", false, "Use web request as a web client.")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
-	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -fromport and -endport, if mentioned.")
+	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -from and -to, if mentioned.")
 	flag.IntVar(&fromport, "from", 1, "Start port to begin TCP scan from.")
 	flag.IntVar(&endport, "to", 80, "End port to run TCP scan to.")
 
