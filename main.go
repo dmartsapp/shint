@@ -81,7 +81,7 @@ func resolveName(ipaddress string) *net.IPAddr {
 func Ping(target_ip string) {
 	ping, err := icmp.ListenPacket("udp4", "0.0.0.0")
 	if err != nil {
-
+		fmt.Println("Error while setting up ICMP listener")
 	}
 	defer ping.Close()
 	msg := icmp.Message{
