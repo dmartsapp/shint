@@ -50,8 +50,8 @@ func init() {
 	web = flag.Bool("web", false, "Use web request as a web client.")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
 	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -fromport and -endport, if mentioned.")
-	flag.IntVar(&fromport, "fromport", 1, "Start port to begin TCP scan from")
-	flag.IntVar(&endport, "endport", 80, "End port to run TCP scan to")
+	flag.IntVar(&fromport, "from", 1, "Start port to begin TCP scan from.")
+	flag.IntVar(&endport, "to", 80, "End port to run TCP scan to.")
 
 	flag.Usage = func() {
 		fmt.Println("Usage: " + os.Args[0] + " [options] <fqdn|IP> port")
@@ -108,9 +108,32 @@ func main() {
 
 	flag.Parse()
 	if !*web {
-		if len(flag.Args()) != 2 {
-			flag.Usage()
+		if !*nmap {
+			if len(flag.Args()) != 2 {
+				flag.Usage()
+			}
 		}
+	}
+
+	if *nmap {
+		start := time.Now()
+		ip := resolveName(flag.Args()[0]).String()
+		end := time.Now()
+		fmt.Println(time.Now().Local().String() + ". Successfully resolved '" + flag.Args()[0] + "' to '" + ip + "' in: " + strconv.Itoa(int(end.Sub(start).Milliseconds())) + "ms")
+		fmt.Println(time.Now().Local().String() + ". Scanning from " + strconv.Itoa(fromport) + " to " + strconv.Itoa(endport) + " tcp ports on " + ip)
+		found := false
+		for i := fromport; i <= endport; i++ {
+			time.Sleep(time.Second * time.Duration(delay))
+			timetaken := dialNow("tcp", ip+":"+strconv.Itoa(i), timeout)
+			if timetaken > 0 {
+				found = true
+				fmt.Println(time.Now().Local().String() + ". Port " + strconv.Itoa(i) + " is open")
+			}
+		}
+		if !found {
+			fmt.Println(time.Now().Local().String() + ". No open ports found from " + strconv.Itoa(fromport) + " to " + strconv.Itoa(endport) + " port on " + ip)
+		}
+		os.Exit(0)
 	}
 
 	if !*udp {
