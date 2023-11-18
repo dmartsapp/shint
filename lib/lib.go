@@ -1,7 +1,10 @@
 package lib
 
-import "fmt"
+import (
+	"net"
+)
 
-func ResolveName(name string) {
-	fmt.Println("hello from resolve")
+func ResolveName(name string) ([]net.IP, error) {
+	ipaddresses, err := net.LookupIP(name)
+	return ipaddresses, err
 }

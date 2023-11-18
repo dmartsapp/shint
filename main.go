@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-
-	"github.com/farhansabbir/telnet/lib"
 )
 
 var (
@@ -20,13 +18,8 @@ var (
 )
 
 const (
-	SuccessNoError   uint8  = 0
-	NoSuchHostError  uint8  = 2
-	TimeoutError     uint8  = 3
-	UnreachableError uint8  = 5
-	HttpGetError     uint8  = 4
-	UnknownError     uint8  = 1
-	HTTP_CLIENT      string = "dmarts.app-http-v0.1"
+	SuccessNoError uint8  = 0
+	HTTP_CLIENT    string = "dmarts.app-http-v0.1"
 )
 
 func init() {
@@ -53,7 +46,12 @@ func init() {
 
 func main() {
 
-	flag.Parse()
-	lib.ResolveName("")
+	flag.Parse()         // read the flags passed for processing
+	if !*web || !*nmap { // nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
+		if len(flag.Args()) != 2 { // telnet only needs 2 params, so show usage and exit for additional parameters
+			flag.Usage()
+			os.Exit(int(SuccessNoError))
+		}
+	}
 
 }
