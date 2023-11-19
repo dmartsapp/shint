@@ -3,6 +3,9 @@ package lib
 import (
 	"context"
 	"net"
+	"slices"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -28,4 +31,24 @@ func LogWithTimestamp(log string, iserror bool) string {
 	}
 	return time.Now().Format(DATETIMEFORMAT) + ": Error! " + log
 
+}
+
+func GetMinAvgMax(stats []time.Duration) (time.Duration, time.Duration, time.Duration) {
+	max := slices.Max(stats)
+	min := slices.Min(stats)
+	var avg int
+	for _, stat := range stats {
+		avg += int(stat.Nanoseconds())
+	}
+	return min, time.Duration(avg / len(stats)), max
+}
+
+func SortTimeDurationSlice(stats *[]time.Duration) {
+	sort.SliceStable(*stats, func(i, j int) bool {
+		return ((*stats)[i] <= (*stats)[j])
+	})
+}
+
+func LogStats(stats []time.Duration, iterations int) string {
+	return "\n" + strings.Repeat("=", 50) + " STATISTICS " + strings.Repeat("=", 50) + "\n"
 }

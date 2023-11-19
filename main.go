@@ -100,8 +100,7 @@ func main() {
 					conn.Close()
 				}
 			}
-			fmt.Println(stats)
-
+			fmt.Println(lib.LogStats(stats, iterations))
 		}
 
 	}
