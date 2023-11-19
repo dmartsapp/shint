@@ -75,20 +75,19 @@ func main() {
 		}
 		start := time.Now()
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
-		fmt.Println(lib.LogWithTimestamp("DNS lookup successful in "+time.Since(start).String(), false))
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 		} else {
-			var stats = make([]time.Duration, iterations)
-
+			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
+			var stats = make([]time.Duration, 0)
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					var dialer net.Dialer
 					start = time.Now()
-					conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip.String()+":"+strconv.Itoa(int(port)))
+					conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip+":"+strconv.Itoa(int(port)))
 					if err != nil {
 						if strings.Contains(err.Error(), "i/o timeout") {
-							fmt.Println(lib.LogWithTimestamp("Timeout connecting to "+ip.String()+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), true))
+							fmt.Println(lib.LogWithTimestamp("Timeout connecting to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), true))
 						} else {
 							fmt.Println(lib.LogWithTimestamp(err.Error(), true))
 						}
@@ -96,7 +95,7 @@ func main() {
 						continue
 					} else {
 						stats = append(stats, time.Since(start))
-						fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip.String()+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), false))
+						fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), false))
 					}
 					conn.Close()
 				}

@@ -12,10 +12,14 @@ const (
 	Protocol       string = "tcp"
 )
 
-func ResolveName(ctx context.Context, name string) ([]net.IP, error) {
+func ResolveName(ctx context.Context, name string) ([]string, error) {
 	var resolver net.Resolver
 	ipaddresses, err := resolver.LookupIP(ctx, NetworkType, name)
-	return ipaddresses, err
+	var addresses = make([]string, 0)
+	for _, address := range ipaddresses {
+		addresses = append(addresses, address.String())
+	}
+	return addresses, err
 }
 
 func LogWithTimestamp(log string, iserror bool) string {
