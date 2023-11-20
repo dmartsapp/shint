@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -83,30 +82,32 @@ func main() {
 		} else {
 			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
 			var WG sync.WaitGroup
+			var MUTEX sync.Mutex
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					WG.Add(1)
 					go func() {
 						defer WG.Done()
-						var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
+						// var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
+						// start = time.Now()
+						// conn, err := dialer.Dial(lib.Protocol, ip+":"+strconv.Itoa(int(port)))
 						start = time.Now()
-						conn, err := dialer.Dial(lib.Protocol, ip+":"+strconv.Itoa(int(port)))
+						_, err := lib.IsPortUp(ip, int(port), timeout)
 						// conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip+":"+strconv.Itoa(int(port)))
 						if err != nil {
 							fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
 						} else {
+							MUTEX.Lock()
 							stats = append(stats, time.Since(start))
+							defer MUTEX.Unlock()
 							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), false))
 						}
-						conn.Close()
+						// conn.Close()
 					}()
-
 				}
 			}
 			WG.Wait()
 			fmt.Println(lib.LogStats(stats, (iterations * len(ipaddresses))))
 		}
-
 	}
-
 }
