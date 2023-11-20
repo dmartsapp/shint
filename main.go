@@ -88,12 +88,13 @@ func main() {
 					start = time.Now()
 					conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip+":"+strconv.Itoa(int(port)))
 					if err != nil {
-						if strings.Contains(err.Error(), "i/o timeout") {
-							fmt.Println(lib.LogWithTimestamp("Timeout connecting to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), true))
-						} else {
-							fmt.Println(lib.LogWithTimestamp(err.Error(), true))
-						}
-						stats = append(stats, time.Since(start))
+						fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
+						// if strings.Contains(err.Error(), "i/o timeout") {
+						// 	fmt.Println(lib.LogWithTimestamp("Timeout connecting to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), true))
+						// } else {
+						// 	fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
+						// }
+						// stats = append(stats, time.Since(start))
 						continue
 					} else {
 						stats = append(stats, time.Since(start))
