@@ -78,7 +78,7 @@ func main() {
 		var stats = make([]time.Duration, 0)
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
-			fmt.Println(lib.LogStats(stats, iterations))
+			fmt.Println(lib.LogStats("telnet", stats, iterations))
 		} else {
 			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
 			var WG sync.WaitGroup
@@ -86,7 +86,7 @@ func main() {
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					WG.Add(1)
-					go func() {
+					go func(ip string) {
 						defer WG.Done()
 						// var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
 						// start = time.Now()
@@ -103,11 +103,11 @@ func main() {
 							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), false))
 						}
 						// conn.Close()
-					}()
+					}(ip)
 				}
 			}
 			WG.Wait()
-			fmt.Println(lib.LogStats(stats, (iterations * len(ipaddresses))))
+			fmt.Println(lib.LogStats("telnet", stats, (iterations * len(ipaddresses))))
 		}
 	}
 }
