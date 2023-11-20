@@ -75,11 +75,13 @@ func main() {
 		}
 		start := time.Now()
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
+		var stats = make([]time.Duration, 0)
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+			fmt.Println(lib.LogStats(stats, iterations))
 		} else {
 			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
-			var stats = make([]time.Duration, 0)
+
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					var dialer net.Dialer
@@ -100,7 +102,7 @@ func main() {
 					conn.Close()
 				}
 			}
-			fmt.Println(lib.LogStats(stats, iterations))
+			fmt.Println(lib.LogStats(stats, (iterations * len(ipaddresses))))
 		}
 
 	}
