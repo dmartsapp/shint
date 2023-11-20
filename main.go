@@ -84,9 +84,10 @@ func main() {
 
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
-					var dialer net.Dialer
+					var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
 					start = time.Now()
-					conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip+":"+strconv.Itoa(int(port)))
+					conn, err := dialer.Dial(lib.Protocol, ip+":"+strconv.Itoa(int(port)))
+					// conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip+":"+strconv.Itoa(int(port)))
 					if err != nil {
 						fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
 						// if strings.Contains(err.Error(), "i/o timeout") {
