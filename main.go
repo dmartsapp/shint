@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/farhansabbir/telnet/lib"
@@ -81,23 +82,28 @@ func main() {
 			fmt.Println(lib.LogStats(stats, iterations))
 		} else {
 			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
-
+			var WG sync.WaitGroup
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
-					var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
-					start = time.Now()
-					conn, err := dialer.Dial(lib.Protocol, ip+":"+strconv.Itoa(int(port)))
-					// conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip+":"+strconv.Itoa(int(port)))
-					if err != nil {
-						fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
-						continue
-					} else {
-						stats = append(stats, time.Since(start))
-						fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), false))
-					}
-					conn.Close()
+					WG.Add(1)
+					go func() {
+						defer WG.Done()
+						var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
+						start = time.Now()
+						conn, err := dialer.Dial(lib.Protocol, ip+":"+strconv.Itoa(int(port)))
+						// conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip+":"+strconv.Itoa(int(port)))
+						if err != nil {
+							fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
+						} else {
+							stats = append(stats, time.Since(start))
+							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), false))
+						}
+						conn.Close()
+					}()
+
 				}
 			}
+			WG.Wait()
 			fmt.Println(lib.LogStats(stats, (iterations * len(ipaddresses))))
 		}
 
