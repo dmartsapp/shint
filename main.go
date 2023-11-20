@@ -70,7 +70,8 @@ func main() {
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
 		if err != nil {
-			fmt.Println(lib.LogWithTimestamp(err.Error(), true))
+			fmt.Println(lib.LogWithTimestamp("Invalid port '"+flag.Arg(1)+"'", true))
+			flag.Usage()
 			os.Exit(1)
 		}
 		start := time.Now()
