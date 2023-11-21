@@ -52,8 +52,8 @@ func init() {
 }
 
 func main() {
-	flag.Parse()         // read the flags passed for processing
-	if !*web || !*nmap { // nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
+	flag.Parse()             // read the flags passed for processing
+	if (!*web) && (!*nmap) { // nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
 		if len(flag.Args()) != 2 { // telnet only needs 2 params, so show usage and exit for additional parameters
 			flag.Usage()
 			os.Exit(int(SuccessNoError))
@@ -63,7 +63,34 @@ func main() {
 	CTXTIMEOUT, CANCEL := context.WithTimeout(context.Background(), time.Duration(time.Second*time.Duration(timeout)))
 	defer CANCEL()
 
+	// HOME, err := os.UserHomeDir()
+	// if err != nil {
+	// 	fmt.Println(lib.LogWithTimestamp(err.Error(), true))
+	// }
+	// fmt.Println(os.dir)
+
 	if *nmap {
+		start := time.Now()
+		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
+		var stats = make([]time.Duration, 0)
+		if err != nil {
+			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+			fmt.Println(lib.LogStats("telnet", stats, iterations))
+		} else { // this is where no error occured in DNS lookup and we can proceed with regular nmap now
+			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
+			var WG sync.WaitGroup
+			// var MUTEX sync.Mutex
+			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
+				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
+					WG.Add(1)
+					go func(ip string) {
+						defer WG.Done()
+						fmt.Println(ip)
+					}(ip)
+				}
+			}
+			WG.Wait()
+		}
 
 	} else if *web {
 
