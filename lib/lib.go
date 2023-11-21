@@ -53,7 +53,7 @@ func SortTimeDurationSlice(stats *[]time.Duration) {
 func LogStats(modulename string, stats []time.Duration, iterations int) string {
 	if len(stats) > 0 {
 		min, avg, max := GetMinAvgMax(stats)
-		return "\n" + strings.Repeat("=", (45-len(modulename))) + " " + modulename + " STATISTICS " + strings.Repeat("=", (45-len(modulename))) + "\nRequests sent: " + strconv.Itoa(iterations) + ", Response received: " + strconv.Itoa(len(stats)) + ", Success: " + strconv.Itoa(iterations*100/len(stats)) + "%\nLatency: minimum: " + min.String() + ", average: " + avg.String() + ", maximum: " + max.String()
+		return "\n" + strings.Repeat("=", (45-len(modulename))) + " " + modulename + " STATISTICS " + strings.Repeat("=", (45-len(modulename))) + "\nRequests sent: " + strconv.Itoa(iterations) + ", Response received: " + strconv.Itoa(len(stats)) + ", Success: " + strconv.Itoa(len(stats)*100/iterations) + "%\nLatency: minimum: " + min.String() + ", average: " + avg.String() + ", maximum: " + max.String()
 	} else {
 		return "\n" + strings.Repeat("=", (45-len(modulename))) + " " + modulename + " STATISTICS " + strings.Repeat("=", (45-len(modulename))) + "\nRequests sent: " + strconv.Itoa(iterations) + ", Response received: " + strconv.Itoa(len(stats)) + "\nLatency: minimum: 0, average: 0, maximum: 0"
 	}
