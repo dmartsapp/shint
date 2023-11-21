@@ -62,9 +62,10 @@ func LogStats(modulename string, stats []time.Duration, iterations int) string {
 
 func IsPortUp(host string, port int, timeout int) (bool, error) {
 	var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
-	_, err := dialer.Dial(Protocol, host+":"+strconv.Itoa(port))
+	conn, err := dialer.Dial(Protocol, host+":"+strconv.Itoa(port))
 	if err != nil {
 		return false, err
 	}
+	defer conn.Close()
 	return true, nil
 }
