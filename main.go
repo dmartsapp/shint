@@ -110,7 +110,7 @@ func main() {
 		} else {
 			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
 			var WG sync.WaitGroup
-			var MUTEX sync.Mutex
+			var MUTEX sync.RWMutex
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					WG.Add(1)
@@ -126,16 +126,19 @@ func main() {
 							fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
 						} else {
 							MUTEX.Lock()
-							stats = append(stats, time.Since(start))
+							time_taken := time.Since(start)
+							stats = append(stats, time_taken)
 							defer MUTEX.Unlock()
-							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time.Since(start).String(), false))
+							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time_taken.String(), false))
 						}
 						// conn.Close()
 					}(ip)
 				}
 			}
 			WG.Wait()
+			MUTEX.RLock()
 			fmt.Println(lib.LogStats("telnet", stats, (iterations * len(ipaddresses))))
+			MUTEX.RUnlock()
 		}
 	}
 }
