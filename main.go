@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -79,14 +80,24 @@ func main() {
 		} else { // this is where no error occured in DNS lookup and we can proceed with regular nmap now
 			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
 			var WG sync.WaitGroup
-			// var MUTEX sync.Mutex
+			// var MUTEX sync.RWMutex
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
-					WG.Add(1)
-					go func(ip string) {
-						defer WG.Done()
-						fmt.Println(ip)
-					}(ip)
+					for port := fromport; port <= endport; port++ {
+						if *throttle {
+							time.Sleep(time.Millisecond * time.Duration(rand.Intn(10)))
+						}
+						WG.Add(1)
+						go func(ip string, port int) {
+							defer WG.Done()
+							_, err := lib.IsPortUp(ip, port, timeout)
+							if err != nil {
+
+							} else {
+								fmt.Println(lib.LogWithTimestamp(ip+" has port "+strconv.Itoa(port)+" open", false))
+							}
+						}(ip, port)
+					}
 				}
 			}
 			WG.Wait()
