@@ -4,7 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -26,8 +28,8 @@ var (
 )
 
 const (
-	SuccessNoError uint8  = 0
-	HTTP_CLIENT    string = "dmarts.app-http-v0.1"
+	SuccessNoError         uint8  = 0
+	HTTP_CLIENT_USER_AGENT string = "dmarts.app-http-v0.1"
 )
 
 func init() {
@@ -47,7 +49,7 @@ func init() {
 		fmt.Println()
 		fmt.Println("Example (fqdn): " + os.Args[0] + " google.com 443")
 		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10 443")
-		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as client with user-agent set as '" + HTTP_CLIENT + "'): " + os.Args[0] + " -web https://google.com/pages/index.html")
+		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as client with user-agent set as '" + HTTP_CLIENT_USER_AGENT + "'): " + os.Args[0] + " -web https://google.com/pages/index.html")
 		os.Exit(int(SuccessNoError))
 	}
 }
@@ -104,6 +106,34 @@ func main() {
 		}
 
 	} else if *web {
+		var WG sync.WaitGroup
+		for i := 0; i < iterations; i++ {
+			WG.Add(1)
+			go func() {
+				defer WG.Done()
+				client := &http.Client{Timeout: time.Duration(time.Duration(timeout) * time.Second)}
+				request, err := http.NewRequest("GET", flag.Arg(0), nil)
+				if err != nil {
+					fmt.Println(err.Error())
+					WG.Done()
+					return
+				}
+				request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT)
+				start := time.Now()
+				response, err := client.Do(request)
+				if err != nil {
+					fmt.Println(err.Error())
+					WG.Done()
+					return
+				}
+				defer response.Body.Close()
+				// fmt.Println(response.Status)
+				body, _ := io.ReadAll(response.Body)
+				fmt.Println(lib.LogWithTimestamp(response.Status+":"+strconv.Itoa(len(string(body)))+" "+time.Since(start).String(), false))
+
+			}()
+		}
+		WG.Wait()
 
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
