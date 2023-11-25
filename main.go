@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -51,6 +52,18 @@ func init() {
 		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10 443")
 		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as client with user-agent set as '" + HTTP_CLIENT_USER_AGENT + "'): " + os.Args[0] + " -web https://google.com/pages/index.html")
 		os.Exit(int(SuccessNoError))
+	}
+}
+
+type WebRequest struct {
+	url   string
+	stats map[string]int
+}
+
+func NewRequest(url string) *WebRequest {
+	return &WebRequest{
+		url:   url,
+		stats: make(map[string]int),
 	}
 }
 
@@ -106,30 +119,38 @@ func main() {
 		}
 
 	} else if *web {
+		// STATS_CHANNEL := make(chan WebRequest, iterations+1)
 		var WG sync.WaitGroup
 		for i := 0; i < iterations; i++ {
 			WG.Add(1)
 			go func() {
 				defer WG.Done()
-				client := &http.Client{Timeout: time.Duration(time.Duration(timeout) * time.Second)}
+				client := &http.Client{
+					Timeout: time.Duration(time.Duration(timeout) * time.Second),
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+
 				request, err := http.NewRequest("GET", flag.Arg(0), nil)
 				if err != nil {
-					fmt.Println(err.Error())
-					WG.Done()
-					return
+					if strings.Contains(err.Error(), "tls") {
+						fmt.Println(err.Error())
+						return
+					} else {
+						return
+					}
+
 				}
 				request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT)
 				start := time.Now()
 				response, err := client.Do(request)
 				if err != nil {
 					fmt.Println(err.Error())
-					WG.Done()
 					return
 				}
 				defer response.Body.Close()
-				// fmt.Println(response.Status)
 				body, _ := io.ReadAll(response.Body)
-				fmt.Println(lib.LogWithTimestamp(response.Status+":"+strconv.Itoa(len(string(body)))+" "+time.Since(start).String(), false))
+				time_taken := time.Since(start)
+				fmt.Println(lib.LogWithTimestamp(response.Status+":"+strconv.Itoa(len(string(body)))+" "+time_taken.String(), false))
 
 			}()
 		}
