@@ -186,12 +186,8 @@ func main() {
 					WG.Add(1)
 					go func(ip string) {
 						defer WG.Done()
-						// var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
-						// start = time.Now()
-						// conn, err := dialer.Dial(lib.Protocol, ip+":"+strconv.Itoa(int(port)))
 						start = time.Now()
 						_, err := lib.IsPortUp(ip, int(port), timeout)
-						// conn, err := dialer.DialContext(CTXTIMEOUT, lib.Protocol, ip+":"+strconv.Itoa(int(port)))
 						if err != nil {
 							fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
 						} else {
@@ -201,7 +197,6 @@ func main() {
 							defer MUTEX.Unlock()
 							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time_taken.String(), false))
 						}
-						// conn.Close()
 					}(ip)
 				}
 			}
