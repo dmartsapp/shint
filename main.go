@@ -87,9 +87,9 @@ func main() {
 	// }
 	// fmt.Println(os.dir)
 
-	if *nmap {
-		start := time.Now()
-		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
+	if *nmap { // this is for nmap
+		start := time.Now()                                          // capture initial time
+		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		var stats = make([]time.Duration, 0)
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
@@ -100,14 +100,14 @@ func main() {
 			// var MUTEX sync.RWMutex
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
-					for port := fromport; port <= endport; port++ {
-						if *throttle {
+					for port := fromport; port <= endport; port++ { // we need to loop over all ports individually
+						if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 10 ms
 							time.Sleep(time.Millisecond * time.Duration(rand.Intn(10)))
 						}
 						WG.Add(1)
 						go func(ip string, port int) {
 							defer WG.Done()
-							_, err := lib.IsPortUp(ip, port, timeout)
+							_, err := lib.IsPortUp(ip, port, timeout) // check if given port from this iteration is up or not
 							if err != nil {
 
 							} else {
@@ -135,9 +135,9 @@ func main() {
 				client := &http.Client{
 					Timeout: time.Duration(time.Duration(timeout) * time.Second),
 					Transport: &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}} // setup http transport not to validate the SSL certificate
 
-				request, err := http.NewRequest("GET", flag.Arg(0), nil)
+				request, err := http.NewRequest("GET", flag.Arg(0), nil) // only setup for get requests
 				if err != nil {
 					if strings.Contains(err.Error(), "tls") {
 						fmt.Println(lib.LogWithTimestamp(err.Error(), true))
@@ -147,19 +147,19 @@ func main() {
 					}
 
 				}
-				request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT)
-				start := time.Now()
+				request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT) // set the header for the user-agent
+				start := time.Now()                                      // capture initial time
 				response, err := client.Do(request)
 				if err != nil {
 					fmt.Println(lib.LogWithTimestamp(err.Error(), true))
 					return
 				}
 				defer response.Body.Close()
-				body, _ := io.ReadAll(response.Body)
-				time_taken := time.Since(start)
+				body, _ := io.ReadAll(response.Body) // read the entire body, this should consume most of the time
+				time_taken := time.Since(start)      //capture the time taken
 				stats := make(map[string]int, 0)
 				stats["time_taken"] = int(time_taken)
-				fmt.Println(lib.LogWithTimestamp(response.Status+":"+strconv.Itoa(len(string(body)))+" "+time_taken.String(), false))
+				fmt.Println(lib.LogWithTimestamp(response.Status+":"+strconv.Itoa(len(string(body)))+" "+time_taken.String()+",speed: "+strconv.Itoa(len(string(body))/int(time_taken)), false))
 
 			}(URL)
 		}
@@ -172,8 +172,8 @@ func main() {
 			flag.Usage()
 			os.Exit(1)
 		}
-		start := time.Now()
-		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
+		start := time.Now()                                          // capture initial time
+		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		var stats = make([]time.Duration, 0)
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
@@ -186,13 +186,13 @@ func main() {
 					WG.Add(1)
 					go func(ip string) {
 						defer WG.Done()
-						start = time.Now()
-						_, err := lib.IsPortUp(ip, int(port), timeout)
+						start = time.Now()                             // capture initial time
+						_, err := lib.IsPortUp(ip, int(port), timeout) // check if given port from this iteration is up or not
 						if err != nil {
 							fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
 						} else {
 							MUTEX.Lock()
-							time_taken := time.Since(start)
+							time_taken := time.Since(start) //capture the time taken
 							stats = append(stats, time_taken)
 							defer MUTEX.Unlock()
 							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time_taken.String(), false))
