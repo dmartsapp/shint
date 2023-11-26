@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -26,6 +27,7 @@ var (
 	nmap       *bool
 	fromport   int = 1
 	endport    int = 80
+	MUTEX      sync.RWMutex
 )
 
 const (
@@ -57,13 +59,13 @@ func init() {
 
 type WebRequest struct {
 	url   string
-	stats map[string]int
+	stats map[string][]int
 }
 
 func NewRequest(url string) *WebRequest {
 	return &WebRequest{
 		url:   url,
-		stats: make(map[string]int),
+		stats: make(map[string][]int),
 	}
 }
 
@@ -119,11 +121,16 @@ func main() {
 		}
 
 	} else if *web {
-		// STATS_CHANNEL := make(chan WebRequest, iterations+1)
+
+		URL, err := url.Parse(flag.Arg(0))
+		if err != nil {
+			fmt.Println(lib.LogWithTimestamp(err.Error(), true))
+			os.Exit(1)
+		}
 		var WG sync.WaitGroup
 		for i := 0; i < iterations; i++ {
 			WG.Add(1)
-			go func() {
+			go func(URL *url.URL) {
 				defer WG.Done()
 				client := &http.Client{
 					Timeout: time.Duration(time.Duration(timeout) * time.Second),
@@ -133,7 +140,7 @@ func main() {
 				request, err := http.NewRequest("GET", flag.Arg(0), nil)
 				if err != nil {
 					if strings.Contains(err.Error(), "tls") {
-						fmt.Println(err.Error())
+						fmt.Println(lib.LogWithTimestamp(err.Error(), true))
 						return
 					} else {
 						return
@@ -144,15 +151,17 @@ func main() {
 				start := time.Now()
 				response, err := client.Do(request)
 				if err != nil {
-					fmt.Println(err.Error())
+					fmt.Println(lib.LogWithTimestamp(err.Error(), true))
 					return
 				}
 				defer response.Body.Close()
 				body, _ := io.ReadAll(response.Body)
 				time_taken := time.Since(start)
+				stats := make(map[string]int, 0)
+				stats["time_taken"] = int(time_taken)
 				fmt.Println(lib.LogWithTimestamp(response.Status+":"+strconv.Itoa(len(string(body)))+" "+time_taken.String(), false))
 
-			}()
+			}(URL)
 		}
 		WG.Wait()
 
