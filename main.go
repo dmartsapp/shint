@@ -159,7 +159,8 @@ func main() {
 				time_taken := time.Since(start)      //capture the time taken
 				stats := make(map[string]int, 0)
 				stats["time_taken"] = int(time_taken)
-				fmt.Println(lib.LogWithTimestamp(response.Status+":"+strconv.Itoa(len(string(body)))+" "+time_taken.String()+",speed: "+strconv.Itoa(len(string(body))/int(time_taken)), false))
+				// fmt.Println(float64(len(string(body))) / float64(time_taken.Seconds()))
+				fmt.Println(lib.LogWithTimestamp("Response: "+response.Status+", bytes downloaded: "+strconv.Itoa(len(string(body)))+", time taken: "+time_taken.String()+", speed: "+strconv.FormatFloat((float64(len(string(body)))/float64(time_taken.Seconds())/1024), 'G', -1, 64)+"KB/s", false))
 
 			}(URL)
 		}
