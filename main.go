@@ -119,9 +119,9 @@ func main() {
 			}
 			WG.Wait()
 		}
-
+		fmt.Println("Total time taken: " + time.Since(start).String())
 	} else if *web {
-
+		start := time.Now()
 		URL, err := url.Parse(flag.Arg(0))
 		if err != nil {
 			fmt.Println(lib.LogWithTimestamp(err.Error(), true))
@@ -165,7 +165,7 @@ func main() {
 			}(URL)
 		}
 		WG.Wait()
-
+		fmt.Println("Total time taken: " + time.Since(start).String())
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
 		if err != nil {
@@ -206,5 +206,6 @@ func main() {
 			fmt.Println(lib.LogStats("telnet", stats, (iterations * len(ipaddresses))))
 			MUTEX.RUnlock()
 		}
+		fmt.Println("Total time taken: " + time.Since(start).String())
 	}
 }
