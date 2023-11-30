@@ -101,8 +101,8 @@ func main() {
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					for port := fromport; port <= endport; port++ { // we need to loop over all ports individually
-						if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 10 ms
-							time.Sleep(time.Millisecond * time.Duration(rand.Intn(10)))
+						if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
+							time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
 						}
 						WG.Add(1)
 						go func(ip string, port int) {
@@ -129,6 +129,9 @@ func main() {
 		}
 		var WG sync.WaitGroup
 		for i := 0; i < iterations; i++ {
+			if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
+				time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
+			}
 			WG.Add(1)
 			go func(URL *url.URL) {
 				defer WG.Done()
@@ -160,7 +163,7 @@ func main() {
 				stats := make(map[string]int, 0)
 				stats["time_taken"] = int(time_taken)
 				// fmt.Println(float64(len(string(body))) / float64(time_taken.Seconds()))
-				fmt.Println(lib.LogWithTimestamp("Response: "+response.Status+", bytes downloaded: "+strconv.Itoa(len(string(body)))+", time taken: "+time_taken.String()+", speed: "+strconv.FormatFloat((float64(len(string(body)))/float64(time_taken.Seconds())/1024), 'G', -1, 64)+"KB/s", false))
+				fmt.Println(lib.LogWithTimestamp("Response: "+response.Status+", bytes downloaded: "+strconv.Itoa(len(string(body)))+", speed: "+strconv.FormatFloat((float64(len(string(body)))/float64(time_taken.Seconds())/1024), 'G', -1, 64)+"KB/s, time taken: "+time_taken.String(), false))
 
 			}(URL)
 		}
@@ -184,6 +187,9 @@ func main() {
 			var WG sync.WaitGroup
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
+					if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
+						time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
+					}
 					WG.Add(1)
 					go func(ip string) {
 						defer WG.Done()
