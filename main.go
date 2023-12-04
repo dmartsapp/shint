@@ -88,21 +88,21 @@ func main() {
 	// fmt.Println(os.dir)
 
 	if *nmap { // this is for nmap
-		start := time.Now()                                          // capture initial time
+		istart := time.Now()                                         // capture initial time
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		var stats = make([]time.Duration, 0)
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 			fmt.Println(lib.LogStats("telnet", stats, iterations))
 		} else { // this is where no error occured in DNS lookup and we can proceed with regular nmap now
-			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
+			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
 			var WG sync.WaitGroup
 			// var MUTEX sync.RWMutex
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					for port := fromport; port <= endport; port++ { // we need to loop over all ports individually
 						if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-							time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
+							time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
 						}
 						WG.Add(1)
 						go func(ip string, port int) {
@@ -119,9 +119,9 @@ func main() {
 			}
 			WG.Wait()
 		}
-		fmt.Println("Total time taken: " + time.Since(start).String())
+		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *web {
-		start := time.Now()
+		istart := time.Now()
 		URL, err := url.Parse(flag.Arg(0))
 		if err != nil {
 			fmt.Println(lib.LogWithTimestamp(err.Error(), true))
@@ -130,7 +130,7 @@ func main() {
 		var WG sync.WaitGroup
 		for i := 0; i < iterations; i++ {
 			if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-				time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
+				time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
 			}
 			WG.Add(1)
 			go func(URL *url.URL) {
@@ -168,7 +168,7 @@ func main() {
 			}(URL)
 		}
 		WG.Wait()
-		fmt.Println("Total time taken: " + time.Since(start).String())
+		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
 		if err != nil {
@@ -176,24 +176,24 @@ func main() {
 			flag.Usage()
 			os.Exit(1)
 		}
-		start := time.Now()                                          // capture initial time
+		istart := time.Now()                                         // capture initial time
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		var stats = make([]time.Duration, 0)
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 			fmt.Println(lib.LogStats("telnet", stats, iterations))
 		} else {
-			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
+			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
 			var WG sync.WaitGroup
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-						time.Sleep(time.Millisecond * time.Duration(rand.Intn(1000)))
+						time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
 					}
 					WG.Add(1)
 					go func(ip string) {
 						defer WG.Done()
-						start = time.Now()                             // capture initial time
+						start := time.Now()                            // capture initial time
 						_, err := lib.IsPortUp(ip, int(port), timeout) // check if given port from this iteration is up or not
 						if err != nil {
 							fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
@@ -212,6 +212,6 @@ func main() {
 			fmt.Println(lib.LogStats("telnet", stats, (iterations * len(ipaddresses))))
 			MUTEX.RUnlock()
 		}
-		fmt.Println("Total time taken: " + time.Since(start).String())
+		fmt.Println("Total time taken: " + time.Since(istart).String())
 	}
 }
