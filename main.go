@@ -91,12 +91,20 @@ func main() {
 
 	if *ping {
 		istart := time.Now()
+		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
+		if err != nil {
+			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+		}
+		fmt.Println(ipaddresses)
 		for i := 0; i < iterations; i++ {
-			_, ttl, err := lib.Ping(flag.Arg(0))
-			if err != nil {
-				panic(err)
+			for _, ip := range ipaddresses {
+				fmt.Println(ip)
 			}
-			fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+flag.Arg(0)+" is "+ttl.String(), false))
+			// _, ttl, err := lib.Ping(flag.Arg(0))
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+flag.Arg(0)+" is "+ttl.String(), false))
 			if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
 				time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
 			}

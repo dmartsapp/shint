@@ -80,19 +80,13 @@ var ListenAddr = "0.0.0.0"
 // Mostly based on https://github.com/golang/net/blob/master/icmp/ping_test.go
 // All ye beware, there be dragons below...
 
-func Ping(addr string) (*net.IPAddr, time.Duration, error) {
+func Ping(dst *net.IPAddr) (*net.IPAddr, time.Duration, error) {
 	// Start listening for icmp replies
 	c, err := icmp.ListenPacket("ip4:icmp", ListenAddr)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer c.Close()
-
-	// Resolve any DNS (if used) and get the real IP of the target
-	dst, err := net.ResolveIPAddr("ip4", addr)
-	if err != nil {
-		panic(err)
-	}
 
 	// Make a new ICMP message
 	m := icmp.Message{
