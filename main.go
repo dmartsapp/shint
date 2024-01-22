@@ -25,6 +25,7 @@ var (
 	timeout    int = 5
 	web        *bool
 	nmap       *bool
+	ping       *bool
 	fromport   int = 1
 	endport    int = 80
 	MUTEX      sync.RWMutex
@@ -40,6 +41,7 @@ func init() {
 	flag.IntVar(&timeout, "timeout", timeout, "Timeout in seconds to connect")
 	flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
 	web = flag.Bool("web", false, "Use web request as a web client.")
+	ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request. This is useful for networks/systems with AV or IDS")
 	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -from and -to, if mentioned.")
 	flag.IntVar(&fromport, "from", fromport, "Start port to begin TCP scan from.")
@@ -70,8 +72,8 @@ func NewRequest(url string) *WebRequest {
 }
 
 func main() {
-	flag.Parse()             // read the flags passed for processing
-	if (!*web) && (!*nmap) { // nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
+	flag.Parse()                         // read the flags passed for processing
+	if (!*web) && (!*nmap) && (!*ping) { // ping, nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
 		if len(flag.Args()) != 2 { // telnet only needs 2 params, so show usage and exit for additional parameters
 			flag.Usage()
 			os.Exit(int(SuccessNoError))
@@ -87,7 +89,20 @@ func main() {
 	// }
 	// fmt.Println(os.dir)
 
-	if *nmap { // this is for nmap
+	if *ping {
+		istart := time.Now()
+		for i := 0; i < iterations; i++ {
+			_, ttl, err := lib.Ping(flag.Arg(0))
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+flag.Arg(0)+" is "+ttl.String(), false))
+			if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
+				time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
+			}
+		}
+		fmt.Println("Total time taken: " + time.Since(istart).String())
+	} else if *nmap { // this is for nmap
 		istart := time.Now()                                         // capture initial time
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		var stats = make([]time.Duration, 0)
