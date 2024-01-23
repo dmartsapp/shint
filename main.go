@@ -55,6 +55,7 @@ func init() {
 		fmt.Println()
 		fmt.Println("Example (fqdn): " + os.Args[0] + " google.com 443")
 		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10 443")
+		fmt.Println("Example (ping with timeout of 1s and count of 10 for every IP addresses resolved): " + os.Args[0] + " -ping -count 10 -timeout 1 google.com")
 		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as client with user-agent set as '" + HTTP_CLIENT_USER_AGENT + "'): " + os.Args[0] + " -web https://google.com/pages/index.html")
 		os.Exit(int(SuccessNoError))
 	}
@@ -96,25 +97,26 @@ func main() {
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 		}
-		fmt.Println(ipaddresses)
+		var stats = make([]time.Duration, 0)
 		for _, ip := range ipaddresses {
 			for i := 0; i < iterations; i++ {
+				if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
+					time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
+				}
 				address, err := net.ResolveIPAddr("ip4", ip)
 				if err != nil {
 					panic(err)
 				}
 				_, ttl, err := lib.Ping(address)
 				if err != nil {
-					panic(err)
+					fmt.Println(lib.LogWithTimestamp(err.Error(), false))
+					continue
 				}
+				stats = append(stats, ttl)
 				fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+ip+" is "+ttl.String(), false))
-
-			}
-
-			if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-				time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
 			}
 		}
+		fmt.Println(lib.LogStats("ping", stats, iterations*len(ipaddresses)))
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *nmap { // this is for nmap
 		istart := time.Now()                                         // capture initial time

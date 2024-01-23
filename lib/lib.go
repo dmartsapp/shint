@@ -136,6 +136,6 @@ func Ping(dst *net.IPAddr) (*net.IPAddr, time.Duration, error) {
 	case ipv4.ICMPTypeEchoReply:
 		return dst, duration, nil
 	default:
-		return dst, 0, fmt.Errorf("got %+v from %v; want echo reply", rm, peer)
+		return dst, 0, fmt.Errorf("%v %+v", peer, rm.Type)
 	}
 }
