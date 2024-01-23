@@ -97,6 +97,7 @@ func main() {
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 		}
+		fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
 		var stats = make([]time.Duration, 0)
 		for _, ip := range ipaddresses {
 			for i := 0; i < iterations; i++ {
