@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -96,15 +97,20 @@ func main() {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 		}
 		fmt.Println(ipaddresses)
-		for i := 0; i < iterations; i++ {
-			for _, ip := range ipaddresses {
-				fmt.Println(ip)
+		for _, ip := range ipaddresses {
+			for i := 0; i < iterations; i++ {
+				address, err := net.ResolveIPAddr("ip4", ip)
+				if err != nil {
+					panic(err)
+				}
+				_, ttl, err := lib.Ping(address)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+ip+" is "+ttl.String(), false))
+
 			}
-			// _, ttl, err := lib.Ping(flag.Arg(0))
-			// if err != nil {
-			// 	panic(err)
-			// }
-			// fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+flag.Arg(0)+" is "+ttl.String(), false))
+
 			if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
 				time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
 			}

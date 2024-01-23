@@ -31,6 +31,11 @@ func ResolveName(ctx context.Context, name string) ([]string, error) {
 	return addresses, err
 }
 
+func ResolveNameToIPs(ctx context.Context, name string) ([]net.IP, error) {
+	var resolver net.Resolver
+	return resolver.LookupIP(ctx, NetworkType, name)
+}
+
 func LogWithTimestamp(log string, iserror bool) string {
 	if !iserror {
 		return time.Now().Format(DATETIMEFORMAT) + ": " + log
