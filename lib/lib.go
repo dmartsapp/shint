@@ -90,7 +90,7 @@ func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duratio
 	icmp_payload := "devn" // 4 bytes per char
 	var seq int
 	for _, option := range options {
-		seq, _ = option["seq"]
+		seq = option["seq"]
 	}
 	// Start listening for icmp replies
 	c, err := icmp.ListenPacket("ip4:icmp", ListenAddr)
@@ -141,8 +141,12 @@ func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duratio
 	switch rm.Type {
 	case ipv4.ICMPTypeEchoReply:
 		body, _ := rm.Body.Marshal(ipv4.ICMPTypeEchoReply.Protocol())
-		fmt.Println(body[3:])
-		return dst, duration, nil
+		if (int(body[3]) == seq) && string(body[4:]) == icmp_payload {
+			return dst, duration, nil
+		} else {
+			return dst, duration, fmt.Errorf("packet seq and payloads do not match")
+		}
+
 	default:
 		return dst, 0, fmt.Errorf("%v %+v", peer, rm.Type)
 	}
