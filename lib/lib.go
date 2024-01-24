@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	DATETIMEFORMAT string = "Mon Jan 2 15:04:05 MST 2006"
+	// DATETIMEFORMAT string = "Mon, 02 Jan 2006 15:04:05 MST"
+	DATETIMEFORMAT string = time.UnixDate
 	NetworkType    string = "ip4" // other networks are ip which includes both v4 and v6, and ip6 which is only v6
 	Protocol       string = "tcp"
 )
@@ -85,7 +86,12 @@ var ListenAddr = "0.0.0.0"
 // Mostly based on https://github.com/golang/net/blob/master/icmp/ping_test.go
 // All ye beware, there be dragons below...
 
-func Ping(dst *net.IPAddr) (*net.IPAddr, time.Duration, error) {
+func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duration, error) {
+	icmp_payload := "devn" // 4 bytes per char
+	var seq int
+	for _, option := range options {
+		seq, _ = option["seq"]
+	}
 	// Start listening for icmp replies
 	c, err := icmp.ListenPacket("ip4:icmp", ListenAddr)
 	if err != nil {
@@ -97,15 +103,15 @@ func Ping(dst *net.IPAddr) (*net.IPAddr, time.Duration, error) {
 	m := icmp.Message{
 		Type: ipv4.ICMPTypeEcho, Code: 0,
 		Body: &icmp.Echo{
-			ID: os.Getpid() & 0xffff, Seq: 1, //<< uint(seq), // TODO
-			Data: []byte(""),
+			ID:   os.Getpid() & 0xffff,
+			Seq:  seq,                  //<< uint(seq), // TODO
+			Data: []byte(icmp_payload), // 4 bytes per char
 		},
 	}
 	b, err := m.Marshal(nil)
 	if err != nil {
 		return dst, 0, err
 	}
-
 	// Send it
 	start := time.Now()
 	n, err := c.WriteTo(b, dst)
@@ -134,6 +140,8 @@ func Ping(dst *net.IPAddr) (*net.IPAddr, time.Duration, error) {
 	}
 	switch rm.Type {
 	case ipv4.ICMPTypeEchoReply:
+		body, _ := rm.Body.Marshal(ipv4.ICMPTypeEchoReply.Protocol())
+		fmt.Println(body[3:])
 		return dst, duration, nil
 	default:
 		return dst, 0, fmt.Errorf("%v %+v", peer, rm.Type)

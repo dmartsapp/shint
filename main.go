@@ -96,6 +96,7 @@ func main() {
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+			os.Exit(1)
 		}
 		fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
 		var stats = make([]time.Duration, 0)
@@ -108,7 +109,9 @@ func main() {
 				if err != nil {
 					panic(err)
 				}
-				_, ttl, err := lib.Ping(address)
+				options := make(map[string]int)
+				options["seq"] = i
+				_, ttl, err := lib.Ping(address, options)
 				if err != nil {
 					fmt.Println(lib.LogWithTimestamp(err.Error(), false))
 					continue
