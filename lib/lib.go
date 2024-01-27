@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -89,18 +90,27 @@ var ListenAddr = "0.0.0.0"
 func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duration, error) {
 	icmp_payload := "devn" // 4 bytes per char
 	var seq int
+	var icmpconn *icmp.PacketConn
 	for _, option := range options {
 		seq = option["seq"]
 	}
 	// Start listening for icmp replies
-	c, err := icmp.ListenPacket("ip4:icmp", ListenAddr)
-	if err != nil {
-		return nil, 0, err
+	if runtime.GOOS == "windows" {
+		icmpconn, err := icmp.ListenPacket("ip4:icmp", ListenAddr)
+		if err != nil {
+			return nil, 0, err
+		}
+		defer icmpconn.Close()
+	} else {
+		icmpconn, err := icmp.ListenPacket("udp4", ListenAddr)
+		if err != nil {
+			return nil, 0, err
+		}
+		defer icmpconn.Close()
 	}
-	defer c.Close()
 
 	// Make a new ICMP message
-	m := icmp.Message{
+	msg := icmp.Message{
 		Type: ipv4.ICMPTypeEcho, Code: 0,
 		Body: &icmp.Echo{
 			ID:   os.Getpid() & 0xffff,
@@ -108,26 +118,26 @@ func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duratio
 			Data: []byte(icmp_payload), // 4 bytes per char
 		},
 	}
-	b, err := m.Marshal(nil)
+	msg_bytes, err := msg.Marshal(nil)
 	if err != nil {
 		return dst, 0, err
 	}
 	// Send it
 	start := time.Now()
-	n, err := c.WriteTo(b, dst)
+	// n, err := icmpconn.WriteTo(msg_bytes, dst)
+	_, err = icmpconn.WriteTo(msg_bytes, &net.UDPAddr{IP: net.ParseIP("142.250.77.238")})
 	if err != nil {
+		fmt.Println(err)
 		return dst, 0, err
-	} else if n != len(b) {
-		return dst, 0, fmt.Errorf("got %v; want %v", n, len(b))
 	}
 
 	// Wait for a reply
 	reply := make([]byte, 1500)
-	err = c.SetReadDeadline(time.Now().Add(10 * time.Second))
+	err = icmpconn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	if err != nil {
 		return dst, 0, err
 	}
-	n, peer, err := c.ReadFrom(reply)
+	n, peer, err := icmpconn.ReadFrom(reply)
 	if err != nil {
 		return dst, 0, err
 	}
