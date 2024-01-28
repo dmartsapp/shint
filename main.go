@@ -20,16 +20,17 @@ import (
 )
 
 var (
-	iterations int = 1
-	delay      int
-	throttle   *bool
-	timeout    int = 5
-	web        *bool
-	nmap       *bool
-	ping       *bool
-	fromport   int = 1
-	endport    int = 80
-	MUTEX      sync.RWMutex
+	iterations   int = 1
+	delay        int
+	throttle     *bool
+	timeout      int = 5
+	payload_size int = 4
+	web          *bool
+	nmap         *bool
+	ping         *bool
+	fromport     int = 1
+	endport      int = 80
+	MUTEX        sync.RWMutex
 )
 
 const (
@@ -41,6 +42,7 @@ func init() {
 	flag.IntVar(&iterations, "count", iterations, "Number of times to check connectivity")
 	flag.IntVar(&timeout, "timeout", timeout, "Timeout in seconds to connect")
 	flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
+	flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
 	web = flag.Bool("web", false, "Use web request as a web client.")
 	ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request. This is useful for networks/systems with AV or IDS")
@@ -101,6 +103,7 @@ func main() {
 		fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
 		var stats = make([]time.Duration, 0)
 		var WG sync.WaitGroup
+		fmt.Println(lib.LogWithTimestamp("Pinging with "+strconv.Itoa((payload_size))+" bytes of payload", false))
 		for _, ip := range ipaddresses {
 			WG.Add(1)
 			go func(ip string) {
@@ -115,9 +118,9 @@ func main() {
 					}
 					options := make(map[string]int)
 					options["seq"] = i
-					_, ttl, err := lib.Ping(address, options)
+					_, ttl, err := lib.Ping(address, payload_size, options)
 					if err != nil {
-						fmt.Println(lib.LogWithTimestamp(err.Error(), false))
+						fmt.Println(lib.LogWithTimestamp(err.Error(), true))
 						continue
 					}
 					stats = append(stats, ttl)

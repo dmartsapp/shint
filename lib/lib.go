@@ -87,8 +87,8 @@ var ListenAddr = "0.0.0.0"
 // Mostly based on https://github.com/golang/net/blob/master/icmp/ping_test.go
 // All ye beware, there be dragons below...
 
-func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duration, error) {
-	icmp_payload := "devn" // 4 bytes per char
+func Ping(dst *net.IPAddr, payload_size int, options ...map[string]int) (*net.IPAddr, time.Duration, error) {
+	icmp_payload := strings.Repeat("d", payload_size) // 4 bytes per char
 	var seq int
 	var icmpconn *icmp.PacketConn
 	var err error
@@ -138,7 +138,7 @@ func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duratio
 
 	// Wait for a reply
 	reply := make([]byte, 1500)
-	err = icmpconn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	err = icmpconn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	if err != nil {
 		return dst, 0, err
 	}
