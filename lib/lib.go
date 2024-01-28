@@ -91,24 +91,22 @@ func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duratio
 	icmp_payload := "devn" // 4 bytes per char
 	var seq int
 	var icmpconn *icmp.PacketConn
+	var err error
 	for _, option := range options {
 		seq = option["seq"]
 	}
 	// Start listening for icmp replies
 	if runtime.GOOS == "windows" {
-		icmpconn, err := icmp.ListenPacket("ip4:icmp", ListenAddr)
-		if err != nil {
+		if icmpconn, err = icmp.ListenPacket("ip4:icmp", ListenAddr); err != nil {
 			return nil, 0, err
 		}
 		defer icmpconn.Close()
 	} else {
-		icmpconn, err := icmp.ListenPacket("udp4", ListenAddr)
-		if err != nil {
+		if icmpconn, err = icmp.ListenPacket("udp4", ListenAddr); err != nil {
 			return nil, 0, err
 		}
 		defer icmpconn.Close()
 	}
-
 	// Make a new ICMP message
 	msg := icmp.Message{
 		Type: ipv4.ICMPTypeEcho, Code: 0,
@@ -124,16 +122,23 @@ func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duratio
 	}
 	// Send it
 	start := time.Now()
-	// n, err := icmpconn.WriteTo(msg_bytes, dst)
-	_, err = icmpconn.WriteTo(msg_bytes, &net.UDPAddr{IP: net.ParseIP("142.250.77.238")})
-	if err != nil {
-		fmt.Println(err)
-		return dst, 0, err
+	if runtime.GOOS == "windows" {
+		_, err := icmpconn.WriteTo(msg_bytes, dst)
+		if err != nil {
+			fmt.Println(err)
+			return dst, 0, err
+		}
+	} else {
+		_, err = icmpconn.WriteTo(msg_bytes, &net.UDPAddr{IP: net.ParseIP(dst.IP.String())})
+		if err != nil {
+			fmt.Println(err)
+			return dst, 0, err
+		}
 	}
 
 	// Wait for a reply
 	reply := make([]byte, 1500)
-	err = icmpconn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	err = icmpconn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	if err != nil {
 		return dst, 0, err
 	}
@@ -143,7 +148,6 @@ func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duratio
 	}
 	duration := time.Since(start)
 
-	// Pack it up boys, we're done here
 	rm, err := icmp.ParseMessage(1, reply[:n])
 	if err != nil {
 		return dst, 0, err
@@ -151,10 +155,10 @@ func Ping(dst *net.IPAddr, options ...map[string]int) (*net.IPAddr, time.Duratio
 	switch rm.Type {
 	case ipv4.ICMPTypeEchoReply:
 		body, _ := rm.Body.Marshal(ipv4.ICMPTypeEchoReply.Protocol())
-		if (int(body[3]) == seq) && string(body[4:]) == icmp_payload {
+		if string(body[4:]) == icmp_payload {
 			return dst, duration, nil
 		} else {
-			return dst, duration, fmt.Errorf("packet seq and payloads do not match")
+			return dst, duration, fmt.Errorf("request and response payloads do not match")
 		}
 
 	default:
