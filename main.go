@@ -87,6 +87,9 @@ func main() {
 			if setting.Key == "vcs.revision" {
 				VERSION = setting.Value[:9]
 			}
+			if setting.Key == "vcs.time" {
+				VERSION += " " + setting.Value
+			}
 		}
 	}
 	flag.Parse() // read the flags passed for processing
