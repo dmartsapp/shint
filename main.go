@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,9 +29,11 @@ var (
 	web          *bool
 	nmap         *bool
 	ping         *bool
+	version      *bool
 	fromport     int = 1
 	endport      int = 80
 	MUTEX        sync.RWMutex
+	VERSION      string = "0.1BETA"
 )
 
 const (
@@ -39,6 +42,7 @@ const (
 )
 
 func init() {
+
 	flag.IntVar(&iterations, "count", iterations, "Number of times to check connectivity")
 	flag.IntVar(&timeout, "timeout", timeout, "Timeout in seconds to connect")
 	flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
@@ -49,8 +53,10 @@ func init() {
 	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -from and -to, if mentioned.")
 	flag.IntVar(&fromport, "from", fromport, "Start port to begin TCP scan from.")
 	flag.IntVar(&endport, "to", endport, "End port to run TCP scan to.")
+	version = flag.Bool("version", false, "Show version of this tool")
 
 	flag.Usage = func() {
+		fmt.Println("Version: " + VERSION)
 		fmt.Println("Usage: " + os.Args[0] + " [options] <fqdn|IP> port")
 		fmt.Println("options:")
 		flag.PrintDefaults()
@@ -76,12 +82,24 @@ func NewRequest(url string) *WebRequest {
 }
 
 func main() {
-	flag.Parse()                         // read the flags passed for processing
-	if (!*web) && (!*nmap) && (!*ping) { // ping, nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				VERSION = setting.Value[:9]
+			}
+		}
+	}
+	flag.Parse() // read the flags passed for processing
+
+	if (!*web) && (!*nmap) && (!*ping) && (!*version) { // ping, nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
 		if len(flag.Args()) != 2 { // telnet only needs 2 params, so show usage and exit for additional parameters
 			flag.Usage()
 			os.Exit(int(SuccessNoError))
 		}
+	}
+	if *version {
+		fmt.Println("Version: " + VERSION)
+		os.Exit(0)
 	}
 	// setting up timeout context to ensure we exit after defined timeout
 	CTXTIMEOUT, CANCEL := context.WithTimeout(context.Background(), time.Duration(time.Second*time.Duration(timeout)))

@@ -19,7 +19,7 @@ for GOOS in "${OSES[@]}"
 do
     for ARCH in "${ARCHS[@]}"
     do
-        GOOS=$GOOS GOARCH=$ARCH go build -o bin/telnet.$GOOS.$ARCH main.go
+        GOOS=$GOOS GOARCH=$ARCH go build -buildvcs=true -o bin/telnet.$GOOS.$ARCH
         if [ $? -eq 0 ]
         then
             echo "Created $GOOS $ARCH binary"
