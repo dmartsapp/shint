@@ -166,6 +166,10 @@ func main() {
 		}
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *web {
+		if len(flag.Args()) <= 0 {
+			fmt.Println(lib.LogWithTimestamp("Missing URL", true))
+			os.Exit(1)
+		}
 		istart := time.Now()
 		URL, err := url.Parse(flag.Arg(0))
 		if err != nil {
