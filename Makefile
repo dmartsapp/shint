@@ -3,6 +3,8 @@ VERSION=$(shell git rev-list -1 HEAD)
 VERSIONSTR="$(VERSION)-$(shell git show --no-patch --format="%cd" --date='format:%d%m%Y%H%M%S' $(VERSION))"
 LDFLAGS=-ldflags "-X main.Version=$(VERSIONSTR)"
 BUILDFLAGS=-buildvcs=true $(LDFLAGS)
+MAKEFLAGS += --silent
+.PHONY: all clean run
 run:
 	go run -ldflags "-X main.Version=$(VERSIONSTR)" main.go
 
@@ -34,3 +36,7 @@ darwin-x64:
 
 clean:
 	rm bin/*
+
+.PHONY: no-dirty
+no-dirty:
+	git diff --exit-code
