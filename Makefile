@@ -17,10 +17,10 @@ linux: linux-x64 linux-arm64
 darwin: darwin-x64 darwin-arm64
 
 windows-arm64:
-	GOOS=windows GOARCH=arm64 go build -o bin/$(BINARY).windows.arm64.exe $(BUILDFLAGS) main.go
+	GOOS=windows GOARCH=arm64 go build -o bin/$(BINARY).windows.arm64 $(BUILDFLAGS) main.go
 
 windows-x64:
-	GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).windows.x64.exe $(BUILDFLAGS) main.go
+	GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).windows.x64 $(BUILDFLAGS) main.go
 
 linux-arm64:
 	GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).linux-arm64 $(BUILDFLAGS) main.go
