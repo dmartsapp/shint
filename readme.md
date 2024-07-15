@@ -13,8 +13,9 @@
 ### Example:
 
 
-    $ telnet google.com 443 # Attempts to connect to google.com on TCP port 443. For every address returned by DNS resolution, telnet will attempt to connect to it.
-    $ telnet 172.16.17.32 80 # Attempts to connect to 172.16.17.32 on TCP port 80.
-    $ telnet --count 20 google.com 443 # Attempts to connect to google.com on TCP port 443 20 times concurrently
+    $ telnet google.com 443                             # Attempts to connect to google.com on TCP port 443. For every address returned by DNS resolution, telnet will attempt to connect to it.
+    $ telnet 172.16.17.32 80                            # Attempts to connect to 172.16.17.32 on TCP port 80.
+    $ telnet --count 20 google.com 443                  # Attempts to connect to google.com on TCP port 443 20 times concurrently
+    $ telnet --nmap --from 80 --to 9000 172.16.17.32    # Attempts to connect to 172.16.17.32 from TCP port 80 to TCP port 9000 and reports about open ports only.
 
 [Latest Release](https://github.com/farhansabbir/telnet/releases/latest)
