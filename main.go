@@ -33,7 +33,7 @@ var (
 	fromport     int = 1
 	endport      int = 80
 	MUTEX        sync.RWMutex
-	VERSION      string = "0.1BETA"
+	Version      string = "0.1BETA"
 )
 
 const (
@@ -56,7 +56,7 @@ func init() {
 	version = flag.Bool("version", false, "Show version of this tool")
 
 	flag.Usage = func() {
-		fmt.Println("Version: " + VERSION)
+		fmt.Println("Version: " + Version)
 		fmt.Println("Usage: " + os.Args[0] + " [options] <fqdn|IP> port")
 		fmt.Println("options:")
 		flag.PrintDefaults()
@@ -85,10 +85,10 @@ func main() {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, setting := range info.Settings {
 			if setting.Key == "vcs.revision" {
-				VERSION = setting.Value[:9]
+				Version = setting.Value[:9]
 			}
 			if setting.Key == "vcs.time" {
-				VERSION += " " + setting.Value
+				Version += " " + setting.Value
 			}
 		}
 	}
@@ -101,7 +101,7 @@ func main() {
 		}
 	}
 	if *version {
-		fmt.Println("Version: " + VERSION)
+		fmt.Println("Version: " + Version)
 		os.Exit(0)
 	}
 	// setting up timeout context to ensure we exit after defined timeout
