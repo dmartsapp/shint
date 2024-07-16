@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -46,9 +45,9 @@ func init() {
 	flag.IntVar(&iterations, "count", iterations, "Number of times to check connectivity")
 	flag.IntVar(&timeout, "timeout", timeout, "Timeout in seconds to connect")
 	// flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
-	flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
+	// flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
 	web = flag.Bool("web", false, "Use web request as a web client.")
-	ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
+	// ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request. This is useful for networks/systems with AV or IDS")
 	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -from and -to, if mentioned.")
 	flag.IntVar(&fromport, "from", fromport, "Start port to begin TCP scan from.")
@@ -63,7 +62,7 @@ func init() {
 		fmt.Println()
 		fmt.Println("Example (fqdn): " + os.Args[0] + " google.com 443")
 		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10 443")
-		fmt.Println("Example (ping with timeout of 1s and count of 10 for every IP addresses resolved): " + os.Args[0] + " -ping -count 10 -timeout 1 google.com")
+		// fmt.Println("Example (ping with timeout of 1s and count of 10 for every IP addresses resolved): " + os.Args[0] + " -ping -count 10 -timeout 1 google.com")
 		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as client with user-agent set as '" + HTTP_CLIENT_USER_AGENT + "'): " + os.Args[0] + " -web https://google.com/pages/index.html")
 		os.Exit(int(SuccessNoError))
 	}
@@ -94,7 +93,8 @@ func main() {
 	}
 	flag.Parse() // read the flags passed for processing
 
-	if (!*web) && (!*nmap) && (!*ping) && (!*version) { // ping, nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
+	// if (!*web) && (!*nmap) && (!*version) && (!*ping) { // ping, nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
+	if (!*web) && (!*nmap) && (!*version) { // nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
 		if len(flag.Args()) != 2 { // telnet only needs 2 params, so show usage and exit for additional parameters
 			flag.Usage()
 			os.Exit(int(SuccessNoError))
@@ -114,46 +114,47 @@ func main() {
 	// }
 	// fmt.Println(os.dir)
 
-	if *ping {
-		istart := time.Now()
-		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
-		if err != nil {
-			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
-			os.Exit(1)
-		}
-		fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
-		var stats = make([]time.Duration, 0)
-		var WG sync.WaitGroup
-		fmt.Println(lib.LogWithTimestamp("Pinging with "+strconv.Itoa((payload_size))+" bytes of payload", false))
-		for _, ip := range ipaddresses {
-			WG.Add(1)
-			go func(ip string) {
-				defer WG.Done()
-				for i := 0; i < iterations; i++ {
-					if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-						time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
-					}
-					address, err := net.ResolveIPAddr("ip4", ip)
-					if err != nil {
-						panic(err)
-					}
-					options := make(map[string]int)
-					options["seq"] = i
-					_, ttl, err := lib.Ping(address, payload_size, options)
-					if err != nil {
-						fmt.Println(lib.LogWithTimestamp(err.Error(), true))
-						continue
-					}
-					stats = append(stats, ttl)
-					fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+ip+" is "+ttl.String(), false))
-				}
-			}(ip)
+	// if *ping {
+	// 	istart := time.Now()
+	// 	ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
+	// 	if err != nil {
+	// 		fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+	// 		os.Exit(1)
+	// 	}
+	// 	fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
+	// 	var stats = make([]time.Duration, 0)
+	// 	var WG sync.WaitGroup
+	// 	fmt.Println(lib.LogWithTimestamp("Pinging with "+strconv.Itoa((payload_size))+" bytes of payload", false))
+	// 	for _, ip := range ipaddresses {
+	// 		WG.Add(1)
+	// 		go func(ip string) {
+	// 			defer WG.Done()
+	// 			for i := 0; i < iterations; i++ {
+	// 				if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
+	// 					time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
+	// 				}
+	// 				address, err := net.ResolveIPAddr("ip4", ip)
+	// 				if err != nil {
+	// 					panic(err)
+	// 				}
+	// 				options := make(map[string]int)
+	// 				options["seq"] = i
+	// 				_, ttl, err := lib.Ping(address, payload_size, options)
+	// 				if err != nil {
+	// 					fmt.Println(lib.LogWithTimestamp(err.Error(), true))
+	// 					continue
+	// 				}
+	// 				stats = append(stats, ttl)
+	// 				fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+ip+" is "+ttl.String(), false))
+	// 			}
+	// 		}(ip)
 
-		}
-		WG.Wait()
-		fmt.Println(lib.LogStats("ping", stats, iterations*len(ipaddresses)))
-		fmt.Println("Total time taken: " + time.Since(istart).String())
-	} else if *nmap { // this is for nmap
+	// 	}
+	// 	WG.Wait()
+	// 	fmt.Println(lib.LogStats("ping", stats, iterations*len(ipaddresses)))
+	// 	fmt.Println("Total time taken: " + time.Since(istart).String())
+	// } else if *nmap { // this is for nmap
+	if *nmap {
 		istart := time.Now()                                         // capture initial time
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		var stats = make([]time.Duration, 0)
