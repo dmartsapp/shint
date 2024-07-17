@@ -1,5 +1,6 @@
 BINARY=telnet
-VERSION=$(shell git rev-list -1 HEAD)
+COMMIT=$(shell git rev-list -1 HEAD)
+VERSION=$(shell git tag --contains $(COMMIT))
 VERSIONSTR="$(VERSION)-$(shell git show --no-patch --format="%cd" --date='format:%d%m%Y%H%M%S' $(VERSION))"
 LDFLAGS=-ldflags "-X main.Version=$(VERSIONSTR)"
 BUILDFLAGS=-buildvcs=true $(LDFLAGS)
