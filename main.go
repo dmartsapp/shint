@@ -43,15 +43,17 @@ const (
 func init() {
 
 	flag.IntVar(&iterations, "count", iterations, "Number of times to check connectivity")
+	flag.IntVar(&iterations, "c", iterations, "Number of times to check connectivity")
 	flag.IntVar(&timeout, "timeout", timeout, "Timeout in seconds to connect")
+	flag.IntVar(&timeout, "t", timeout, "Timeout in seconds to connect")
 	// flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
 	// flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
 	web = flag.Bool("web", false, "Use web request as a web client.")
 	// ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request. This is useful for networks/systems with AV or IDS")
 	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -from and -to, if mentioned.")
-	flag.IntVar(&fromport, "from", fromport, "Start port to begin TCP scan from.")
-	flag.IntVar(&endport, "to", endport, "End port to run TCP scan to.")
+	flag.IntVar(&fromport, "from", fromport, "Start port to begin TCP scan from. (applicable with -nmap option only)")
+	flag.IntVar(&endport, "to", endport, "End port to run TCP scan to. (applicable with -nmap option only)")
 	version = flag.Bool("version", false, "Show version of this tool")
 
 	flag.Usage = func() {
