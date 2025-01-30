@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/farhansabbir/telnet/lib"
+	"github.com/farhansabbir/telnet/lib/netutils"
 )
 
 var (
@@ -49,7 +50,7 @@ func init() {
 	// flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
 	// flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
 	web = flag.Bool("web", false, "Use web request as a web client.")
-	// ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
+	ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request. This is useful for networks/systems with AV or IDS")
 	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -from and -to, if mentioned.")
 	flag.IntVar(&fromport, "from", fromport, "Start port to begin TCP scan from. (applicable with -nmap option only)")
@@ -96,7 +97,7 @@ func main() {
 	flag.Parse() // read the flags passed for processing
 
 	// if (!*web) && (!*nmap) && (!*version) && (!*ping) { // ping, nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
-	if (!*web) && (!*nmap) && (!*version) { // nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
+	if (!*web) && (!*nmap) && (!*version) && (!*ping) { // nmap and web needs single param like -nmap 10.10.18.121 or "-web https://google.com" respectively, while telnet needs two parameters like 10.10.18.121 22 for IP and Port respectively
 		if len(flag.Args()) != 2 { // telnet only needs 2 params, so show usage and exit for additional parameters
 			flag.Usage()
 			os.Exit(int(SuccessNoError))
@@ -196,6 +197,24 @@ func main() {
 		}
 		WG.Wait()
 		fmt.Println("Total time taken: " + time.Since(istart).String())
+	} else if *ping {
+		fmt.Println("Ping is not implemented yet")
+		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
+		if err != nil {
+			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+			os.Exit(1)
+		}
+		for _, ip := range ipaddresses {
+			pinger := netutils.NewPinger(ip).
+				SetParallelPing(true).SetPingCount(10)
+			go func(pinger *netutils.Pinger) {
+				for data := range pinger.Stream() {
+					fmt.Println(data)
+				}
+			}(pinger)
+			pinger.Ping()
+
+		}
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
 		if err != nil {
