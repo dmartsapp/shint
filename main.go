@@ -108,52 +108,6 @@ func main() {
 	CTXTIMEOUT, CANCEL := context.WithTimeout(context.Background(), time.Duration(time.Second*time.Duration(timeout)))
 	defer CANCEL()
 
-	// HOME, err := os.UserHomeDir()
-	// if err != nil {
-	// 	fmt.Println(lib.LogWithTimestamp(err.Error(), true))
-	// }
-	// fmt.Println(os.dir)
-
-	// if *ping {
-	// 	istart := time.Now()
-	// 	ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
-	// 	if err != nil {
-	// 		fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
-	// 		os.Exit(1)
-	// 	}
-	// 	fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
-	// 	var stats = make([]time.Duration, 0)
-	// 	var WG sync.WaitGroup
-	// 	fmt.Println(lib.LogWithTimestamp("Pinging with "+strconv.Itoa((payload_size))+" bytes of payload", false))
-	// 	for _, ip := range ipaddresses {
-	// 		WG.Add(1)
-	// 		go func(ip string) {
-	// 			defer WG.Done()
-	// 			for i := 0; i < iterations; i++ {
-	// 				if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-	// 					time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
-	// 				}
-	// 				address, err := net.ResolveIPAddr("ip4", ip)
-	// 				if err != nil {
-	// 					panic(err)
-	// 				}
-	// 				options := make(map[string]int)
-	// 				options["seq"] = i
-	// 				_, ttl, err := lib.Ping(address, payload_size, options)
-	// 				if err != nil {
-	// 					fmt.Println(lib.LogWithTimestamp(err.Error(), true))
-	// 					continue
-	// 				}
-	// 				stats = append(stats, ttl)
-	// 				fmt.Println(lib.LogWithTimestamp("Time taken for ping to "+ip+" is "+ttl.String(), false))
-	// 			}
-	// 		}(ip)
-
-	// 	}
-	// 	WG.Wait()
-	// 	fmt.Println(lib.LogStats("ping", stats, iterations*len(ipaddresses)))
-	// 	fmt.Println("Total time taken: " + time.Since(istart).String())
-	// } else if *nmap { // this is for nmap
 	if *nmap {
 		istart := time.Now()                                         // capture initial time
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
