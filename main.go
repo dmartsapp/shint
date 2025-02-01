@@ -17,7 +17,8 @@ import (
 	"time"
 
 	"github.com/farhansabbir/telnet/lib"
-	"github.com/farhansabbir/telnet/lib/netutils"
+	// "github.com/farhansabbir/telnet/lib/netutils"
+	"github.com/farhansabbir/go-ping/netutils"
 )
 
 var (
@@ -44,9 +45,9 @@ const (
 func init() {
 
 	flag.IntVar(&iterations, "count", iterations, "Number of times to check connectivity")
-	flag.IntVar(&iterations, "c", iterations, "Number of times to check connectivity")
+	// flag.IntVar(&iterations, "c", iterations, "Number of times to check connectivity")
 	flag.IntVar(&timeout, "timeout", timeout, "Timeout in seconds to connect")
-	flag.IntVar(&timeout, "t", timeout, "Timeout in seconds to connect")
+	// flag.IntVar(&timeout, "t", timeout, "Timeout in seconds to connect")
 	// flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
 	// flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
 	web = flag.Bool("web", false, "Use web request as a web client.")
