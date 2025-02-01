@@ -200,10 +200,13 @@ func main() {
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *ping {
 		// fmt.Println("Ping is not implemented yet")
+		start := time.Now()
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 			os.Exit(1)
+		} else {
+			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
 		}
 		var WG sync.WaitGroup // create a wait group to wait for all the go routines to finish
 		for _, ip := range ipaddresses {
@@ -221,7 +224,7 @@ func main() {
 			pinger.Ping()
 			WG.Wait()
 			pinger.MeasureStats()
-			fmt.Print("Pinger stats: ")
+			// fmt.Print("Pinger stats: ")
 		}
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
