@@ -49,7 +49,7 @@ func init() {
 	flag.IntVar(&timeout, "timeout", timeout, "Timeout in seconds to connect")
 	// flag.IntVar(&timeout, "t", timeout, "Timeout in seconds to connect")
 	flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
-	// flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
+	flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
 	web = flag.Bool("web", false, "Use web request as a web client.")
 	ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
 	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request. This is useful for networks/systems with AV or IDS")
@@ -210,7 +210,8 @@ func main() {
 			WG.Add(1)
 			pinger := netutils.NewPinger(ip).
 				SetParallelPing(true).
-				SetPingCount(iterations).SetPingDelayInMS(delay)
+				SetPingCount(iterations).
+				SetPingDelayInMS(delay).SetPayloadSizeInBytes(payload_size)
 			go func(pinger *netutils.Pinger) {
 				defer WG.Done()
 				for data := range pinger.Stream() {
