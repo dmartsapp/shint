@@ -218,7 +218,7 @@ func main() {
 			go func(pinger *netutils.Pinger) {
 				defer WG.Done()
 				for data := range pinger.Stream() {
-					fmt.Println(data)
+					fmt.Println(lib.LogWithTimestamp(data, false))
 				}
 			}(pinger)
 			pinger.Ping()
