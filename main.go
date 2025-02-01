@@ -221,7 +221,7 @@ func main() {
 			pinger.Ping()
 			WG.Wait()
 			pinger.MeasureStats()
-			// fmt.Print(pinger)
+			fmt.Print("Pinger stats: ")
 		}
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
