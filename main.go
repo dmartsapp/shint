@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	iterations int = 1
-	// delay        int
+	iterations   int = 1
+	delay        int = 1000
 	throttle     *bool
 	timeout      int = 5
 	payload_size int = 4
@@ -48,7 +48,7 @@ func init() {
 	// flag.IntVar(&iterations, "c", iterations, "Number of times to check connectivity")
 	flag.IntVar(&timeout, "timeout", timeout, "Timeout in seconds to connect")
 	// flag.IntVar(&timeout, "t", timeout, "Timeout in seconds to connect")
-	// flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
+	flag.IntVar(&delay, "delay", delay, "Seconds delay between each iteration given in count")
 	// flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
 	web = flag.Bool("web", false, "Use web request as a web client.")
 	ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
@@ -199,22 +199,28 @@ func main() {
 		WG.Wait()
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *ping {
-		fmt.Println("Ping is not implemented yet")
+		// fmt.Println("Ping is not implemented yet")
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
 		if err != nil {
 			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 			os.Exit(1)
 		}
+		var WG sync.WaitGroup // create a wait group to wait for all the go routines to finish
 		for _, ip := range ipaddresses {
+			WG.Add(1)
 			pinger := netutils.NewPinger(ip).
-				SetParallelPing(true).SetPingCount(10)
+				SetParallelPing(true).
+				SetPingCount(iterations).SetPingDelayInMS(delay)
 			go func(pinger *netutils.Pinger) {
+				defer WG.Done()
 				for data := range pinger.Stream() {
 					fmt.Println(data)
 				}
 			}(pinger)
 			pinger.Ping()
-
+			WG.Wait()
+			pinger.MeasureStats()
+			// fmt.Print(pinger)
 		}
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
