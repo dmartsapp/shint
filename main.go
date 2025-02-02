@@ -212,23 +212,24 @@ func main() {
 		for _, ip := range ipaddresses {
 			// fmt.Println(lib.LogWithTimestamp("Pinging "+ip, false))
 			WG.Add(1)
-			go func() {
+			go func(WG *sync.WaitGroup, ip string) {
 				pinger := netutils.NewPinger(ip).
 					SetParallelPing(true).
 					SetPingCount(iterations).
 					SetPingDelayInMS(delay).SetPayloadSizeInBytes(payload_size)
-				go func(pinger *netutils.Pinger) {
+				WG.Add(1)
+				go func(pinger *netutils.Pinger, WG *sync.WaitGroup) {
 					defer WG.Done()
 					for data := range pinger.Stream() {
 						fmt.Println(lib.LogWithTimestamp(data, false))
 					}
-				}(pinger)
-				err := pinger.Ping()
+				}(pinger, WG)
+				err := pinger.PingAll()
 				if err != nil {
 					fmt.Println(lib.LogWithTimestamp(err.Error(), true))
 					return
 				}
-			}()
+			}(&WG, ip)
 
 		}
 		WG.Wait()
