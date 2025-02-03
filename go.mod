@@ -5,7 +5,7 @@ go 1.23.5
 require golang.org/x/sys v0.29.0 // indirect
 
 require (
-	github.com/farhansabbir/go-ping v1.0.1
+	github.com/farhansabbir/go-ping v1.0.2
 	golang.org/x/net v0.34.0 // indirect
 )
 

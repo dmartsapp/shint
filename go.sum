@@ -1,5 +1,5 @@
-github.com/farhansabbir/go-ping v1.0.1 h1:mGdyB1ztwhBkdqIxEp6Z3xRLrgoozSyqMFBOWSq5KT8=
-github.com/farhansabbir/go-ping v1.0.1/go.mod h1:C5c6XPosUMFlVDtGnJ+6+wQpeLLytiuDBpnhTzSJWfc=
+github.com/farhansabbir/go-ping v1.0.2 h1:1ahxo934kNfJggGdwV56aSbdaYqZqMiyY0MfaltjOXc=
+github.com/farhansabbir/go-ping v1.0.2/go.mod h1:C5c6XPosUMFlVDtGnJ+6+wQpeLLytiuDBpnhTzSJWfc=
 golang.org/x/net v0.34.0 h1:Mb7Mrk043xzHgnRM88suvJFwzVrRfHEHJEl5/71CKw0=
 golang.org/x/net v0.34.0/go.mod h1:di0qlW3YNM5oh6GqDGQr92MyTozJPmybPK4Ev/Gm31k=
 golang.org/x/sys v0.29.0 h1:TPYlXGxvx1MGTn2GiZDhnjPA9wZzZeGKHHmKhHYvgaU=
