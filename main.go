@@ -213,6 +213,7 @@ func main() {
 			// fmt.Println(lib.LogWithTimestamp("Pinging "+ip, false))
 			WG.Add(1)
 			go func(WG *sync.WaitGroup, ip string) {
+				defer WG.Done()
 				pinger := netutils.NewPinger(ip).
 					SetParallelPing(true).
 					SetPingCount(iterations).
