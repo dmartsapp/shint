@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/farhansabbir/go-ping/netutils"
 	"github.com/farhansabbir/telnet/lib"
 	// "github.com/farhansabbir/telnet/lib/netutils"
-	"github.com/farhansabbir/go-ping/netutils"
 )
 
 var (
@@ -199,40 +199,21 @@ func main() {
 		WG.Wait()
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *ping {
-		// fmt.Println("Ping is not implemented yet")
-		start := time.Now()
-		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0))
-		if err != nil {
-			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
-			os.Exit(1)
-		} else {
-			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(start).String(), false))
-		}
-		var WG sync.WaitGroup // create a wait group to wait for all the go routines to finish
-		for _, ip := range ipaddresses {
-			// fmt.Println(lib.LogWithTimestamp("Pinging "+ip, false))
-			WG.Add(1)
-			go func(WG *sync.WaitGroup, ip string) {
-				defer WG.Done()
-				pinger := netutils.NewPinger(ip).
-					SetParallelPing(true).
-					SetPingCount(iterations).
-					SetPingDelayInMS(delay).SetPayloadSizeInBytes(payload_size)
-				WG.Add(1)
-				go func(pinger *netutils.Pinger, WG *sync.WaitGroup) {
-					defer WG.Done()
-					for data := range pinger.Stream() {
-						fmt.Println(lib.LogWithTimestamp(data, false))
-					}
-				}(pinger, WG)
-				err := pinger.PingAll()
-				if err != nil {
-					fmt.Println(lib.LogWithTimestamp(err.Error(), true))
-					return
-				}
-			}(&WG, ip)
 
-		}
+		var WG sync.WaitGroup
+		pinger := netutils.NewPinger("20.231.239.246").
+			SetPingCount(iterations).
+			SetParallelPing(true)
+
+		fmt.Println("Ping ")
+		WG.Add(1)
+		go func(WG *sync.WaitGroup, pinger *netutils.Pinger) {
+			defer WG.Done()
+			for data := range pinger.Stream() {
+				fmt.Println(data)
+			}
+		}(&WG, pinger)
+		pinger.PingAll()
 		WG.Wait()
 		// pinger.MeasureStats()
 		// fmt.Println("========================================= Ping stats ============================================")
