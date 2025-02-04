@@ -199,18 +199,19 @@ func main() {
 		WG.Wait()
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *ping {
-
 		var WG sync.WaitGroup
-		pinger := netutils.NewPinger("20.231.239.246").
+		pinger := netutils.NewPinger(flag.Arg(0)).
 			SetPingCount(iterations).
-			SetParallelPing(true)
+			SetParallelPing(true).
+			SetPayloadSizeInBytes(payload_size).
+			SetPingDelayInMS(delay)
 
-		fmt.Println("Ping ")
 		WG.Add(1)
 		go func(WG *sync.WaitGroup, pinger *netutils.Pinger) {
 			defer WG.Done()
 			for data := range pinger.Stream() {
-				fmt.Println(data)
+				fmt.Println(lib.LogWithTimestamp(data, false))
+				fmt.Println(pinger.IsPingComplete())
 			}
 		}(&WG, pinger)
 		pinger.PingAll()
