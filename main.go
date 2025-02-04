@@ -211,15 +211,17 @@ func main() {
 			defer WG.Done()
 			for data := range pinger.Stream() {
 				fmt.Println(lib.LogWithTimestamp(data, false))
-				fmt.Println(pinger.IsPingComplete())
+				if pinger.IsPingComplete() {
+					break
+				}
 			}
 		}(&WG, pinger)
 		pinger.PingAll()
 		WG.Wait()
-		// pinger.MeasureStats()
-		// fmt.Println("========================================= Ping stats ============================================")
-		// fmt.Printf("Packets sent: %d, Packets received: %d, Packets lost: %d, Ping success: %d%% \n", pinger.Count, (pinger.Count - pinger.Stats.Loss), pinger.Stats.Loss, ((pinger.Count - pinger.Stats.Loss) * 100 / pinger.Count))
-		// fmt.Printf("Max time: %dms, Min time: %dms, Avg time: %.3fms, Std dev: %.3f\n", pinger.Stats.Max, pinger.Stats.Min, pinger.Stats.Avg, pinger.Stats.StdDev)
+		pinger.MeasureStats()
+		fmt.Println("========================================= Ping stats ============================================")
+		fmt.Printf("Packets sent: %d, Packets received: %d, Packets lost: %d, Ping success: %d%% \n", pinger.Count, (pinger.Count - pinger.Stats.Loss), pinger.Stats.Loss, ((pinger.Count - pinger.Stats.Loss) * 100 / pinger.Count))
+		fmt.Printf("Max time: %dms, Min time: %dms, Avg time: %.3fms, Std dev: %.3f\n", pinger.Stats.Max, pinger.Stats.Min, pinger.Stats.Avg, pinger.Stats.StdDev)
 
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
