@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/farhansabbir/go-ping/netutils"
 	"github.com/farhansabbir/telnet/lib"
 	// "github.com/farhansabbir/telnet/lib/netutils"
 )
@@ -199,29 +198,30 @@ func main() {
 		WG.Wait()
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *ping {
-		var WG sync.WaitGroup
-		pinger := netutils.NewPinger(flag.Arg(0)).
-			SetPingCount(iterations).
-			SetParallelPing(true).
-			SetPayloadSizeInBytes(payload_size).
-			SetPingDelayInMS(delay)
+		fmt.Println("Ping is not implemented yet")
+		// var WG sync.WaitGroup
+		// pinger := netutils.NewPinger(flag.Arg(0)).
+		// 	SetPingCount(iterations).
+		// 	SetParallelPing(true).
+		// 	SetPayloadSizeInBytes(payload_size).
+		// 	SetPingDelayInMS(delay)
 
-		WG.Add(1)
-		go func(WG *sync.WaitGroup, pinger *netutils.Pinger) {
-			defer WG.Done()
-			for data := range pinger.Stream() {
-				fmt.Println(lib.LogWithTimestamp(data, false))
-				if pinger.IsPingComplete() {
-					break
-				}
-			}
-		}(&WG, pinger)
-		pinger.PingAll()
-		WG.Wait()
-		pinger.MeasureStats()
-		fmt.Println("========================================= Ping stats ============================================")
-		fmt.Printf("Packets sent: %d, Packets received: %d, Packets lost: %d, Ping success: %d%% \n", pinger.Count, (pinger.Count - pinger.Stats.Loss), pinger.Stats.Loss, ((pinger.Count - pinger.Stats.Loss) * 100 / pinger.Count))
-		fmt.Printf("Max time: %dms, Min time: %dms, Avg time: %.3fms, Std dev: %.3f\n", pinger.Stats.Max, pinger.Stats.Min, pinger.Stats.Avg, pinger.Stats.StdDev)
+		// WG.Add(1)
+		// go func(WG *sync.WaitGroup, pinger *netutils.Pinger) {
+		// 	defer WG.Done()
+		// 	for data := range pinger.Stream() {
+		// 		fmt.Println(lib.LogWithTimestamp(data, false))
+		// 		if pinger.IsPingComplete() {
+		// 			break
+		// 		}
+		// 	}
+		// }(&WG, pinger)
+		// pinger.PingAll()
+		// WG.Wait()
+		// pinger.MeasureStats()
+		// fmt.Println("========================================= Ping stats ============================================")
+		// fmt.Printf("Packets sent: %d, Packets received: %d, Packets lost: %d, Ping success: %d%% \n", pinger.Count, (pinger.Count - pinger.Stats.Loss), pinger.Stats.Loss, ((pinger.Count - pinger.Stats.Loss) * 100 / pinger.Count))
+		// fmt.Printf("Max time: %dms, Min time: %dms, Avg time: %.3fms, Std dev: %.3f\n", pinger.Stats.Max, pinger.Stats.Min, pinger.Stats.Avg, pinger.Stats.StdDev)
 
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
