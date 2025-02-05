@@ -1,0 +1,3 @@
+[submodule "lib/go-ping"]
+	path = lib/go-ping
+	url = .\\lib\\go-ping\\
