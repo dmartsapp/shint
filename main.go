@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/farhansabbir/go-ping/netutils"
+	
 	"github.com/farhansabbir/telnet/lib"
-	// "github.com/farhansabbir/telnet/lib/netutils"
+	"github.com/farhansabbir/go-ping/netutils"
 )
 
 var (
@@ -200,6 +200,7 @@ func main() {
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	} else if *ping {
 		var WG sync.WaitGroup
+		
 		pinger := netutils.NewPinger(flag.Arg(0)).
 			SetPingCount(iterations).
 			SetParallelPing(true).
@@ -211,6 +212,7 @@ func main() {
 			defer WG.Done()
 			for data := range pinger.Stream() {
 				fmt.Println(lib.LogWithTimestamp(data, false))
+				
 				if pinger.IsPingComplete() {
 					break
 				}
