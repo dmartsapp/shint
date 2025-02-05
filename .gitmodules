@@ -1,3 +1,4 @@
-[submodule "lib/go-ping"]
-	path = lib/go-ping
-	url = .\\lib\\go-ping\\
+[submodule "go-ping"]
+	path = go-ping
+	url = .\\go-ping\\
+	ignore = dirty
