@@ -207,17 +207,31 @@ func main() {
 			fmt.Println(lib.LogWithTimestamp(err.Error(), true))
 			os.Exit(1)
 		}
+
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go func(pinger *netutils.Pinger, wg *sync.WaitGroup) {
+			defer wg.Done()
+			for log := range pinger.StreamLog() {
+				fmt.Println(lib.LogWithTimestamp(log, false))
+			}
+		}(pinger, &wg)
+
 		pinger.
 			SetPingCount(iterations).
 			SetParallelPing(true).
 			SetPayloadSizeInBytes(payload_size).
-			SetPingDelayInMS(delay)
+			SetPingDelayInMS(delay).
+			SetRandomizedPingDelay(*throttle == true)
 		pinger.PingAll()
-		fmt.Println(pinger)
+
+		wg.Wait()
+		pinger.MeasureStats()
 		// pinger.MeasureStats()
-		// fmt.Println("========================================= Ping stats ============================================")
-		// fmt.Printf("Packets sent: %d, Packets received: %d, Packets lost: %d, Ping success: %d%% \n", pinger.Count, (pinger.Count - pinger.Stats.Loss), pinger.Stats.Loss, ((pinger.Count - pinger.Stats.Loss) * 100 / pinger.Count))
-		// fmt.Printf("Min time: %dms, Max time: %dms, Avg time: %.3fms, Std dev: %.3f\n", pinger.Stats.Min, pinger.Stats.Max, pinger.Stats.Avg, pinger.Stats.StdDev)
+		fmt.Println("========================================= Ping stats ============================================")
+		fmt.Printf("Packets sent: %d, Packets received: %d, Packets lost: %d, Ping success: %d%% \n", pinger.Count*len(pinger.Destination), (pinger.Count*len(pinger.Destination) - pinger.Stats.Loss), pinger.Stats.Loss, ((pinger.Count*len(pinger.Destination) - pinger.Stats.Loss) * 100 / (pinger.Count * len(pinger.Destination))))
+		fmt.Printf("Total time: %v, Resolve time: %v\n", pinger.Stats.TotalTime, pinger.Stats.ResolveTime)
+		fmt.Printf("Min time: %dms, Max time: %dms, Avg time: %.3fms, Std dev: %.3f, Total time: %v\n", pinger.Stats.Min, pinger.Stats.Max, pinger.Stats.Avg, pinger.Stats.StdDev, pinger.Stats.TotalTime)
 
 	} else { // this should be ideally telnet if not web or nmap
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
