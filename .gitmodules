@@ -1,4 +1,5 @@
 [submodule "go-ping"]
 	path = go-ping
-	url = .\\go-ping\\
+	url = https://github.com/farhansabbir/go-ping.git
+	# url = .\\go-ping\\
 	ignore = dirty
