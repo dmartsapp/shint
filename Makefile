@@ -24,10 +24,10 @@ windows-x64:
 	GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).windows.x64 $(BUILDFLAGS) main.go
 
 linux-arm64:
-	GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).linux-arm64 $(BUILDFLAGS) main.go
+	GOOS=linux GOARCH=arm64 go build -o bin/$(BINARY).linux-arm64 $(BUILDFLAGS) main.go
 
 linux-x64:
-	GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).linux-x64 $(BUILDFLAGS) main.go
+	GOOS=linux GOARCH=amd64 go build -o bin/$(BINARY).linux-x64 $(BUILDFLAGS) main.go
 
 darwin-arm64:
 	GOOS=darwin GOARCH=arm64 go build -o bin/$(BINARY).darwin-arm64 $(BUILDFLAGS) main.go
