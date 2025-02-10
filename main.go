@@ -51,7 +51,7 @@ func init() {
 	flag.IntVar(&payload_size, "payload", payload_size, "Ping payload size in bytes")
 	web = flag.Bool("web", false, "Use web request as a web client.")
 	ping = flag.Bool("ping", false, "Use ICMP echo to test basic reachability")
-	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request. This is useful for networks/systems with AV or IDS")
+	throttle = flag.Bool("throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
 	nmap = flag.Bool("nmap", false, "Flag option to run tcp port scan. This flag ignores all other parameters except -from and -to, if mentioned.")
 	flag.IntVar(&fromport, "from", fromport, "Start port to begin TCP scan from. (applicable with -nmap option only)")
 	flag.IntVar(&endport, "to", endport, "End port to run TCP scan to. (applicable with -nmap option only)")
@@ -66,7 +66,7 @@ func init() {
 		fmt.Println("Example (fqdn): " + os.Args[0] + " google.com 443")
 		fmt.Println("Example (IP): " + os.Args[0] + " 10.10.10.10 443")
 		// fmt.Println("Example (ping with timeout of 1s and count of 10 for every IP addresses resolved): " + os.Args[0] + " -ping -count 10 -timeout 1 google.com")
-		fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as client with user-agent set as '" + HTTP_CLIENT_USER_AGENT + "'): " + os.Args[0] + " -web https://google.com/pages/index.html")
+		// fmt.Println("Example (fqdn with -web flag to send 'https' request to path '/pages/index.html' as client with user-agent set as '" + HTTP_CLIENT_USER_AGENT + "'): " + os.Args[0] + " -web https://google.com/pages/index.html")
 		os.Exit(int(SuccessNoError))
 	}
 }
