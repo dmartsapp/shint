@@ -75,3 +75,23 @@ func IsPortUp(host string, port int, timeout int) (bool, error) {
 	defer conn.Close()
 	return true, nil
 }
+
+type DNSLookup struct {
+	Hostname          string   `json:"hostname"`
+	ResolvedAddresses []string `json:"resolved_addresses"`
+	Error             string   `json:"error"`
+	Success           bool     `json:"success"`
+	TimeTaken         int64    `json:"time_taken_µs"`
+}
+
+type TelnetStats struct {
+	Address   string `json:"address"`
+	Success   bool   `json:"success"`
+	TimeTaken int64  `json:"time_taken_µs"`
+}
+type JSONOutput struct {
+	ModuleName     string    `json:"module_name"`
+	DNSLookup      DNSLookup `json:"dns_lookup"`
+	Stats          any       `json:"stats"`
+	TotalTimeTaken int64     `json:"total_time_taken_µs"`
+}
