@@ -244,6 +244,17 @@ func main() {
 			os.Exit(1)
 		}
 		output := lib.JSONOutput{}
+		output.InputParams = lib.InputParams{
+			Mode:     "telnet",
+			Host:     flag.Arg(0),
+			FromPort: int(port),
+			ToPort:   int(port),
+			Timeout:  timeout,
+			Count:    iterations,
+			Delay:    delay,
+			Payload:  payload_size,
+			Throttle: *throttle,
+		}
 		output.ModuleName = "telnet"
 		istart := time.Now()                                         // capture initial time
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS

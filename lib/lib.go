@@ -84,14 +84,28 @@ type DNSLookup struct {
 	TimeTaken         int64    `json:"time_taken_µs"`
 }
 
+type InputParams struct {
+	Mode       string `json:"module_name"`
+	Sequential bool   `json:"sequential"`
+	Throttle   bool   `json:"throttle"`
+	Host       string `json:"host"`
+	FromPort   int    `json:"from_port"`
+	ToPort     int    `json:"to_port"`
+	Timeout    int    `json:"timeout_ms"`
+	Count      int    `json:"count"`
+	Delay      int    `json:"delay_ms"`
+	Payload    int    `json:"payload_bytes"`
+}
+
 type TelnetStats struct {
 	Address   string `json:"address"`
 	Success   bool   `json:"success"`
 	TimeTaken int64  `json:"time_taken_µs"`
 }
 type JSONOutput struct {
-	ModuleName     string    `json:"module_name"`
-	DNSLookup      DNSLookup `json:"dns_lookup"`
-	Stats          any       `json:"stats"`
-	TotalTimeTaken int64     `json:"total_time_taken_µs"`
+	InputParams    InputParams `json:"input_params"`
+	ModuleName     string      `json:"module_name"`
+	DNSLookup      DNSLookup   `json:"dns_lookup"`
+	Stats          any         `json:"stats"`
+	TotalTimeTaken int64       `json:"total_time_taken_µs"`
 }
