@@ -274,9 +274,7 @@ func main() {
 			var WG sync.WaitGroup
 			if *jsonoutput {
 				outputjson["telnet"] = map[string]any{
-					"domain": flag.Arg(0),
-					"port":   int(port),
-					"stats":  make([]map[string]any, 0),
+					"stats": make([]map[string]any, 0),
 				}
 			}
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
@@ -327,15 +325,19 @@ func main() {
 				}
 			}
 			WG.Wait()
-			MUTEX.RLock()
-			fmt.Println(lib.LogStats("telnet", stats, (iterations * len(ipaddresses))))
-			MUTEX.RUnlock()
+			if !*jsonoutput {
+				MUTEX.RLock()
+				fmt.Println(lib.LogStats("telnet", stats, (iterations * len(ipaddresses))))
+				MUTEX.RUnlock()
+			}
 		}
-		fmt.Println("Total time taken: " + time.Since(istart).String())
+
 		if *jsonoutput {
 			outputjson["total_time_taken_µs"] = time.Since(istart).Microseconds()
 			outputJSON, _ := json.MarshalIndent(outputjson, "", "  ")
 			fmt.Println(string(outputJSON))
+		} else {
+			fmt.Println("Total time taken: " + time.Since(istart).String())
 		}
 	}
 }
