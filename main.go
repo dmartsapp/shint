@@ -252,8 +252,10 @@ func main() {
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-						time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
+						// time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
+						delay = rand.Intn(30000)
 					}
+					time.Sleep(time.Millisecond * time.Duration(delay))
 					WG.Add(1)
 					go func(ip string) {
 						defer WG.Done()
