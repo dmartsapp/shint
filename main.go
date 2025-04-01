@@ -245,7 +245,6 @@ func main() {
 		}
 		output := lib.JSONOutput{}
 		output.ModuleName = "telnet"
-		// outputjson := make(map[string]interface{}, 0)
 		istart := time.Now()                                         // capture initial time
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		var stats = make([]time.Duration, 0)
@@ -257,12 +256,6 @@ func main() {
 					ResolvedAddresses: nil,
 					TimeTaken:         time.Since(istart).Microseconds(),
 				}
-				// outputjson["dns_lookup"] = map[string]any{
-				// 	"domain":             flag.Arg(0),
-				// 	"success":            false,
-				// 	"resolved_addresses": nil,
-				// 	"time_taken_µs":      "",
-				// }
 			} else {
 				fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
 				fmt.Println(lib.LogStats("telnet", stats, iterations))
@@ -277,20 +270,10 @@ func main() {
 					ResolvedAddresses: ipaddresses,
 					TimeTaken:         time.Since(istart).Microseconds(),
 				}
-				// outputjson["dns_lookup"] = map[string]any{
-				// 	"domain":             flag.Arg(0),
-				// 	"success":            true,
-				// 	"resolved_addresses": ipaddresses,
-				// 	"time_taken_µs":      time.Since(istart).Microseconds(),
-				// }
-
 			}
 			var WG sync.WaitGroup
 			if *jsonoutput {
 				output.Stats = make([]lib.TelnetStats, 0)
-				// outputjson["telnet"] = map[string]any{
-				// 	"stats": make([]map[string]any, 0),
-				// }
 			}
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
@@ -311,13 +294,6 @@ func main() {
 								stat.Success = false
 								stat.TimeTaken = time.Since(start).Microseconds()
 								output.Stats = append(output.Stats.([]lib.TelnetStats), stat)
-
-								// telnetStats := outputjson["telnet"].(map[string]any)
-								// telnetStats["stats"] = append(telnetStats["stats"].([]map[string]any), map[string]any{
-								// 	"ip":            ip,
-								// 	"success":       false,
-								// 	"time_taken_µs": time.Since(start).Microseconds(),
-								// })
 							} else {
 								fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
 							}
@@ -332,17 +308,6 @@ func main() {
 								stat.Success = true
 								stat.TimeTaken = time.Since(start).Microseconds()
 								output.Stats = append(output.Stats.([]lib.TelnetStats), stat)
-
-								// telnetStats := outputjson["telnet"].(map[string]any)
-								// telnetStats["stats"] = append(telnetStats["stats"].([]map[string]any), map[string]any{
-								// 	"ip":            ip,
-								// 	"success":       true,
-								// 	"time_taken_µs": time.Since(start).Microseconds(),
-								// })
-								// telnetStats["domain"] = flag.Arg(0)
-								// telnetStats["ip"] = ip
-								// telnetStats["success"] = true
-								// telnetStats["time_taken_ms"] = time.Since(start).Milliseconds()
 							} else {
 								fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time_taken.String(), false))
 							}
@@ -363,9 +328,6 @@ func main() {
 			output.TotalTimeTaken = time.Since(istart).Microseconds()
 			JS, _ := json.MarshalIndent(output, "", "  ")
 			fmt.Println(string(JS))
-			// outputjson["total_time_taken_µs"] = time.Since(istart).Microseconds()
-			// outputJSON, _ := json.MarshalIndent(outputjson, "", "  ")
-			// fmt.Println(string(outputJSON))
 		} else {
 			fmt.Println("Total time taken: " + time.Since(istart).String())
 		}
