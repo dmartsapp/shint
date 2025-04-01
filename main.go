@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -30,6 +31,7 @@ var (
 	nmap         *bool
 	ping         *bool
 	version      *bool
+	jsonoutput   *bool
 	fromport     int = 1
 	endport      int = 80
 	MUTEX        sync.RWMutex
@@ -56,6 +58,7 @@ func init() {
 	flag.IntVar(&fromport, "from", fromport, "Start port to begin TCP scan from. (applicable with -nmap option only)")
 	flag.IntVar(&endport, "to", endport, "End port to run TCP scan to. (applicable with -nmap option only)")
 	version = flag.Bool("version", false, "Show version of this tool")
+	jsonoutput = flag.Bool("json", false, "Flag option to output only in JSON format")
 
 	flag.Usage = func() {
 		fmt.Println("Version: " + Version)
@@ -222,7 +225,7 @@ func main() {
 			SetParallelPing(true).
 			SetPayloadSizeInBytes(payload_size).
 			SetPingDelayInMS(delay).
-			SetRandomizedPingDelay(*throttle == true)
+			SetRandomizedPingDelay(*throttle)
 		pinger.PingAll()
 
 		wg.Wait()
@@ -233,22 +236,49 @@ func main() {
 		fmt.Printf("Total time: %v, Resolve time: %v\n", pinger.Stats.TotalTime, pinger.Stats.ResolveTime)
 		fmt.Printf("Min time: %dms, Max time: %dms, Avg time: %.3fms, Std dev: %.3f, Total time: %v\n", pinger.Stats.Min, pinger.Stats.Max, pinger.Stats.Avg, pinger.Stats.StdDev, pinger.Stats.TotalTime)
 
-	} else { // this should be ideally telnet if not web or nmap
+	} else { // this should be ideally telnet if not web or nmap or ping
 		port, err := strconv.ParseUint(flag.Arg(1), 10, 64)
 		if err != nil {
 			fmt.Println(lib.LogWithTimestamp("Invalid port '"+flag.Arg(1)+"'", true))
 			flag.Usage()
 			os.Exit(1)
 		}
+		outputjson := make(map[string]interface{}, 0)
 		istart := time.Now()                                         // capture initial time
 		ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
 		var stats = make([]time.Duration, 0)
 		if err != nil {
-			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
-			fmt.Println(lib.LogStats("telnet", stats, iterations))
+			if *jsonoutput {
+				outputjson["dns_lookup"] = map[string]any{
+					"domain":             flag.Arg(0),
+					"success":            false,
+					"resolved_addresses": nil,
+					"time_taken_µs":      "",
+				}
+			} else {
+				fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+				fmt.Println(lib.LogStats("telnet", stats, iterations))
+			}
 		} else {
-			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
+			if !*jsonoutput {
+				fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
+			} else {
+				outputjson["dns_lookup"] = map[string]any{
+					"domain":             flag.Arg(0),
+					"success":            true,
+					"resolved_addresses": ipaddresses,
+					"time_taken_µs":      time.Since(istart).Microseconds(),
+				}
+
+			}
 			var WG sync.WaitGroup
+			if *jsonoutput {
+				outputjson["telnet"] = map[string]any{
+					"domain": flag.Arg(0),
+					"port":   int(port),
+					"stats":  make([]map[string]any, 0),
+				}
+			}
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
@@ -262,13 +292,36 @@ func main() {
 						start := time.Now()                            // capture initial time
 						_, err := lib.IsPortUp(ip, int(port), timeout) // check if given port from this iteration is up or not
 						if err != nil {
-							fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
+							if *jsonoutput {
+								telnetStats := outputjson["telnet"].(map[string]any)
+								telnetStats["stats"] = append(telnetStats["stats"].([]map[string]any), map[string]any{
+									"ip":            ip,
+									"success":       false,
+									"time_taken_µs": time.Since(start).Microseconds(),
+								})
+							} else {
+								fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
+							}
 						} else {
 							MUTEX.Lock()
 							time_taken := time.Since(start) //capture the time taken
 							stats = append(stats, time_taken)
 							defer MUTEX.Unlock()
-							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time_taken.String(), false))
+							if *jsonoutput {
+								telnetStats := outputjson["telnet"].(map[string]any)
+								telnetStats["stats"] = append(telnetStats["stats"].([]map[string]any), map[string]any{
+									"ip":            ip,
+									"success":       true,
+									"time_taken_µs": time.Since(start).Microseconds(),
+								})
+								// telnetStats["domain"] = flag.Arg(0)
+								// telnetStats["ip"] = ip
+								// telnetStats["success"] = true
+								// telnetStats["time_taken_ms"] = time.Since(start).Milliseconds()
+							} else {
+								fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time_taken.String(), false))
+							}
+
 						}
 					}(ip)
 				}
@@ -279,5 +332,10 @@ func main() {
 			MUTEX.RUnlock()
 		}
 		fmt.Println("Total time taken: " + time.Since(istart).String())
+		if *jsonoutput {
+			outputjson["total_time_taken_µs"] = time.Since(istart).Microseconds()
+			outputJSON, _ := json.MarshalIndent(outputjson, "", "  ")
+			fmt.Println(string(outputJSON))
+		}
 	}
 }
