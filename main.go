@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"net/url"
 	"os"
@@ -128,8 +129,13 @@ func main() {
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					for port := fromport; port <= endport; port++ { // we need to loop over all ports individually
-						if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-							time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
+						if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 10000 ms
+							i, err := rand.Int(rand.Reader, big.NewInt(10000))
+							if err != nil {
+								fmt.Println(err)
+								return // added return to exit if error occurs
+							}
+							time.Sleep(time.Millisecond * time.Duration(i.Int64()))
 						}
 						WG.Add(1)
 						go func(ip string, port int) {
@@ -161,7 +167,12 @@ func main() {
 		var WG sync.WaitGroup
 		for i := 0; i < iterations; i++ {
 			if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-				time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
+				i, err := rand.Int(rand.Reader, big.NewInt(10000))
+				if err != nil {
+					fmt.Println(err)
+					return // added return to exit if error occurs
+				}
+				time.Sleep(time.Millisecond * time.Duration(i.Int64()))
 			}
 			WG.Add(1)
 			go func(URL *url.URL) {
@@ -169,7 +180,9 @@ func main() {
 				client := &http.Client{
 					Timeout: time.Duration(time.Duration(timeout) * time.Second),
 					Transport: &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}} // setup http transport not to validate the SSL certificate
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: false, MinVersion: tls.VersionTLS12},
+					},
+				} // setup http transport not to validate the SSL certificate
 
 				request, err := http.NewRequest("GET", flag.Arg(0), nil) // only setup for get requests
 				if err != nil {
@@ -226,7 +239,11 @@ func main() {
 			SetPayloadSizeInBytes(payload_size).
 			SetPingDelayInMS(delay).
 			SetRandomizedPingDelay(*throttle)
-		pinger.PingAll()
+		err = pinger.PingAll()
+		if err != nil {
+			fmt.Println(lib.LogWithTimestamp(err.Error(), true))
+			os.Exit(1)
+		}
 
 		wg.Wait()
 		pinger.MeasureStats()
@@ -290,7 +307,11 @@ func main() {
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 					if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
 						// time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
-						delay = rand.Intn(30000)
+						in, err := rand.Int(rand.Reader, big.NewInt(10000))
+						if err != nil {
+							fmt.Println(err)
+						}
+						delay = int(in.Int64())
 					}
 					time.Sleep(time.Millisecond * time.Duration(delay))
 					WG.Add(1)
@@ -317,6 +338,8 @@ func main() {
 								stat := lib.TelnetStats{}
 								stat.Address = ip
 								stat.Success = true
+								stat.SentTime = start.UnixMicro()
+								stat.RecvTime = time.Now().UnixMicro()
 								stat.TimeTaken = time.Since(start).Microseconds()
 								output.Stats = append(output.Stats.([]lib.TelnetStats), stat)
 							} else {

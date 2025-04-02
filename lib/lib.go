@@ -100,6 +100,8 @@ type InputParams struct {
 type TelnetStats struct {
 	Address   string `json:"address"`
 	Success   bool   `json:"success"`
+	SentTime  int64  `json:"sent_unixtime_µs"`
+	RecvTime  int64  `json:"recv_unixtime_µs"`
 	TimeTaken int64  `json:"time_taken_µs"`
 }
 type JSONOutput struct {
