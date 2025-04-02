@@ -222,8 +222,9 @@ func main() {
 		output.InputParams = lib.InputParams{
 			Mode:     "icmp",
 			Host:     flag.Arg(0),
-			FromPort: int(0),
-			ToPort:   int(0),
+			FromPort: int(7),
+			ToPort:   int(7),
+			Protocol: "icmp",
 			Timeout:  timeout,
 			Count:    iterations,
 			Delay:    delay,
@@ -239,13 +240,16 @@ func main() {
 		}
 
 		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go func(pinger *netutils.Pinger, wg *sync.WaitGroup) {
-			defer wg.Done()
-			for log := range pinger.StreamLog() {
-				fmt.Println(lib.LogWithTimestamp(log, false))
-			}
-		}(pinger, &wg)
+
+		if !*jsonoutput {
+			wg.Add(1)
+			go func(pinger *netutils.Pinger, wg *sync.WaitGroup) {
+				defer wg.Done()
+				for log := range pinger.StreamLog() {
+					fmt.Println(lib.LogWithTimestamp(log, false))
+				}
+			}(pinger, &wg)
+		}
 
 		pinger.
 			SetPingCount(iterations).
@@ -268,6 +272,12 @@ func main() {
 			fmt.Printf("Total time: %v, Resolve time: %v\n", pinger.Stats.TotalTime, pinger.Stats.ResolveTime)
 			fmt.Printf("Min time: %dms, Max time: %dms, Avg time: %.3fms, Std dev: %.3f, Total time: %v\n", pinger.Stats.Min, pinger.Stats.Max, pinger.Stats.Avg, pinger.Stats.StdDev, pinger.Stats.TotalTime)
 		} else {
+			output.DNSLookup = lib.DNSLookup{
+				Hostname:          flag.Arg(0),
+				Success:           true,
+				ResolvedAddresses: lib.ConvertIPToStringSlice(pinger.Destination),
+				TimeTaken:         pinger.Stats.ResolveTime.Microseconds(),
+			}
 			output.StartTime = start.UnixMicro()
 			output.EndTime = time.Now().UnixMicro()
 			output.TotalTimeTaken = output.EndTime - output.StartTime
@@ -301,6 +311,7 @@ func main() {
 			Host:     flag.Arg(0),
 			FromPort: int(port),
 			ToPort:   int(port),
+			Protocol: "tcp",
 			Timeout:  timeout,
 			Count:    iterations,
 			Delay:    delay,
@@ -337,6 +348,7 @@ func main() {
 			var WG sync.WaitGroup
 			if *jsonoutput {
 				output.Stats = make([]lib.TelnetStats, 0)
+				output.StartTime = istart.UnixMicro()
 			}
 			for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 				for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
@@ -394,7 +406,8 @@ func main() {
 		}
 
 		if *jsonoutput {
-			output.TotalTimeTaken = time.Since(istart).Microseconds()
+			output.EndTime = time.Now().UnixMicro()
+			output.TotalTimeTaken = output.EndTime - output.StartTime
 			JS, _ := json.MarshalIndent(output, "", "  ")
 			fmt.Println(string(JS))
 		} else {

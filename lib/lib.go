@@ -91,6 +91,7 @@ type InputParams struct {
 	Host       string `json:"host"`
 	FromPort   int    `json:"from_port"`
 	ToPort     int    `json:"to_port"`
+	Protocol   string `json:"protocol"`
 	Timeout    int    `json:"timeout_ms"`
 	Count      int    `json:"count"`
 	Delay      int    `json:"delay_ms"`
@@ -122,4 +123,12 @@ type JSONOutput struct {
 	StartTime      int64       `json:"start_time_unixtime_µs"`
 	EndTime        int64       `json:"end_time_unixtime_µs"`
 	TotalTimeTaken int64       `json:"total_time_taken_µs"`
+}
+
+func ConvertIPToStringSlice(ips []net.IP) []string {
+	var result []string
+	for _, ip := range ips {
+		result = append(result, ip.String())
+	}
+	return result
 }
