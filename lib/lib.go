@@ -104,10 +104,22 @@ type TelnetStats struct {
 	RecvTime  int64  `json:"recv_unixtime_µs"`
 	TimeTaken int64  `json:"time_taken_µs"`
 }
+
+type ICMPStats struct {
+	Address     string `json:"address"`
+	Success     bool   `json:"success"`
+	Sequence    int    `json:"sequence"` // added Sequence field to store the sequence number of the ICMP packet
+	PayloadSize int    `json:"payload_size_bytes"`
+	SentTime    int64  `json:"sent_unixtime_ms"`
+	RecvTime    int64  `json:"recv_unixtime_ms"`
+	TimeTaken   int64  `json:"time_taken_ms"`
+}
 type JSONOutput struct {
 	InputParams    InputParams `json:"input_params"`
 	ModuleName     string      `json:"module_name"`
 	DNSLookup      DNSLookup   `json:"dns_lookup"`
 	Stats          any         `json:"stats"`
+	StartTime      int64       `json:"start_time_unixtime_µs"`
+	EndTime        int64       `json:"end_time_unixtime_µs"`
 	TotalTimeTaken int64       `json:"total_time_taken_µs"`
 }
