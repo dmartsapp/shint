@@ -106,6 +106,16 @@ type TelnetStats struct {
 	TimeTaken int64  `json:"time_taken_µs"`
 }
 
+type WebStats struct {
+	URL             string `json:"url"`
+	Success         bool   `json:"success"`
+	SentTime        int64  `json:"sent_unixtime_µs"`
+	RecvTime        int64  `json:"recv_unixtime_µs"`
+	TimeTaken       int64  `json:"time_taken_µs"`
+	BytesDownloaded int    `json:"bytes_downloaded"` // added field to store the number of bytes downloaded
+	StatusCode      int    `json:"status_code"`      // added field to store the HTTP status code
+}
+
 type ICMPStats struct {
 	Address     string `json:"address"`
 	Success     bool   `json:"success"`
@@ -123,6 +133,7 @@ type JSONOutput struct {
 	StartTime      int64       `json:"start_time_unixtime_µs"`
 	EndTime        int64       `json:"end_time_unixtime_µs"`
 	TotalTimeTaken int64       `json:"total_time_taken_µs"`
+	Error          string      `json:"error"`
 }
 
 func ConvertIPToStringSlice(ips []net.IP) []string {

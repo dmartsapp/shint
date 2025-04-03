@@ -158,19 +158,47 @@ func main() {
 			fmt.Println(lib.LogWithTimestamp("Missing URL", true))
 			os.Exit(1)
 		}
+		output := lib.JSONOutput{}
 		istart := time.Now()
 		URL, err := url.Parse(flag.Arg(0))
 		if err != nil {
 			fmt.Println(lib.LogWithTimestamp(err.Error(), true))
 			os.Exit(1)
 		}
+		if *jsonoutput {
+			output.InputParams = lib.InputParams{
+				Mode:     "web",
+				Host:     flag.Arg(0),
+				Protocol: "tcp",
+				Timeout:  timeout,
+				Count:    iterations,
+				Delay:    delay,
+				Payload:  payload_size,
+				Throttle: *throttle,
+			}
+			output.ModuleName = "web"
+			output.InputParams.Host = URL.Host
+			output.DNSLookup = lib.DNSLookup{
+				Hostname: URL.Hostname(),
+			}
+			output.InputParams.FromPort, _ = strconv.Atoi(URL.Port())
+			output.InputParams.ToPort = output.InputParams.FromPort
+			output.StartTime = istart.UnixMicro()
+			output.Stats = make([]lib.WebStats, 0)
+		}
+
 		var WG sync.WaitGroup
 		for i := 0; i < iterations; i++ {
 			if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
 				i, err := rand.Int(rand.Reader, big.NewInt(10000))
 				if err != nil {
-					fmt.Println(err)
-					return // added return to exit if error occurs
+					if !*jsonoutput {
+						fmt.Println(err)
+						return // added return to exit if error occurs
+					} else {
+						output.Error = err.Error()
+						return
+					}
 				}
 				time.Sleep(time.Millisecond * time.Duration(i.Int64()))
 			}
@@ -203,16 +231,41 @@ func main() {
 				}
 				defer response.Body.Close()
 				body, _ := io.ReadAll(response.Body) // read the entire body, this should consume most of the time
-				time_taken := time.Since(start)      //capture the time taken
+				header := response.Header
+				time_taken := time.Since(start) //capture the time taken
 				stats := make(map[string]int, 0)
 				stats["time_taken"] = int(time_taken)
 				// fmt.Println(float64(len(string(body))) / float64(time_taken.Seconds()))
-				fmt.Println(lib.LogWithTimestamp("Response: "+response.Status+", bytes downloaded: "+strconv.Itoa(len(string(body)))+", speed: "+strconv.FormatFloat((float64(len(string(body)))/float64(time_taken.Seconds())/1024), 'G', -1, 64)+"KB/s, time taken: "+time_taken.String(), false))
-
+				if *jsonoutput {
+					stat := lib.WebStats{}
+					stat.URL = URL.String()
+					stat.Success = true
+					stat.StatusCode = response.StatusCode
+					stat.BytesDownloaded = len(string(body)) + len(header)
+					stat.SentTime = start.UnixMicro()
+					stat.RecvTime = time.Now().UnixMicro()
+					stat.TimeTaken = stat.RecvTime - stat.SentTime
+					output.Stats = append(output.Stats.([]lib.WebStats), stat)
+				} else {
+					fmt.Println(lib.LogWithTimestamp("Response: "+response.Status+", bytes downloaded: "+strconv.Itoa(len(string(body)))+", speed: "+strconv.FormatFloat((float64(len(string(body)))/float64(time_taken.Seconds())/1024), 'G', -1, 64)+"KB/s, time taken: "+time_taken.String(), false))
+				}
 			}(URL)
 		}
 		WG.Wait()
-		fmt.Println("Total time taken: " + time.Since(istart).String())
+		if *jsonoutput {
+			output.EndTime = time.Now().UnixMicro()
+			output.TotalTimeTaken = output.EndTime - output.StartTime
+			output.Error = ""
+			JS, _ := json.MarshalIndent(output, "", "  ")
+			if err != nil {
+				fmt.Println(lib.LogWithTimestamp(err.Error(), true))
+				os.Exit(1)
+			}
+			fmt.Println(string(JS))
+		} else {
+			fmt.Println("Total time taken: " + time.Since(istart).String())
+		}
+
 	} else if *ping {
 		if len(flag.Args()) <= 0 {
 			fmt.Println(lib.LogWithTimestamp("Missing URL/address to ping", true))
