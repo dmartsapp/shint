@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -15,12 +14,12 @@ import (
 	"github.com/farhansabbir/telnet/lib"
 )
 
-func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, CTXTIMEOUT context.Context) {
+func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, CTXTIMEOUT context.Context, host string) {
 	var MUTEX sync.RWMutex
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
 		Mode:     "telnet",
-		Host:     flag.Arg(0),
+		Host:     host,
 		FromPort: int(port),
 		ToPort:   int(port),
 		Protocol: "tcp",
@@ -32,12 +31,12 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 	}
 	output.ModuleName = "telnet"
 	istart := time.Now()                                         // capture initial time
-	ipaddresses, err := lib.ResolveName(CTXTIMEOUT, flag.Arg(0)) // resolve DNS
+	ipaddresses, err := lib.ResolveName(CTXTIMEOUT, host) // resolve DNS
 	var stats = make([]time.Duration, 0)
 	if err != nil {
 		if *jsonoutput {
 			output.DNSLookup = lib.DNSLookup{
-				Hostname:          flag.Arg(0),
+				Hostname:          host,
 				Success:           false,
 				ResolvedAddresses: nil,
 				TimeTaken:         time.Since(istart).Microseconds(),
@@ -48,10 +47,10 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 		}
 	} else {
 		if !*jsonoutput {
-			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+flag.Arg(0)+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
+			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+host+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
 		} else {
 			output.DNSLookup = lib.DNSLookup{
-				Hostname:          flag.Arg(0),
+				Hostname:          host,
 				Success:           true,
 				ResolvedAddresses: ipaddresses,
 				TimeTaken:         time.Since(istart).Microseconds(),
