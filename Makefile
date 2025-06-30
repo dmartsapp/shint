@@ -8,6 +8,7 @@ BUILDFLAGS=-buildvcs=true $(LDFLAGS)
 MAKEFLAGS += --silent
 .PHONY: all clean run
 run:
+	go build -ldflags "-X main.Version=$(VERSIONSTR)" -o telnet main.go
 	go run -ldflags "-X main.Version=$(VERSIONSTR)" main.go
 
 all: linux darwin windows
