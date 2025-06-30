@@ -46,6 +46,12 @@ type WebStats struct {
 	StatusCode      int    `json:"status_code"`      // added field to store the HTTP status code
 }
 
+type NmapStats struct {
+	Address string `json:"address"`
+	Port    int    `json:"port"`
+	Success bool   `json:"success"`
+}
+
 type ICMPStats struct {
 	Address     string `json:"address"`
 	Success     bool   `json:"success"`

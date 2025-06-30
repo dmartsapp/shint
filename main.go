@@ -89,7 +89,7 @@ var nmapCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 		defer cancel()
 
-		handlers.NmapHandler(ctx, args[0], fromport, endport, iterations, timeout, throttle)
+		handlers.NmapHandler(ctx, args[0], fromport, endport, iterations, timeout, throttle, &jsonoutput)
 	},
 }
 

@@ -3,8 +3,10 @@ package handlers
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,16 +15,47 @@ import (
 	"github.com/farhansabbir/telnet/lib"
 )
 
-func NmapHandler(ctx context.Context, host string, fromport, endport, iterations, timeout int, throttle bool) {
-	istart := time.Now()                                   // capture initial time
+func NmapHandler(ctx context.Context, host string, fromport, endport, iterations, timeout int, throttle bool, jsonoutput *bool) {
+	output := lib.JSONOutput{}
+	istart := time.Now()
+	if *jsonoutput {
+		output.InputParams = lib.InputParams{
+			Mode:       "nmap",
+			Host:       host,
+			FromPort:   fromport,
+			ToPort:     endport,
+			Protocol:   "tcp",
+			Timeout:    timeout,
+			Count:      iterations,
+			Delay:      0,
+			Payload:    0,
+			Throttle:   throttle,
+		}
+		output.ModuleName = "nmap"
+		output.StartTime = istart.UnixMicro()
+		output.Stats = make([]lib.NmapStats, 0)
+	}
+
 	ipaddresses, err := lib.ResolveName(ctx, host) // resolve DNS
-	var stats = make([]time.Duration, 0)
 	if err != nil {
-		fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
-		fmt.Println(lib.LogStats("telnet", stats, iterations))
+		if *jsonoutput {
+			output.Error = err.Error()
+		} else {
+			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+		}
 	} else { // this is where no error occured in DNS lookup and we can proceed with regular nmap now
-		fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+host+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
+		if !*jsonoutput {
+			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+host+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
+		} else {
+			output.DNSLookup = lib.DNSLookup{
+				Hostname:          host,
+				Success:           true,
+				ResolvedAddresses: ipaddresses,
+				TimeTaken:         time.Since(istart).Microseconds(),
+			}
+		}
 		var WG sync.WaitGroup
+		var MUTEX sync.RWMutex
 		for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 			for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 				for port := fromport; port <= endport; port++ { // we need to loop over all ports individually
@@ -39,9 +72,19 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 						defer WG.Done()
 						_, err := lib.IsPortUp(ip, port, timeout) // check if given port from this iteration is up or not
 						if err != nil {
-
+							if *jsonoutput {
+								MUTEX.Lock()
+								output.Stats = append(output.Stats.([]lib.NmapStats), lib.NmapStats{Address: ip, Port: port, Success: false})
+								MUTEX.Unlock()
+							}
 						} else {
-							fmt.Println(lib.LogWithTimestamp(ip+" has port "+strconv.Itoa(port)+" open", false))
+							if *jsonoutput {
+								MUTEX.Lock()
+								output.Stats = append(output.Stats.([]lib.NmapStats), lib.NmapStats{Address: ip, Port: port, Success: true})
+								MUTEX.Unlock()
+							} else {
+								fmt.Println(lib.LogWithTimestamp(ip+" has port "+strconv.Itoa(port)+" open", false))
+							}
 						}
 					}(ip, port)
 				}
@@ -49,5 +92,17 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		}
 		WG.Wait()
 	}
-	fmt.Println("Total time taken: " + time.Since(istart).String())
+
+	if *jsonoutput {
+		output.EndTime = time.Now().UnixMicro()
+		output.TotalTimeTaken = output.EndTime - output.StartTime
+		JS, jsonErr := json.MarshalIndent(output, "", "  ")
+		if jsonErr != nil {
+			fmt.Println(lib.LogWithTimestamp(jsonErr.Error(), true))
+			os.Exit(1)
+		}
+		fmt.Println(string(JS))
+	} else {
+		fmt.Println("Total time taken: " + time.Since(istart).String())
+	}
 }
