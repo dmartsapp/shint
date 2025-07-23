@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -37,13 +38,17 @@ type TelnetStats struct {
 }
 
 type WebStats struct {
-	URL             string `json:"url"`
-	Success         bool   `json:"success"`
-	RecvTime        int64  `json:"recv_unixtime_µs"`
-	SentTime        int64  `json:"sent_unixtime_µs"`
-	TimeTaken       int64  `json:"time_taken_µs"`
-	BytesDownloaded int    `json:"bytes_downloaded"` // added field to store the number of bytes downloaded
-	StatusCode      int    `json:"status_code"`      // added field to store the HTTP status code
+	URL             string      `json:"url"`
+	Method          string      `json:"method"`
+	Data            string      `json:"data"`
+	Headers         http.Header `json:"headers"`
+	Response        string      `json:"response"`
+	Success         bool        `json:"success"`
+	RecvTime        int64       `json:"recv_unixtime_µs"`
+	SentTime        int64       `json:"sent_unixtime_µs"`
+	TimeTaken       int64       `json:"time_taken_µs"`
+	BytesDownloaded int         `json:"bytes_downloaded"` // added field to store the number of bytes downloaded
+	StatusCode      int         `json:"status_code"`      // added field to store the HTTP status code
 }
 
 type NmapStats struct {

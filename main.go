@@ -25,6 +25,9 @@ var (
 	jsonoutput   bool
 	fromport     int
 	endport      int
+	httpmethod   string
+	httpdata     string
+	httpheaders  []string
 )
 
 var rootCmd = &cobra.Command{
@@ -66,8 +69,8 @@ var pingCmd = &cobra.Command{
 
 var webCmd = &cobra.Command{
 	Use:   "web [url]",
-	Short: "Make an HTTP GET request to a URL",
-	Long:  `This command makes an HTTP GET request to a URL and displays the response.`,
+	Short: "Make an HTTP request to a URL",
+	Long:  `This command makes an HTTP request to a URL and displays the response. Supported methods: GET, POST, PUT, DELETE.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		URL, err := url.Parse(args[0])
@@ -76,7 +79,7 @@ var webCmd = &cobra.Command{
 			return
 		}
 
-		handlers.WebHandler(&jsonoutput, iterations, delay, &throttle, timeout, URL)
+		handlers.WebHandler(&jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders)
 	},
 }
 
@@ -100,6 +103,9 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&payload_size, "payload", 4, "Ping payload size in bytes")
 	rootCmd.PersistentFlags().BoolVar(&throttle, "throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
 	rootCmd.PersistentFlags().BoolVar(&jsonoutput, "json", false, "Flag option to output only in JSON format")
+	webCmd.Flags().StringVarP(&httpmethod, "method", "X", "GET", "HTTP method to use (GET, POST, PUT, DELETE)")
+	webCmd.Flags().StringVarP(&httpdata, "data", "d", "", "HTTP data to send")
+	webCmd.Flags().StringArrayVarP(&httpheaders, "header", "H", []string{}, "HTTP headers to send (can be specified multiple times)")
 	nmapCmd.Flags().IntVar(&fromport, "from", 1, "Start port for TCP scan")
 	nmapCmd.Flags().IntVar(&endport, "to", 80, "End port for TCP scan")
 	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)

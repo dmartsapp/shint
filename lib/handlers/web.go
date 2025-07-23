@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -13,8 +15,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"crypto/rand"
-	"context"
 
 	"github.com/farhansabbir/telnet/lib"
 )
@@ -23,7 +23,7 @@ const (
 	HTTP_CLIENT_USER_AGENT string = "dmarts.app-http-v0.1"
 )
 
-func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL) {
+func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	var stats = make([]time.Duration, 0)
@@ -85,7 +85,8 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				},
 			} // setup http transport not to validate the SSL certificate
 
-			request, err := http.NewRequest("GET", URL.String(), nil) // only setup for get requests
+			// Create a new request with the specified method, URL, and data
+			request, err := http.NewRequest(method, URL.String(), strings.NewReader(data))
 			if err != nil {
 				if strings.Contains(err.Error(), "tls") {
 					fmt.Println(lib.LogWithTimestamp(err.Error(), true))
@@ -93,10 +94,17 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				} else {
 					return
 				}
-
 			}
 			request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT) // set the header for the user-agent
-			start := time.Now()                                      // capture initial time
+			// Set headers
+			for _, h := range headers {
+				parts := strings.SplitN(h, ":", 2)
+				if len(parts) == 2 {
+					request.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+				}
+			}
+
+			start := time.Now() // capture initial time
 			response, err := client.Do(request)
 			if err != nil {
 				fmt.Println(lib.LogWithTimestamp(err.Error(), true))
@@ -106,7 +114,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			body, _ := io.ReadAll(response.Body) // read the entire body, this should consume most of the time
 			header := response.Header
 			time_taken := time.Since(start) //capture the time taken
-			
+
 			MUTEX.Lock()
 			stats = append(stats, time_taken)
 			MUTEX.Unlock()
@@ -114,6 +122,9 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			if *jsonoutput {
 				stat := lib.WebStats{}
 				stat.URL = URL.String()
+				stat.Method = method
+				stat.Data = data
+				stat.Headers = request.Header
 				stat.Success = true
 				stat.StatusCode = response.StatusCode
 				stat.BytesDownloaded = len(string(body)) + len(header)
