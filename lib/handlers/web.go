@@ -23,7 +23,7 @@ const (
 	HTTP_CLIENT_USER_AGENT string = "dmarts.app-http-v0.1"
 )
 
-func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string) {
+func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	var stats = make([]time.Duration, 0)
@@ -54,10 +54,36 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		}
 		output.ModuleName = "web"
 		output.InputParams.Host = URL.Host
-		output.DNSLookup = lib.DNSLookup{
-			Hostname: URL.Hostname(),
+		resolvedIPs, err := lib.ResolveNameToIPs(context.Background(), URL.Hostname())
+		if err != nil {
+			output.DNSLookup = lib.DNSLookup{
+				Hostname: URL.Hostname(),
+			}
+			output.Error = err.Error()
+			output.DNSLookup.Success = false
+			output.DNSLookup.ResolvedAddresses = nil
+			output.DNSLookup.TimeTaken = time.Since(istart).Microseconds()
+
+		} else {
+			output.DNSLookup = lib.DNSLookup{
+				Hostname: URL.Hostname(),
+			}
+			output.DNSLookup.Success = true
+			output.DNSLookup.ResolvedAddresses = make([]string, len(resolvedIPs))
+			output.DNSLookup.TimeTaken = time.Since(istart).Microseconds()
+			for i, ip := range resolvedIPs {
+				output.DNSLookup.ResolvedAddresses[i] = ip.String()
+			}
 		}
+
 		output.InputParams.FromPort, _ = strconv.Atoi(URL.Port())
+		if output.InputParams.FromPort == 0 {
+			if URL.Scheme == "https" {
+				output.InputParams.FromPort = 443
+			} else {
+				output.InputParams.FromPort = 80
+			}
+		}
 		output.InputParams.ToPort = output.InputParams.FromPort
 		output.StartTime = istart.UnixMicro()
 		output.Stats = make([]lib.WebStats, 0)
@@ -130,7 +156,11 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				stat := lib.WebStats{}
 				stat.Errors = errors
 				stat.URL = URL.String()
-				stat.Response = map[string]any{"body": string(body), "header": header}
+				if includeresponsebody {
+					stat.Response = map[string]any{"body": string(body), "header": header}
+				} else {
+					stat.Response = map[string]any{"header": request.Header}
+				}
 				stat.Request = map[string]any{"method": method, "data": request.Body, "headers": request.Header}
 				stat.Success = true
 				stat.StatusCode = response.StatusCode

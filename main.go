@@ -17,17 +17,18 @@ var (
 )
 
 var (
-	iterations   int
-	delay        int
-	throttle     bool
-	timeout      int
-	payload_size int
-	jsonoutput   bool
-	fromport     int
-	endport      int
-	httpmethod   string
-	httpdata     string
-	httpheaders  []string
+	iterations          int
+	delay               int
+	throttle            bool
+	timeout             int
+	payload_size        int
+	jsonoutput          bool
+	fromport            int
+	endport             int
+	httpmethod          string
+	httpdata            string
+	httpheaders         []string
+	includeresponsebody bool
 )
 
 var rootCmd = &cobra.Command{
@@ -68,10 +69,11 @@ var pingCmd = &cobra.Command{
 }
 
 var webCmd = &cobra.Command{
-	Use:   "web [url]",
-	Short: "Make an HTTP request to a URL",
-	Long:  `This command makes an HTTP request to a URL and displays the response. Supported methods: GET, POST, PUT, DELETE.`,
-	Args:  cobra.ExactArgs(1),
+	Use:     "web [url]",
+	Short:   "Make an HTTP request to a URL",
+	Long:    `This command makes an HTTP request to a URL and displays the response. Does not follow redirects or embedded resources.`,
+	Args:    cobra.ExactArgs(1),
+	Example: rootCmd.Name() + " web --json -H \"authorization:Bearer <token>\" -H \"content-type:application/json\" http://google.com --count 1",
 	Run: func(cmd *cobra.Command, args []string) {
 		URL, err := url.Parse(args[0])
 		if err != nil {
@@ -79,7 +81,7 @@ var webCmd = &cobra.Command{
 			return
 		}
 
-		handlers.WebHandler(&jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders)
+		handlers.WebHandler(&jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody)
 	},
 }
 
@@ -104,8 +106,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&throttle, "throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
 	rootCmd.PersistentFlags().BoolVar(&jsonoutput, "json", false, "Flag option to output only in JSON format")
 	webCmd.Flags().StringVarP(&httpmethod, "method", "X", "GET", "HTTP method to use (GET, POST, PUT, DELETE)")
-	webCmd.Flags().StringVarP(&httpdata, "data", "d", "", "HTTP data to send")
+	webCmd.Flags().StringVarP(&httpdata, "payload", "P", "", "HTTP payload data to send")
 	webCmd.Flags().StringArrayVarP(&httpheaders, "header", "H", []string{}, "HTTP headers to send (can be specified multiple times)")
+	webCmd.Flags().BoolVarP(&includeresponsebody, "withbody", "W", false, "Include the response body in the JSON output")
 	nmapCmd.Flags().IntVar(&fromport, "from", 1, "Start port for TCP scan")
 	nmapCmd.Flags().IntVar(&endport, "to", 80, "End port for TCP scan")
 	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
