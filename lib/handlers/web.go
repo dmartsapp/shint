@@ -46,8 +46,11 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			Timeout:  timeout,
 			Count:    iterations,
 			Delay:    delay,
-			Payload:  0,
+			Payload:  len(data) + len(headers),
 			Throttle: *throttle,
+			Method:   method,
+			Data:     data,
+			Headers:  headers,
 		}
 		output.ModuleName = "web"
 		output.InputParams.Host = URL.Host
@@ -78,6 +81,8 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		WG.Add(1)
 		go func(URL *url.URL) {
 			defer WG.Done()
+			errors := make([]string, 0)
+
 			client := &http.Client{
 				Timeout: time.Duration(time.Duration(timeout) * time.Second),
 				Transport: &http.Transport{
@@ -101,6 +106,8 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				parts := strings.SplitN(h, ":", 2)
 				if len(parts) == 2 {
 					request.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+				} else {
+					errors = append(errors, "Invalid header format: "+fmt.Sprint(parts))
 				}
 			}
 
@@ -121,10 +128,10 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 
 			if *jsonoutput {
 				stat := lib.WebStats{}
+				stat.Errors = errors
 				stat.URL = URL.String()
-				stat.Method = method
-				stat.Data = data
-				stat.Headers = request.Header
+				stat.Response = map[string]any{"body": string(body), "header": header}
+				stat.Request = map[string]any{"method": method, "data": request.Body, "headers": request.Header}
 				stat.Success = true
 				stat.StatusCode = response.StatusCode
 				stat.BytesDownloaded = len(string(body)) + len(header)
@@ -139,6 +146,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 	WG.Wait()
 	if *jsonoutput {
+		output.InputParams.Headers = headers
 		output.EndTime = time.Now().UnixMicro()
 		output.TotalTimeTaken = output.EndTime - output.StartTime
 		output.Error = ""
@@ -154,4 +162,15 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		MUTEX.RUnlock()
 		fmt.Println("Total time taken: " + time.Since(istart).String())
 	}
+}
+
+func getHeaders(headers []string) http.Header {
+	header := http.Header{}
+	for _, h := range headers {
+		parts := strings.SplitN(h, ":", 2)
+		if len(parts) == 2 {
+			header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+		}
+	}
+	return header
 }
