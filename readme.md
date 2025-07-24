@@ -1,4 +1,6 @@
-# Go Telnet v2.0.0
+# Go Telnet v2.x.y
+
+## Introduction
 
 A simple, modern, and versatile network utility tool built with Go. This tool provides a convenient way to perform common network checks, including `telnet`, `ping`, `nmap`, and `web` requests.
 
@@ -171,15 +173,15 @@ Min time: 9ms, Max time: 9ms, Avg time: 9.000ms, Std dev: 0.000, Total time: 1.0
 
 ### Web
 
-The `web` command makes an HTTP GET request to a URL and displays the response.
+The `web` command makes an HTTP request to a URL and displays the response. It can be used for simple GET requests or as a more advanced REST client.
 
 **Syntax:**
 
 ```bash
-./telnet web [url]
+./telnet web [url] [flags]
 ```
 
-**Example:**
+**Example (Simple GET):**
 
 ```bash
 ./telnet web https://google.com
@@ -197,7 +199,26 @@ Latency: minimum: 233.967416ms, average: 233.967416ms, maximum: 233.967416ms
 Total time taken: 235.525041ms
 ```
 
-**JSON Output:**
+### REST Client (Advanced: from v2.2.0)
+
+The `web` command includes a powerful REST client for making API requests. You can specify the HTTP method, send a request body, and add custom headers.
+
+**Flags:**
+
+*   `-X`, `--method`: The HTTP method to use (e.g., `GET`, `POST`, `PUT`, `DELETE`). Defaults to `GET`.
+*   `-P`, `--payload`: The HTTP payload (request body) to send.
+*   `-H`, `--header`: An HTTP header to include in the request. This flag can be specified multiple times for multiple headers (e.g., `-H "Content-Type: application/json" -H "Authorization: Bearer <token>"`).
+*   `-W`, `--withbody`: Include the full response body in the JSON output.
+
+**Example (POST Request with JSON):**
+
+This example sends a POST request with a JSON payload and a custom `Content-Type` header. The output is requested in JSON format and includes the full response body.
+
+```bash
+./telnet web -X POST -P '{"name": "test"}' -H "Content-Type: application/json" --json -W https://httpbin.org/post
+```
+
+**JSON Output (POST Request):**
 
 ```json
 {
@@ -205,42 +226,106 @@ Total time taken: 235.525041ms
     "module_name": "web",
     "sequential": false,
     "throttle": false,
-    "host": "google.com",
-    "from_port": 0,
-    "to_port": 0,
+    "host": "httpbin.org",
+    "from_port": 443,
+    "to_port": 443,
     "protocol": "tcp",
     "timeout_ms": 5,
     "count": 1,
     "delay_ms": 1000,
-    "payload_bytes": 0
+    "payload_bytes": 15,
+    "method": "POST",
+    "data": "{\"name\": \"test\"}",
+    "headers": [
+      "Content-Type: application/json"
+    ]
   },
   "module_name": "web",
   "dns_lookup": {
-    "hostname": "google.com",
-    "resolved_addresses": null,
+    "hostname": "httpbin.org",
+    "resolved_addresses": [
+      "3.231.133.143",
+      "54.162.127.135",
+      "..."
+    ],
     "error": "",
-    "success": false,
-    "time_taken_µs": 0
+    "success": true,
+    "time_taken_µs": 12345
   },
   "stats": [
     {
-      "url": "https://google.com",
+      "url": "https://httpbin.org/post",
+      "errors": [],
+      "request": {
+        "body": {},
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "User-Agent": [
+            "dmarts.app-http-v0.1"
+          ]
+        },
+        "method": "POST"
+      },
+      "response": {
+        "body": {
+          "args": {},
+          "data": "{\"name\": \"test\"}",
+          "files": {},
+          "form": {},
+          "headers": {
+            "Accept-Encoding": "gzip",
+            "Content-Length": "15",
+            "Content-Type": "application/json",
+            "Host": "httpbin.org",
+            "User-Agent": "dmarts.app-http-v0.1",
+            "X-Amzn-Trace-Id": "Root=1-689e3a4b-..."
+          },
+          "json": {
+            "name": "test"
+          },
+          "origin": "...",
+          "url": "https://httpbin.org/post"
+        },
+        "header": {
+          "Access-Control-Allow-Credentials": [
+            "true"
+          ],
+          "Access-Control-Allow-Origin": [
+            "*"
+          ],
+          "Content-Length": [
+            "484"
+          ],
+          "Content-Type": [
+            "application/json"
+          ],
+          "Date": [
+            "Mon, 24 Jul 2025 18:00:00 GMT"
+          ],
+          "Server": [
+            "gunicorn/19.9.0"
+          ]
+        }
+      },
       "success": true,
-      "recv_unixtime_µs": 1751305214850478,
-      "sent_unixtime_µs": 1751305214633820,
-      "time_taken_µs": 216658,
-      "bytes_downloaded": 17779,
+      "recv_unixtime_µs": 1753380000123456,
+      "sent_unixtime_µs": 1753380000000000,
+      "time_taken_µs": 123456,
+      "bytes_downloaded": 1024,
       "status_code": 200
     }
   ],
-  "end_time_unixtime_µs": 1751305214850486,
-  "start_time_unixtime_µs": 1751305214633753,
-  "total_time_taken_µs": 216733,
+  "end_time_unixtime_µs": 1753380000123456,
+  "start_time_unixtime_µs": 1753379999000000,
+  "total_time_taken_µs": 1123456,
   "error": ""
 }
 ```
 
 ### Nmap
+
 
 The `nmap` command scans for open TCP ports on a host within a given range.
 
