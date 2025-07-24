@@ -154,20 +154,26 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 
 			if *jsonoutput {
 				stat := lib.WebStats{}
-				stat.Errors = errors
+
 				stat.URL = URL.String()
 				if includeresponsebody {
-					stat.Response = map[string]any{"body": string(body), "header": header}
+					var jsondata interface{}
+					err = json.Unmarshal(body, &jsondata)
+					if err != nil {
+						errors = append(errors, "JSON parse error: "+fmt.Sprint(err.Error()))
+					}
+					stat.Response = map[string]any{"body": jsondata, "header": header}
 				} else {
-					stat.Response = map[string]any{"header": request.Header}
+					stat.Response = map[string]any{"header": header}
 				}
-				stat.Request = map[string]any{"method": method, "data": request.Body, "headers": request.Header}
+				stat.Request = map[string]any{"method": method, "body": request.Body, "headers": request.Header}
 				stat.Success = true
 				stat.StatusCode = response.StatusCode
 				stat.BytesDownloaded = len(string(body)) + len(header)
 				stat.SentTime = start.UnixMicro()
 				stat.RecvTime = time.Now().UnixMicro()
 				stat.TimeTaken = stat.RecvTime - stat.SentTime
+				stat.Errors = errors
 				output.Stats = append(output.Stats.([]lib.WebStats), stat)
 			} else {
 				fmt.Println(lib.LogWithTimestamp("Response: "+response.Status+", bytes downloaded: "+strconv.Itoa(len(string(body)))+", speed: "+strconv.FormatFloat((float64(len(string(body)))/float64(time_taken.Seconds())/1024), 'G', -1, 64)+"KB/s, time taken: "+time_taken.String(), false))
