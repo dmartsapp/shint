@@ -169,7 +169,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				stat.Request = map[string]any{"method": method, "body": request.Body, "headers": request.Header}
 				stat.Success = true
 				stat.StatusCode = response.StatusCode
-				stat.BytesDownloaded = len(string(body)) + len(header)
+				stat.BytesDownloaded = len(body) + len(header)
 				stat.SentTime = start.UnixMicro()
 				stat.RecvTime = time.Now().UnixMicro()
 				stat.TimeTaken = stat.RecvTime - stat.SentTime
