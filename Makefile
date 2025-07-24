@@ -13,29 +13,29 @@ run:
 
 all: linux darwin windows
 
-windows: windows-x64 windows-arm64
+windows: windows-amd64 windows-arm64
 
-linux: linux-x64 linux-arm64
+linux: linux-amd64 linux-arm64
 
-darwin: darwin-x64 darwin-arm64
+darwin: darwin-amd64 darwin-arm64
 
 windows-arm64:
 	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o bin/$(BINARY).windows.arm64 $(BUILDFLAGS) main.go
 
-windows-x64:
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).windows.x64 $(BUILDFLAGS) main.go
+windows-amd64:
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).windows.amd64 $(BUILDFLAGS) main.go
 
 linux-arm64:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/$(BINARY).linux-arm64 $(BUILDFLAGS) main.go
 
-linux-x64:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(BINARY).linux-x64 $(BUILDFLAGS) main.go
+linux-amd64:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(BINARY).linux-amd64 $(BUILDFLAGS) main.go
 
 darwin-arm64:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/$(BINARY).darwin-arm64 $(BUILDFLAGS) main.go
 
-darwin-x64:
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o bin/$(BINARY).darwin-x64 $(BUILDFLAGS) main.go
+darwin-amd64:
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o bin/$(BINARY).darwin-amd64 $(BUILDFLAGS) main.go
 
 clean:
 	rm bin/*
