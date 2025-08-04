@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Version string
+	Version string = "0.0.1"
 )
 
 var (
@@ -112,6 +112,7 @@ func init() {
 	nmapCmd.Flags().IntVar(&fromport, "from", 1, "Start port for TCP scan")
 	nmapCmd.Flags().IntVar(&endport, "to", 80, "End port for TCP scan")
 	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
+	rootCmd.Version = Version
 }
 
 func main() {
