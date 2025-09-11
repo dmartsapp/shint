@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/farhansabbir/telnet/lib"
+	"github.com/dmartsapp/telnet/lib"
 )
 
 func NmapHandler(ctx context.Context, host string, fromport, endport, iterations, timeout int, throttle bool, jsonoutput *bool) {
@@ -20,16 +20,16 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 	istart := time.Now()
 	if *jsonoutput {
 		output.InputParams = lib.InputParams{
-			Mode:       "nmap",
-			Host:       host,
-			FromPort:   fromport,
-			ToPort:     endport,
-			Protocol:   "tcp",
-			Timeout:    timeout,
-			Count:      iterations,
-			Delay:      0,
-			Payload:    0,
-			Throttle:   throttle,
+			Mode:     "nmap",
+			Host:     host,
+			FromPort: fromport,
+			ToPort:   endport,
+			Protocol: "tcp",
+			Timeout:  timeout,
+			Count:    iterations,
+			Delay:    0,
+			Payload:  0,
+			Throttle: throttle,
 		}
 		output.ModuleName = "nmap"
 		output.StartTime = istart.UnixMicro()

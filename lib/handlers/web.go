@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/farhansabbir/telnet/lib"
+	"github.com/dmartsapp/telnet/lib"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/farhansabbir/telnet/lib/handlers"
+	"github.com/dmartsapp/telnet/lib/handlers"
 	"github.com/spf13/cobra"
 )
 
