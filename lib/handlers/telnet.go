@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/farhansabbir/telnet/lib"
+	"github.com/dmartsapp/telnet/lib"
 )
 
 func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, CTXTIMEOUT context.Context, host string) {
@@ -30,7 +30,7 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 		Throttle: *throttle,
 	}
 	output.ModuleName = "telnet"
-	istart := time.Now()                                         // capture initial time
+	istart := time.Now()                                  // capture initial time
 	ipaddresses, err := lib.ResolveName(CTXTIMEOUT, host) // resolve DNS
 	var stats = make([]time.Duration, 0)
 	if err != nil {
