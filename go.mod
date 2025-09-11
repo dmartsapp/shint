@@ -8,8 +8,8 @@ go 1.23.5
 // )
 
 require (
-	github.com/farhansabbir/go-ping v1.1.0
-	github.com/farhansabbir/telnet v1.8.0
+	github.com/dmartsapp/go-ping v1.1.0
+	github.com/dmartsapp/telnet v1.8.0
 	github.com/spf13/cobra v1.9.1
 )
 
