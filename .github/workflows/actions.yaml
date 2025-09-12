@@ -132,7 +132,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          body: "Automated release for tag ${{ github.ref_name }}"
+          body: "Automated release for ${{ github.ref_name }}/${{ github.sha}}\n $GITHUB_STEP_SUMMARY"
           files: |
             bin/*
         env:
