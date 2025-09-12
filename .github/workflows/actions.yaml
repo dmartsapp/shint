@@ -131,12 +131,12 @@ jobs:
       - name: Prepare summary for release body
         run: |
           cp $GITHUB_STEP_SUMMARY release_notes.md
-          
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          body: "Automated release for ${{ github.ref_name }}/${{ github.sha}}"
+        #   body: "Automated release for ${{ github.ref_name }}/${{ github.sha}}"
           body_path: ${{ github.workspace }}/release_notes.md
           append_body: true
           files: |
