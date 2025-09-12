@@ -36,6 +36,8 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
+          fail_level: error
+          level: info
       - name: Run vulnerability check
         id: govulncheck
         if: ${{ steps.golangci-lint.conclusion == 'success' }}
