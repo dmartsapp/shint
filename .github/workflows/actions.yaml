@@ -105,7 +105,7 @@ jobs:
         id: build-step
         run: |
             mkdir -p bin
-            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -buildvcs=true -ldflags="-s -w" -o bin/telnet_${{ matrix.os }}_${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -buildvcs=true -ldflags="-s -w" "-X main.Version=${{ github.ref_name }}" -o bin/telnet.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
 
       - name: Upload artifacts
         if: success() || failure()
