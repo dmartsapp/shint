@@ -127,12 +127,14 @@ jobs:
               echo "| ❌ telnet_${{ matrix.os }}_${{ matrix.arch }} | Failed |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo ${GITHUB_STEP_SUMMARY} > /tmp/step_summary.txt
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          body: "Automated release for ${{ github.ref_name }}/${{ github.sha}}\n $GITHUB_STEP_SUMMARY"
+          body: "Automated release for ${{ github.ref_name }}/${{ github.sha}}"
+          body_path: /tmp/step_summary.txt
           files: |
             bin/*
         env:
