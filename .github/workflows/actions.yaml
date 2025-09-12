@@ -134,7 +134,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           body: "Automated release for ${{ github.ref_name }}/${{ github.sha}}"
-          body_path: $GITHUB_STEP_SUMMARY
+          body_path: ${{ github.workspace }}/step_summary.txt
           append_body: true
           files: |
             bin/*
