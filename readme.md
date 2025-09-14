@@ -38,13 +38,13 @@ The `telnet` command attempts to connect to a host on a specific port.
 **Syntax:**
 
 ```bash
-./telnet telnet [host] [port]
+./tnt telnet [host] [port]
 ```
 
 **Example:**
 
 ```bash
-./telnet telnet google.com 443
+./tnt telnet google.com 443
 ```
 
 **Output:**
@@ -109,13 +109,13 @@ The `ping` command sends ICMP ECHO_REQUEST packets to a host to test reachabilit
 **Syntax:**
 
 ```bash
-./telnet ping [host]
+./tnt ping [host]
 ```
 
 **Example:**
 
 ```bash
-./telnet ping google.com
+./tnt ping google.com
 ```
 
 **Output:**
@@ -180,13 +180,13 @@ The `web` command makes an HTTP request to a URL and displays the response. It c
 **Syntax:**
 
 ```bash
-./telnet web [url] [flags]
+./tnt web [url] [flags]
 ```
 
 **Example (Simple GET):**
 
 ```bash
-./telnet web https://google.com
+./tnt web https://google.com
 ```
 
 **Output:**
@@ -217,7 +217,7 @@ The `web` command includes a powerful REST client for making API requests. You c
 This example sends a POST request with a JSON payload and a custom `Content-Type` header. The output is requested in JSON format and includes the full response body.
 
 ```bash
-./telnet web -X POST -P '{"name": "test"}' -H "Content-Type: application/json" --json -W https://httpbin.org/post
+./tnt web -X POST -P '{"name": "test"}' -H "Content-Type: application/json" --json -W https://httpbin.org/post
 ```
 
 **JSON Output (POST Request):**
@@ -334,13 +334,13 @@ The `nmap` command scans for open TCP ports on a host within a given range.
 **Syntax:**
 
 ```bash
-./telnet nmap --from [start_port] --to [end_port] [host]
+./tnt nmap --from [start_port] --to [end_port] [host]
 ```
 
 **Example:**
 
 ```bash
-./telnet nmap --from 80 --to 100 google.com
+./tnt nmap --from 80 --to 100 google.com
 ```
 
 **Output:**
