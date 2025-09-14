@@ -52,6 +52,13 @@ jobs:
           echo "| Checkout | ✅ Success |" >> $GITHUB_STEP_SUMMARY
           echo "| SonarQube Scan | $([[ '${{ steps.sonarqube-scan-check.outcome }}' == 'success' ]] && echo ✅ Success || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
           echo "| Quality Gate | $([[ '${{ steps.sonarqube-quality-gate-check.outcome }}' == 'success' ]] && echo ✅ Passed || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Clean up Sonar lock file
+        run: |
+          if [ -d ".scannerwork" ]; then
+            rm -rf .scannerwork
+          fi
+        shell: bash
       - uses: actions/setup-go@v6
         with:
           go-version: '>=1.25.1'
