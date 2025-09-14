@@ -23,6 +23,32 @@ jobs:
           fetch-depth: 0
           submodules: recursive
           token: ${{ secrets.TELNET_TOKEN }}
+      - name: SonarQube Scan
+        id: sonarqube-scan-check
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+        env:
+          SONAR_TOKEN: ${{ secrets.CICD_SONAR_TOKEN }}
+
+      - name: SonarQube Quality Gate
+        id: sonarqube-quality-gate-check
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.CICD_SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: farhansabbir_cicd
+          SONAR_HOST_URL: https://sonarcloud.io
+
+      - name: Summarize SonarQube job
+        if: always()
+        run: |
+          echo "## 🧪 SonarQube Analysis Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Step | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Checkout | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          echo "| SonarQube Scan | $([[ '${{ steps.sonarqube-scan-check.outcome }}' == 'success' ]] && echo ✅ Success || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Gate | $([[ '${{ steps.sonarqube-quality-gate-check.outcome }}' == 'success' ]] && echo ✅ Passed || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
       - uses: actions/setup-go@v6
         with:
           go-version: '>=1.25.1'
