@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dmartsapp/telnet/lib/handlers"
+	"github.com/dmartsapp/tnt/lib/handlers"
 	"github.com/spf13/cobra"
 )
 

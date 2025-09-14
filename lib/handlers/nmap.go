@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dmartsapp/telnet/lib"
+	"github.com/dmartsapp/tnt/lib"
 )
 
 func NmapHandler(ctx context.Context, host string, fromport, endport, iterations, timeout int, throttle bool, jsonoutput *bool) {

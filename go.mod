@@ -1,4 +1,4 @@
-module github.com/dmartsapp/telnet
+module github.com/dmartsapp/tnt
 
 go 1.24.0
 

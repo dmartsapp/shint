@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dmartsapp/go-ping/netutils"
-	"github.com/dmartsapp/telnet/lib"
+	"github.com/dmartsapp/tnt/lib"
 )
 
 func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int) {
