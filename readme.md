@@ -1,4 +1,4 @@
-# Go Telnet v2.x.y
+# The New Telnet - aka tnt, (v2.x.y)
 
 ## Introduction
 
