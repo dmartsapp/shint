@@ -200,13 +200,13 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 }
 
-func getHeaders(headers []string) http.Header {
-	header := http.Header{}
-	for _, h := range headers {
-		parts := strings.SplitN(h, ":", 2)
-		if len(parts) == 2 {
-			header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
-		}
-	}
-	return header
-}
+// func getHeaders(headers []string) http.Header {
+// 	header := http.Header{}
+// 	for _, h := range headers {
+// 		parts := strings.SplitN(h, ":", 2)
+// 		if len(parts) == 2 {
+// 			header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+// 		}
+// 	}
+// 	return header
+// }

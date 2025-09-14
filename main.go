@@ -77,6 +77,9 @@ var webCmd = &cobra.Command{
 	Example: rootCmd.Name() + " web --json -H \"authorization:Bearer <token>\" -H \"content-type:application/json\" http://google.com --count 1",
 	Run: func(cmd *cobra.Command, args []string) {
 		URL, err := url.Parse(args[0])
+		if URL.Scheme == "" {
+			URL.Scheme = "https"
+		}
 		if err != nil {
 			fmt.Println("Invalid URL")
 			return
