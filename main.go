@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -32,7 +33,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "telnet",
+	Use:     filepath.Base(os.Args[0]),
 	Short:   "A simple network utility tool",
 	Long:    `A simple network utility tool that provides telnet, ping, nmap, and web client functionalities.`,
 	Version: Version,
