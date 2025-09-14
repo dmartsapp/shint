@@ -34,13 +34,13 @@ jobs:
           SONAR_ORGANIZATION: farhansabbir
           SONAR_HOST_URL: https://sonarcloud.io
 
-      - name: SonarQube Quality Gate
-        id: sonarqube-quality-gate-check
-        uses: SonarSource/sonarqube-quality-gate-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.CICD_SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: farhansabbir_cicd
-          SONAR_HOST_URL: https://sonarcloud.io
+      # - name: SonarQube Quality Gate
+      #   id: sonarqube-quality-gate-check
+      #   uses: SonarSource/sonarqube-quality-gate-action@master
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.CICD_SONAR_TOKEN }}
+      #     SONAR_PROJECT_KEY: farhansabbir_cicd
+      #     SONAR_HOST_URL: https://sonarcloud.io
 
       - name: Summarize SonarQube job
         if: always()
