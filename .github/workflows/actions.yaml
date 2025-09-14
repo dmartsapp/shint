@@ -25,8 +25,7 @@ jobs:
           token: ${{ secrets.TELNET_TOKEN }}
       - name: SonarQube Scan
         id: sonarqube-scan-check
-        # uses: SonarSource/sonarcloud-github-action@v2
-        uses: antonioaversa/sonarcloud-github-action@v4.0.0
+        uses: sonarsource/sonarcloud-github-action@v5
         with:
           projectBaseDir: .
         env:
