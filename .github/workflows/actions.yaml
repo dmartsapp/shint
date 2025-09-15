@@ -181,9 +181,8 @@ jobs:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          # Download to the root of the workspace to simplify paths.
-          # The downloaded artifacts will be placed in directories named after the artifact name.
-          path: .
+          # Use an explicit, new directory for the download
+          path: release-artifacts
           
       - name: Checkout code for commit message
         uses: actions/checkout@v5
@@ -203,7 +202,7 @@ jobs:
           echo "| OS/Arch | Status |" >> release_notes.md
           echo "|---|---|" >> release_notes.md
           
-          # This loop checks for the existence of the expected files to determine status
+          # This loop now checks the new, explicit path for the binaries
           for combo in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
             os=$(echo $combo | awk -F'-' '{print $1}')
             arch=$(echo $combo | awk -F'-' '{print $2}')
@@ -212,8 +211,8 @@ jobs:
               binary_name+=".exe"
             fi
             
-            # The correct path to check for the downloaded binary is the artifact name + the original path
-            if [ -f "binary-for-$os-$arch/bin/$binary_name" ]; then
+            # The correct path to check for the downloaded binary
+            if [ -f "release-artifacts/binary-for-$os-$arch/bin/$binary_name" ]; then
               echo "| $os/$arch | ✅ Success |" >> release_notes.md
             else
               echo "| $os/$arch | ❌ Failed |" >> release_notes.md
@@ -225,8 +224,8 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           body_path: release_notes.md
-          # Corrected files pattern to match the downloaded directory structure
+          # The files pattern now matches the new, explicit download path
           files: |
-            binary-for-*/*/*
+            release-artifacts/*/*/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
