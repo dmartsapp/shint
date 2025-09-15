@@ -182,7 +182,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           # Use an explicit, new directory for the download
-          path: release-artifacts
+          path: /home/runner/work/tnt/tnt/release-artifacts
           
       - name: Checkout code for commit message
         uses: actions/checkout@v5
@@ -226,6 +226,6 @@ jobs:
           body_path: release_notes.md
           # The files pattern now matches the new, explicit download path
           files: |
-            release-artifacts/*/*/*
+            /home/runner/work/tnt/tnt/release-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
