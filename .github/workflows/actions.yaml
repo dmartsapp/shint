@@ -164,16 +164,17 @@ jobs:
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           
-      - name: Prepare summary for release body
-        run: |
-          cp $GITHUB_STEP_SUMMARY release_notes.md
+      # - name: Prepare summary for release body
+      #   run: |
+      #     cp $GITHUB_STEP_SUMMARY release_notes.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-        #   body: "Automated release for ${{ github.ref_name }}/${{ github.sha}}"
-          body_path: ${{ github.workspace }}/release_notes.md
+          body: |
+           "Automated release for ${{ github.ref_name }}/${{ github.sha}}\n ${{ github.event.head_commit.message }}\n\n See the [Changelog](https://github.com/dmartsapp/tnt/blob/${{ github.ref_name }}/CHANGELOG.md)"
+          # body_path: ${{ github.workspace }}/release_notes.md
           append_body: true
           files: |
             bin/*
