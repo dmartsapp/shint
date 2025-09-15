@@ -197,6 +197,7 @@ jobs:
           echo "" >> release_notes.md
           echo "${{ github.event.head_commit.message }}" >> release_notes.md
           echo "" >> release_notes.md
+          
           echo "### Build Status Summary" >> release_notes.md
           echo "| OS/Arch | Status |" >> release_notes.md
           echo "|---|---|" >> release_notes.md
@@ -219,8 +220,20 @@ jobs:
           echo "" >> release_notes.md
           echo "### Code Changes" >> release_notes.md
           echo "\`\`\`diff" >> release_notes.md
-          git diff ${{ github.ref_name }}^ ${{ github.sha }} >> release_notes.md
+          
+          # Find the previous tag and store it in a variable
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}^)
+          
+          # Use the previous tag and the current tag for the diff
+          if [ -n "$PREVIOUS_TAG" ]; then
+            git diff $PREVIOUS_TAG ${{ github.ref_name }} >> release_notes.md
+          else
+            echo "No previous tag found. Showing diff from initial commit." >> release_notes.md
+            git diff 4b825dc642cb6eb9a060e54bf8d69288fbee4904 ${{ github.ref_name }} >> release_notes.md
+          fi
+          
           echo "\`\`\`" >> release_notes.md
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
 
       - name: List release artifacts
         run: |
