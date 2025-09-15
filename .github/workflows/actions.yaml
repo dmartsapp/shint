@@ -219,7 +219,7 @@ jobs:
           echo "" >> release_notes.md
           echo "### Code Changes" >> release_notes.md
           echo "\`\`\`diff" >> release_notes.md
-          git diff ${{ github.event.before }} ${{ github.sha }} >> release_notes.md
+          git diff ${{ github.ref_name }}^ ${{ github.sha }} >> release_notes.md
           echo "\`\`\`" >> release_notes.md
 
       - name: List release artifacts
