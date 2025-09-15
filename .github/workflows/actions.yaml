@@ -2,8 +2,6 @@ name: Build go binary and release
 
 on:
   push:
-    # branches:
-    #   - main
     tags:
       - 'v*.*.*'
 
@@ -35,15 +33,6 @@ jobs:
           SONAR_ORGANIZATION: farhansabbir
           SONAR_HOST_URL: https://sonarcloud.io
 
-      # Quality Gate is commented out, as in your original file.
-      # - name: SonarQube Quality Gate
-      #   id: sonarqube-quality-gate-check
-      #   uses: SonarSource/sonarqube-quality-gate-action@master
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.CICD_SONAR_TOKEN }}
-      #     SONAR_PROJECT_KEY: farhansabbir_cicd
-      #     SONAR_HOST_URL: https://sonarcloud.io
-
       - name: Summarize SonarQube job
         if: always()
         run: |
@@ -53,8 +42,7 @@ jobs:
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Checkout | ✅ Success |" >> $GITHUB_STEP_SUMMARY
           echo "| SonarQube Scan | $([[ '${{ steps.sonarqube-scan-check.outcome }}' == 'success' ]] && echo ✅ Success || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
-          # Quality Gate is commented out, but its summary is still being written to the file
-          echo "| Quality Gate | $([[ '${{ steps.sonarqube-quality-gate-check.outcome }}' == 'success' ]] && echo ✅ Passed || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Gate | N/A (step is commented out) |" >> $GITHUB_STEP_SUMMARY
       
       - name: Clean up Sonar lock file
         run: |
@@ -170,7 +158,7 @@ jobs:
         with:
           path: artifacts
           
-      - name: Checkout code
+      - name: Checkout code for commit message
         uses: actions/checkout@v5
         with:
           fetch-depth: 1
@@ -187,16 +175,19 @@ jobs:
           echo "| OS/Arch | Status |" >> release_notes.md
           echo "| --- | --- |" >> release_notes.md
           
-          # Iterate through the downloaded artifacts to check for success/failure
-          # The directory names will be "binary-for-os-arch"
-          for dir in artifacts/binary-for-*; do
-            if [ -d "$dir" ]; then
-              os_arch=$(basename "$dir" | sed 's/binary-for-//')
-              if [ -f "$dir/bin/tnt.$os_arch" ] || [ -f "$dir/bin/tnt.$os_arch.exe" ]; then
-                echo "| $os_arch | ✅ Success |" >> release_notes.md
-              else
-                echo "| $os_arch | ❌ Failed |" >> release_notes.md
-              fi
+          # This loop checks for the existence of the expected files to determine status
+          for combo in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
+            os=$(echo $combo | awk -F'-' '{print $1}')
+            arch=$(echo $combo | awk -F'-' '{print $2}')
+            binary_name="tnt.$os.$arch"
+            if [ "$os" == "windows" ]; then
+              binary_name+=".exe"
+            fi
+            
+            if [ -f "artifacts/binary-for-$os-$arch/bin/$binary_name" ]; then
+              echo "| $os/$arch | ✅ Success |" >> release_notes.md
+            else
+              echo "| $os/$arch | ❌ Failed |" >> release_notes.md
             fi
           done
 
@@ -205,6 +196,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           body_path: release_notes.md
-          files: artifacts/*/*/* # This pattern matches all files within the downloaded structure
+          files: artifacts/*/*/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
