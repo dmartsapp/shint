@@ -1,4 +1,4 @@
-name: Build go binary and release it
+name: Build go binary and release
 
 on:
   push:
@@ -23,6 +23,7 @@ jobs:
           fetch-depth: 0
           submodules: recursive
           token: ${{ secrets.TELNET_TOKEN }}
+      
       - name: SonarQube Scan
         id: sonarqube-scan-check
         uses: sonarsource/sonarcloud-github-action@v5
@@ -34,6 +35,7 @@ jobs:
           SONAR_ORGANIZATION: farhansabbir
           SONAR_HOST_URL: https://sonarcloud.io
 
+      # Quality Gate is commented out, as in your original file.
       # - name: SonarQube Quality Gate
       #   id: sonarqube-quality-gate-check
       #   uses: SonarSource/sonarqube-quality-gate-action@master
@@ -51,6 +53,7 @@ jobs:
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Checkout | ✅ Success |" >> $GITHUB_STEP_SUMMARY
           echo "| SonarQube Scan | $([[ '${{ steps.sonarqube-scan-check.outcome }}' == 'success' ]] && echo ✅ Success || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
+          # Quality Gate is commented out, but its summary is still being written to the file
           echo "| Quality Gate | $([[ '${{ steps.sonarqube-quality-gate-check.outcome }}' == 'success' ]] && echo ✅ Passed || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
       
       - name: Clean up Sonar lock file
@@ -59,10 +62,13 @@ jobs:
             rm -rf .scannerwork
           fi
         shell: bash
-      - uses: actions/setup-go@v6
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
           go-version: '>=1.25.1'
           check-latest: true
+      
       - name: Download Go modules
         run: go mod tidy
 
@@ -74,6 +80,7 @@ jobs:
           reporter: github-pr-review
           fail_level: error
           level: info
+
       - name: Run vulnerability check
         id: govulncheck
         if: ${{ steps.golangci-lint.outcome == 'success' }}
@@ -106,8 +113,8 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             grep -A 1000 'Details:' $GITHUB_WORKSPACE/govulncheck-report.txt >> $GITHUB_STEP_SUMMARY || true
 
-  build-and-release:
-    name: Build and Release
+  build:
+    name: Build binaries
     runs-on: ubuntu-latest
     needs: lint-and-vuln-check
     permissions:
@@ -116,17 +123,14 @@ jobs:
       packages: write
       actions: read
     strategy:
-     fail-fast: false
-     matrix:
-       os: [darwin, linux, windows]
-       arch: [amd64, arm64]
-    #    exclude:
-    #     - os: windows
-    #       arch: arm64
-
+      fail-fast: false
+      matrix:
+        os: [darwin, linux, windows]
+        arch: [amd64, arm64]
+    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           submodules: recursive
@@ -135,62 +139,72 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-         go-version: '>=1.25.1'
-         check-latest: true
+          go-version: '>=1.25.1'
+          check-latest: true
+          
       - name: Build binary for ${{ matrix.os }}/${{ matrix.arch }}
         id: build-step
         run: |
-            mkdir -p bin
-            GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -buildvcs=true -ldflags="-s -w -X main.Version=${{ github.ref_name }}/${{ github.sha }}" -o bin/tnt.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
-
+          mkdir -p bin
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -buildvcs=true -ldflags="-s -w -X main.Version=${{ github.ref_name }}/${{ github.sha }}" -o bin/tnt.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+          
       - name: Upload artifacts
         if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
-         name: binary-for-${{ matrix.os }}-${{ matrix.arch }}
-         path: bin/
+          name: binary-for-${{ matrix.os }}-${{ matrix.arch }}
+          path: bin/
 
-      - name: Generate build summary
-        if: always()
-        run: |
-          echo "## Build Status for ${{ matrix.os }}/${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| **Binary** | **Status** |" >> $GITHUB_STEP_SUMMARY
-          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ job.status }}" == "success" ]; then
-              echo "| ✅ tnt_${{ matrix.os }}_${{ matrix.arch }} | Success |" >> $GITHUB_STEP_SUMMARY
-          else
-              echo "| ❌ tnt_${{ matrix.os }}_${{ matrix.arch }} | Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+      actions: read
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
           
-      # - name: Prepare summary for release body
-      #   run: |
-      #     cp $GITHUB_STEP_SUMMARY release_notes.md
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.TELNET_TOKEN }}
+
+      - name: Generate release notes
+        run: |
+          echo "## Release Notes for ${{ github.ref_name }}" >> release_notes.md
+          echo "### Commit Message" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "${{ github.event.head_commit.message }}" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Build Status Summary" >> release_notes.md
+          echo "| OS/Arch | Status |" >> release_notes.md
+          echo "| --- | --- |" >> release_notes.md
+          
+          # Iterate through the downloaded artifacts to check for success/failure
+          # The directory names will be "binary-for-os-arch"
+          for dir in artifacts/binary-for-*; do
+            if [ -d "$dir" ]; then
+              os_arch=$(basename "$dir" | sed 's/binary-for-//')
+              if [ -f "$dir/bin/tnt.$os_arch" ] || [ -f "$dir/bin/tnt.$os_arch.exe" ]; then
+                echo "| $os_arch | ✅ Success |" >> release_notes.md
+              else
+                echo "| $os_arch | ❌ Failed |" >> release_notes.md
+              fi
+            fi
+          done
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          body: |
-           "Automated release for ${{ github.ref_name }}/${{ github.sha}} 
-           ${{ github.event.head_commit.message }}
-          # body_path: ${{ github.workspace }}/release_notes.md
-          append_body: true
-          files: |
-            bin/*
+          body_path: release_notes.md
+          files: artifacts/*/*/* # This pattern matches all files within the downloaded structure
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Final Build Summary
-        if: always()
-        run: |
-           echo "## Overall release status" >> $GITHUB_STEP_SUMMARY
-           echo "" >> $GITHUB_STEP_SUMMARY
-           echo "| **OS/Arch** | **Status** |" >> $GITHUB_STEP_SUMMARY
-           echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-           for os in darwin linux windows; do
-               for arch in amd64 arm64; do
-                   echo "| $os/$arch | ${{ job.status }} |" >> $GITHUB_STEP_SUMMARY
-               done
-           done
