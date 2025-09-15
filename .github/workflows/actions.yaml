@@ -222,13 +222,14 @@ jobs:
           echo "\`\`\`diff" >> release_notes.md
           
           # Find the previous tag and store it in a variable
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${{ github.ref_name }}^)
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 --exclude='${{ github.ref_name }}')
           
           # Use the previous tag and the current tag for the diff
           if [ -n "$PREVIOUS_TAG" ]; then
-            git diff $PREVIOUS_TAG ${{ github.ref_name }} >> release_notes.md
+            git diff $PREVIOUS_TAG..${{ github.ref_name }} >> release_notes.md
           else
             echo "No previous tag found. Showing diff from initial commit." >> release_notes.md
+            # This is the SHA of Git's initial empty tree.
             git diff 4b825dc642cb6eb9a060e54bf8d69288fbee4904 ${{ github.ref_name }} >> release_notes.md
           fi
           
