@@ -181,7 +181,8 @@ jobs:
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
-          # Download to the root of the workspace to simplify paths
+          # Download to the root of the workspace to simplify paths.
+          # The downloaded artifacts will be placed in directories named after the artifact name.
           path: .
           
       - name: Checkout code for commit message
@@ -211,8 +212,8 @@ jobs:
               binary_name+=".exe"
             fi
             
-            # The corrected path to check for the downloaded binary
-            if [ -f "$combo/bin/$binary_name" ]; then
+            # The correct path to check for the downloaded binary is the artifact name + the original path
+            if [ -f "binary-for-$os-$arch/bin/$binary_name" ]; then
               echo "| $os/$arch | ✅ Success |" >> release_notes.md
             else
               echo "| $os/$arch | ❌ Failed |" >> release_notes.md
@@ -224,7 +225,8 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           body_path: release_notes.md
+          # Corrected files pattern to match the downloaded directory structure
           files: |
-            bin/binary-for-*/*/* # This corrected pattern matches all files in all downloaded artifacts
+            binary-for-*/*/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
