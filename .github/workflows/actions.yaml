@@ -222,5 +222,4 @@ jobs:
           body_path: release_notes.md
           files: artifacts/*/*/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}        
