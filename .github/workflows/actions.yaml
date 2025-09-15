@@ -225,6 +225,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           body_path: release_notes.md
           files: |
-            binary-for-*/*/* # This corrected pattern matches all files in all downloaded artifacts
+            bin/binary-for-*/*/* # This corrected pattern matches all files in all downloaded artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
