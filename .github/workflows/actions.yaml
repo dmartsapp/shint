@@ -101,6 +101,30 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             grep -A 1000 'Details:' $GITHUB_WORKSPACE/govulncheck-report.txt >> $GITHUB_STEP_SUMMARY || true
 
+  report-failure:
+    name: Report Failure as Issue
+    runs-on: ubuntu-latest
+    needs: lint-and-vuln-check
+    if: failure() && github.ref_name == github.event.repository.default_branch # Condition to only run on main branch failure
+    permissions:
+      issues: write # This job needs permission to create issues
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      
+      - name: Create issue on linting/vuln check failure
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "CI Failure: Linting or Vulnerability Check Failed"
+          content-filepath: .github/ISSUE_TEMPLATE/ci_failure.md
+          labels: bug, ci-failure
+          assignees: ${{ github.actor }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
   build:
     name: Build binaries
     runs-on: ubuntu-latest
