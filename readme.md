@@ -1,4 +1,4 @@
-# The New Telnet - aka tnt, (v2.x.y)
+# that SHIt Network Tool - aka shint, (v2.x.y)
 
 ## Introduction
 
@@ -38,13 +38,13 @@ The `telnet` command attempts to connect to a host on a specific port.
 **Syntax:**
 
 ```bash
-./tnt telnet [host] [port]
+./shint telnet [host] [port]
 ```
 
 **Example:**
 
 ```bash
-./tnt telnet google.com 443
+./shint telnet google.com 443
 ```
 
 **Output:**
@@ -109,13 +109,13 @@ The `ping` command sends ICMP ECHO_REQUEST packets to a host to test reachabilit
 **Syntax:**
 
 ```bash
-./tnt ping [host]
+./shint ping [host]
 ```
 
 **Example:**
 
 ```bash
-./tnt ping google.com
+./shint ping google.com
 ```
 
 **Output:**
@@ -180,13 +180,13 @@ The `web` command makes an HTTP request to a URL and displays the response. It c
 **Syntax:**
 
 ```bash
-./tnt web [url] [flags]
+./shint web [url] [flags]
 ```
 
 **Example (Simple GET):**
 
 ```bash
-./tnt web https://google.com
+./shint web https://google.com
 ```
 
 **Output:**
@@ -217,7 +217,7 @@ The `web` command includes a powerful REST client for making API requests. You c
 This example sends a POST request with a JSON payload and a custom `Content-Type` header. The output is requested in JSON format and includes the full response body.
 
 ```bash
-./tnt web -X POST -P '{"name": "test"}' -H "Content-Type: application/json" --json -W https://httpbin.org/post
+./shint web -X POST -P '{"name": "test"}' -H "Content-Type: application/json" --json -W https://httpbin.org/post
 ```
 
 **JSON Output (POST Request):**
@@ -334,13 +334,13 @@ The `nmap` command scans for open TCP ports on a host within a given range.
 **Syntax:**
 
 ```bash
-./tnt nmap --from [start_port] --to [end_port] [host]
+./shint nmap --from [start_port] --to [end_port] [host]
 ```
 
 **Example:**
 
 ```bash
-./tnt nmap --from 80 --to 100 google.com
+./shint nmap --from 80 --to 100 google.com
 ```
 
 **Output:**
