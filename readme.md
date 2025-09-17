@@ -4,7 +4,7 @@
 
 A simple, modern, and versatile network utility tool built with Go. This tool provides a convenient way to perform common network checks, including `telnet`, `ping`, `nmap`, and `web` requests.
 
-[![Build and release telnet binary](https://github.com/dmartsapp/telnet/actions/workflows/actions.yaml/badge.svg)](https://github.com/dmartsapp/telnet/actions/workflows/actions.yaml)
+[![Build and release telnet binary](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml)
 
 **Note:** Version 2.0.0 introduces a new subcommand-based interface. See the [Usage](#usage) section for details.
 
@@ -19,12 +19,12 @@ A simple, modern, and versatile network utility tool built with Go. This tool pr
 
 ## Installation
 
-You can download the latest release for your operating system from the [releases page](https://github.com/farhansabbir/telnet/releases/latest).
+You can download the latest release for your operating system from the [releases page](https://github.com/dmartsapp/shint/releases/latest).
 
 Alternatively, you can build the project from source:
 
 ```bash
-git clone https://github.com/farhansabbir/telnet.git
+git clone https://github.com/dmartsapp/shint.git
 cd telnet
 make
 ```
