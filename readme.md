@@ -25,7 +25,7 @@ Alternatively, you can build the project from source:
 
 ```bash
 git clone https://github.com/dmartsapp/shint.git
-cd telnet
+cd shint
 make
 ```
 
