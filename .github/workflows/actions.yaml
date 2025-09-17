@@ -159,7 +159,7 @@ jobs:
         id: build-step
         run: |
           mkdir -p bin
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -buildvcs=true -ldflags="-s -w -X main.Version=${{ github.ref_name }}/${{ github.sha }}" -o bin/tnt.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -buildvcs=true -ldflags="-s -w -X main.Version=${{ github.ref_name }}/${{ github.sha }}" -o bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
           
       - name: Upload artifacts
         if: success() || failure()
@@ -210,7 +210,7 @@ jobs:
           for combo in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64; do
             os=$(echo $combo | awk -F'-' '{print $1}')
             arch=$(echo $combo | awk -F'-' '{print $2}')
-            binary_name="tnt.$os.$arch"
+            binary_name="shint.$os.$arch"
             if [ "$os" == "windows" ]; then
               binary_name+=".exe"
             fi
