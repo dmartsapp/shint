@@ -159,7 +159,8 @@ jobs:
         id: build-step
         run: |
           mkdir -p bin
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -buildvcs=true -ldflags="-s -w -X main.Version=${{ github.ref_name }}/${{ github.sha }}" -o bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+          DT=($(date +%Y-%m-%dT%H:%M:%S%z))
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -buildvcs=true -ldflags="-s -w -X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT" -o bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
           
       - name: Upload artifacts
         if: success() || failure()

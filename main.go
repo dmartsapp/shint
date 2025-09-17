@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dmartsapp/tnt/lib/handlers"
+	"github.com/dmartsapp/shint/lib/handlers"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:     filepath.Base(os.Args[0]),
-	Short:   "A simple network utility tool",
+	Short:   "SHINT - that SHIt Network Tool",
 	Long:    `A simple network utility tool that provides telnet, ping, nmap, and web client functionalities.`,
 	Version: Version,
 }

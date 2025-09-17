@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dmartsapp/tnt/lib"
+	"github.com/dmartsapp/shint/lib"
 )
 
 const (

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dmartsapp/tnt/lib"
+	"github.com/dmartsapp/shint/lib"
 )
 
 func NmapHandler(ctx context.Context, host string, fromport, endport, iterations, timeout int, throttle bool, jsonoutput *bool) {

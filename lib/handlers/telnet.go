@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dmartsapp/tnt/lib"
+	"github.com/dmartsapp/shint/lib"
 )
 
 func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, CTXTIMEOUT context.Context, host string) {

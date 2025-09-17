@@ -1,4 +1,4 @@
-module github.com/dmartsapp/tnt
+module github.com/dmartsapp/shint
 
 go 1.24.0
 
