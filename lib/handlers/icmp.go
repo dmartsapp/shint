@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dmartsapp/go-ping/netutils"
+	"github.com/dmartsapp/go-ping/v2/netutils"
 	"github.com/dmartsapp/shint/lib"
 )
 

@@ -159,7 +159,7 @@ Mon Jun 30 13:23:26 EDT 2025: [telnet] OK done total_time=1.021345708s
 
 ### Ping
 
-Sends ICMP ECHO_REQUEST packets to a host to test reachability.
+Sends ICMP ECHO_REQUEST packets to a host to test reachability. Resolves both IPv4 and IPv6 addresses by default - a dual-stack hostname is pinged over **both** protocols in the same run, each shown as its own log line/stat entry (see the `(ipv4)`/`(ipv6)` tag on each line below).
 
 **Syntax:**
 
@@ -173,17 +173,19 @@ Sends ICMP ECHO_REQUEST packets to a host to test reachability.
 ./shint ping google.com --count 2
 ```
 
-**Output:**
+**Output** (google.com is dual-stack, so both addresses get pinged every iteration):
 
 ```
-Mon Jun 30 13:23:32 EDT 2025: [icmp] OK dns resolved host=google.com addresses=1 ips=[142.251.41.46] time=1.409125ms
-Mon Jun 30 13:23:32 EDT 2025: [icmp] OK Received response for request #1 from 142.251.41.46 with 4 bytes of data in 9ms
-Mon Jun 30 13:23:33 EDT 2025: [icmp] OK Received response for request #2 from 142.251.41.46 with 4 bytes of data in 10ms
+Sat Sep 19 11:38:09 MDT 2026: [icmp] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=143.623541ms
+Sat Sep 19 11:38:09 MDT 2026: [icmp] OK received reply for request #1 from 142.251.46.78 (ipv4) in 27ms
+Sat Sep 19 11:38:09 MDT 2026: [icmp] OK received reply for request #1 from 2607:f8b0:400a:803::200e (ipv6) in 31ms
+Sat Sep 19 11:38:10 MDT 2026: [icmp] OK received reply for request #2 from 142.251.46.78 (ipv4) in 29ms
+Sat Sep 19 11:38:10 MDT 2026: [icmp] OK received reply for request #2 from 2607:f8b0:400a:803::200e (ipv6) in 29ms
 
 ========================================= icmp STATISTICS =========================================
-Requests sent: 2, Response received: 2, Success: 100%
-Latency: minimum: 9ms, average: 9.5ms, maximum: 10ms
-Mon Jun 30 13:23:33 EDT 2025: [icmp] OK done packets_lost=0 stddev_ms=0.500 resolve_time=1.409125ms total_time=2.011017458s
+Requests sent: 4, Response received: 4, Success: 100%
+Latency: minimum: 27ms, average: 29ms, maximum: 31ms
+Sat Sep 19 11:38:10 MDT 2026: [icmp] OK done packets_lost=0 stddev_ms=1.414 resolve_time=143.623541ms total_time=1.063519208s
 ```
 
 **JSON Output:**
@@ -521,6 +523,12 @@ make all-platforms       # cross-compile all 14 release targets
 CI (`.github/workflows/actions.yaml`) runs `golangci-lint` and `govulncheck` on every tagged push (`v*.*.*`), then builds and releases all 14 platform binaries and pushes the multi-arch Docker image to both GHCR and Docker Hub (see [Docker image](#docker-image)).
 
 ## Changelog
+
+### Unreleased
+
+- `ping` now resolves and pings both IPv4 and IPv6 addresses by default (a dual-stack hostname is pinged over both in the same run) - from upgrading to [go-ping](https://github.com/dmartsapp/go-ping) v2.0.0, which added IPv6 support along with fixing a data race, a payload-size clamp bug, a sequence-matching bug, and a JSON-encoding bug on the ICMP side. `telnet`/`nmap`/`udp`/`web`/`listen` still resolve IPv4 only for now - that's the next piece of IPv6 work, not yet done.
+- Fixed `listen tcp`/`listen udp`/`listen http` exiting after exactly one connection/packet/request by default: `listen`'s own `--count` now defaults to `0` (unlimited, until Ctrl+C) instead of inheriting the root `--count`'s default of `1`.
+- Fixed `listen http` occasionally dropping its own response (`curl: (52) Empty reply from server`) right as it hit its request budget - a real race between the process exiting and net/http's internal per-connection goroutine still flushing that same response. Hardened with an explicit flush, a deterministic `Connection: close`, and a proper `Server.Shutdown` wait before returning.
 
 ### v3.1.0
 

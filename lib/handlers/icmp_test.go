@@ -8,22 +8,7 @@ import (
 	"github.com/dmartsapp/shint/lib"
 )
 
-// skipIfRaceDetectsUpstreamBug skips a test that would otherwise reliably
-// trip -race on github.com/dmartsapp/go-ping v1.1.1's Pinger.PingAll: two
-// goroutines (pinger.go:64-73) write the same unsynchronized `err` variable
-// on every call, unconditionally. That's a real bug, but it's in a separate,
-// external module - not something a fix here can address - so tests that
-// exercise ping just skip under the race detector instead of permanently
-// failing `go test ./... -race`.
-func skipIfRaceDetectsUpstreamBug(t *testing.T) {
-	t.Helper()
-	if raceDetectorEnabled {
-		t.Skip("skipping under -race: github.com/dmartsapp/go-ping v1.1.1 Pinger.PingAll has an unsynchronized write race on every call (pinger.go:64-73); this is an upstream bug, not a shint bug")
-	}
-}
-
 func TestHandleICMPTextMode(t *testing.T) {
-	skipIfRaceDetectsUpstreamBug(t)
 	jsonOutput, throttle := false, false
 	out := captureStdout(t, func() {
 		HandleICMP("127.0.0.1", &jsonOutput, 2, 0, &throttle, 3, 4)
@@ -37,7 +22,6 @@ func TestHandleICMPTextMode(t *testing.T) {
 }
 
 func TestHandleICMPJSONMode(t *testing.T) {
-	skipIfRaceDetectsUpstreamBug(t)
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
 		HandleICMP("127.0.0.1", &jsonOutput, 1, 0, &throttle, 3, 4)
