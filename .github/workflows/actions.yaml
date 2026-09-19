@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
       packages: write
       actions: read
       issues: write
@@ -21,35 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: SonarQube Scan
-        id: sonarqube-scan-check
-        uses: sonarsource/sonarcloud-github-action@v5
-        with:
-          projectBaseDir: .
-        env:
-          SONAR_TOKEN: ${{ secrets.CICD_SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: farhansabbir_cicd
-          SONAR_ORGANIZATION: farhansabbir
-          SONAR_HOST_URL: https://sonarcloud.io
-
-      - name: Summarize SonarQube job
-        if: always()
-        run: |
-          echo "## 🧪 SonarQube Analysis Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Step | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Checkout | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          echo "| SonarQube Scan | $([[ '${{ steps.sonarqube-scan-check.outcome }}' == 'success' ]] && echo ✅ Success || echo ❌ Failed) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Quality Gate | N/A (step is commented out) |" >> $GITHUB_STEP_SUMMARY
-      
-      - name: Clean up Sonar lock file
-        run: |
-          if [ -d ".scannerwork" ]; then
-            rm -rf .scannerwork
-          fi
-        shell: bash
-      
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
