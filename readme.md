@@ -488,13 +488,13 @@ Android's `amd64` target is skipped: it's the emulator-only architecture and req
 
 ## Docker image
 
-Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v3.0.0` publishes:
+Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v4.0.0` publishes:
 
 ```
-ghcr.io/dmartsapp/shint:v3.0.0        docker.io/farhansabbir/shint:v3.0.0
-ghcr.io/dmartsapp/shint:3.0.0         docker.io/farhansabbir/shint:3.0.0
-ghcr.io/dmartsapp/shint:3.0           docker.io/farhansabbir/shint:3.0
-ghcr.io/dmartsapp/shint:3             docker.io/farhansabbir/shint:3
+ghcr.io/dmartsapp/shint:v4.0.0        docker.io/farhansabbir/shint:v4.0.0
+ghcr.io/dmartsapp/shint:4.0.0         docker.io/farhansabbir/shint:4.0.0
+ghcr.io/dmartsapp/shint:4.0           docker.io/farhansabbir/shint:4.0
+ghcr.io/dmartsapp/shint:4             docker.io/farhansabbir/shint:4
 ghcr.io/dmartsapp/shint:latest        docker.io/farhansabbir/shint:latest
 ```
 
