@@ -6,7 +6,7 @@ A simple, modern, and versatile network utility tool built with Go. It bundles a
 
 [![Build and release telnet binary](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml)
 
-**Note:** Version 3.0.0 adds `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixes several correctness/race bugs from v2, and unifies the text-mode log output across every command. See [Changelog](#changelog) for the full list.
+**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 adds `listen http`, a minimal JSON status endpoint for testing plain TCP and HTTP reachability against the same process. See [Changelog](#changelog) for the full list.
 
 ## Features
 
