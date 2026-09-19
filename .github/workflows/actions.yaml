@@ -263,20 +263,27 @@ jobs:
           
           echo "" >> release_notes.md
           echo "### Code Changes" >> release_notes.md
-          echo "\`\`\`diff" >> release_notes.md
-          
-          # Use a more robust command to find the previous tag
-          PREVIOUS_TAG=$(git tag --sort=-version:refname | head -n 2 | tail -n 1)
-          
-          # Use the previous tag and the current tag for the diff
+
+          # The tag being released won't necessarily sort to the top (e.g. a
+          # re-release of an older version), so exclude it explicitly rather
+          # than assuming it's first and taking the next entry.
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -vF "${{ github.ref_name }}" | head -n 1)
+
           if [ -n "$PREVIOUS_TAG" ]; then
-            git diff $PREVIOUS_TAG..${{ github.ref_name }} >> release_notes.md
+            echo "Full diff: ${{ github.server_url }}/${{ github.repository }}/compare/$PREVIOUS_TAG...${{ github.ref_name }}" >> release_notes.md
           else
-            echo "No previous tag found. Showing diff from initial commit." >> release_notes.md
+            echo "No previous tag found. Full history: ${{ github.server_url }}/${{ github.repository }}/commits/${{ github.ref_name }}" >> release_notes.md
             # This is the SHA of Git's initial empty tree.
-            git diff 4b825dc642cb6eb9a060e54bf8d69288fbee4904 ${{ github.ref_name }} >> release_notes.md
+            PREVIOUS_TAG=4b825dc642cb6eb9a060e54bf8d69288fbee4904
           fi
-          
+
+          echo "" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+          # A diffstat summary rather than the full diff: a release spanning
+          # many commits can produce a diff well past GitHub's release body
+          # size limit (~125,000 characters), which fails release creation
+          # outright rather than just looking long.
+          git diff --stat "$PREVIOUS_TAG..${{ github.ref_name }}" | tail -c 60000 >> release_notes.md
           echo "\`\`\`" >> release_notes.md
         shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
 
