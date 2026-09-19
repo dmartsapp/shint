@@ -1,0 +1,8 @@
+.git
+.github
+bin
+*.md
+readme.md
+LICENSE
+sonar-project.properties
+basic_module_test.sh

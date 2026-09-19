@@ -33,6 +33,14 @@ make all-platforms  # also builds freebsd/openbsd/netbsd/solaris/android
 make run        # quick local build + run without arguments
 ```
 
+Or run it straight from the container image, no Go toolchain needed:
+
+```bash
+docker run --rm ghcr.io/dmartsapp/shint:latest telnet google.com 443
+```
+
+See [Docker image](#docker-image) for available tags and details.
+
 ## Global flags
 
 These flags are defined once on the root command and apply to every subcommand, though their meaning is adapted for the `listen` commands (noted below):
@@ -433,6 +441,30 @@ Release binaries are built with `CGO_ENABLED=0` and `-trimpath -s -w`, so each i
 
 Android's `amd64` target is skipped: it's the emulator-only architecture and requires cgo (external linking) for its libc syscall shims, which would force the build off `CGO_ENABLED=0` and defeat the point of a small static binary. `arm64` covers real devices (and Termux) and builds with the same static, dependency-free approach as everything else.
 
+## Docker image
+
+Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to the GitHub Container Registry, built from the `Dockerfile` at the repo root: a `golang:1.26.3-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v3.0.0` publishes:
+
+```
+ghcr.io/dmartsapp/shint:v3.0.0
+ghcr.io/dmartsapp/shint:3.0.0
+ghcr.io/dmartsapp/shint:3.0
+ghcr.io/dmartsapp/shint:3
+ghcr.io/dmartsapp/shint:latest
+```
+
+```bash
+docker run --rm ghcr.io/dmartsapp/shint:latest nmap --from 1 --to 1024 example.com
+docker run --rm ghcr.io/dmartsapp/shint:latest web https://example.com --json
+
+# listen commands need the container's port published to reach it from outside
+docker run --rm -p 9000:9000/tcp ghcr.io/dmartsapp/shint:latest listen tcp 9000 --bind 0.0.0.0
+```
+
+`ping` inside a container follows the same unprivileged-ICMP rules as running on the host directly (see [Platform notes](#platform-notes)) - no extra `--cap-add` should be needed on a typical Docker host.
+
+Build it locally with `docker build -t shint .` (or `docker buildx build --platform linux/amd64,linux/arm64 ...` to reproduce the multi-arch CI build).
+
 ## Platform notes
 
 - **ICMP (`ping`) privileges:** on macOS, BSD, and Windows, ICMP echo works for a regular, non-root/non-admin user out of the box. On Linux it depends on the `net.ipv4.ping_group_range` sysctl; most desktop distributions ship it open to all users already, but a hardened or minimal distro may restrict it to root. If `ping` fails with a permission error there, either run as root or widen the range: `sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"`.
@@ -448,7 +480,7 @@ make all                 # cross-compile the desktop triad
 make all-platforms       # cross-compile all 14 release targets
 ```
 
-CI (`.github/workflows/actions.yaml`) runs a SonarQube scan, `golangci-lint`, and `govulncheck` on every tagged push (`v*.*.*`), then builds and releases all 14 platform binaries.
+CI (`.github/workflows/actions.yaml`) runs a SonarQube scan, `golangci-lint`, and `govulncheck` on every tagged push (`v*.*.*`), then builds and releases all 14 platform binaries and pushes the multi-arch Docker image to GHCR (see [Docker image](#docker-image)).
 
 ## Changelog
 
@@ -461,10 +493,12 @@ CI (`.github/workflows/actions.yaml`) runs a SonarQube scan, `golangci-lint`, an
 - Fixed a nil-pointer risk in `web` when given an unparseable URL.
 - Fixed `web --json --withbody` serializing the already-consumed request body reader instead of the payload actually sent.
 - Added input validation (port ranges, positive `--count`/`--timeout`, `--from <= --to` on `nmap`) instead of panicking or hanging on bad input.
-- Bounded `nmap`'s concurrency so a wide port range can't exhaust file descriptors.
+- Bounded `nmap`'s concurrency so a wide port range can't exhaust file descriptors, and fixed it ignoring context cancellation during the scan loop so a slow/wide scan now actually stops at the caller's `--timeout` instead of running every dial out individually.
 - Unified text-mode logging across every command into one greppable format (see [Logging format](#logging-format)).
 - Upgraded to Go 1.26.3 and the latest available cobra/x-net/x-sys releases; removed stray dead config (`go.env`, `.gitmodules`) left over from an earlier private-submodule setup.
 - Expanded the release build matrix from 6 to 14 OS/architecture targets (added FreeBSD, OpenBSD, NetBSD, Solaris, Android).
+- Added a multi-arch Docker image published to GHCR on every tagged release (see [Docker image](#docker-image)).
+- Added an exhaustive, hermetic test suite (60 tests) covering both packages, including a full mTLS round trip against a locally-generated CA.
 
 ## Data Collection and Privacy
 
