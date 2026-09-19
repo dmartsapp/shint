@@ -4,12 +4,14 @@
 
 A simple, modern, and versatile network utility tool built with Go. It bundles a handful of small diagnostics that are normally reached for as separate programs — a `telnet`-style TCP connectivity check, a basic ICMP `ping`, a `wget`/`curl`-style HTTP(S) client, a limited TCP-only `nmap` port scanner, a `udp` probe, and local `listen` servers for testing the others without needing a real remote endpoint.
 
-[![Lint, vulnerability-check, build & release](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml)
+[![Latest release build](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml)
 [![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest)
 [![Docker Hub](https://img.shields.io/docker/v/farhansabbir/shint?label=docker%20hub&sort=semver&logo=docker)](https://hub.docker.com/r/farhansabbir/shint)
 [![GHCR](https://img.shields.io/badge/ghcr.io-dmartsapp%2Fshint-blue?logo=github)](https://github.com/dmartsapp/shint/pkgs/container/shint)
 
-The single badge above covers the whole pipeline every tag push runs: `golangci-lint` and `govulncheck` gate everything else (a run doesn't proceed to building binaries or images if either fails - see [Development](#development) and the [step summary](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml) on any run for the actual vulnerability report), then all 14 [platform binaries](#supported-platforms) build, and the [Docker image](#docker-image) publishes to both registries above.
+**📦 [Download the latest release](https://github.com/dmartsapp/shint/releases/latest)** — prebuilt binaries for Linux, macOS, Windows, FreeBSD, OpenBSD, NetBSD, Solaris, and Android.
+
+This workflow only triggers on a tagged release, so the badge above *is* that release's build/test status - it's green only if `golangci-lint` and `govulncheck` passed (a run doesn't proceed to building binaries or images if either fails - see [Development](#development) and the [step summary](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml) on any run for the actual vulnerability report) and all 14 [platform binaries](#supported-platforms) and the [Docker image](#docker-image) built and published successfully.
 
 **Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 adds `listen http`, a minimal JSON status endpoint for testing plain TCP and HTTP reachability against the same process. See [Changelog](#changelog) for the full list.
 
