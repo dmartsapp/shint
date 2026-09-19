@@ -60,7 +60,7 @@ func TCPListenHandler(bind string, port int, echo bool, maxConnections int, idle
 	}
 
 	var wg sync.WaitGroup
-	var connCount, totalBytes int64
+	var connCount, totalBytesReceived, totalBytesSent int64
 	istart := time.Now()
 	for maxConnections <= 0 || connCount < int64(maxConnections) {
 		conn, err := listener.Accept()
@@ -78,18 +78,24 @@ func TCPListenHandler(bind string, port int, echo bool, maxConnections int, idle
 		wg.Add(1)
 		go func(conn net.Conn) {
 			defer wg.Done()
-			n := handleTCPConnection(conn, echo, idleTimeout, jsonoutput)
-			atomic.AddInt64(&totalBytes, int64(n))
+			received, sent := handleTCPConnection(conn, echo, idleTimeout, jsonoutput)
+			atomic.AddInt64(&totalBytesReceived, int64(received))
+			atomic.AddInt64(&totalBytesSent, int64(sent))
 		}(conn)
 	}
 	wg.Wait()
 
 	if !*jsonoutput {
-		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "done "+lib.Fields("connections", connCount, "bytes_received", totalBytes, "total_time", time.Since(istart)), false))
+		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "done "+lib.Fields("connections", connCount, "bytes_received", totalBytesReceived, "bytes_sent", totalBytesSent, "total_time", time.Since(istart)), false))
 	}
 }
 
-func handleTCPConnection(conn net.Conn, echo bool, idleTimeout int, jsonoutput *bool) int {
+// handleTCPConnection services one connection and returns the total bytes
+// read from and written to it. Each read (and its optional echo write) is
+// treated as one "request" for measurement purposes: the time between the
+// read returning and the echo write completing is reported as that
+// request's processing time.
+func handleTCPConnection(conn net.Conn, echo bool, idleTimeout int, jsonoutput *bool) (received int, sent int) {
 	defer func() { _ = conn.Close() }()
 	remote := conn.RemoteAddr().String()
 	local := conn.LocalAddr().String()
@@ -97,26 +103,42 @@ func handleTCPConnection(conn net.Conn, echo bool, idleTimeout int, jsonoutput *
 		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "connection accepted "+lib.Fields("remote", remote, "local", local), false))
 	}
 	buf := make([]byte, 4096)
-	total := 0
 	for {
 		if idleTimeout > 0 {
 			_ = conn.SetReadDeadline(time.Now().Add(time.Duration(idleTimeout) * time.Second))
 		}
+		reqStart := time.Now()
 		n, err := conn.Read(buf)
 		if n > 0 {
-			total += n
+			received += n
 			preview := previewBytes(buf[:n])
+			written := 0
+			if echo {
+				if wn, werr := conn.Write(buf[:n]); werr != nil {
+					if !*jsonoutput {
+						fmt.Println(lib.LogWithTimestamp(listenTCPModule, "echo failed "+lib.Fields("remote", remote, "error", werr.Error()), true))
+					}
+				} else {
+					written = wn
+					sent += wn
+				}
+			}
+			processingTime := time.Since(reqStart)
 			if *jsonoutput {
-				event := lib.ListenEvent{Protocol: "tcp", RemoteAddr: remote, LocalAddr: local, BytesRead: n, Preview: preview, UnixTimeUs: time.Now().UnixMicro()}
+				event := lib.ListenEvent{
+					Protocol:         "tcp",
+					RemoteAddr:       remote,
+					LocalAddr:        local,
+					BytesRead:        n,
+					BytesSent:        written,
+					ProcessingTimeUs: processingTime.Microseconds(),
+					Preview:          preview,
+					UnixTimeUs:       time.Now().UnixMicro(),
+				}
 				js, _ := json.Marshal(event)
 				fmt.Println(string(js))
 			} else {
-				fmt.Println(lib.LogWithTimestamp(listenTCPModule, "data received "+lib.Fields("remote", remote, "bytes", n, "preview", preview), false))
-			}
-			if echo {
-				if _, werr := conn.Write(buf[:n]); werr != nil && !*jsonoutput {
-					fmt.Println(lib.LogWithTimestamp(listenTCPModule, "echo failed "+lib.Fields("remote", remote, "error", werr.Error()), true))
-				}
+				fmt.Println(lib.LogWithTimestamp(listenTCPModule, "data received "+lib.Fields("remote", remote, "bytes_received", n, "bytes_sent", written, "time_taken", processingTime, "preview", preview), false))
 			}
 		}
 		if err != nil {
@@ -124,7 +146,7 @@ func handleTCPConnection(conn net.Conn, echo bool, idleTimeout int, jsonoutput *
 		}
 	}
 	if !*jsonoutput {
-		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "connection closed "+lib.Fields("remote", remote, "bytes_total", total), false))
+		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "connection closed "+lib.Fields("remote", remote, "bytes_received", received, "bytes_sent", sent), false))
 	}
-	return total
+	return received, sent
 }

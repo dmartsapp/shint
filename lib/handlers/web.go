@@ -143,6 +143,12 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			body, _ := io.ReadAll(response.Body)
 			header := response.Header
 			timeTaken := time.Since(start)
+			// len(header) is the number of header entries, not their byte
+			// size - headerByteSize approximates the actual wire size
+			// (": " and CRLF included) so the bandwidth figure below
+			// reflects bytes actually transferred, not a map length.
+			totalBytes := len(body) + headerByteSize(header)
+			bandwidthKBs := float64(totalBytes) / timeTaken.Seconds() / 1024
 
 			statsMutex.Lock()
 			stats = append(stats, timeTaken)
@@ -163,7 +169,8 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				stat.Request = map[string]any{"method": method, "body": data, "headers": request.Header}
 				stat.Success = true
 				stat.StatusCode = response.StatusCode
-				stat.BytesDownloaded = len(body) + len(header)
+				stat.BytesDownloaded = totalBytes
+				stat.BandwidthKBs = bandwidthKBs
 				stat.SentTime = start.UnixMicro()
 				stat.RecvTime = time.Now().UnixMicro()
 				stat.TimeTaken = timeTaken.Microseconds()
@@ -173,8 +180,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			statsMutex.Unlock()
 
 			if !*jsonoutput {
-				speedKBs := float64(len(body)) / timeTaken.Seconds() / 1024
-				fmt.Println(lib.LogWithTimestamp(webModule, "response ok "+lib.Fields("url", URL.String(), "status", response.Status, "bytes", len(body), "speed", fmt.Sprintf("%.2fKB/s", speedKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken), false))
+				fmt.Println(lib.LogWithTimestamp(webModule, "response ok "+lib.Fields("url", URL.String(), "status", response.Status, "bytes", totalBytes, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken), false))
 			}
 		}(URL, attempt)
 	}
@@ -203,4 +209,19 @@ func parsePort(raw string) (int, error) {
 		return 0, nil
 	}
 	return lib.ValidatePort(raw)
+}
+
+// headerByteSize approximates the wire size of an HTTP header block: each
+// "Key: Value\r\n" line, one per value (a header can repeat a key). This is
+// an estimate (real framing, e.g. HTTP/2's HPACK, differs) but is far closer
+// to actual bytes transferred than len(header), which is just the number of
+// distinct header keys.
+func headerByteSize(header http.Header) int {
+	total := 0
+	for key, values := range header {
+		for _, value := range values {
+			total += len(key) + len(": \r\n") + len(value)
+		}
+	}
+	return total
 }

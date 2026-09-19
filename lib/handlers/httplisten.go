@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -49,12 +50,19 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		reqStart := time.Now()
 		status := http.StatusOK
 		body := map[string]string{"status": "ok"}
 		if r.URL.Path != "/" {
 			status = http.StatusNotFound
 			body = map[string]string{"status": "not found"}
 		}
+
+		// Drain and count the request body: nothing in the response depends
+		// on it, but doing so both measures bytes received and lets net/http
+		// reuse the connection's read side cleanly instead of abandoning an
+		// unread body.
+		bytesReceived, _ := io.Copy(io.Discard, r.Body)
 
 		js, _ := json.Marshal(body)
 		w.Header().Set("Content-Type", "application/json")
@@ -65,7 +73,7 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 		// and "connection actually gone" that the code below has to wait out.
 		w.Header().Set("Connection", "close")
 		w.WriteHeader(status)
-		_, _ = w.Write(js)
+		bytesSent, _ := w.Write(js)
 		// Push the response out to the connection now rather than leaving
 		// it to whatever's left of net/http's internal buffering: the
 		// caller (below) may decide this was the last request and start
@@ -74,19 +82,23 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()
 		}
+		processingTime := time.Since(reqStart)
 
 		if *jsonoutput {
 			event := lib.HTTPListenEvent{
-				Method:     r.Method,
-				Path:       r.URL.Path,
-				StatusCode: status,
-				RemoteAddr: r.RemoteAddr,
-				UnixTimeUs: time.Now().UnixMicro(),
+				Method:           r.Method,
+				Path:             r.URL.Path,
+				StatusCode:       status,
+				RemoteAddr:       r.RemoteAddr,
+				BytesReceived:    bytesReceived,
+				BytesSent:        int64(bytesSent),
+				ProcessingTimeUs: processingTime.Microseconds(),
+				UnixTimeUs:       time.Now().UnixMicro(),
 			}
 			eventJS, _ := json.Marshal(event)
 			fmt.Println(string(eventJS))
 		} else {
-			fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "request "+lib.Fields("method", r.Method, "path", r.URL.Path, "status", status, "remote", r.RemoteAddr), false))
+			fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "request "+lib.Fields("method", r.Method, "path", r.URL.Path, "status", status, "remote", r.RemoteAddr, "bytes_received", bytesReceived, "bytes_sent", bytesSent, "time_taken", processingTime), false))
 		}
 
 		// atomic.AddInt64 hands each concurrent caller a distinct,

@@ -102,7 +102,42 @@ func TestWebHandler(t *testing.T) {
 		t.Errorf("Expected response body status 'ok', got '%v'", responseBody["status"])
 	}
 
+	// bytes_downloaded should cover the response body plus its headers, not
+	// just the body - and bandwidth_kbs should be derived from that, not
+	// from a bug that summed the number of header keys instead of bytes.
+	bodyBytes := len(`{"status":"ok"}`)
+	bytesDownloaded, ok := firstStat["bytes_downloaded"].(float64)
+	if !ok || int(bytesDownloaded) <= bodyBytes {
+		t.Errorf("Expected bytes_downloaded > body-only size (%d), got %v", bodyBytes, firstStat["bytes_downloaded"])
+	}
+	bandwidthKBs, ok := firstStat["bandwidth_kbs"].(float64)
+	if !ok || bandwidthKBs <= 0 {
+		t.Errorf("Expected a positive bandwidth_kbs, got %v", firstStat["bandwidth_kbs"])
+	}
+
 	log.Println("WebHandler unit test passed.")
+}
+
+// TestHeaderByteSize checks the header-size estimate used for the web
+// command's bandwidth calculation actually counts bytes, not header-key
+// count - a real bug from before this test existed (len(http.Header) is a
+// map length, not a byte size).
+func TestHeaderByteSize(t *testing.T) {
+	header := http.Header{}
+	header.Set("Content-Type", "application/json")
+	header.Add("Set-Cookie", "a=1")
+	header.Add("Set-Cookie", "b=2")
+
+	got := headerByteSize(header)
+	want := len("Content-Type"+": \r\n"+"application/json") +
+		len("Set-Cookie"+": \r\n"+"a=1") +
+		len("Set-Cookie"+": \r\n"+"b=2")
+	if got != want {
+		t.Errorf("headerByteSize() = %d, want %d", got, want)
+	}
+	if got == len(header) {
+		t.Errorf("headerByteSize() returned the map length (%d) rather than a byte size", len(header))
+	}
 }
 
 // TestWebHandlerMutualTLS exercises the --cacert/--cert/--key path end to

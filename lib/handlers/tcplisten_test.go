@@ -164,6 +164,66 @@ func TestTCPListenHandlerJSONEvent(t *testing.T) {
 	}
 }
 
+func TestTCPListenHandlerJSONEventEchoMeasurements(t *testing.T) {
+	port := freeTCPPort(t)
+	jsonOutput := true
+
+	done := make(chan string, 1)
+	go func() {
+		done <- captureStdout(t, func() {
+			TCPListenHandler("127.0.0.1", port, true, 1, 5, &jsonOutput)
+		})
+	}()
+
+	var conn net.Conn
+	var err error
+	for i := 0; i < 50; i++ {
+		conn, err = net.Dial("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		if err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("failed to dial listener: %v", err)
+	}
+	if _, err := conn.Write([]byte("measure-me")); err != nil {
+		t.Fatalf("failed to write: %v", err)
+	}
+	reply := make([]byte, len("measure-me"))
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	if _, err := conn.Read(reply); err != nil {
+		t.Fatalf("failed to read echo reply: %v", err)
+	}
+	_ = conn.Close()
+
+	select {
+	case out := <-done:
+		lines := strings.Split(strings.TrimSpace(out), "\n")
+		found := false
+		for _, line := range lines {
+			var event lib.ListenEvent
+			if err := json.Unmarshal([]byte(line), &event); err == nil && event.Protocol == "tcp" && event.Preview == "measure-me" {
+				found = true
+				if event.BytesRead != len("measure-me") {
+					t.Errorf("BytesRead = %d, want %d", event.BytesRead, len("measure-me"))
+				}
+				if event.BytesSent != len("measure-me") {
+					t.Errorf("BytesSent = %d, want %d (echo was enabled)", event.BytesSent, len("measure-me"))
+				}
+				if event.ProcessingTimeUs <= 0 {
+					t.Errorf("ProcessingTimeUs = %d, want > 0", event.ProcessingTimeUs)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("expected a JSON listen event with preview %q, got:\n%s", "measure-me", out)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("TCPListenHandler did not return after accepting its one connection")
+	}
+}
+
 func TestTCPListenHandlerZeroCountRunsUntilInterrupted(t *testing.T) {
 	// count=0 means "unlimited": it must not return on its own, and must
 	// shut down cleanly on SIGINT (the Ctrl+C path).

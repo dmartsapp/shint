@@ -52,6 +52,7 @@ type WebStats struct {
 	TimeTaken       int64          `json:"time_taken_µs"`
 	BytesDownloaded int            `json:"bytes_downloaded"` // added field to store the number of bytes downloaded
 	StatusCode      int            `json:"status_code"`      // added field to store the HTTP status code
+	BandwidthKBs    float64        `json:"bandwidth_kbs"`    // BytesDownloaded / TimeTaken, in KB/s
 }
 
 type NmapStats struct {
@@ -92,25 +93,33 @@ type UDPStats struct {
 
 // ListenEvent describes a single inbound connection/packet observed by the
 // "listen tcp"/"listen udp" commands, emitted as one JSON line per event
-// when --json is set.
+// when --json is set. BytesSent and ProcessingTimeUs are only populated by
+// "listen tcp" (its read+optional-echo cycle is treated as one "request"
+// handled); "listen udp" leaves them at zero, so omitempty keeps its event
+// shape unchanged.
 type ListenEvent struct {
-	Protocol   string `json:"protocol"`
-	RemoteAddr string `json:"remote_address"`
-	LocalAddr  string `json:"local_address"`
-	BytesRead  int    `json:"bytes_read"`
-	Preview    string `json:"preview,omitempty"`
-	UnixTimeUs int64  `json:"unixtime_µs"`
-	Error      string `json:"error,omitempty"`
+	Protocol         string `json:"protocol"`
+	RemoteAddr       string `json:"remote_address"`
+	LocalAddr        string `json:"local_address"`
+	BytesRead        int    `json:"bytes_read"`
+	BytesSent        int    `json:"bytes_sent,omitempty"`
+	ProcessingTimeUs int64  `json:"processing_time_µs,omitempty"`
+	Preview          string `json:"preview,omitempty"`
+	UnixTimeUs       int64  `json:"unixtime_µs"`
+	Error            string `json:"error,omitempty"`
 }
 
 // HTTPListenEvent describes a single request observed by "listen http",
 // emitted as one JSON line per request when --json is set.
 type HTTPListenEvent struct {
-	Method     string `json:"method"`
-	Path       string `json:"path"`
-	StatusCode int    `json:"status_code"`
-	RemoteAddr string `json:"remote_address"`
-	UnixTimeUs int64  `json:"unixtime_µs"`
+	Method           string `json:"method"`
+	Path             string `json:"path"`
+	StatusCode       int    `json:"status_code"`
+	RemoteAddr       string `json:"remote_address"`
+	BytesReceived    int64  `json:"bytes_received"`
+	BytesSent        int64  `json:"bytes_sent"`
+	ProcessingTimeUs int64  `json:"processing_time_µs"`
+	UnixTimeUs       int64  `json:"unixtime_µs"`
 }
 
 type JSONOutput struct {

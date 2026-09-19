@@ -19,7 +19,7 @@ Every check below runs independently on each tagged release (`.github/workflows/
 
 "Binary build" and "Docker Hub"/"GHCR" each re-run the lint/vulnerability gate internally before building anything (so none of them ship a binary or image if either would fail), rather than depending on the separate Lint/Vulnerability Check workflows above finishing first - see [Development](#development) for why.
 
-**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 added `listen http`; v4.0.0 adds full dual-stack IPv6 support across every command. See [Changelog](#changelog) for the full list.
+**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 added `listen http`; v4.0.0 added full dual-stack IPv6 support across every command; v4.0.1 adds per-request timing/byte metrics to `listen tcp`/`listen http` and fixes the `web` bandwidth calculation. See [Changelog](#changelog) for the full list.
 
 ## Features
 
@@ -430,14 +430,16 @@ Starts a local listener so `telnet`, `udp`, `web`, and `nmap` can be tested with
 ```
 Sat Sep 19 01:20:01 MDT 2026: [listen-tcp] OK listening address=0.0.0.0:9000 max_connections=1 echo=true
 Sat Sep 19 01:20:03 MDT 2026: [listen-tcp] OK connection accepted remote=127.0.0.1:51451 local=127.0.0.1:9000
-Sat Sep 19 01:20:03 MDT 2026: [listen-tcp] OK connection closed remote=127.0.0.1:51451 bytes_total=0
-Sat Sep 19 01:20:03 MDT 2026: [listen-tcp] OK done connections=1 bytes_received=0 total_time=2.025359459s
+Sat Sep 19 01:20:03 MDT 2026: [listen-tcp] OK connection closed remote=127.0.0.1:51451 bytes_received=0 bytes_sent=0
+Sat Sep 19 01:20:03 MDT 2026: [listen-tcp] OK done connections=1 bytes_received=0 bytes_sent=0 total_time=2.025359459s
 ```
+
+Each chunk read from a connection is treated as one "request handled" for measurement purposes: with `--echo`, a text-mode `data received` line (and its JSON-mode equivalent below) reports that chunk's `bytes_sent` (the echoed reply) and `time_taken`/`processing_time_µs` (time from the read returning to the echo write completing) alongside `bytes_received`.
 
 With `--json`, each received chunk/packet is printed as one JSON line as it arrives (JSON Lines format), for easy piping into another tool:
 
 ```json
-{"protocol":"tcp","remote_address":"127.0.0.1:51496","local_address":"127.0.0.1:9000","bytes_read":20,"preview":"hello-json-listener","unixtime_µs":1789802518134725}
+{"protocol":"tcp","remote_address":"127.0.0.1:51496","local_address":"127.0.0.1:9000","bytes_read":20,"bytes_sent":20,"processing_time_µs":42,"preview":"hello-json-listener","unixtime_µs":1789802518134725}
 ```
 
 #### HTTP listener
@@ -459,14 +461,16 @@ curl -s http://127.0.0.1:8080/anything/else    # {"status":"not found"}, 404
 
 ```
 Sat Sep 19 03:02:50 MDT 2026: [listen-http] OK listening address=0.0.0.0:8080 max_requests=unlimited
-Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:54598
-Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/anything/else status=404 remote=127.0.0.1:54601
+Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:54598 bytes_received=0 bytes_sent=15 time_taken=47.312µs
+Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/anything/else status=404 remote=127.0.0.1:54601 bytes_received=0 bytes_sent=22 time_taken=39.845µs
 ```
+
+`bytes_received` is the request body's length (drained but otherwise ignored), `bytes_sent` is the response body's length, and `time_taken`/`processing_time_µs` covers handling that one request, from entering the handler to the response being flushed.
 
 With `--json`, each request is printed as one JSON line as it arrives:
 
 ```json
-{"method":"GET","path":"/","status_code":200,"remote_address":"127.0.0.1:54598","unixtime_µs":1789808580361517}
+{"method":"GET","path":"/","status_code":200,"remote_address":"127.0.0.1:54598","bytes_received":0,"bytes_sent":15,"processing_time_µs":51,"unixtime_µs":1789808580361517}
 ```
 
 ## Supported platforms
@@ -488,11 +492,11 @@ Android's `amd64` target is skipped: it's the emulator-only architecture and req
 
 ## Docker image
 
-Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v4.0.0` publishes:
+Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v4.0.1` publishes:
 
 ```
-ghcr.io/dmartsapp/shint:v4.0.0        docker.io/farhansabbir/shint:v4.0.0
-ghcr.io/dmartsapp/shint:4.0.0         docker.io/farhansabbir/shint:4.0.0
+ghcr.io/dmartsapp/shint:v4.0.1        docker.io/farhansabbir/shint:v4.0.1
+ghcr.io/dmartsapp/shint:4.0.1         docker.io/farhansabbir/shint:4.0.1
 ghcr.io/dmartsapp/shint:4.0           docker.io/farhansabbir/shint:4.0
 ghcr.io/dmartsapp/shint:4             docker.io/farhansabbir/shint:4
 ghcr.io/dmartsapp/shint:latest        docker.io/farhansabbir/shint:latest
@@ -536,6 +540,12 @@ CI is five independent workflow files (`.github/workflows/*.yaml`), all triggere
 They're separate files specifically so a registry outage or a Docker Hub credential problem, say, shows up as *that* row failing rather than obscuring whether the binaries themselves were fine.
 
 ## Changelog
+
+### v4.0.1
+
+- `listen tcp` now measures each read (+ optional echo write) as one handled "request": text-mode `data received`/`connection closed`/`done` lines and JSON-mode `ListenEvent`s report `bytes_sent` alongside the existing `bytes_received`, plus `processing_time_µs` (`time_taken` in text mode) for how long that read/echo cycle took.
+- `listen http` now reports `bytes_received` (the request body's length, now drained rather than ignored), `bytes_sent` (the response body's length), and `processing_time_µs`/`time_taken` for every request, in both text and `--json` mode.
+- Fixed `web`'s bandwidth figure (`speed` in text mode, now also exposed as `bandwidth_kbs` in `--json` output): it previously added `len(header)` - the number of header *keys*, not their byte size - onto the downloaded-bytes count, understating the real transfer size and the KB/s derived from it. Both now use an actual header byte-size estimate.
 
 ### v4.0.0
 

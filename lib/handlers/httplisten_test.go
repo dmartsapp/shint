@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -154,6 +155,48 @@ func TestHTTPListenHandlerJSONEvents(t *testing.T) {
 		}
 		if event.Method != http.MethodGet || event.Path != "/" || event.StatusCode != http.StatusOK {
 			t.Errorf("unexpected event: %+v", event)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("HTTPListenHandler did not stop after its one request")
+	}
+}
+
+func TestHTTPListenHandlerJSONEventMeasurements(t *testing.T) {
+	port := freeTCPPort(t)
+	jsonOutput := true
+
+	done := make(chan string, 1)
+	go func() {
+		done <- captureStdout(t, func() {
+			HTTPListenHandler("127.0.0.1", port, 1, 5, &jsonOutput)
+		})
+	}()
+
+	base := "http://127.0.0.1:" + strconv.Itoa(port)
+	waitForListenerReady(t, port)
+
+	reqBody := "hello-http-listener"
+	resp, err := http.Post(base+"/", "text/plain", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+
+	select {
+	case out := <-done:
+		var event lib.HTTPListenEvent
+		if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &event); err != nil {
+			t.Fatalf("failed to unmarshal event: %v\noutput:\n%s", err, out)
+		}
+		if event.BytesReceived != int64(len(reqBody)) {
+			t.Errorf("BytesReceived = %d, want %d", event.BytesReceived, len(reqBody))
+		}
+		if event.BytesSent != int64(len(respBody)) {
+			t.Errorf("BytesSent = %d, want %d", event.BytesSent, len(respBody))
+		}
+		if event.ProcessingTimeUs <= 0 {
+			t.Errorf("ProcessingTimeUs = %d, want > 0", event.ProcessingTimeUs)
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("HTTPListenHandler did not stop after its one request")
