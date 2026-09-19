@@ -15,7 +15,7 @@ A simple, modern, and versatile network utility tool built with Go. It bundles a
 - **Web:** Make an HTTP/HTTPS request to a URL and display the response, including a small REST-client mode (method, headers, body) and authenticated-TLS options (custom CA, client certificate for mTLS, or skip verification entirely).
 - **Nmap:** Scan for open TCP ports on a host within a given range.
 - **UDP:** Send a UDP probe to a host/port and classify the result (`open`, `closed`, or `open|filtered`), the same way a basic UDP port scan works, since UDP has no handshake to confirm a listener.
-- **Listen:** Start a local `tcp` or `udp` listener so `telnet`, `udp`, and `nmap` can be exercised end-to-end when there's no real server to test against.
+- **Listen:** Start a local `tcp`, `udp`, or `http` listener so `telnet`, `udp`, `web`, and `nmap` can be exercised end-to-end when there's no real server to test against. `listen http` is a minimal JSON status endpoint that accepts any method on `/` and 404s everywhere else — handy for both plain TCP and HTTP-level checks against the same process.
 - **JSON Output:** Every command supports `--json` for machine-readable output.
 - **Cross-Platform:** Static binaries for Linux, macOS, Windows, FreeBSD, OpenBSD, NetBSD, Solaris, and Android — 14 OS/architecture combinations in total. See [Supported platforms](#supported-platforms).
 
@@ -36,7 +36,7 @@ make run        # quick local build + run without arguments
 Or run it straight from the container image, no Go toolchain needed:
 
 ```bash
-docker run --rm ghcr.io/dmartsapp/shint:latest telnet google.com 443
+docker run --rm farhansabbir/shint:latest telnet google.com 443
 ```
 
 See [Docker image](#docker-image) for available tags and details.
@@ -387,13 +387,14 @@ Sat Sep 19 01:20:13 MDT 2026: [udp] OK done probes_sent=1 open=1 total_time=1.00
 
 ### Listen
 
-Starts a local listener so `telnet`, `udp`, and `nmap` can be tested without a real remote server. Uses the global `--count` (max connections/packets to accept, `0` = unlimited) and `--timeout` (idle read timeout, `0` = none) flags — see [Global flags](#global-flags). Stop an unlimited listener with Ctrl+C; a summary line is printed on exit either way.
+Starts a local listener so `telnet`, `udp`, `web`, and `nmap` can be tested without a real remote server. Uses the global `--count` (max connections/packets/requests to accept, `0` = unlimited) and `--timeout` (idle read timeout, `0` = none) flags — see [Global flags](#global-flags). Stop an unlimited listener with Ctrl+C; a summary line is printed on exit either way.
 
 **Syntax:**
 
 ```bash
 ./shint listen tcp [port] [--bind 0.0.0.0] [--echo]
 ./shint listen udp [port] [--bind 0.0.0.0] [--echo]
+./shint listen http [port] [--bind 0.0.0.0]
 ```
 
 *   `--bind`: Local address to bind to (default `0.0.0.0`).
@@ -424,6 +425,35 @@ With `--json`, each received chunk/packet is printed as one JSON line as it arri
 {"protocol":"tcp","remote_address":"127.0.0.1:51496","local_address":"127.0.0.1:9000","bytes_read":20,"preview":"hello-json-listener","unixtime_µs":1789802518134725}
 ```
 
+#### HTTP listener
+
+`listen http` is a minimal test endpoint useful for both plain TCP checks (`telnet`/`nmap` against it) and real HTTP checks (`web`, `curl`, a load balancer health check, etc.): any HTTP method on `/` returns a small JSON status dict, and every other path returns 404 with the same shape. `--echo` and `--bind`'s usual meaning still apply, but there's no request-body echoing — the response is always the fixed status dict.
+
+**Example:**
+
+```bash
+./shint listen http 8080 --count 0
+```
+
+```bash
+curl -s -X POST http://127.0.0.1:8080/        # {"status":"ok"},  200
+curl -s http://127.0.0.1:8080/anything/else    # {"status":"not found"}, 404
+```
+
+**Output:**
+
+```
+Sat Sep 19 03:02:50 MDT 2026: [listen-http] OK listening address=0.0.0.0:8080 max_requests=unlimited
+Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:54598
+Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/anything/else status=404 remote=127.0.0.1:54601
+```
+
+With `--json`, each request is printed as one JSON line as it arrives:
+
+```json
+{"method":"GET","path":"/","status_code":200,"remote_address":"127.0.0.1:54598","unixtime_µs":1789808580361517}
+```
+
 ## Supported platforms
 
 Release binaries are built with `CGO_ENABLED=0` and `-trimpath -s -w`, so each is a small (~7-9MB), statically-linked, dependency-free executable — copy it anywhere and run it. 14 OS/architecture combinations are built on every tagged release:
@@ -443,22 +473,23 @@ Android's `amd64` target is skipped: it's the emulator-only architecture and req
 
 ## Docker image
 
-Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to the GitHub Container Registry, built from the `Dockerfile` at the repo root: a `golang:1.26.3-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v3.0.0` publishes:
+Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v3.0.0` publishes:
 
 ```
-ghcr.io/dmartsapp/shint:v3.0.0
-ghcr.io/dmartsapp/shint:3.0.0
-ghcr.io/dmartsapp/shint:3.0
-ghcr.io/dmartsapp/shint:3
-ghcr.io/dmartsapp/shint:latest
+ghcr.io/dmartsapp/shint:v3.0.0        docker.io/farhansabbir/shint:v3.0.0
+ghcr.io/dmartsapp/shint:3.0.0         docker.io/farhansabbir/shint:3.0.0
+ghcr.io/dmartsapp/shint:3.0           docker.io/farhansabbir/shint:3.0
+ghcr.io/dmartsapp/shint:3             docker.io/farhansabbir/shint:3
+ghcr.io/dmartsapp/shint:latest        docker.io/farhansabbir/shint:latest
 ```
 
 ```bash
-docker run --rm ghcr.io/dmartsapp/shint:latest nmap --from 1 --to 1024 example.com
-docker run --rm ghcr.io/dmartsapp/shint:latest web https://example.com --json
+docker run --rm farhansabbir/shint:latest nmap --from 1 --to 1024 example.com
+docker run --rm farhansabbir/shint:latest web https://example.com --json
 
 # listen commands need the container's port published to reach it from outside
-docker run --rm -p 9000:9000/tcp ghcr.io/dmartsapp/shint:latest listen tcp 9000 --bind 0.0.0.0
+docker run --rm -p 9000:9000/tcp farhansabbir/shint:latest listen tcp 9000 --bind 0.0.0.0
+docker run --rm -p 8080:8080/tcp farhansabbir/shint:latest listen http 8080 --count 0
 ```
 
 `ping` inside a container follows the same unprivileged-ICMP rules as running on the host directly (see [Platform notes](#platform-notes)) - no extra `--cap-add` should be needed on a typical Docker host.
@@ -480,9 +511,14 @@ make all                 # cross-compile the desktop triad
 make all-platforms       # cross-compile all 14 release targets
 ```
 
-CI (`.github/workflows/actions.yaml`) runs a SonarQube scan, `golangci-lint`, and `govulncheck` on every tagged push (`v*.*.*`), then builds and releases all 14 platform binaries and pushes the multi-arch Docker image to GHCR (see [Docker image](#docker-image)).
+CI (`.github/workflows/actions.yaml`) runs `golangci-lint` and `govulncheck` on every tagged push (`v*.*.*`), then builds and releases all 14 platform binaries and pushes the multi-arch Docker image to both GHCR and Docker Hub (see [Docker image](#docker-image)).
 
 ## Changelog
+
+### v3.1.0
+
+- Added `listen http`: a minimal JSON status endpoint (any method on `/` returns `{"status":"ok"}`, every other path 404s with `{"status":"not found"}`), useful for both plain TCP and HTTP-level reachability checks against the same process.
+- Docker images now publish to Docker Hub (`farhansabbir/shint`) in addition to GHCR.
 
 ### v3.0.0
 

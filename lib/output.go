@@ -103,6 +103,16 @@ type ListenEvent struct {
 	Error      string `json:"error,omitempty"`
 }
 
+// HTTPListenEvent describes a single request observed by "listen http",
+// emitted as one JSON line per request when --json is set.
+type HTTPListenEvent struct {
+	Method     string `json:"method"`
+	Path       string `json:"path"`
+	StatusCode int    `json:"status_code"`
+	RemoteAddr string `json:"remote_address"`
+	UnixTimeUs int64  `json:"unixtime_µs"`
+}
+
 type JSONOutput struct {
 	InputParams    InputParams `json:"input_params"`
 	ModuleName     string      `json:"module_name"`

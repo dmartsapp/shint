@@ -15,7 +15,7 @@ import (
 
 var (
 	// Version is overridden at build time via -ldflags "-X main.Version=...".
-	Version string = "3.0.0"
+	Version string = "3.1.0"
 )
 
 var (
@@ -186,8 +186,8 @@ var udpCmd = &cobra.Command{
 
 var listenCmd = &cobra.Command{
 	Use:   "listen",
-	Short: "Start a local TCP or UDP listener for testing",
-	Long:  `The listen command starts a simple TCP or UDP listener on this machine so that telnet, udp, and nmap can be exercised end-to-end without needing an external server. Use --count to bound how many connections/packets are accepted (0 = run until Ctrl+C).`,
+	Short: "Start a local TCP, UDP, or HTTP listener for testing",
+	Long:  `The listen command starts a simple TCP, UDP, or HTTP listener on this machine so that telnet, udp, web, and nmap can be exercised end-to-end without needing an external server. Use --count to bound how many connections/packets/requests are accepted (0 = run until Ctrl+C).`,
 }
 
 var listenTCPCmd = &cobra.Command{
@@ -218,6 +218,21 @@ var listenUDPCmd = &cobra.Command{
 	},
 }
 
+var listenHTTPCmd = &cobra.Command{
+	Use:   "http [port]",
+	Short: "Start a minimal JSON HTTP listener on the given port",
+	Long:  `Starts a basic HTTP server useful for both plain TCP and HTTP reachability checks: any method on "/" returns a small {"status":"ok"} JSON body, and every other path returns 404 with {"status":"not found"}.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		port, err := lib.ValidatePort(args[0])
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		handlers.HTTPListenHandler(listenBind, port, iterations, timeout, &jsonoutput)
+	},
+}
+
 func init() {
 	rootCmd.PersistentFlags().IntVar(&iterations, "count", 1, "Number of times to check connectivity (listen commands: max connections/packets to accept, 0 = unlimited)")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect (listen commands: idle read timeout, 0 = no timeout)")
@@ -242,7 +257,7 @@ func init() {
 
 	listenCmd.PersistentFlags().StringVar(&listenBind, "bind", "0.0.0.0", "Local address to bind the listener to")
 	listenCmd.PersistentFlags().BoolVar(&listenEcho, "echo", false, "Echo received data back to the sender")
-	listenCmd.AddCommand(listenTCPCmd, listenUDPCmd)
+	listenCmd.AddCommand(listenTCPCmd, listenUDPCmd, listenHTTPCmd)
 
 	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
 	rootCmd.Version = Version
