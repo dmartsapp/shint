@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -63,7 +62,7 @@ func TestWebHandler(t *testing.T) {
 	headers := []string{"X-Test-Header: TestValue"}
 
 	// Run the handler
-	WebHandler(&jsonOutput, iterations, delay, &throttle, timeout, serverURL, method, data, headers, includeBody)
+	WebHandler(&jsonOutput, iterations, delay, &throttle, timeout, serverURL, method, data, headers, includeBody, nil)
 
 	// Restore stdout and read captured output
 	_ = w.Close()
@@ -73,14 +72,6 @@ func TestWebHandler(t *testing.T) {
 	
 	// --- Validate the output ---
 	outputStr := buf.String()
-	if !strings.Contains(outputStr, `"status_code":200`) {
-		t.Errorf("Expected status code 200 in output, got:\n%s", outputStr)
-	}
-
-	if !strings.Contains(outputStr, `"method":"POST"`) {
-		t.Errorf("Expected method POST in JSON output, got:\n%s", outputStr)
-	}
-
 	// Unmarshal to inspect JSON details
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(outputStr), &result); err != nil {
@@ -95,6 +86,22 @@ func TestWebHandler(t *testing.T) {
 	if !ok {
 		t.Fatal("Could not parse first stat entry")
 	}
+
+	if statusCode, ok := firstStat["status_code"].(float64); !ok || statusCode != 200 {
+		t.Errorf("Expected status_code 200 in output, got '%v'", firstStat["status_code"])
+	}
+
+	request, ok := firstStat["request"].(map[string]interface{})
+	if !ok {
+		t.Fatal("No request object in stats")
+	}
+	if request["method"] != "POST" {
+		t.Errorf("Expected request method POST, got '%v'", request["method"])
+	}
+	if request["body"] != data {
+		t.Errorf("Expected request body to echo the sent payload %q, got '%v'", data, request["body"])
+	}
+
 	response, ok := firstStat["response"].(map[string]interface{})
 	if !ok {
 		t.Fatal("No response object in stats")

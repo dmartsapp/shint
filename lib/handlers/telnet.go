@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,14 +13,16 @@ import (
 	"github.com/dmartsapp/shint/lib"
 )
 
+const telnetModule = "telnet"
+
 func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, CTXTIMEOUT context.Context, host string) {
-	var MUTEX sync.RWMutex
+	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
-		Mode:     "telnet",
+		Mode:     telnetModule,
 		Host:     host,
-		FromPort: int(port),
-		ToPort:   int(port),
+		FromPort: port,
+		ToPort:   port,
 		Protocol: "tcp",
 		Timeout:  timeout,
 		Count:    iterations,
@@ -29,25 +30,25 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 		Payload:  payload_size,
 		Throttle: *throttle,
 	}
-	output.ModuleName = "telnet"
-	istart := time.Now()                                  // capture initial time
-	ipaddresses, err := lib.ResolveName(CTXTIMEOUT, host) // resolve DNS
+	output.ModuleName = telnetModule
+	istart := time.Now() // capture initial time
+	ipaddresses, err := lib.ResolveName(CTXTIMEOUT, host)
 	var stats = make([]time.Duration, 0)
 	if err != nil {
 		if *jsonoutput {
 			output.DNSLookup = lib.DNSLookup{
-				Hostname:          host,
-				Success:           false,
-				ResolvedAddresses: nil,
-				TimeTaken:         time.Since(istart).Microseconds(),
+				Hostname:  host,
+				Success:   false,
+				Error:     err.Error(),
+				TimeTaken: time.Since(istart).Microseconds(),
 			}
 		} else {
-			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
-			fmt.Println(lib.LogStats("telnet", stats, iterations))
+			fmt.Println(lib.LogWithTimestamp(telnetModule, "dns resolution failed "+lib.Fields("host", host, "error", err.Error(), "time", time.Since(istart)), true))
+			fmt.Println(lib.LogStats(telnetModule, stats, iterations))
 		}
 	} else {
 		if !*jsonoutput {
-			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+host+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
+			fmt.Println(lib.LogWithTimestamp(telnetModule, "dns resolved "+lib.Fields("host", host, "addresses", len(ipaddresses), "ips", "["+strings.Join(ipaddresses, ",")+"]", "time", time.Since(istart)), false))
 		} else {
 			output.DNSLookup = lib.DNSLookup{
 				Hostname:          host,
@@ -62,57 +63,64 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 			output.StartTime = istart.UnixMicro()
 		}
 		for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
+			attempt := i + 1
 			for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 				if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-					// time.Sleep(time.Millisecond * time.Duration(rand.Intn(10000)))
 					in, err := rand.Int(rand.Reader, big.NewInt(10000))
 					if err != nil {
 						fmt.Println(err)
+					} else {
+						delay = int(in.Int64())
 					}
-					delay = int(in.Int64())
 				}
 				time.Sleep(time.Millisecond * time.Duration(delay))
 				WG.Add(1)
-				go func(ip string) {
+				go func(ip string, attempt int) {
 					defer WG.Done()
-					start := time.Now()                            // capture initial time
-					_, err := lib.IsPortUp(ip, int(port), timeout) // check if given port from this iteration is up or not
+					start := time.Now()
+					_, err := lib.IsPortUp(ip, port, timeout)
+					timeTaken := time.Since(start)
 					if err != nil {
 						if *jsonoutput {
-							stat := lib.TelnetStats{}
-							stat.Address = ip
-							stat.Success = false
-							stat.TimeTaken = time.Since(start).Microseconds()
+							stat := lib.TelnetStats{
+								Address:   ip,
+								Success:   false,
+								SentTime:  start.UnixMicro(),
+								TimeTaken: timeTaken.Microseconds(),
+								Error:     err.Error(),
+							}
+							statsMutex.Lock()
 							output.Stats = append(output.Stats.([]lib.TelnetStats), stat)
+							statsMutex.Unlock()
 						} else {
-							fmt.Println(lib.LogWithTimestamp(err.Error()+" Time taken: "+time.Since(start).String(), true))
+							fmt.Println(lib.LogWithTimestamp(telnetModule, "connect failed "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken, "error", err.Error()), true))
 						}
 					} else {
-						MUTEX.Lock()
-						time_taken := time.Since(start) //capture the time taken
-						stats = append(stats, time_taken)
-						defer MUTEX.Unlock()
+						statsMutex.Lock()
+						stats = append(stats, timeTaken)
 						if *jsonoutput {
-							stat := lib.TelnetStats{}
-							stat.Address = ip
-							stat.Success = true
-							stat.SentTime = start.UnixMicro()
-							stat.RecvTime = time.Now().UnixMicro()
-							stat.TimeTaken = time.Since(start).Microseconds()
+							stat := lib.TelnetStats{
+								Address:   ip,
+								Success:   true,
+								SentTime:  start.UnixMicro(),
+								RecvTime:  time.Now().UnixMicro(),
+								TimeTaken: timeTaken.Microseconds(),
+							}
 							output.Stats = append(output.Stats.([]lib.TelnetStats), stat)
-						} else {
-							fmt.Println(lib.LogWithTimestamp("Successfully connected to "+ip+" on port "+strconv.Itoa(int(port))+" after "+time_taken.String(), false))
 						}
-
+						statsMutex.Unlock()
+						if !*jsonoutput {
+							fmt.Println(lib.LogWithTimestamp(telnetModule, "connect ok "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken), false))
+						}
 					}
-				}(ip)
+				}(ip, attempt)
 			}
 		}
 		WG.Wait()
 		if !*jsonoutput {
-			MUTEX.RLock()
-			fmt.Println(lib.LogStats("telnet", stats, (iterations * len(ipaddresses))))
-			MUTEX.RUnlock()
+			statsMutex.Lock()
+			fmt.Println(lib.LogStats(telnetModule, stats, (iterations * len(ipaddresses))))
+			statsMutex.Unlock()
 		}
 	}
 
@@ -122,6 +130,6 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 		JS, _ := json.MarshalIndent(output, "", "  ")
 		fmt.Println(string(JS))
 	} else {
-		fmt.Println("Total time taken: " + time.Since(istart).String())
+		fmt.Println(lib.LogWithTimestamp(telnetModule, "done "+lib.Fields("total_time", time.Since(istart)), false))
 	}
 }

@@ -2,6 +2,7 @@ package lib
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"slices"
 	"sort"
@@ -48,13 +49,33 @@ func SortTimeDurationSlice(stats *[]time.Duration) {
 }
 
 func IsPortUp(host string, port int, timeout int) (bool, error) {
-	var dialer = net.Dialer{Timeout: time.Duration(timeout * int(time.Second))}
-	conn, err := dialer.Dial(Protocol, host+":"+strconv.Itoa(port))
+	var dialer = net.Dialer{Timeout: time.Duration(timeout) * time.Second}
+	conn, err := dialer.Dial(Protocol, net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false, err
 	}
 	defer conn.Close()
 	return true, nil
+}
+
+// ValidatePort parses raw as a TCP/UDP port number and ensures it falls within the valid range.
+func ValidatePort(raw string) (int, error) {
+	port, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("invalid port number %q", raw)
+	}
+	if port < 1 || port > 65535 {
+		return 0, fmt.Errorf("port must be between 1 and 65535, got %d", port)
+	}
+	return port, nil
+}
+
+// RequirePositive validates that a flag's integer value is at least 1.
+func RequirePositive(name string, value int) error {
+	if value < 1 {
+		return fmt.Errorf("--%s must be a positive integer, got %d", name, value)
+	}
+	return nil
 }
 
 func ConvertIPToStringSlice(ips []net.IP) []string {

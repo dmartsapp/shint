@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,26 +20,41 @@ import (
 
 const (
 	HTTP_CLIENT_USER_AGENT string = "dmarts.app-http-v0.1"
+	webModule              string = "web"
 )
 
-func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool) {
+func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	var stats = make([]time.Duration, 0)
-	var MUTEX sync.RWMutex
+	var statsMutex sync.Mutex
+
+	if tlsConfig == nil {
+		tlsConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
 
 	if !*jsonoutput {
+		if tlsConfig.InsecureSkipVerify {
+			fmt.Println(lib.LogWithTimestamp(webModule, "tls verification disabled "+lib.Fields("warning", "certificate checks are skipped, response may not be trustworthy"), true))
+		}
+		if len(tlsConfig.Certificates) > 0 {
+			fmt.Println(lib.LogWithTimestamp(webModule, "using client certificate for mutual TLS", false))
+		}
+		if tlsConfig.RootCAs != nil {
+			fmt.Println(lib.LogWithTimestamp(webModule, "using custom CA bundle to verify server certificate", false))
+		}
+
 		ipaddresses, err := lib.ResolveName(context.Background(), URL.Hostname())
 		if err != nil {
-			fmt.Printf("%s ", lib.LogWithTimestamp(err.Error(), true))
+			fmt.Println(lib.LogWithTimestamp(webModule, "dns resolution failed "+lib.Fields("host", URL.Hostname(), "error", err.Error()), true))
 		} else {
-			fmt.Println(lib.LogWithTimestamp("DNS lookup successful for "+URL.Hostname()+"' to "+strconv.Itoa(len(ipaddresses))+" addresses '["+strings.Join(ipaddresses[:], ", ")+"]' in "+time.Since(istart).String(), false))
+			fmt.Println(lib.LogWithTimestamp(webModule, "dns resolved "+lib.Fields("host", URL.Hostname(), "addresses", len(ipaddresses), "ips", "["+strings.Join(ipaddresses, ",")+"]", "time", time.Since(istart)), false))
 		}
 	}
 
 	if *jsonoutput {
 		output.InputParams = lib.InputParams{
-			Mode:     "web",
+			Mode:     webModule,
 			Host:     URL.Host,
 			Protocol: "tcp",
 			Timeout:  timeout,
@@ -52,133 +66,117 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			Data:     data,
 			Headers:  headers,
 		}
-		output.ModuleName = "web"
-		output.InputParams.Host = URL.Host
+		output.ModuleName = webModule
 		resolvedIPs, err := lib.ResolveNameToIPs(context.Background(), URL.Hostname())
 		if err != nil {
-			output.DNSLookup = lib.DNSLookup{
-				Hostname: URL.Hostname(),
-			}
+			output.DNSLookup = lib.DNSLookup{Hostname: URL.Hostname()}
 			output.Error = err.Error()
+			output.DNSLookup.Error = err.Error()
 			output.DNSLookup.Success = false
-			output.DNSLookup.ResolvedAddresses = nil
 			output.DNSLookup.TimeTaken = time.Since(istart).Microseconds()
-
 		} else {
-			output.DNSLookup = lib.DNSLookup{
-				Hostname: URL.Hostname(),
-			}
+			output.DNSLookup = lib.DNSLookup{Hostname: URL.Hostname()}
 			output.DNSLookup.Success = true
-			output.DNSLookup.ResolvedAddresses = make([]string, len(resolvedIPs))
+			output.DNSLookup.ResolvedAddresses = lib.ConvertIPToStringSlice(resolvedIPs)
 			output.DNSLookup.TimeTaken = time.Since(istart).Microseconds()
-			for i, ip := range resolvedIPs {
-				output.DNSLookup.ResolvedAddresses[i] = ip.String()
-			}
 		}
 
-		output.InputParams.FromPort, _ = strconv.Atoi(URL.Port())
-		if output.InputParams.FromPort == 0 {
-			if URL.Scheme == "https" {
-				output.InputParams.FromPort = 443
-			} else {
-				output.InputParams.FromPort = 80
-			}
+		if port, err := parsePort(URL.Port()); err == nil && port != 0 {
+			output.InputParams.FromPort = port
+		} else if URL.Scheme == "https" {
+			output.InputParams.FromPort = 443
+		} else {
+			output.InputParams.FromPort = 80
 		}
 		output.InputParams.ToPort = output.InputParams.FromPort
 		output.StartTime = istart.UnixMicro()
 		output.Stats = make([]lib.WebStats, 0)
 	}
 
+	client := &http.Client{
+		Timeout:   time.Duration(timeout) * time.Second,
+		Transport: &http.Transport{TLSClientConfig: tlsConfig},
+	}
+
 	var WG sync.WaitGroup
 	for i := 0; i < iterations; i++ {
+		attempt := i + 1
 		if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
-			i, err := rand.Int(rand.Reader, big.NewInt(10000))
+			randDelay, err := rand.Int(rand.Reader, big.NewInt(10000))
 			if err != nil {
 				if !*jsonoutput {
 					fmt.Println(err)
-					return // added return to exit if error occurs
-				} else {
-					output.Error = err.Error()
-					return
 				}
+				return
 			}
-			time.Sleep(time.Millisecond * time.Duration(i.Int64()))
+			time.Sleep(time.Millisecond * time.Duration(randDelay.Int64()))
+		} else if delay > 0 {
+			time.Sleep(time.Millisecond * time.Duration(delay))
 		}
 		WG.Add(1)
-		go func(URL *url.URL) {
+		go func(URL *url.URL, attempt int) {
 			defer WG.Done()
 			errors := make([]string, 0)
 
-			client := &http.Client{
-				Timeout: time.Duration(time.Duration(timeout) * time.Second),
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{InsecureSkipVerify: false, MinVersion: tls.VersionTLS12},
-				},
-			} // setup http transport not to validate the SSL certificate
-
-			// Create a new request with the specified method, URL, and data
 			request, err := http.NewRequest(method, URL.String(), strings.NewReader(data))
 			if err != nil {
-				if strings.Contains(err.Error(), "tls") {
-					fmt.Println(lib.LogWithTimestamp(err.Error(), true))
-					return
-				} else {
-					return
-				}
+				fmt.Println(lib.LogWithTimestamp(webModule, "request build failed "+lib.Fields("url", URL.String(), "error", err.Error()), true))
+				return
 			}
-			request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT) // set the header for the user-agent
-			// Set headers
+			request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT)
 			for _, h := range headers {
 				parts := strings.SplitN(h, ":", 2)
 				if len(parts) == 2 {
 					request.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
 				} else {
-					errors = append(errors, "Invalid header format: "+fmt.Sprint(parts))
+					errors = append(errors, "invalid header format: "+fmt.Sprint(h))
 				}
 			}
 
-			start := time.Now() // capture initial time
+			start := time.Now()
 			response, err := client.Do(request)
 			if err != nil {
-				fmt.Println(lib.LogWithTimestamp(err.Error(), true))
+				fmt.Println(lib.LogWithTimestamp(webModule, "request failed "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", time.Since(start), "error", err.Error()), true))
 				return
 			}
 			defer response.Body.Close()
-			body, _ := io.ReadAll(response.Body) // read the entire body, this should consume most of the time
+			body, _ := io.ReadAll(response.Body)
 			header := response.Header
-			time_taken := time.Since(start) //capture the time taken
+			timeTaken := time.Since(start)
 
-			MUTEX.Lock()
-			stats = append(stats, time_taken)
-			MUTEX.Unlock()
-
+			statsMutex.Lock()
+			stats = append(stats, timeTaken)
 			if *jsonoutput {
 				stat := lib.WebStats{}
-
 				stat.URL = URL.String()
 				if includeresponsebody {
 					var jsondata interface{}
-					err = json.Unmarshal(body, &jsondata)
-					if err != nil {
-						errors = append(errors, "JSON parse error: "+fmt.Sprint(err.Error()))
+					if jsonErr := json.Unmarshal(body, &jsondata); jsonErr != nil {
+						errors = append(errors, "JSON parse error: "+jsonErr.Error())
+						stat.Response = map[string]any{"body": string(body), "header": header}
+					} else {
+						stat.Response = map[string]any{"body": jsondata, "header": header}
 					}
-					stat.Response = map[string]any{"body": jsondata, "header": header}
 				} else {
 					stat.Response = map[string]any{"header": header}
 				}
-				stat.Request = map[string]any{"method": method, "body": request.Body, "headers": request.Header}
+				stat.Request = map[string]any{"method": method, "body": data, "headers": request.Header}
 				stat.Success = true
 				stat.StatusCode = response.StatusCode
 				stat.BytesDownloaded = len(body) + len(header)
 				stat.SentTime = start.UnixMicro()
 				stat.RecvTime = time.Now().UnixMicro()
-				stat.TimeTaken = stat.RecvTime - stat.SentTime
+				stat.TimeTaken = timeTaken.Microseconds()
 				stat.Errors = errors
 				output.Stats = append(output.Stats.([]lib.WebStats), stat)
-			} else {
-				fmt.Println(lib.LogWithTimestamp("Response: "+response.Status+", bytes downloaded: "+strconv.Itoa(len(string(body)))+", speed: "+strconv.FormatFloat((float64(len(string(body)))/float64(time_taken.Seconds())/1024), 'G', -1, 64)+"KB/s, time taken: "+time_taken.String(), false))
 			}
-		}(URL)
+			statsMutex.Unlock()
+
+			if !*jsonoutput {
+				speedKBs := float64(len(body)) / timeTaken.Seconds() / 1024
+				fmt.Println(lib.LogWithTimestamp(webModule, "response ok "+lib.Fields("url", URL.String(), "status", response.Status, "bytes", len(body), "speed", fmt.Sprintf("%.2fKB/s", speedKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken), false))
+			}
+		}(URL, attempt)
 	}
 	WG.Wait()
 	if *jsonoutput {
@@ -188,25 +186,21 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		output.Error = ""
 		JS, jsonErr := json.MarshalIndent(output, "", "  ")
 		if jsonErr != nil {
-			fmt.Println(lib.LogWithTimestamp(jsonErr.Error(), true))
+			fmt.Println(lib.LogWithTimestamp(webModule, jsonErr.Error(), true))
 			os.Exit(1)
 		}
 		fmt.Println(string(JS))
 	} else {
-		MUTEX.RLock()
-		fmt.Println(lib.LogStats("web", stats, iterations))
-		MUTEX.RUnlock()
-		fmt.Println("Total time taken: " + time.Since(istart).String())
+		statsMutex.Lock()
+		fmt.Println(lib.LogStats(webModule, stats, iterations))
+		statsMutex.Unlock()
+		fmt.Println(lib.LogWithTimestamp(webModule, "done "+lib.Fields("total_time", time.Since(istart)), false))
 	}
 }
 
-// func getHeaders(headers []string) http.Header {
-// 	header := http.Header{}
-// 	for _, h := range headers {
-// 		parts := strings.SplitN(h, ":", 2)
-// 		if len(parts) == 2 {
-// 			header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
-// 		}
-// 	}
-// 	return header
-// }
+func parsePort(raw string) (int, error) {
+	if raw == "" {
+		return 0, nil
+	}
+	return lib.ValidatePort(raw)
+}
