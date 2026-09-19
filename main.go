@@ -38,6 +38,7 @@ var (
 	udpData             string
 	listenBind          string
 	listenEcho          bool
+	listenMaxCount      int
 )
 
 var rootCmd = &cobra.Command{
@@ -200,7 +201,7 @@ var listenTCPCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
-		handlers.TCPListenHandler(listenBind, port, listenEcho, iterations, timeout, &jsonoutput)
+		handlers.TCPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
 	},
 }
 
@@ -214,7 +215,7 @@ var listenUDPCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
-		handlers.UDPListenHandler(listenBind, port, listenEcho, iterations, timeout, &jsonoutput)
+		handlers.UDPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
 	},
 }
 
@@ -229,7 +230,7 @@ var listenHTTPCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
-		handlers.HTTPListenHandler(listenBind, port, iterations, timeout, &jsonoutput)
+		handlers.HTTPListenHandler(listenBind, port, listenMaxCount, timeout, &jsonoutput)
 	},
 }
 
@@ -257,6 +258,11 @@ func init() {
 
 	listenCmd.PersistentFlags().StringVar(&listenBind, "bind", "0.0.0.0", "Local address to bind the listener to")
 	listenCmd.PersistentFlags().BoolVar(&listenEcho, "echo", false, "Echo received data back to the sender")
+	// Shadows the root --count flag (default 1) for every listen subcommand:
+	// a listener's whole point is usually to stay up until the user is done
+	// with it, so "keep listening until Ctrl+C" is the sensible default here,
+	// unlike the "one check and done" default that fits telnet/ping/web/nmap/udp.
+	listenCmd.PersistentFlags().IntVar(&listenMaxCount, "count", 0, "Max connections/packets/requests to accept, 0 = unlimited (run until Ctrl+C)")
 	listenCmd.AddCommand(listenTCPCmd, listenUDPCmd, listenHTTPCmd)
 
 	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)

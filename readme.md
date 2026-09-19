@@ -387,7 +387,7 @@ Sat Sep 19 01:20:13 MDT 2026: [udp] OK done probes_sent=1 open=1 total_time=1.00
 
 ### Listen
 
-Starts a local listener so `telnet`, `udp`, `web`, and `nmap` can be tested without a real remote server. Uses the global `--count` (max connections/packets/requests to accept, `0` = unlimited) and `--timeout` (idle read timeout, `0` = none) flags — see [Global flags](#global-flags). Stop an unlimited listener with Ctrl+C; a summary line is printed on exit either way.
+Starts a local listener so `telnet`, `udp`, `web`, and `nmap` can be tested without a real remote server. Unlike every other command, `listen`'s own `--count` defaults to `0` (unlimited - keep listening until Ctrl+C) rather than the root `--count`'s default of `1`, since the whole point of starting a listener is usually to leave it up for a while; pass `--count N` to stop automatically after N connections/packets/requests instead. `--timeout` still means idle read timeout here (`0` = none) - see [Global flags](#global-flags). A summary line is printed on exit either way.
 
 **Syntax:**
 
@@ -404,7 +404,7 @@ Starts a local listener so `telnet`, `udp`, `web`, and `nmap` can be tested with
 
 ```bash
 # Terminal 1: wait for one connection then exit
-./shint listen tcp 9000 --echo
+./shint listen tcp 9000 --echo --count 1
 
 # Terminal 2
 ./shint telnet 127.0.0.1 9000
@@ -427,12 +427,12 @@ With `--json`, each received chunk/packet is printed as one JSON line as it arri
 
 #### HTTP listener
 
-`listen http` is a minimal test endpoint useful for both plain TCP checks (`telnet`/`nmap` against it) and real HTTP checks (`web`, `curl`, a load balancer health check, etc.): any HTTP method on `/` returns a small JSON status dict, and every other path returns 404 with the same shape. `--echo` and `--bind`'s usual meaning still apply, but there's no request-body echoing — the response is always the fixed status dict.
+`listen http` is a minimal test endpoint useful for both plain TCP checks (`telnet`/`nmap` against it) and real HTTP checks (`web`, `curl`, a load balancer health check, etc.): any HTTP method on `/` returns a small JSON status dict, and every other path returns 404 with the same shape. `--bind`'s usual meaning still applies; `--echo` has no effect here (there's no request-body echoing - the response is always the fixed status dict).
 
 **Example:**
 
 ```bash
-./shint listen http 8080 --count 0
+./shint listen http 8080
 ```
 
 ```bash
@@ -489,7 +489,7 @@ docker run --rm farhansabbir/shint:latest web https://example.com --json
 
 # listen commands need the container's port published to reach it from outside
 docker run --rm -p 9000:9000/tcp farhansabbir/shint:latest listen tcp 9000 --bind 0.0.0.0
-docker run --rm -p 8080:8080/tcp farhansabbir/shint:latest listen http 8080 --count 0
+docker run --rm -p 8080:8080/tcp farhansabbir/shint:latest listen http 8080
 ```
 
 `ping` inside a container follows the same unprivileged-ICMP rules as running on the host directly (see [Platform notes](#platform-notes)) - no extra `--cap-add` should be needed on a typical Docker host.
