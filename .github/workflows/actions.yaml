@@ -173,24 +173,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       # github.ref_name for a "v3.0.0" tag push is "v3.0.0"; derive the
       # bare "3.0.0"/"3.0"/"3" rollup tags from it alongside the full
       # version and :latest, the same convention most container images use.
+      # Published to both registries under the same tag set.
       - name: Compute image tags
         id: image-tags
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}"
+          GHCR_IMAGE="ghcr.io/${{ github.repository }}"
+          DOCKERHUB_IMAGE="docker.io/$DOCKERHUB_USERNAME/shint"
           VERSION="${GITHUB_REF_NAME#v}"
           MAJOR_MINOR="${VERSION%.*}"
           MAJOR="${MAJOR_MINOR%.*}"
           {
             echo "version=$VERSION"
             echo "tags<<EOF"
-            echo "$IMAGE:${GITHUB_REF_NAME}"
-            echo "$IMAGE:$VERSION"
-            echo "$IMAGE:$MAJOR_MINOR"
-            echo "$IMAGE:$MAJOR"
-            echo "$IMAGE:latest"
+            for IMAGE in "$GHCR_IMAGE" "$DOCKERHUB_IMAGE"; do
+              echo "$IMAGE:${GITHUB_REF_NAME}"
+              echo "$IMAGE:$VERSION"
+              echo "$IMAGE:$MAJOR_MINOR"
+              echo "$IMAGE:$MAJOR"
+              echo "$IMAGE:latest"
+            done
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -229,6 +241,16 @@ jobs:
           path: release-artifacts
           
       - name: Generate release notes
+        env:
+          # Passed via env rather than interpolated directly into the script
+          # below: a commit message is attacker/author-controlled arbitrary
+          # text, and inlining "${{ github.event.head_commit.message }}"
+          # straight into a `run:` block turns it into literal shell source
+          # - e.g. a message containing `` `some command` `` gets executed
+          # by bash as command substitution once it hits `echo "..."`. This
+          # is GitHub's own documented script-injection footgun; reading it
+          # from an env var here instead keeps it inert, ordinary data.
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           echo "## Release Notes for ${{ github.ref_name }}" >> release_notes.md
           echo "" >> release_notes.md
@@ -236,7 +258,7 @@ jobs:
           echo "### Commit Message" >> release_notes.md
           echo "" >> release_notes.md
           echo "\`\`\`code" >> release_notes.md
-          echo "${{ github.event.head_commit.message }}" >> release_notes.md
+          echo "$COMMIT_MSG" >> release_notes.md
           echo "\`\`\`" >> release_notes.md
           echo "" >> release_notes.md
           echo "" >> release_notes.md
