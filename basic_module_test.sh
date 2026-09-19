@@ -8,7 +8,7 @@ set -e
 # Keep track of the number of failures
 failures=0
 # The application binary name
-BINARY="./telnet"
+BINARY="./shint"
 
 # ANSI Color Codes
 GREEN='\033[0;32m'
@@ -53,18 +53,22 @@ echo ""
 # --- Test Cases ---
 
 # Web Tests
-run_test "Web GET" "$BINARY web https://google.com --count 1" "Response: 200 OK"
-run_test "Web POST" "$BINARY web -X POST https://httpbin.org/post --count 1" "Response: 200 OK"
+run_test "Web GET" "$BINARY web https://google.com --count 1" 'status="200 OK"'
+run_test "Web POST" "$BINARY web -X POST https://httpbin.org/post --count 1" 'status="200 OK"'
 run_test "Web GET with JSON output" "$BINARY web https://google.com --json --count 1" '"status_code": 200'
 
 # Nmap Test
-run_test "Nmap Scan" "$BINARY nmap --from 80 --to 80 google.com" "has port 80 open"
+run_test "Nmap Scan" "$BINARY nmap --from 80 --to 80 google.com" "port open"
 
 # Telnet Test
-run_test "Telnet" "$BINARY telnet google.com 443" "Successfully connected"
+run_test "Telnet" "$BINARY telnet google.com 443" "connect ok"
+
+# UDP Test (result state against a real host is inherently best-effort - see
+# README's UDP section - so this only checks the probe ran, not its outcome)
+run_test "UDP" "$BINARY udp 8.8.8.8 53 --data test" "[udp] OK probe"
 
 # Ping Test
-run_test "Ping" "$BINARY ping google.com --count 1" "Packets sent: 1, Packets received: 1"
+run_test "Ping" "$BINARY ping google.com --count 1" "icmp STATISTICS"
 
 
 # --- Summary ---

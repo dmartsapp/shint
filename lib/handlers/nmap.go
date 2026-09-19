@@ -65,9 +65,17 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		semaphore := make(chan struct{}, maxConcurrentPortScans)
 		var openCount int
 		totalScans := 0
+	scanLoop:
 		for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 			for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
 				for port := fromport; port <= endport; port++ { // we need to loop over all ports individually
+					// Stop launching new scans once ctx is done, so a wide
+					// range (e.g. 1-65535) doesn't keep spawning dials well
+					// past the caller's overall deadline just because each
+					// individual dial has its own separate timeout.
+					if ctx.Err() != nil {
+						break scanLoop
+					}
 					if throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 10000 ms
 						randDelay, err := rand.Int(rand.Reader, big.NewInt(10000))
 						if err != nil {
@@ -82,7 +90,7 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 					go func(ip string, port int) {
 						defer WG.Done()
 						defer func() { <-semaphore }()
-						_, err := lib.IsPortUp(ip, port, timeout)
+						_, err := lib.IsPortUp(ctx, ip, port, timeout)
 						if err != nil {
 							if *jsonoutput {
 								statsMutex.Lock()

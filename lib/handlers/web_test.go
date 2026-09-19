@@ -1,14 +1,14 @@
 package handlers
 
 import (
-	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
+	"strings"
 	"testing"
 )
 
@@ -42,13 +42,6 @@ func TestWebHandler(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// --- Execute WebHandler and capture its output ---
-	
-	// Redirect stdout to a buffer to capture the output
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
 	// Setup WebHandler parameters
 	jsonOutput := true
 	includeBody := true
@@ -61,17 +54,12 @@ func TestWebHandler(t *testing.T) {
 	data := `{"key":"value"}`
 	headers := []string{"X-Test-Header: TestValue"}
 
-	// Run the handler
-	WebHandler(&jsonOutput, iterations, delay, &throttle, timeout, serverURL, method, data, headers, includeBody, nil)
+	// Run the handler, capturing its stdout output
+	outputStr := captureStdout(t, func() {
+		WebHandler(&jsonOutput, iterations, delay, &throttle, timeout, serverURL, method, data, headers, includeBody, nil)
+	})
 
-	// Restore stdout and read captured output
-	_ = w.Close()
-	os.Stdout = oldStdout
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-	
 	// --- Validate the output ---
-	outputStr := buf.String()
 	// Unmarshal to inspect JSON details
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(outputStr), &result); err != nil {
@@ -115,4 +103,81 @@ func TestWebHandler(t *testing.T) {
 	}
 
 	log.Println("WebHandler unit test passed.")
+}
+
+// TestWebHandlerMutualTLS exercises the --cacert/--cert/--key path end to
+// end: a server that requires and verifies a client certificate, hit
+// through BuildTLSConfig's assembled tls.Config.
+func TestWebHandlerMutualTLS(t *testing.T) {
+	ca := generateTestCA(t)
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}))
+	server.TLS = &tls.Config{
+		Certificates: []tls.Certificate{ca.ServerTLSCert},
+		ClientCAs:    ca.CAPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+	}
+	server.StartTLS()
+	defer server.Close()
+
+	serverURL, _ := url.Parse(server.URL)
+
+	t.Run("succeeds with matching client cert and CA", func(t *testing.T) {
+		tlsConfig, err := BuildTLSConfig(ca.CAFile, ca.ClientCertFile, ca.ClientKeyFile, false)
+		if err != nil {
+			t.Fatalf("BuildTLSConfig error: %v", err)
+		}
+		jsonOutput, throttle := true, false
+		out := captureStdout(t, func() {
+			WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
+		})
+		if !strings.Contains(out, `"status_code": 200`) {
+			t.Errorf("expected a successful 200 response, got:\n%s", out)
+		}
+	})
+
+	t.Run("fails without a client cert", func(t *testing.T) {
+		tlsConfig, err := BuildTLSConfig(ca.CAFile, "", "", false)
+		if err != nil {
+			t.Fatalf("BuildTLSConfig error: %v", err)
+		}
+		jsonOutput, throttle := false, false
+		out := captureStdout(t, func() {
+			WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
+		})
+		if !strings.Contains(out, "ERROR") {
+			t.Errorf("expected a TLS handshake error without a client cert, got:\n%s", out)
+		}
+	})
+
+	t.Run("fails without trusting the CA", func(t *testing.T) {
+		tlsConfig, err := BuildTLSConfig("", ca.ClientCertFile, ca.ClientKeyFile, false)
+		if err != nil {
+			t.Fatalf("BuildTLSConfig error: %v", err)
+		}
+		jsonOutput, throttle := false, false
+		out := captureStdout(t, func() {
+			WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
+		})
+		if !strings.Contains(out, "ERROR") {
+			t.Errorf("expected a certificate trust error without --cacert, got:\n%s", out)
+		}
+	})
+
+	t.Run("insecure flag skips server verification", func(t *testing.T) {
+		tlsConfig, err := BuildTLSConfig("", ca.ClientCertFile, ca.ClientKeyFile, true)
+		if err != nil {
+			t.Fatalf("BuildTLSConfig error: %v", err)
+		}
+		jsonOutput, throttle := true, false
+		out := captureStdout(t, func() {
+			WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
+		})
+		if !strings.Contains(out, `"status_code": 200`) {
+			t.Errorf("expected a successful 200 response with --insecure, got:\n%s", out)
+		}
+	})
 }

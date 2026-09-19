@@ -78,7 +78,7 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 				go func(ip string, attempt int) {
 					defer WG.Done()
 					start := time.Now()
-					_, err := lib.IsPortUp(ip, port, timeout)
+					_, err := lib.IsPortUp(CTXTIMEOUT, ip, port, timeout)
 					timeTaken := time.Since(start)
 					if err != nil {
 						if *jsonoutput {

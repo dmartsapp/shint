@@ -48,9 +48,15 @@ func SortTimeDurationSlice(stats *[]time.Duration) {
 	})
 }
 
-func IsPortUp(host string, port int, timeout int) (bool, error) {
+// IsPortUp attempts a TCP connection to host:port, bounded by whichever of
+// timeout (seconds) or ctx's own deadline/cancellation comes first. Using
+// DialContext (rather than a bare Dial with only dialer.Timeout) means a
+// caller scanning many ports - nmap's port range in particular - can cancel
+// or expire ctx once and have every in-flight and not-yet-started dial stop
+// promptly, instead of each one running out its full per-dial timeout.
+func IsPortUp(ctx context.Context, host string, port int, timeout int) (bool, error) {
 	var dialer = net.Dialer{Timeout: time.Duration(timeout) * time.Second}
-	conn, err := dialer.Dial(Protocol, net.JoinHostPort(host, strconv.Itoa(port)))
+	conn, err := dialer.DialContext(ctx, Protocol, net.JoinHostPort(host, strconv.Itoa(port)))
 	if err != nil {
 		return false, err
 	}
