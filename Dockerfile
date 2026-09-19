@@ -4,7 +4,7 @@
 # Compiles a small, statically-linked (CGO_ENABLED=0) shint binary for
 # whatever platform buildx is targeting (TARGETOS/TARGETARCH are set
 # automatically by `docker buildx build --platform ...`).
-FROM golang:1.26.3-alpine AS builder
+FROM golang:1.27.1-alpine AS builder
 
 WORKDIR /src
 
