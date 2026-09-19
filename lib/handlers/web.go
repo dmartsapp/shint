@@ -139,7 +139,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				fmt.Println(lib.LogWithTimestamp(webModule, "request failed "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", time.Since(start), "error", err.Error()), true))
 				return
 			}
-			defer response.Body.Close()
+			defer func() { _ = response.Body.Close() }()
 			body, _ := io.ReadAll(response.Body)
 			header := response.Header
 			timeTaken := time.Since(start)

@@ -60,7 +60,7 @@ func IsPortUp(ctx context.Context, host string, port int, timeout int) (bool, er
 	if err != nil {
 		return false, err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	return true, nil
 }
 

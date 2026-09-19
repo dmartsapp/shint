@@ -31,7 +31,7 @@ func probeUDP(ip string, port int, timeout int, payload []byte) (state string, r
 	if dialErr != nil {
 		return "error", nil, dialErr
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	if _, werr := conn.Write(payload); werr != nil {
 		return "error", nil, werr

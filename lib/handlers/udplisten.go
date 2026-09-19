@@ -32,13 +32,13 @@ func UDPListenHandler(bind string, port int, echo bool, maxPackets int, idleTime
 		fmt.Println(lib.LogWithTimestamp(listenUDPModule, "listen failed "+lib.Fields("address", addr, "error", err.Error()), true))
 		os.Exit(1)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() {
 		<-ctx.Done()
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	if !*jsonoutput {

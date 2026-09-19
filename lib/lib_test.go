@@ -155,14 +155,14 @@ func TestIsPortUpOpenPort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start test listener: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	go func() {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
 				return
 			}
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -186,7 +186,7 @@ func TestIsPortUpClosedPort(t *testing.T) {
 	}
 	_, port, _ := net.SplitHostPort(listener.Addr().String())
 	portNum, _ := strconv.Atoi(port)
-	listener.Close()
+	_ = listener.Close()
 
 	up, err := IsPortUp(context.Background(), "127.0.0.1", portNum, 2)
 	if err == nil {
@@ -204,7 +204,7 @@ func TestIsPortUpRespectsContextCancellation(t *testing.T) {
 	}
 	_, port, _ := net.SplitHostPort(listener.Addr().String())
 	portNum, _ := strconv.Atoi(port)
-	listener.Close()
+	_ = listener.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // already canceled before dialing

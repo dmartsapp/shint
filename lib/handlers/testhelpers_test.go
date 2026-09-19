@@ -58,7 +58,7 @@ func freeTCPPort(t *testing.T) int {
 	if err != nil {
 		t.Fatalf("failed to find a free TCP port: %v", err)
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port
 }
 
@@ -68,7 +68,7 @@ func freeUDPPort(t *testing.T) int {
 	if err != nil {
 		t.Fatalf("failed to find a free UDP port: %v", err)
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	return c.LocalAddr().(*net.UDPAddr).Port
 }
 
@@ -173,7 +173,7 @@ func writePEM(t *testing.T, path, blockType string, der []byte) {
 	if err != nil {
 		t.Fatalf("create %s: %v", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if err := pem.Encode(f, &pem.Block{Type: blockType, Bytes: der}); err != nil {
 		t.Fatalf("encode PEM for %s: %v", path, err)
 	}

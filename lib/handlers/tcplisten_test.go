@@ -37,7 +37,7 @@ func TestTCPListenHandlerAcceptsAndEchoes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to dial listener: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	if _, err := conn.Write([]byte("hello")); err != nil {
 		t.Fatalf("failed to write to listener: %v", err)
@@ -52,7 +52,7 @@ func TestTCPListenHandlerAcceptsAndEchoes(t *testing.T) {
 	if string(reply[:n]) != "hello" {
 		t.Errorf("echo reply = %q, want %q", reply[:n], "hello")
 	}
-	conn.Close()
+	_ = conn.Close()
 
 	select {
 	case out := <-done:
@@ -93,7 +93,7 @@ func TestTCPListenHandlerJSONEvent(t *testing.T) {
 	if _, err := conn.Write([]byte("json-test")); err != nil {
 		t.Fatalf("failed to write: %v", err)
 	}
-	conn.Close()
+	_ = conn.Close()
 
 	select {
 	case out := <-done:

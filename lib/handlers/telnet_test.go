@@ -24,12 +24,12 @@ func startEchoListener(t *testing.T) (port int, closeFn func()) {
 			if err != nil {
 				return
 			}
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 	_, portStr, _ := net.SplitHostPort(listener.Addr().String())
 	p, _ := strconv.Atoi(portStr)
-	return p, func() { listener.Close() }
+	return p, func() { _ = listener.Close() }
 }
 
 func TestTelnetHandlerSuccessJSON(t *testing.T) {
@@ -66,7 +66,7 @@ func TestTelnetHandlerFailureText(t *testing.T) {
 	listener, _ := net.Listen("tcp", "127.0.0.1:0")
 	_, portStr, _ := net.SplitHostPort(listener.Addr().String())
 	port, _ := strconv.Atoi(portStr)
-	listener.Close()
+	_ = listener.Close()
 
 	jsonOutput, throttle := false, false
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

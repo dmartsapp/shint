@@ -54,7 +54,7 @@ func TestFieldsPanicsOnOddArgs(t *testing.T) {
 			t.Error("expected panic for odd number of arguments, got none")
 		}
 	}()
-	Fields("host", "1.2.3.4", "port")
+	Fields("host", "1.2.3.4", "port") //nolint:staticcheck // SA5012: deliberately odd arity, this test exercises the panic on it
 }
 
 func TestLogStatsWithSuccesses(t *testing.T) {

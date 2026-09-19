@@ -27,7 +27,7 @@ func startEchoUDPServer(t *testing.T) (port int, closeFn func()) {
 			_, _ = conn.WriteToUDP(buf[:n], addr)
 		}
 	}()
-	return conn.LocalAddr().(*net.UDPAddr).Port, func() { conn.Close() }
+	return conn.LocalAddr().(*net.UDPAddr).Port, func() { _ = conn.Close() }
 }
 
 // startSilentUDPServer listens on a UDP port but never replies, so probes
@@ -47,7 +47,7 @@ func startSilentUDPServer(t *testing.T) (port int, closeFn func()) {
 			// Deliberately never respond.
 		}
 	}()
-	return conn.LocalAddr().(*net.UDPAddr).Port, func() { conn.Close() }
+	return conn.LocalAddr().(*net.UDPAddr).Port, func() { _ = conn.Close() }
 }
 
 func TestProbeUDPOpen(t *testing.T) {
@@ -91,7 +91,7 @@ func TestProbeUDPClosed(t *testing.T) {
 		t.Fatalf("failed to find a free UDP port: %v", err)
 	}
 	port := conn.LocalAddr().(*net.UDPAddr).Port
-	conn.Close()
+	_ = conn.Close()
 
 	state, _, err := probeUDP("127.0.0.1", port, 2, []byte("ping"))
 	if err != nil {

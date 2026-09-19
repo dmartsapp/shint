@@ -29,7 +29,7 @@ func TestUDPListenHandlerReceivesAndEchoes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to dial UDP listener: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	if _, err := conn.Write([]byte("hello")); err != nil {
 		t.Fatalf("failed to write: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestUDPListenHandlerJSONEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to dial UDP listener: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	if _, err := conn.Write([]byte("json-udp")); err != nil {
 		t.Fatalf("failed to write: %v", err)
 	}

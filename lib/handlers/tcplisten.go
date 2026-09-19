@@ -42,13 +42,13 @@ func TCPListenHandler(bind string, port int, echo bool, maxConnections int, idle
 		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "listen failed "+lib.Fields("address", addr, "error", err.Error()), true))
 		os.Exit(1)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go func() {
 		<-ctx.Done()
-		listener.Close()
+		_ = listener.Close()
 	}()
 
 	if !*jsonoutput {
@@ -90,7 +90,7 @@ func TCPListenHandler(bind string, port int, echo bool, maxConnections int, idle
 }
 
 func handleTCPConnection(conn net.Conn, echo bool, idleTimeout int, jsonoutput *bool) int {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	remote := conn.RemoteAddr().String()
 	local := conn.LocalAddr().String()
 	if !*jsonoutput {
