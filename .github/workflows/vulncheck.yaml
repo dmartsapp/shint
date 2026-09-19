@@ -1,0 +1,74 @@
+name: Vulnerability Check
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Run vulnerability check
+        id: govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          output-file: govulncheck-report.txt
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## Vulnerability Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | **Vulnerabilities Found** |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.govulncheck.conclusion }}" == "success" ]; then
+              VULN_COUNT=$(grep 'Vulnerabilities found:' $GITHUB_WORKSPACE/govulncheck-report.txt | awk -F': ' '{print $2}')
+              if [ "$VULN_COUNT" -gt 0 ]; then
+                  echo "| ❌ Failure | ${VULN_COUNT} |" >> $GITHUB_STEP_SUMMARY
+              else
+                  echo "| ✅ Success | 0 |" >> $GITHUB_STEP_SUMMARY
+              fi
+          else
+              echo "| ❌ Failure | Unknown (step failed) |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Details" >> $GITHUB_STEP_SUMMARY
+          echo "Checked modules: $(grep 'Checked modules:' $GITHUB_WORKSPACE/govulncheck-report.txt | awk -F': ' '{print $2}')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          grep -A 1000 'Details:' $GITHUB_WORKSPACE/govulncheck-report.txt >> $GITHUB_STEP_SUMMARY || true
+
+  report-failure:
+    name: Report Failure as Issue
+    runs-on: ubuntu-latest
+    needs: govulncheck
+    if: failure()
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Create issue on vulnerability check failure
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "CI Failure: Vulnerability Check"
+          content-filepath: .github/ISSUE_TEMPLATE/ci_failure.md
+          labels: bug, ci-failure
+          assignees: ${{ github.actor }}
+          token: ${{ secrets.GITHUB_TOKEN }}

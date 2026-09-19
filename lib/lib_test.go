@@ -129,6 +129,27 @@ func TestResolveNameLoopback(t *testing.T) {
 	}
 }
 
+func TestResolveNameResolvesIPv6Literal(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	addrs, err := ResolveName(ctx, "::1")
+	if err != nil {
+		t.Fatalf("ResolveName(::1) unexpected error: %v", err)
+	}
+	if len(addrs) != 1 || addrs[0] != "::1" {
+		t.Errorf("ResolveName(::1) = %v, want [::1]", addrs)
+	}
+}
+
+func TestResolveNameDualStackNetworkType(t *testing.T) {
+	// NetworkType controls telnet/nmap/udp/web's DNS resolution family;
+	// must be "ip" (both A and AAAA) rather than the old IPv4-only
+	// default, or a dual-stack host would only ever be checked over v4.
+	if NetworkType != "ip" {
+		t.Errorf("NetworkType = %q, want \"ip\" for dual-stack resolution", NetworkType)
+	}
+}
+
 func TestResolveNameInvalidHost(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -147,6 +168,34 @@ func TestResolveNameToIPs(t *testing.T) {
 	}
 	if len(ips) == 0 {
 		t.Fatal("ResolveNameToIPs(localhost) returned no addresses")
+	}
+}
+
+func TestIsPortUpOpenPortIPv6(t *testing.T) {
+	listener, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Fatalf("failed to start test listener: %v", err)
+	}
+	defer func() { _ = listener.Close() }()
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			_ = conn.Close()
+		}
+	}()
+
+	_, port, _ := net.SplitHostPort(listener.Addr().String())
+	portNum, _ := strconv.Atoi(port)
+
+	up, err := IsPortUp(context.Background(), "::1", portNum, 2)
+	if err != nil {
+		t.Fatalf("IsPortUp unexpected error: %v", err)
+	}
+	if !up {
+		t.Error("IsPortUp() = false, want true for an open IPv6 port")
 	}
 }
 

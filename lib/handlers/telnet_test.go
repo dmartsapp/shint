@@ -32,6 +32,52 @@ func startEchoListener(t *testing.T) (port int, closeFn func()) {
 	return p, func() { _ = listener.Close() }
 }
 
+func startEchoListenerIPv6(t *testing.T) (port int, closeFn func()) {
+	t.Helper()
+	listener, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Fatalf("failed to start IPv6 listener: %v", err)
+	}
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			_ = conn.Close()
+		}
+	}()
+	_, portStr, _ := net.SplitHostPort(listener.Addr().String())
+	p, _ := strconv.Atoi(portStr)
+	return p, func() { _ = listener.Close() }
+}
+
+func TestTelnetHandlerIPv6Loopback(t *testing.T) {
+	port, closeFn := startEchoListenerIPv6(t)
+	defer closeFn()
+
+	jsonOutput, throttle := true, false
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	out := captureStdout(t, func() {
+		TelnetHandler(&jsonOutput, 1, 0, &throttle, 3, 4, port, ctx, "::1")
+	})
+
+	var result lib.JSONOutput
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("failed to unmarshal JSON output: %v\noutput:\n%s", err, out)
+	}
+	statsJSON, _ := json.Marshal(result.Stats)
+	var stats []lib.TelnetStats
+	if err := json.Unmarshal(statsJSON, &stats); err != nil {
+		t.Fatalf("failed to unmarshal stats: %v", err)
+	}
+	if len(stats) != 1 || !stats[0].Success {
+		t.Fatalf("expected one successful IPv6 stat entry, got %+v", stats)
+	}
+}
+
 func TestTelnetHandlerSuccessJSON(t *testing.T) {
 	port, closeFn := startEchoListener(t)
 	defer closeFn()

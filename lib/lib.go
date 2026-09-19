@@ -13,7 +13,13 @@ import (
 const (
 	// DATETIMEFORMAT string = "Mon, 02 Jan 2006 15:04:05 MST"
 	DATETIMEFORMAT string = time.UnixDate
-	NetworkType    string = "ip4" // other networks are ip which includes both v4 and v6, and ip6 which is only v6
+	// NetworkType controls DNS resolution family for telnet/nmap/udp/web's
+	// diagnostic lookups (ping's own resolution lives in the go-ping
+	// dependency and is already dual-stack): "ip" resolves both A and AAAA
+	// records, "ip4"/"ip6" restrict to one. Dual-stack by default so a host
+	// with both records gets checked over both protocols, the same way
+	// ping already does.
+	NetworkType string = "ip"
 	Protocol       string = "tcp"
 )
 

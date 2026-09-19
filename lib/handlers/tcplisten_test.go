@@ -13,6 +13,55 @@ import (
 	"github.com/dmartsapp/shint/lib"
 )
 
+func TestTCPListenHandlerIPv6BindAcceptsAndEchoes(t *testing.T) {
+	port := freeTCPPort(t)
+	jsonOutput := false
+
+	done := make(chan string, 1)
+	go func() {
+		done <- captureStdout(t, func() {
+			TCPListenHandler("::1", port, true, 1, 5, &jsonOutput)
+		})
+	}()
+
+	var conn net.Conn
+	var err error
+	for i := 0; i < 50; i++ {
+		conn, err = net.Dial("tcp", net.JoinHostPort("::1", strconv.Itoa(port)))
+		if err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("failed to dial IPv6 listener: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	if _, err := conn.Write([]byte("hello6")); err != nil {
+		t.Fatalf("failed to write to listener: %v", err)
+	}
+	reply := make([]byte, 6)
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	n, err := conn.Read(reply)
+	if err != nil {
+		t.Fatalf("failed to read echo reply: %v", err)
+	}
+	if string(reply[:n]) != "hello6" {
+		t.Errorf("echo reply = %q, want %q", reply[:n], "hello6")
+	}
+	_ = conn.Close()
+
+	select {
+	case out := <-done:
+		if !strings.Contains(out, "connection accepted") {
+			t.Errorf("expected connection-accepted log line, got:\n%s", out)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("TCPListenHandler did not return after accepting its one IPv6 connection")
+	}
+}
+
 func TestTCPListenHandlerAcceptsAndEchoes(t *testing.T) {
 	port := freeTCPPort(t)
 	jsonOutput := false

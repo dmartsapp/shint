@@ -1,0 +1,88 @@
+name: GHCR Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  gate:
+    name: Lint & vulnerability gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: govulncheck
+        uses: golang/govulncheck-action@v1
+
+  ghcr:
+    name: Build and push to GHCR
+    runs-on: ubuntu-latest
+    needs: gate
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU (for cross-arch image builds)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # github.ref_name for a "v3.0.0" tag push is "v3.0.0"; derive the
+      # bare "3.0.0"/"3.0"/"3" rollup tags from it alongside the full
+      # version and :latest, the same convention most container images use.
+      - name: Compute image tags
+        id: image-tags
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}"
+          VERSION="${GITHUB_REF_NAME#v}"
+          MAJOR_MINOR="${VERSION%.*}"
+          MAJOR="${MAJOR_MINOR%.*}"
+          {
+            echo "version=$VERSION"
+            echo "tags<<EOF"
+            echo "$IMAGE:${GITHUB_REF_NAME}"
+            echo "$IMAGE:$VERSION"
+            echo "$IMAGE:$MAJOR_MINOR"
+            echo "$IMAGE:$MAJOR"
+            echo "$IMAGE:latest"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ github.ref_name }}
+          tags: ${{ steps.image-tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.image-tags.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

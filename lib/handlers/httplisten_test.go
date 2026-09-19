@@ -14,6 +14,35 @@ import (
 	"github.com/dmartsapp/shint/lib"
 )
 
+func TestHTTPListenHandlerIPv6Bind(t *testing.T) {
+	port := freeTCPPort(t)
+	jsonOutput := false
+
+	done := make(chan string, 1)
+	go func() {
+		done <- captureStdout(t, func() {
+			HTTPListenHandler("::1", port, 1, 5, &jsonOutput)
+		})
+	}()
+
+	waitForListenerReadyOn(t, "::1", port)
+
+	resp, err := http.Get("http://[::1]:" + strconv.Itoa(port) + "/")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", resp.StatusCode)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("HTTPListenHandler did not stop after its one IPv6 request")
+	}
+}
+
 func TestHTTPListenHandlerRootAllMethods(t *testing.T) {
 	port := freeTCPPort(t)
 	jsonOutput := false
@@ -171,7 +200,12 @@ func TestHTTPListenHandlerZeroCountRunsUntilInterrupted(t *testing.T) {
 // maxRequests and throw off tests asserting an exact request count.
 func waitForListenerReady(t *testing.T, port int) {
 	t.Helper()
-	addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	waitForListenerReadyOn(t, "127.0.0.1", port)
+}
+
+func waitForListenerReadyOn(t *testing.T, host string, port int) {
+	t.Helper()
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		conn, err := net.Dial("tcp", addr)

@@ -30,6 +30,26 @@ func startEchoUDPServer(t *testing.T) (port int, closeFn func()) {
 	return conn.LocalAddr().(*net.UDPAddr).Port, func() { _ = conn.Close() }
 }
 
+// startEchoUDPServerIPv6 is startEchoUDPServer's IPv6 loopback counterpart.
+func startEchoUDPServerIPv6(t *testing.T) (port int, closeFn func()) {
+	t.Helper()
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("::1")})
+	if err != nil {
+		t.Fatalf("failed to start IPv6 UDP echo server: %v", err)
+	}
+	go func() {
+		buf := make([]byte, 2048)
+		for {
+			n, addr, err := conn.ReadFromUDP(buf)
+			if err != nil {
+				return
+			}
+			_, _ = conn.WriteToUDP(buf[:n], addr)
+		}
+	}()
+	return conn.LocalAddr().(*net.UDPAddr).Port, func() { _ = conn.Close() }
+}
+
 // startSilentUDPServer listens on a UDP port but never replies, so probes
 // against it should time out into the "open|filtered" state.
 func startSilentUDPServer(t *testing.T) (port int, closeFn func()) {
@@ -63,6 +83,22 @@ func TestProbeUDPOpen(t *testing.T) {
 	}
 	if string(received) != "ping" {
 		t.Errorf("received = %q, want %q", received, "ping")
+	}
+}
+
+func TestProbeUDPOpenIPv6(t *testing.T) {
+	port, closeFn := startEchoUDPServerIPv6(t)
+	defer closeFn()
+
+	state, received, err := probeUDP("::1", port, 2, []byte("ping6"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if state != "open" {
+		t.Errorf("state = %q, want %q", state, "open")
+	}
+	if string(received) != "ping6" {
+		t.Errorf("received = %q, want %q", received, "ping6")
 	}
 }
 

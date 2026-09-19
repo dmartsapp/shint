@@ -13,6 +13,47 @@ import (
 	"github.com/dmartsapp/shint/lib"
 )
 
+func TestUDPListenHandlerIPv6BindReceivesAndEchoes(t *testing.T) {
+	port := freeUDPPort(t)
+	jsonOutput := false
+
+	done := make(chan string, 1)
+	go func() {
+		done <- captureStdout(t, func() {
+			UDPListenHandler("::1", port, true, 1, 5, &jsonOutput)
+		})
+	}()
+	time.Sleep(100 * time.Millisecond)
+
+	conn, err := net.Dial("udp", net.JoinHostPort("::1", strconv.Itoa(port)))
+	if err != nil {
+		t.Fatalf("failed to dial IPv6 UDP listener: %v", err)
+	}
+	defer func() { _ = conn.Close() }()
+	if _, err := conn.Write([]byte("hello6")); err != nil {
+		t.Fatalf("failed to write: %v", err)
+	}
+
+	reply := make([]byte, 6)
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	n, err := conn.Read(reply)
+	if err != nil {
+		t.Fatalf("failed to read echo reply: %v", err)
+	}
+	if string(reply[:n]) != "hello6" {
+		t.Errorf("echo reply = %q, want %q", reply[:n], "hello6")
+	}
+
+	select {
+	case out := <-done:
+		if !strings.Contains(out, "packet received") {
+			t.Errorf("expected packet-received log line, got:\n%s", out)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("UDPListenHandler did not return after accepting its one IPv6 packet")
+	}
+}
+
 func TestUDPListenHandlerReceivesAndEchoes(t *testing.T) {
 	port := freeUDPPort(t)
 	jsonOutput := false

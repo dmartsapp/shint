@@ -1,19 +1,25 @@
-# that SHIt Network Tool - aka shint, (v3.x.y)
+# that SHIt Network Tool - aka shint, (v4.x.y)
 
 ## Introduction
 
 A simple, modern, and versatile network utility tool built with Go. It bundles a handful of small diagnostics that are normally reached for as separate programs — a `telnet`-style TCP connectivity check, a basic ICMP `ping`, a `wget`/`curl`-style HTTP(S) client, a limited TCP-only `nmap` port scanner, a `udp` probe, and local `listen` servers for testing the others without needing a real remote endpoint.
 
-[![Latest release build](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml)
-[![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest)
-[![Docker Hub](https://img.shields.io/docker/v/farhansabbir/shint?label=docker%20hub&sort=semver&logo=docker)](https://hub.docker.com/r/farhansabbir/shint)
-[![GHCR](https://img.shields.io/badge/ghcr.io-dmartsapp%2Fshint-blue?logo=github)](https://github.com/dmartsapp/shint/pkgs/container/shint)
-
 **📦 [Download the latest release](https://github.com/dmartsapp/shint/releases/latest)** — prebuilt binaries for Linux, macOS, Windows, FreeBSD, OpenBSD, NetBSD, Solaris, and Android.
 
-This workflow only triggers on a tagged release, so the badge above *is* that release's build/test status - it's green only if `golangci-lint` and `govulncheck` passed (a run doesn't proceed to building binaries or images if either fails - see [Development](#development) and the [step summary](https://github.com/dmartsapp/shint/actions/workflows/actions.yaml) on any run for the actual vulnerability report) and all 14 [platform binaries](#supported-platforms) and the [Docker image](#docker-image) built and published successfully.
+Every check below runs independently on each tagged release (`.github/workflows/*.yaml`), so each row is that specific stage's own live status, not one combined pass/fail:
 
-**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 adds `listen http`, a minimal JSON status endpoint for testing plain TCP and HTTP reachability against the same process. See [Changelog](#changelog) for the full list.
+| Check | Status |
+|---|---|
+| Lint (`golangci-lint`) | [![Lint](https://github.com/dmartsapp/shint/actions/workflows/lint.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/lint.yaml) |
+| Vulnerability check (`govulncheck`) | [![Vulnerability Check](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml) |
+| Binary build (14 platforms) | [![Binary Build & Release](https://github.com/dmartsapp/shint/actions/workflows/build.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/build.yaml) |
+| Release | [![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest) |
+| Docker Hub | [![Docker Hub](https://github.com/dmartsapp/shint/actions/workflows/docker-hub.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/docker-hub.yaml) [![Docker Hub version](https://img.shields.io/docker/v/farhansabbir/shint?label=%3A&sort=semver&logo=docker)](https://hub.docker.com/r/farhansabbir/shint) |
+| GitHub Container Registry (GHCR) | [![GHCR](https://github.com/dmartsapp/shint/actions/workflows/ghcr.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/ghcr.yaml) [![GHCR image](https://img.shields.io/badge/image-dmartsapp%2Fshint-blue?logo=github)](https://github.com/dmartsapp/shint/pkgs/container/shint) |
+
+"Binary build" and "Docker Hub"/"GHCR" each re-run the lint/vulnerability gate internally before building anything (so none of them ship a binary or image if either would fail), rather than depending on the separate Lint/Vulnerability Check workflows above finishing first - see [Development](#development) for why.
+
+**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 added `listen http`; v4.0.0 adds full dual-stack IPv6 support across every command. See [Changelog](#changelog) for the full list.
 
 ## Features
 
@@ -509,6 +515,7 @@ Build it locally with `docker build -t shint .` (or `docker buildx build --platf
 
 - **ICMP (`ping`) privileges:** on macOS, BSD, and Windows, ICMP echo works for a regular, non-root/non-admin user out of the box. On Linux it depends on the `net.ipv4.ping_group_range` sysctl; most desktop distributions ship it open to all users already, but a hardened or minimal distro may restrict it to root. If `ping` fails with a permission error there, either run as root or widen the range: `sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"`.
 - **UDP/nmap results are best-effort:** neither protocol has a reliable way to distinguish "nothing is listening" from "a firewall silently dropped the packet." Treat `open|filtered` and unresponsive TCP ports accordingly.
+- **IPv6 listening:** pass `--bind ::` to `listen tcp`/`listen udp`/`listen http` for IPv6. Verified dual-stack (an IPv4 client can also reach a `::`-bound listener) on both macOS and Linux; not independently verified on Windows/BSD/Solaris, though Go's `net` package aims for consistent behavior across platforms. The default bind (`0.0.0.0`) is unaffected either way - IPv4-only, as before.
 
 ## Development
 
@@ -520,15 +527,22 @@ make all                 # cross-compile the desktop triad
 make all-platforms       # cross-compile all 14 release targets
 ```
 
-CI (`.github/workflows/actions.yaml`) runs `golangci-lint` and `govulncheck` on every tagged push (`v*.*.*`), then builds and releases all 14 platform binaries and pushes the multi-arch Docker image to both GHCR and Docker Hub (see [Docker image](#docker-image)).
+CI is five independent workflow files (`.github/workflows/*.yaml`), all triggered by the same tagged push (`v*.*.*`), so each has its own status badge (see the table at the top) instead of one combined pass/fail:
+
+- **`lint.yaml`** / **`vulncheck.yaml`** - `golangci-lint` and `govulncheck` respectively, each filing a GitHub issue on failure.
+- **`build.yaml`** - re-runs the same two checks as an internal gate (not a duplicate report - just a "don't proceed if this would fail" guard), builds all 14 [platform binaries](#supported-platforms), and creates the GitHub Release with them attached.
+- **`docker-hub.yaml`** / **`ghcr.yaml`** - each with the same internal gate, build and push the multi-arch [Docker image](#docker-image) to their one registry.
+
+They're separate files specifically so a registry outage or a Docker Hub credential problem, say, shows up as *that* row failing rather than obscuring whether the binaries themselves were fine.
 
 ## Changelog
 
-### Unreleased
+### v4.0.0
 
-- `ping` now resolves and pings both IPv4 and IPv6 addresses by default (a dual-stack hostname is pinged over both in the same run) - from upgrading to [go-ping](https://github.com/dmartsapp/go-ping) v2.0.0, which added IPv6 support along with fixing a data race, a payload-size clamp bug, a sequence-matching bug, and a JSON-encoding bug on the ICMP side. `telnet`/`nmap`/`udp`/`web`/`listen` still resolve IPv4 only for now - that's the next piece of IPv6 work, not yet done.
+- **Full dual-stack IPv6 support.** `telnet`, `nmap`, `udp`, `web`, and `listen` all resolve and operate over both IPv4 and IPv6 now (a dual-stack hostname is checked/scanned/pinged over both in the same run) - `NetworkType` changed from `"ip4"` to `"ip"`. `listen tcp`/`listen udp`/`listen http` accept `--bind ::` for IPv6 (or dual-stack, platform-dependent - see [Platform notes](#platform-notes)). `ping` already got this in the previous release via the [go-ping](https://github.com/dmartsapp/go-ping) v2.0.0 upgrade (which also fixed a data race, a payload-size clamp bug, a sequence-matching bug, and a JSON-encoding bug on the ICMP side); every other command catches up here.
 - Fixed `listen tcp`/`listen udp`/`listen http` exiting after exactly one connection/packet/request by default: `listen`'s own `--count` now defaults to `0` (unlimited, until Ctrl+C) instead of inheriting the root `--count`'s default of `1`.
 - Fixed `listen http` occasionally dropping its own response (`curl: (52) Empty reply from server`) right as it hit its request budget - a real race between the process exiting and net/http's internal per-connection goroutine still flushing that same response. Hardened with an explicit flush, a deterministic `Connection: close`, and a proper `Server.Shutdown` wait before returning.
+- CI split from one combined workflow into five independent ones (lint, vulnerability check, binary build & release, Docker Hub, GHCR) so each has its own live status instead of one pass/fail covering everything - see the table at the top.
 
 ### v3.1.0
 

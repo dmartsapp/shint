@@ -10,6 +10,32 @@ import (
 	"github.com/dmartsapp/shint/lib"
 )
 
+func TestNmapHandlerFindsOpenPortIPv6(t *testing.T) {
+	port, closeFn := startEchoListenerIPv6(t)
+	defer closeFn()
+
+	jsonOutput := true
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	out := captureStdout(t, func() {
+		NmapHandler(ctx, "::1", port, port, 1, 2, false, &jsonOutput)
+	})
+
+	var result lib.JSONOutput
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("failed to unmarshal JSON output: %v\noutput:\n%s", err, out)
+	}
+	statsJSON, _ := json.Marshal(result.Stats)
+	var stats []lib.NmapStats
+	if err := json.Unmarshal(statsJSON, &stats); err != nil {
+		t.Fatalf("failed to unmarshal stats: %v", err)
+	}
+	if len(stats) != 1 || !stats[0].Success || stats[0].Address != "::1" {
+		t.Fatalf("expected one successful IPv6 stat entry for ::1, got %+v", stats)
+	}
+}
+
 func TestNmapHandlerFindsOpenPortInRange(t *testing.T) {
 	port, closeFn := startEchoListener(t)
 	defer closeFn()

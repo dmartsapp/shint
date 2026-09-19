@@ -1,4 +1,4 @@
-name: Build go binary and release
+name: Binary Build & Release
 
 on:
   push:
@@ -6,19 +6,18 @@ on:
       - 'v*.*.*'
 
 jobs:
-  lint-and-vuln-check:
-    name: Lint and Vulnerability Check
+  # A quiet, non-reporting gate: the standalone Lint and Vulnerability Check
+  # workflows are what surface failures (their own badges, their own
+  # "file an issue" step) - this just makes sure this workflow doesn't ship
+  # binaries or a release if either would fail, without duplicating that
+  # reporting a second time.
+  gate:
+    name: Lint & vulnerability gate
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      packages: write
-      actions: read
-      issues: write
-
+      contents: read
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -26,83 +25,20 @@ jobs:
           go-version-file: go.mod
           check-latest: true
 
-      - name: Download Go modules
-        run: go mod tidy
-
-      - name: Run linting
-        id: golangci-lint
-        uses: reviewdog/action-golangci-lint@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          fail_level: error
-          level: info
+          version: latest
 
-      - name: Run vulnerability check
-        id: govulncheck
-        if: ${{ steps.golangci-lint.outcome == 'success' }}
+      - name: govulncheck
         uses: golang/govulncheck-action@v1
-        with:
-          output-file: govulncheck-report.txt
-
-      - name: Generate govulncheck summary
-        if: always()
-        run: |
-            echo "## Vulnerability Report" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "| **Status** | **Vulnerabilities Found** |" >> $GITHUB_STEP_SUMMARY
-            echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-            
-            if [ "${{ steps.govulncheck.conclusion }}" == "success" ]; then
-                VULN_COUNT=$(grep 'Vulnerabilities found:' $GITHUB_WORKSPACE/govulncheck-report.txt | awk -F': ' '{print $2}')
-                if [ "$VULN_COUNT" -gt 0 ]; then
-                    echo "| ❌ Failure | ${VULN_COUNT} |" >> $GITHUB_STEP_SUMMARY
-                else
-                    echo "| ✅ Success | 0 |" >> $GITHUB_STEP_SUMMARY
-                fi
-            else
-                echo "| ❌ Failure | Unknown (step failed) |" >> $GITHUB_STEP_SUMMARY
-            fi
-            
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Details" >> $GITHUB_STEP_SUMMARY
-            echo "Checked modules: $(grep 'Checked modules:' $GITHUB_WORKSPACE/govulncheck-report.txt | awk -F': ' '{print $2}')" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            grep -A 1000 'Details:' $GITHUB_WORKSPACE/govulncheck-report.txt >> $GITHUB_STEP_SUMMARY || true
-
-  report-failure:
-    name: Report Failure as Issue
-    runs-on: ubuntu-latest
-    needs: lint-and-vuln-check
-    if: failure()
-    permissions:
-      issues: write
-      contents: read
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 1
-      
-      - name: Create issue on linting/vuln check failure
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: "CI Failure: Linting or Vulnerability Check Failed"
-          content-filepath: .github/ISSUE_TEMPLATE/ci_failure.md
-          labels: bug, ci-failure
-          assignees: ${{ github.actor }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
   build:
     name: Build binaries
     runs-on: ubuntu-latest
-    needs: lint-and-vuln-check
+    needs: gate
     permissions:
-      contents: write
-      id-token: write
-      packages: write
-      actions: read
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -149,86 +85,12 @@ jobs:
           name: binary-for-${{ matrix.os }}-${{ matrix.arch }}
           path: bin/
 
-  docker:
-    name: Build and push Docker image
-    runs-on: ubuntu-latest
-    needs: lint-and-vuln-check
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up QEMU (for cross-arch image builds)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # github.ref_name for a "v3.0.0" tag push is "v3.0.0"; derive the
-      # bare "3.0.0"/"3.0"/"3" rollup tags from it alongside the full
-      # version and :latest, the same convention most container images use.
-      # Published to both registries under the same tag set.
-      - name: Compute image tags
-        id: image-tags
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: |
-          GHCR_IMAGE="ghcr.io/${{ github.repository }}"
-          DOCKERHUB_IMAGE="docker.io/$DOCKERHUB_USERNAME/shint"
-          VERSION="${GITHUB_REF_NAME#v}"
-          MAJOR_MINOR="${VERSION%.*}"
-          MAJOR="${MAJOR_MINOR%.*}"
-          {
-            echo "version=$VERSION"
-            echo "tags<<EOF"
-            for IMAGE in "$GHCR_IMAGE" "$DOCKERHUB_IMAGE"; do
-              echo "$IMAGE:${GITHUB_REF_NAME}"
-              echo "$IMAGE:$VERSION"
-              echo "$IMAGE:$MAJOR_MINOR"
-              echo "$IMAGE:$MAJOR"
-              echo "$IMAGE:latest"
-            done
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          build-args: |
-            VERSION=${{ github.ref_name }}
-          tags: ${{ steps.image-tags.outputs.tags }}
-          labels: |
-            org.opencontainers.image.version=${{ steps.image-tags.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: build
     permissions:
       contents: write
-      id-token: write
-      packages: write
-      actions: read
     steps:
       - name: Checkout code for commit message
         uses: actions/checkout@v5
@@ -239,7 +101,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
-          
+
       - name: Generate release notes
         env:
           # Passed via env rather than interpolated directly into the script
@@ -263,11 +125,11 @@ jobs:
           echo "" >> release_notes.md
           echo "" >> release_notes.md
           echo "" >> release_notes.md
-          
+
           echo "### Build Status Summary" >> release_notes.md
           echo "| OS/Arch | Status |" >> release_notes.md
           echo "|---|---|" >> release_notes.md
-          
+
           for combo in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64 freebsd-amd64 freebsd-arm64 openbsd-amd64 openbsd-arm64 netbsd-amd64 netbsd-arm64 solaris-amd64 android-arm64; do
             os=$(echo $combo | awk -F'-' '{print $1}')
             arch=$(echo $combo | awk -F'-' '{print $2}')
@@ -275,14 +137,14 @@ jobs:
             if [ "$os" == "windows" ]; then
               binary_name+=".exe"
             fi
-            
+
             if [ -f "release-artifacts/binary-for-$os-$arch/$binary_name" ]; then
               echo "| $os/$arch | ✅ Success |" >> release_notes.md
             else
               echo "| $os/$arch | ❌ Failed |" >> release_notes.md
             fi
           done
-          
+
           echo "" >> release_notes.md
           echo "### Code Changes" >> release_notes.md
 
@@ -311,7 +173,7 @@ jobs:
 
       - name: List release artifacts
         run: |
-          ls -lhR 
+          ls -lhR
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
