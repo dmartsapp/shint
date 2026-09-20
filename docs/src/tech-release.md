@@ -33,11 +33,25 @@ When a patch changes something a script could observe (v4.0.3's exit status is t
 Tags up to `v2.2.6` predate the current process, and the list contains a run of letter-suffixed tags (`v2.2.2a`, `v2.2.4ae`, ...) that appear to have been created while the CI pipeline was being developed. They are historical; the current rule is one tag per real release.
 :::
 
-## Branches
+## Branches and cadence
 
-`main` always contains the latest release. Release preparation has used a branch named after the version (`v3`, `v3.1`, `v4.0.0`, `v4.0.1` exist on the remote) which is then merged into `main`. History on `main` is linear: a release is merged with `--ff-only`, so the tag, the branch tip and `main` all point at the same commit.
+`main` always contains the latest release. A repository ruleset (`protect_mother`) forbids deleting it and forbids non-fast-forward pushes to it, so its history is linear: a release is merged with `--ff-only`, and the tag, the release branch tip and `main` all end up on the same commit. No other branch is restricted.
 
-Because CI triggers only on tags (see [What CI does not do](tech-ci.md#what-ci-does-not-do)), pushing `main` is safe and starts nothing.
+**One release branch per release: `release/vX.Y.Z`.** It is created from `main` when the release's sprint starts (for example `release/v4.1.0`), pushed at once, and all of the sprint's work lands on it, ending with the release commit (version bump, changelog, README roadmap). Never name a branch like a tag: a branch and a tag both called `v4.0.1` make `git` warn that the name is ambiguous. The older version-named branches on the remote (`v3`, `v3.1`, `v4.0.0`, `v4.0.1`) are history and are left alone.
+
+**Cadence: one release every two weeks, one at a time.** A sprint is two weeks, Monday to Sunday, and the next release's branch is not started until the previous release has shipped. The README's roadmap lists the planned releases and their sprint windows, and is updated as part of each release so it never disagrees with what shipped.
+
+**Ready is not published.** Finishing early does not mean shipping early: finished work waits on its branch, and the release happens on the last day of the sprint window. That keeps the cadence predictable for users, and keeps `main` - which the documentation site deploys from, and whose `main.go` gives the site its version - in step with what is actually published. An urgent fix does not have to wait for its window; it is released as soon as it is ready.
+
+**On release day:** merge the branch into `main` with `--ff-only`, push `main`, create the annotated tag, push the tag (the [checklist](#release-checklist) has the commands). If `main` has moved since the branch was cut, a fast-forward is impossible and the ruleset would refuse a non-fast-forward push - so rebase the *release branch* on `main` first. Force-pushing a release branch is fine; `main` is never rewritten.
+
+What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
+
+| Push | Starts |
+|---|---|
+| a `release/**` branch | nothing |
+| `main` | the documentation site deploy and CodeQL - but no release workflow |
+| a `v*.*.*` tag | the whole release pipeline: lint, vulnerability check, binaries, GitHub Release, both Docker images |
 
 ## Commit messages
 
@@ -66,38 +80,50 @@ So a release binary is traceable to an exact commit and moment, and a source bui
 
 ## Release checklist
 
-1. **Decide the version** using the table above.
-2. **Update the version constant** in `main.go` and the Docker tag example in the docs if needed.
-3. **Update `CHANGELOG.md`**: add a `## vX.Y.Z` section, newest first. Rebuild the site (`python3 docs/build.py`) so the [Changelog](changelog.md) page matches.
-4. **Run every check locally.** CI will not run the tests for you:
+**At the start of the sprint**
+
+1. **Create the release branch** from `main` and push it:
 
 ```bash
-gofmt -l .                       # should list nothing new
+git switch -c release/vX.Y.Z main
+git push -u origin release/vX.Y.Z
+```
+
+**When the work is done** (on the release branch)
+
+2. **Decide the version** using the table above.
+3. **Update the version constant** in `main.go` and the Docker tag example in the docs if needed.
+4. **Update `CHANGELOG.md`**: add or finish the `## vX.Y.Z` section, newest first. Rebuild the site (`python3 docs/build.py`) so the [Changelog](changelog.md) page matches.
+5. **Update the README roadmap**: mark the release as shipped, and shift the later windows if the sprint slipped.
+6. **Run every check locally.** CI will not run the tests for you:
+
+```bash
+gofmt -l .                       # should list nothing
 go vet ./...
 go test -race ./...
 golangci-lint run ./...          # v2.13.2, as CI uses
 govulncheck ./...
 bash basic_module_test.sh        # optional, needs the internet
-python3 docs/build.py --check    # the site is current and its links resolve
+python3 docs/test_build.py       # the docs generator's own tests
+python3 docs/build.py --check    # the site is current; every link, anchor and site URL resolves
 ```
 
-5. **Commit** with the message convention above; the body is the changelog.
-6. **Tag** the commit, annotated, with the changelog in the message:
+7. **Commit the release** as the last commit on the branch, with the message convention above; the body is the changelog. Push the branch.
+
+**On release day** (the last day of the sprint window, or earlier for an urgent fix)
+
+8. **Rebase if `main` moved, merge, tag, push** - `main` first, then the tag, which starts the pipeline:
 
 ```bash
-git tag -a v4.0.3 -m "v4.0.3: summary" -m "<changelog>"
-```
-
-7. **Merge to `main`** (fast-forward) and **push** - `main` first, then the tag, which starts the pipeline:
-
-```bash
-git checkout main && git merge --ff-only <branch>
+git fetch origin && git rebase origin/main        # on the release branch, only if main moved
+git checkout main && git merge --ff-only release/vX.Y.Z
 git push origin main
-git push origin refs/tags/v4.0.3
+git tag -a vX.Y.Z -m "vX.Y.Z: summary" -m "<changelog>"
+git push origin refs/tags/vX.Y.Z
 ```
 
-8. **Watch the five workflows** ([commands here](tech-ci.md#watching-a-release)) and confirm the release has 14 assets.
-9. **Verify**: download a binary and run `--version`; pull the image.
+9. **Watch the five workflows** ([commands here](tech-ci.md#watching-a-release)) and confirm the release has 14 assets.
+10. **Verify**: download a binary and run `--version`; pull the image.
 
 ## When a release goes wrong
 
