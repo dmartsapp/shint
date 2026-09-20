@@ -4,6 +4,11 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.0.4 - unreleased
+
+- Fixed five broken links on the README front page (installation guide, usage, cookbook, troubleshooting, technical documentation): they pointed at `.../shint/<page>.html`, but the documentation lives under `.../shint/docs/`. The README also gained a Roadmap section (one release every two weeks, one at a time).
+- The documentation check (`python3 docs/build.py --check`) now also verifies, offline, that every published-site URL in `readme.md`, `CHANGELOG.md` and the docs sources names a page - and an `#anchor` - that exists, with a "did you mean" hint. It previously covered only links between generated pages, which is why the README links above went unnoticed. The generator gained tests (`python3 docs/test_build.py`), including one for that exact bug.
+
 ## v4.0.3 - 2026-09-20
 
 - **Exit status now follows convention.** A failed check used to exit `0`, so `if shint telnet host 22; then ...` could never take the "down" branch. Now, following `fping` (which also checks several targets per run): **`0`** every check passed, **`1`** at least one check failed - connection refused or timed out, DNS failure, no HTTP response (a 404 or 500 is still a response), a UDP port reported closed, a lost ping, or a scan cut short - and **`2`** the command was used wrongly (bad argument, flag or value; nothing ran). An `nmap` scan that finds no open ports is a completed scan and exits `0`; an inconclusive UDP `open|filtered` is not a failure. Usage errors are printed to stderr (previously stdout, and cobra's error was printed twice), so results on stdout stay clean. Scripts that relied on the old always-`0` behaviour need updating.

@@ -47,7 +47,8 @@ index.html, .nojekyll  at the repo root; see Hosting</code></pre></div>
 <span class="tok-cmd">python3</span> docs/build.py           <span class="tok-com"># regenerate the HTML</span>
 <span class="tok-cmd">python3</span> docs/build.py <span class="tok-flag">--check</span>   <span class="tok-com"># verify pages are current and every link and anchor resolves</span>
 <span class="tok-cmd">git</span> add docs &amp;&amp; git commit</code></pre></div>
-<p><code>--check</code> exits non-zero if a generated page is stale or an internal link or <code>#anchor</code> is broken, so it can be used as a pre-commit or release check.</p>
+<p><code>--check</code> exits non-zero if a generated page is stale, an internal link or <code>#anchor</code> is broken, <strong>or a published-site URL</strong> (<code>https://dmartsapp.github.io/shint/...</code>) in <code>readme.md</code>, <code>CHANGELOG.md</code> or a page source does not name a page that exists (and an anchor that exists on it). The last rule runs offline: the site is the repository root served as-is, so <code>.../shint/docs/install.html</code> must be <code>docs/install.html</code> in the repo. It was added after the README linked to <code>.../shint/install.html</code> (missing <code>/docs/</code>) and every link in that section returned 404 for a release without anything noticing. Use it as a pre-commit or release check.</p>
+<p>The generator has its own tests, also standard-library only: <code>python3 docs/test_build.py</code>. They cover the URL check (including a regression test for exactly that README bug) and a few renderer rules.</p>
 <h2 id="page-format">Page format<a class="anchor" href="#page-format" aria-label="Link to this section">#</a></h2>
 <p>Each source starts with a small header, then Markdown:</p>
 <div class="codeblock lang-plain"><pre><code>---

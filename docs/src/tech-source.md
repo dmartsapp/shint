@@ -100,7 +100,8 @@ Each workflow is explained in [CI/CD workflows](tech-ci.md).
 | File | Purpose |
 |---|---|
 | `docs/src/*.md` | The page sources (Markdown with a small front-matter header). |
-| `docs/build.py` | The site generator: renders the sources and `CHANGELOG.md` into HTML, checks internal links, and can verify the committed pages are current. |
+| `docs/build.py` | The site generator: renders the sources and `CHANGELOG.md` into HTML, checks internal links and the published-site URLs in the README, changelog and sources, and can verify the committed pages are current. |
+| `docs/test_build.py` | Tests for the generator (`python3 docs/test_build.py`): the published-site URL check and a few renderer rules. |
 | `docs/*.html` | The generated pages that GitHub Pages serves. **Do not edit these by hand.** |
 | `docs/assets/style.css`, `site.js`, `favicon.svg` | The site's design, its small progressive-enhancement script, and its icon. |
 

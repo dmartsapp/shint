@@ -3,6 +3,8 @@
 
     python3 docs/build.py            # render docs/src/*.md (+ ../CHANGELOG.md) -> docs/*.html
     python3 docs/build.py --check    # build in memory; fail if committed pages are stale or a link is broken
+                                     # (links between pages, AND published-site URLs in readme.md,
+                                     # CHANGELOG.md and the page sources - see check_site_urls)
 
 Standard library only, on purpose: the site is plain static files served by
 GitHub Pages, and the project has no Node/Ruby/pip toolchain to maintain.
@@ -26,6 +28,9 @@ DOCS = Path(__file__).resolve().parent
 SRC = DOCS / "src"
 ROOT = DOCS.parent
 REPO_URL = "https://github.com/dmartsapp/shint"
+# Where GitHub Pages publishes this repository. Pages serves the repository root as-is
+# (.nojekyll), so a URL under SITE_URL names a file at the same path in the repo.
+SITE_URL = "https://dmartsapp.github.io/shint"
 
 # Sidebar order. A page's front matter `section` picks its group and `order`
 # its position inside it.
@@ -489,13 +494,62 @@ def check_links(rendered):
     return problems
 
 
+def site_url_sources():
+    """Texts that link to the published site by absolute URL: name -> text."""
+    sources = {}
+    for name in ("readme.md", "CHANGELOG.md"):
+        f = ROOT / name
+        if f.exists():
+            sources[name] = f.read_text()
+    for f in sorted(SRC.glob("*.md")):
+        sources["docs/src/%s" % f.name] = f.read_text()
+    return sources
+
+
+_SITE_URL_RE = re.compile(re.escape(SITE_URL) + r"[^\s)\]\"'<>`]*")
+
+
+def check_site_urls(sources, rendered):
+    """Every absolute URL of the published site in `sources` must name a file that exists.
+
+    The site is the repository root served as-is, so `SITE_URL/docs/install.html` must be
+    `docs/install.html` in the repo, and its `#anchor` must be an id on that page. This runs
+    offline and deterministically - it exists because the README once linked to
+    `SITE_URL/install.html` (missing `/docs/`) and nothing noticed: the page checks in
+    check_links only look at links between generated pages.
+    """
+    ids = {name: set(re.findall(r'\bid="([^"]+)"', page)) for name, page in rendered.items()}
+    problems = []
+    for name, text in sources.items():
+        for url in sorted(set(u.rstrip(".,;:") for u in _SITE_URL_RE.findall(text))):
+            path, _, frag = url[len(SITE_URL):].partition("#")
+            path = path.partition("?")[0]
+            rel = path.lstrip("/")
+            if rel == "" or rel.endswith("/"):
+                rel += "index.html"
+            target = ROOT / rel
+            if target.is_dir():  # /shint/docs -> Pages redirects to /docs/ and serves its index
+                rel = rel.rstrip("/") + "/index.html"
+                target = ROOT / rel
+            page = rel[len("docs/"):] if rel.startswith("docs/") else None
+            exists = target.exists() or (page in rendered)
+            if not exists:
+                hint = ""
+                if (DOCS / rel).exists() or ("%s" % rel) in rendered:
+                    hint = " (did you mean %s/docs/%s?)" % (SITE_URL, rel)
+                problems.append("%s: %s -> no such file %s in the published site%s" % (name, url, rel, hint))
+            elif frag and page in ids and frag not in ids[page]:
+                problems.append("%s: %s -> %s has no #%s" % (name, url, rel, frag))
+    return problems
+
+
 def main():
     check = "--check" in sys.argv[1:]
     version = read_version()
     pages = collect_pages()
     rendered = {"%s.html" % p["slug"]: render_page(p, pages, version) for p in pages}
 
-    problems = check_links(rendered)
+    problems = check_links(rendered) + check_site_urls(site_url_sources(), rendered)
     if check:
         for name, content in rendered.items():
             f = DOCS / name
