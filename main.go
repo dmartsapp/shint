@@ -1,6 +1,7 @@
 // Command shint - "Simple Host INspection Toolkit" - bundles the everyday network
 // checks (telnet-style port checks, ping, an HTTP client, a port scanner, a
-// UDP probe and local test listeners) into one static binary.
+// UDP probe, a clock check against an NTP server, Wake-on-LAN, a subnet
+// calculator and local test listeners) into one static binary.
 //
 // This file is only the command line: it declares the cobra commands and
 // their flags, validates arguments, and turns each handler's result into the
@@ -16,6 +17,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/dmartsapp/shint/lib"
 	"github.com/dmartsapp/shint/lib/handlers"
@@ -60,6 +62,14 @@ var (
 	// udp
 	udpData string
 
+	// wol
+	wolBroadcast string
+	wolPort      int
+
+	// ntp
+	ntpPort      int
+	ntpMaxOffset int
+
 	// listen. listenMaxCount shadows the root --count so that a listener
 	// defaults to "run until Ctrl+C" rather than "one and done".
 	listenBind     string
@@ -74,8 +84,10 @@ var (
 //	0  every check passed
 //	1  at least one check failed: connection refused or timed out, DNS
 //	   failure, no HTTP response, a UDP port reported closed, lost pings,
-//	   or a run cut short by Ctrl+C (a scan, or telnet, web or udp stopped
-//	   before their --count was done)
+//	   a run cut short by Ctrl+C (a scan, or telnet, web or udp stopped
+//	   before their --count was done), no usable time reply (or a clock
+//	   offset beyond --max-offset), or a Wake-on-LAN packet that could not
+//	   be sent
 //	2  the command was used wrongly (bad argument, flag or value); nothing ran
 //
 // Results - including "ERROR" lines about failed checks - go to stdout; usage
@@ -107,7 +119,7 @@ func finish(ok bool) {
 var rootCmd = &cobra.Command{
 	Use:     filepath.Base(os.Args[0]),
 	Short:   "shint - Simple Host INspection Toolkit",
-	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, and listener functionalities.`,
+	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, cidr and listener functionalities.`,
 	Version: Version,
 }
 
@@ -284,6 +296,91 @@ The payload is text, sent exactly as typed: --data sends a message, --payload se
 	},
 }
 
+var cidrCmd = &cobra.Command{
+	Use:   "cidr [prefix]...",
+	Short: "Work out a subnet: network, mask, range and size",
+	Long: `This command does subnet arithmetic on one or more IPv4 or IPv6 prefixes: the network address, netmask, wildcard mask, first and last address, broadcast address (IPv4), how many addresses and usable hosts it holds, and what kind of range it is (private, loopback, link-local, ...). A bare address is treated as a single host (/32 or /128).
+
+It works entirely offline: nothing is looked up and nothing is sent. Only --json applies; the other shared flags are ignored.`,
+	Args: cobra.MinimumNArgs(1),
+	Example: rootCmd.Name() + ` cidr 192.168.1.10/24` + "\n" +
+		rootCmd.Name() + ` cidr 10.0.0.0/8 2001:db8::/32 --json`,
+	Run: func(cmd *cobra.Command, args []string) {
+		subnets, err := handlers.ParseSubnets(args)
+		if err != nil {
+			usage(err.Error())
+			return
+		}
+		finish(handlers.CIDRHandler(&jsonoutput, subnets))
+	},
+}
+
+var wolCmd = &cobra.Command{
+	Use:   "wol [mac]",
+	Short: "Send a Wake-on-LAN magic packet to wake a machine on your network",
+	Long: `This command broadcasts a Wake-on-LAN "magic packet" - six 0xFF bytes followed by the machine's MAC address sixteen times, 102 bytes in all - as a UDP datagram to the local network, which asks a sleeping or switched-off machine to power on.
+
+The machine must have Wake-on-LAN enabled in its firmware and network card, and must be on the same network segment as this one. The packet has no reply, so a successful send only means it was handed to the network: shint cannot tell whether the machine woke. Needs no special privileges.`,
+	Args: cobra.ExactArgs(1),
+	Example: rootCmd.Name() + ` wol aa:bb:cc:dd:ee:ff` + "\n" +
+		rootCmd.Name() + ` wol aa:bb:cc:dd:ee:ff --broadcast 192.168.1.255`,
+	Run: func(cmd *cobra.Command, args []string) {
+		mac, err := handlers.ParseMAC(args[0])
+		if err != nil {
+			usage(err.Error())
+			return
+		}
+		broadcast, err := handlers.ParseBroadcast(wolBroadcast)
+		if err != nil {
+			usage(err.Error())
+			return
+		}
+		if wolPort < 1 || wolPort > 65535 {
+			usage("--port must be between 1 and 65535")
+			return
+		}
+		if err := lib.RequirePositive("count", iterations); err != nil {
+			usage(err.Error())
+			return
+		}
+		if err := lib.RequirePositive("timeout", timeout); err != nil {
+			usage(err.Error())
+			return
+		}
+		finish(handlers.WOLHandler(&jsonoutput, iterations, delay, &throttle, timeout, mac, broadcast, wolPort))
+	},
+}
+
+var ntpCmd = &cobra.Command{
+	Use:   "ntp [server]",
+	Short: "Check this machine's clock against an NTP time server",
+	Long: `This command asks an NTP server for the time (a single SNTP query over UDP port 123) and reports how far this machine's clock is from it: the offset (server time minus local time, so a positive offset means this clock is behind), the network round-trip time, and the server's stratum and reference. If the name resolves to several addresses, each one is asked. --timeout is how long each server gets to answer.
+
+A reply that cannot be trusted - it answers a different request, the server says its own clock is unsynchronized, or it sends a "kiss-o'-death" - counts as a failed query. --max-offset turns the offset into a check: the command exits 1 if the clock is further out than that.`,
+	Args: cobra.ExactArgs(1),
+	Example: rootCmd.Name() + ` ntp pool.ntp.org` + "\n" +
+		rootCmd.Name() + ` ntp time.cloudflare.com --max-offset 500`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if ntpPort < 1 || ntpPort > 65535 {
+			usage("--port must be between 1 and 65535")
+			return
+		}
+		if ntpMaxOffset < 0 {
+			usage("--max-offset must be 0 (only report) or a number of milliseconds")
+			return
+		}
+		if err := lib.RequirePositive("count", iterations); err != nil {
+			usage(err.Error())
+			return
+		}
+		if err := lib.RequirePositive("timeout", timeout); err != nil {
+			usage(err.Error())
+			return
+		}
+		finish(handlers.NTPHandler(&jsonoutput, iterations, delay, &throttle, timeout, ntpPort, time.Duration(ntpMaxOffset)*time.Millisecond, args[0]))
+	},
+}
+
 var listenCmd = &cobra.Command{
 	Use:   "listen",
 	Short: "Start a local TCP, UDP, or HTTP listener for testing",
@@ -355,6 +452,12 @@ func init() {
 
 	udpCmd.Flags().StringVarP(&udpData, "data", "D", "", "Explicit payload data to send instead of the generated --payload filler")
 
+	wolCmd.Flags().StringVar(&wolBroadcast, "broadcast", handlers.WOLDefaultBroadcast, "IPv4 broadcast address to send the magic packet to (for one subnet, e.g. 192.168.1.255)")
+	wolCmd.Flags().IntVar(&wolPort, "port", handlers.WOLDefaultPort, "UDP port to send the magic packet to")
+
+	ntpCmd.Flags().IntVar(&ntpPort, "port", handlers.NTPDefaultPort, "UDP port of the NTP server")
+	ntpCmd.Flags().IntVar(&ntpMaxOffset, "max-offset", 0, "Exit 1 if the clock offset is larger than this many milliseconds (0 = only report it)")
+
 	listenCmd.PersistentFlags().StringVar(&listenBind, "bind", "0.0.0.0", "Local address to bind the listener to")
 	listenCmd.PersistentFlags().BoolVar(&listenEcho, "echo", false, "Echo received data back to the sender")
 	// Shadows the root --count flag (default 1) for every listen subcommand:
@@ -372,7 +475,7 @@ func init() {
 // variables above are fully initialised first), runs cobra, and exits with the
 // status the chosen command recorded - see the exit-status notes above.
 func main() {
-	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, listenCmd)
+	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, cidrCmd, listenCmd)
 	// cobra has already printed the error (and usage help) to stderr. Every
 	// error Execute returns is a usage error - the Run functions never return
 	// one; they report through usage() and finish() instead.

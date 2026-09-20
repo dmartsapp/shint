@@ -94,6 +94,43 @@ func udpSocket(t *testing.T, echo bool) (port int) {
 	return c.LocalAddr().(*net.UDPAddr).Port
 }
 
+// ntpSocket is a minimal SNTP server on loopback: it answers every 48-byte
+// request with a well-formed reply stamped with the real time.
+func ntpSocket(t *testing.T) (port int) {
+	t.Helper()
+	c, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+	stamp := func() uint64 {
+		now := time.Now()
+		return uint64(now.Unix()+2208988800)<<32 | (uint64(now.Nanosecond())<<32)/1e9
+	}
+	go func() {
+		buf := make([]byte, 512)
+		for {
+			n, from, err := c.ReadFromUDP(buf)
+			if err != nil {
+				return
+			}
+			if n < 48 {
+				continue
+			}
+			reply := make([]byte, 48)
+			reply[0], reply[1] = 4<<3|4, 2 // version 4, server mode, stratum 2
+			copy(reply[24:32], buf[40:48]) // originate = the client's transmit
+			for i, v := range [2]uint64{stamp(), stamp()} {
+				for b := 0; b < 8; b++ {
+					reply[32+i*8+b] = byte(v >> (56 - 8*b))
+				}
+			}
+			_, _ = c.WriteToUDP(reply, from)
+		}
+	}()
+	return c.LocalAddr().(*net.UDPAddr).Port
+}
+
 func closedUDPPort(t *testing.T) int {
 	t.Helper()
 	c, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
@@ -120,6 +157,7 @@ func TestExitStatus(t *testing.T) {
 	udpEcho := strconv.Itoa(udpSocket(t, true))
 	udpSilent := strconv.Itoa(udpSocket(t, false))
 	udpClosed := strconv.Itoa(closedUDPPort(t))
+	ntpUp := strconv.Itoa(ntpSocket(t))
 
 	fast := []string{"--delay", "0", "--timeout", "2"}
 	cases := []struct {
@@ -152,6 +190,29 @@ func TestExitStatus(t *testing.T) {
 		{"udp no reply is inconclusive", []string{"udp", "127.0.0.1", udpSilent}, 0},
 		{"udp closed port", []string{"udp", "127.0.0.1", udpClosed}, 1},
 		{"udp dns failure", []string{"udp", dead, "53"}, 1},
+
+		// ntp: no usable time reply is a failure; --max-offset makes the offset a check
+		{"ntp answers", []string{"ntp", "127.0.0.1", "--port", ntpUp}, 0},
+		{"ntp offset within --max-offset", []string{"ntp", "127.0.0.1", "--port", ntpUp, "--max-offset", "5000"}, 0},
+		{"ntp no reply", []string{"ntp", "127.0.0.1", "--port", udpSilent, "--timeout", "1"}, 1},
+		{"ntp dns failure", []string{"ntp", dead}, 1},
+		{"ntp port out of range", []string{"ntp", "127.0.0.1", "--port", "99999"}, 2},
+		{"ntp negative --max-offset", []string{"ntp", "127.0.0.1", "--max-offset", "-1"}, 2},
+		{"ntp missing argument", []string{"ntp"}, 2},
+
+		// wol: sent is success (there is no reply to wait for); bad input is a usage error
+		{"wol sent", []string{"wol", "aa:bb:cc:dd:ee:ff", "--broadcast", "127.0.0.1", "--port", udpSilent}, 0},
+		{"wol bad MAC", []string{"wol", "not-a-mac"}, 2},
+		{"wol IPv6 broadcast", []string{"wol", "aa:bb:cc:dd:ee:ff", "--broadcast", "::1"}, 2},
+		{"wol port zero", []string{"wol", "aa:bb:cc:dd:ee:ff", "--port", "0"}, 2},
+		{"wol count zero", []string{"wol", "aa:bb:cc:dd:ee:ff", "--count", "0"}, 2},
+
+		// cidr: pure computation; only bad input fails, and that is a usage error
+		{"cidr IPv4", []string{"cidr", "192.168.1.10/24"}, 0},
+		{"cidr several, both families", []string{"cidr", "10.0.0.0/8", "2001:db8::/32", "8.8.8.8"}, 0},
+		{"cidr prefix out of range", []string{"cidr", "10.0.0.0/33"}, 2},
+		{"cidr one bad among good", []string{"cidr", "10.0.0.0/8", "nope"}, 2},
+		{"cidr missing argument", []string{"cidr"}, 2},
 
 		// ping (no ICMP privileges needed for these)
 		{"ping dns failure", []string{"ping", dead}, 1},
@@ -189,6 +250,10 @@ func TestUsageErrorsGoToStderrOnly(t *testing.T) {
 		{"telnet", "127.0.0.1", "99999"},
 		{"nmap", "127.0.0.1", "--from", "90", "--to", "10"},
 		{"telnet", "127.0.0.1"},
+		{"cidr", "10.0.0.0/33"},
+		{"cidr"},
+		{"wol", "not-a-mac"},
+		{"ntp", "127.0.0.1", "--port", "0"},
 		{"bogus"},
 	} {
 		code, stdout, stderr := runShint(t, args...)

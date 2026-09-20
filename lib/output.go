@@ -160,6 +160,76 @@ type JSONOutput struct {
 	Error          string      `json:"error"`
 }
 
+// CIDRStats is one subnet as "cidr" reports it. Addresses and UsableHosts are
+// decimal strings, not numbers: an IPv6 prefix can hold more addresses than a
+// 64-bit integer (a /64 has 2^64, a /0 has 2^128) and JSON consumers would
+// silently round them. Wildcard is set for IPv4 only, and Broadcast only for
+// an IPv4 prefix that has one (a /31 and a /32 do not - RFC 3021).
+type CIDRStats struct {
+	Input        string `json:"input"`
+	Network      string `json:"network"`
+	Family       string `json:"family"`
+	PrefixLength int    `json:"prefix_length"`
+	Netmask      string `json:"netmask"`
+	Wildcard     string `json:"wildcard,omitempty"`
+	FirstAddress string `json:"first_address"`
+	LastAddress  string `json:"last_address"`
+	Broadcast    string `json:"broadcast,omitempty"`
+	Addresses    string `json:"addresses"`
+	UsableHosts  string `json:"usable_hosts"`
+	FirstHost    string `json:"first_host"`
+	LastHost     string `json:"last_host"`
+	Kind         string `json:"kind"`
+}
+
+// WOLStats is one magic packet sent by "wol". Success means the operating
+// system accepted the packet for sending; it says nothing about whether the
+// machine woke up - Wake-on-LAN has no reply.
+type WOLStats struct {
+	MAC       string `json:"mac"`
+	Address   string `json:"address"`
+	Port      int    `json:"port"`
+	Success   bool   `json:"success"`
+	BytesSent int    `json:"bytes_sent"`
+	SentTime  int64  `json:"sent_unixtime_µs"`
+	TimeTaken int64  `json:"time_taken_µs"`
+	Error     string `json:"error,omitempty"`
+}
+
+// NTPStats is one time query sent by "ntp". Offsets are signed and in
+// microseconds: OffsetUs is server time minus local time, so a positive value
+// means this machine's clock is behind. RoundTripUs is the network delay of the
+// exchange, not the server's processing time. Error is set only for a failed
+// query, and then only Address, SentTime and TimeTaken carry values.
+type NTPStats struct {
+	Address       string `json:"address"`
+	Success       bool   `json:"success"`
+	Stratum       int    `json:"stratum"`
+	Version       int    `json:"version"`
+	LeapIndicator string `json:"leap_indicator"`
+	ReferenceID   string `json:"reference_id"`
+	OffsetUs      int64  `json:"offset_µs"`
+	RoundTripUs   int64  `json:"round_trip_µs"`
+	ServerTimeUs  int64  `json:"server_unixtime_µs"`
+	SentTime      int64  `json:"sent_unixtime_µs"`
+	RecvTime      int64  `json:"recv_unixtime_µs"`
+	TimeTaken     int64  `json:"time_taken_µs"`
+	Error         string `json:"error,omitempty"`
+}
+
+// LocalJSONOutput is the JSON document of a command that never looks up a
+// name ("cidr", "wol"): JSONOutput without dns_lookup, which would only ever
+// read as a failed lookup. Everything else is the same shape.
+type LocalJSONOutput struct {
+	InputParams    InputParams `json:"input_params"`
+	ModuleName     string      `json:"module_name"`
+	Stats          any         `json:"stats"`
+	EndTime        int64       `json:"end_time_unixtime_µs"`
+	StartTime      int64       `json:"start_time_unixtime_µs"`
+	TotalTimeTaken int64       `json:"total_time_taken_µs"`
+	Error          string      `json:"error"`
+}
+
 // LogWithTimestamp formats a single human-readable log line uniformly across
 // every module: "<timestamp>: [<module>] <OK|ERROR> <message>". Keeping the
 // prefix identical for telnet/ping/web/nmap/udp/listen output makes the
