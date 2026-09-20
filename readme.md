@@ -54,9 +54,13 @@ Sun Sep 20 01:50:19 MDT 2026: [web] OK response url=http://127.0.0.1:8080/ statu
 |---|---|
 | `shint telnet <host> <port>` | Can I open a TCP connection to this host and port? |
 | `shint ping <host>` | Is this host reachable, and how fast does it answer? |
-| `shint web <url>` | What does this URL return? (HTTP and HTTPS, headers, bodies, TLS, mutual TLS) |
+| `shint web <url>` | What does this URL return, and where did the time go? (HTTP and HTTPS, headers, bodies, TLS, mutual TLS, `--timing`) |
 | `shint nmap <host> --from 1 --to 1024` | Which TCP ports are open? |
 | `shint udp <host> <port>` | Does this UDP service answer? |
+| `shint ntp <server>` | How far is this machine's clock from a time server? |
+| `shint wol <mac>` | Wake a machine on your network (Wake-on-LAN). |
+| `shint rdns <ip-or-host>` | Which names does this address map back to? (reverse DNS) |
+| `shint cidr <prefix>` | Network, mask, range and size of a subnet, offline. |
 | `shint listen tcp\|udp\|http <port>` | Run a local test server to check against. |
 
 ## Install
@@ -74,6 +78,8 @@ Or use Docker:
 docker run --rm farhansabbir/shint:latest telnet example.com 443
 ```
 
+From v4.1.0 you can also build it with Go: `go install github.com/dmartsapp/shint/v4@latest`.
+
 Step-by-step instructions for every platform, building from source and shell completion are in the **[installation guide](https://dmartsapp.github.io/shint/docs/install.html)**.
 
 ## Learn more
@@ -90,8 +96,8 @@ shint ships **one release every two weeks, one at a time**. Here is what is plan
 | Release | Sprint | What is coming |
 |---|---|---|
 | **v4.0.4** | Released Sep 20 | Fixes: `ping --timeout` now works and `ping` shows the payload size on every reply, clearer `udp` help, documentation fixes. Releases now build only from a version tag on `main` |
-| **v4.1.0** | Oct 5 - Oct 18 | `web --timing` (where the time went: DNS, connect, TLS, first byte, download), `wol` (wake a machine on your network), `cidr` (subnet calculator), `ntp` (check your clock against a time server). Verified downloads: SHA-256 checksums and signed build attestations for every binary |
-| **v4.2.0** | Oct 19 - Nov 1 | `ip` (your interfaces and addresses), `dns` (lookups like `dig`), authoritative name servers shown whenever shint resolves a name, banner grabbing in `telnet`, `udp --hex` for binary payloads |
+| **v4.1.0** | Oct 5 - Oct 18 | `web --timing` (where the time went: DNS, connect, TLS, first byte, download), `wol` (wake a machine on your network), `cidr` (subnet calculator), `ntp` (check your clock against a time server), `rdns` (reverse DNS lookups). Verified downloads: SHA-256 checksums and signed build attestations for every binary. `go install` support |
+| **v4.2.0** | Oct 19 - Nov 1 | `ip` (your interfaces and addresses), `dns` (lookups like `dig`; reverse lookups already ship as `rdns`), authoritative name servers shown whenever shint resolves a name, banner grabbing in `telnet`, `udp --hex` for binary payloads |
 | **v4.3.0** | Nov 2 - Nov 15 | `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names |
 | **v4.4.0** | Nov 16 - Nov 29 | `ip route` (routing table and default gateway), richer `ping`: sub-millisecond timings, and "unreachable" replies told apart from timeouts |
 | **v4.5.0** | Nov 30 - Dec 13 | `speed` (measure throughput between two of your machines) |
