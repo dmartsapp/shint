@@ -27,9 +27,12 @@ run_test() {
     
     echo -n "TEST: $description ... "
     
-    # Execute the command and capture its output and exit code
-    output=$(eval $command 2>&1)
-    exit_code=$?
+    # Execute the command and capture its output and exit code. The `||`
+    # matters: shint now exits non-zero when a check fails (1) or the command
+    # is misused (2), and under `set -e` a bare failing assignment would end
+    # the whole script instead of being counted as one failed test.
+    exit_code=0
+    output=$(eval $command 2>&1) || exit_code=$?
     
     # Check if the command was successful and the output contains the expected string
     if [[ $exit_code -eq 0 && "$output" == *"$expect"* ]]; then

@@ -31,7 +31,10 @@ var progressInterval = 3 * time.Second
 // slow or scripted one.
 var probePort = lib.IsPortUp
 
-func NmapHandler(ctx context.Context, host string, fromport, endport, iterations, timeout int, throttle bool, jsonoutput *bool) {
+// NmapHandler reports true if the scan ran to the end of the range. Finding no
+// open ports is a result, not a failure; a failed DNS lookup or a scan cut
+// short (Ctrl+C) is a failure.
+func NmapHandler(ctx context.Context, host string, fromport, endport, iterations, timeout int, throttle bool, jsonoutput *bool) (ok bool) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	if *jsonoutput {
@@ -59,6 +62,7 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		defer cancel()
 		return lib.ResolveName(dnsCtx, host)
 	}()
+	ok = err == nil
 	if err != nil {
 		if *jsonoutput {
 			output.Error = err.Error()
@@ -132,7 +136,7 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 						randDelay, err := rand.Int(rand.Reader, big.NewInt(10000))
 						if err != nil {
 							fmt.Println(err)
-							return // added return to exit if error occurs
+							return false // added return to exit if error occurs
 						}
 						select {
 						case <-time.After(time.Millisecond * time.Duration(randDelay.Int64())):
@@ -173,6 +177,7 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		// or the caller's context). Say so, rather than presenting a partial
 		// range as a finished scan.
 		if scanned < plannedScans {
+			ok = false
 			if *jsonoutput {
 				output.Error = fmt.Sprintf("scan interrupted: %d of %d ports scanned", scanned, plannedScans)
 			} else {
@@ -195,4 +200,5 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 	} else {
 		fmt.Println(lib.LogWithTimestamp(nmapModule, "done "+lib.Fields("total_time", time.Since(istart)), false))
 	}
+	return ok
 }

@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -14,7 +13,11 @@ import (
 
 const icmpModule = "icmp"
 
-func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int) {
+// HandleICMP pings every address host resolves to and reports true only if no
+// echo request was lost. Note that timeout is recorded in the JSON input
+// parameters but not applied: the ping library waits its own fixed reply
+// timeout (one second) per echo request.
+func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int) (ok bool) {
 
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
@@ -33,8 +36,20 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 	start := time.Now()
 	pinger, err := netutils.NewPinger(host)
 	if err != nil {
-		fmt.Println(lib.LogWithTimestamp(icmpModule, "dns resolution failed "+lib.Fields("host", host, "error", err.Error()), true))
-		os.Exit(1)
+		if *jsonoutput {
+			// Still one JSON document, so `--json | jq` keeps working.
+			output.DNSLookup = lib.DNSLookup{Hostname: host, Success: false, Error: err.Error(), TimeTaken: time.Since(start).Microseconds()}
+			output.Error = err.Error()
+			output.Stats = make([]lib.ICMPStats, 0)
+			output.StartTime = start.UnixMicro()
+			output.EndTime = time.Now().UnixMicro()
+			output.TotalTimeTaken = output.EndTime - output.StartTime
+			JS, _ := json.MarshalIndent(output, "", "  ")
+			fmt.Println(string(JS))
+		} else {
+			fmt.Println(lib.LogWithTimestamp(icmpModule, "dns resolution failed "+lib.Fields("host", host, "error", err.Error()), true))
+		}
+		return false
 	}
 
 	wg := sync.WaitGroup{}
@@ -58,8 +73,24 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 		SetRandomizedPingDelay(*throttle)
 	err = pinger.PingAll()
 	if err != nil {
-		fmt.Println(lib.LogWithTimestamp(icmpModule, "ping failed "+lib.Fields("host", host, "error", err.Error()), true))
-		os.Exit(1)
+		if *jsonoutput {
+			output.DNSLookup = lib.DNSLookup{
+				Hostname:          host,
+				Success:           true,
+				ResolvedAddresses: lib.ConvertIPToStringSlice(pinger.Destination),
+				TimeTaken:         pinger.Stats.ResolveTime.Microseconds(),
+			}
+			output.Error = err.Error()
+			output.Stats = make([]lib.ICMPStats, 0)
+			output.StartTime = start.UnixMicro()
+			output.EndTime = time.Now().UnixMicro()
+			output.TotalTimeTaken = output.EndTime - output.StartTime
+			JS, _ := json.MarshalIndent(output, "", "  ")
+			fmt.Println(string(JS))
+		} else {
+			fmt.Println(lib.LogWithTimestamp(icmpModule, "ping failed "+lib.Fields("host", host, "error", err.Error()), true))
+		}
+		return false
 	}
 
 	wg.Wait()
@@ -100,4 +131,5 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 		fmt.Println(string(JS))
 
 	}
+	return pinger.Stats.Loss == 0
 }

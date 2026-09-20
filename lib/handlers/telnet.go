@@ -22,7 +22,10 @@ const telnetModule = "telnet"
 // stretch a run well past --timeout (8 attempts one second apart take 8
 // seconds), and an attempt that started after a run-wide deadline had
 // already passed used to fail instantly with a bogus "i/o timeout".
-func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, host string) {
+//
+// It reports true only if the DNS lookup and every attempt succeeded, which
+// the caller turns into the process exit status.
+func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, host string) (ok bool) {
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
@@ -43,6 +46,7 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 	ipaddresses, err := lib.ResolveName(dnsCtx, host)
 	cancelDNS()
 	var stats = make([]time.Duration, 0)
+	ok = err == nil
 	if err != nil {
 		if *jsonoutput {
 			output.DNSLookup = lib.DNSLookup{
@@ -126,6 +130,9 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 			}
 		}
 		WG.Wait()
+		// stats only ever holds successful attempts, so anything short of
+		// iterations x addresses means at least one attempt failed.
+		ok = len(stats) == iterations*len(ipaddresses)
 		if !*jsonoutput {
 			statsMutex.Lock()
 			fmt.Println(lib.LogStats(telnetModule, stats, (iterations * len(ipaddresses))))
@@ -141,4 +148,5 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 	} else {
 		fmt.Println(lib.LogWithTimestamp(telnetModule, "done "+lib.Fields("total_time", time.Since(istart)), false))
 	}
+	return ok
 }

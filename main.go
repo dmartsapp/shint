@@ -42,6 +42,42 @@ var (
 	listenMaxCount      int
 )
 
+// Exit status. shint checks several things per run (every resolved address,
+// every --count iteration), so it follows the convention of fping, its
+// closest relative, rather than curl's "one request, one code":
+//
+//	0  every check passed
+//	1  at least one check failed: connection refused or timed out, DNS
+//	   failure, no HTTP response, a UDP port reported closed, lost pings,
+//	   or a scan cut short
+//	2  the command was used wrongly (bad argument, flag or value); nothing ran
+//
+// Results - including "ERROR" lines about failed checks - go to stdout; usage
+// errors go to stderr, so `shint ... --json | jq` only ever sees JSON.
+const (
+	exitOK      = 0
+	exitFailure = 1
+	exitUsage   = 2
+)
+
+// exitCode is what main exits with once the chosen command has run.
+var exitCode = exitOK
+
+// usage reports a bad argument or flag value on stderr and marks the run as a
+// usage error. Callers return right after it; nothing is checked.
+func usage(msg string) {
+	fmt.Fprintln(os.Stderr, msg)
+	exitCode = exitUsage
+}
+
+// finish records a handler's outcome: handlers report true when every check
+// they ran passed.
+func finish(ok bool) {
+	if !ok && exitCode == exitOK {
+		exitCode = exitFailure
+	}
+}
+
 var rootCmd = &cobra.Command{
 	Use:     filepath.Base(os.Args[0]),
 	Short:   "SHINT - that SHIt Network Tool",
@@ -58,19 +94,19 @@ var telnetCmd = &cobra.Command{
 		host := args[0]
 		port, err := lib.ValidatePort(args[1])
 		if err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		if err := lib.RequirePositive("count", iterations); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 
-		handlers.TelnetHandler(&jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, host)
+		finish(handlers.TelnetHandler(&jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, host))
 	},
 }
 
@@ -81,49 +117,49 @@ var pingCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := lib.RequirePositive("count", iterations); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
-		handlers.HandleICMP(args[0], &jsonoutput, iterations, delay, &throttle, timeout, payload_size)
+		finish(handlers.HandleICMP(args[0], &jsonoutput, iterations, delay, &throttle, timeout, payload_size))
 	},
 }
 
 var webCmd = &cobra.Command{
 	Use:     "web [url]",
 	Short:   "Make an HTTP request to a URL",
-	Long:    `This command makes an HTTP request to a URL and displays the response. Does not follow redirects or embedded resources.`,
+	Long:    `This command makes an HTTP request to a URL and displays the response. Follows redirects (up to 10, and bytes are counted across every hop) but does not fetch embedded resources.`,
 	Args:    cobra.ExactArgs(1),
 	Example: rootCmd.Name() + " web --json -H \"authorization:Bearer <token>\" -H \"content-type:application/json\" http://google.com --count 1",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := lib.RequirePositive("count", iterations); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 
 		URL, err := url.Parse(args[0])
 		if err != nil {
-			fmt.Println("Invalid URL")
+			usage("Invalid URL")
 			return
 		}
 		if URL.Scheme == "" {
 			URL, err = url.Parse("https://" + args[0])
 			if err != nil {
-				fmt.Println("Invalid URL")
+				usage("Invalid URL")
 				return
 			}
 		}
 
 		tlsConfig, err := handlers.BuildTLSConfig(cacertFile, certFile, keyFile, insecureSkipVerify)
 		if err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 
-		handlers.WebHandler(&jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig)
+		finish(handlers.WebHandler(&jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig))
 	},
 }
 
@@ -134,26 +170,26 @@ var nmapCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := lib.RequirePositive("count", iterations); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		if fromport < 1 || fromport > 65535 || endport < 1 || endport > 65535 {
-			fmt.Println("--from and --to must both be between 1 and 65535")
+			usage("--from and --to must both be between 1 and 65535")
 			return
 		}
 		if fromport > endport {
-			fmt.Println("--from must be less than or equal to --to")
+			usage("--from must be less than or equal to --to")
 			return
 		}
 
 		ctx, stop := scanContext()
 		defer stop()
 
-		handlers.NmapHandler(ctx, args[0], fromport, endport, iterations, timeout, throttle, &jsonoutput)
+		finish(handlers.NmapHandler(ctx, args[0], fromport, endport, iterations, timeout, throttle, &jsonoutput))
 	},
 }
 
@@ -168,28 +204,28 @@ func scanContext() (context.Context, context.CancelFunc) {
 }
 
 var udpCmd = &cobra.Command{
-	Use:   "udp [host] [port]",
-	Short: "Send a UDP probe to a host on a specific port",
-	Long:  `This command sends a UDP datagram to a host on a specific port and reports whether a reply, an ICMP port-unreachable, or nothing at all came back within the timeout.`,
-	Args:  cobra.ExactArgs(2),
+	Use:     "udp [host] [port]",
+	Short:   "Send a UDP probe to a host on a specific port",
+	Long:    `This command sends a UDP datagram to a host on a specific port and reports whether a reply, an ICMP port-unreachable, or nothing at all came back within the timeout.`,
+	Args:    cobra.ExactArgs(2),
 	Example: rootCmd.Name() + " udp 8.8.8.8 53 --data \"\\x00\\x00\"",
 	Run: func(cmd *cobra.Command, args []string) {
 		host := args[0]
 		port, err := lib.ValidatePort(args[1])
 		if err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		if err := lib.RequirePositive("count", iterations); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 
-		handlers.UDPHandler(&jsonoutput, iterations, delay, &throttle, timeout, payload_size, udpData, port, host)
+		finish(handlers.UDPHandler(&jsonoutput, iterations, delay, &throttle, timeout, payload_size, udpData, port, host))
 	},
 }
 
@@ -206,7 +242,7 @@ var listenTCPCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		port, err := lib.ValidatePort(args[0])
 		if err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		handlers.TCPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
@@ -220,7 +256,7 @@ var listenUDPCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		port, err := lib.ValidatePort(args[0])
 		if err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		handlers.UDPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
@@ -235,7 +271,7 @@ var listenHTTPCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		port, err := lib.ValidatePort(args[0])
 		if err != nil {
-			fmt.Println(err)
+			usage(err.Error())
 			return
 		}
 		handlers.HTTPListenHandler(listenBind, port, listenMaxCount, timeout, &jsonoutput)
@@ -279,8 +315,11 @@ func init() {
 
 func main() {
 	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, listenCmd)
+	// cobra has already printed the error (and usage help) to stderr. Every
+	// error Execute returns is a usage error - the Run functions never return
+	// one; they report through usage() and finish() instead.
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(exitUsage)
 	}
+	os.Exit(exitCode)
 }

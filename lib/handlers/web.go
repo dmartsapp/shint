@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dmartsapp/shint/lib"
@@ -24,7 +25,11 @@ const (
 	webModule              string = "web"
 )
 
-func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config) {
+// WebHandler makes the request iterations times and reports true only if every
+// one of them got an HTTP response. The status code is data, not a verdict
+// (as with curl without -f): a 404 or 500 is a response, and is reported as
+// such; a refused connection, a timeout, a TLS failure or DNS failure is not.
+func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config) (ok bool) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	var stats = make([]time.Duration, 0)
@@ -100,6 +105,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 
 	var WG sync.WaitGroup
+	var failed int32 // attempts that got no HTTP response
 	for i := 0; i < iterations; i++ {
 		attempt := i + 1
 		if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
@@ -108,7 +114,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				if !*jsonoutput {
 					fmt.Println(err)
 				}
-				return
+				return false
 			}
 			time.Sleep(time.Millisecond * time.Duration(randDelay.Int64()))
 		} else if delay > 0 {
@@ -118,10 +124,43 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		go func(URL *url.URL, attempt int) {
 			defer WG.Done()
 			errors := make([]string, 0)
+			var meter wireMeter
+
+			// fail records an attempt that got no response: as an ERROR log
+			// line in text mode, or as a stats entry with success=false in
+			// --json mode - never a stray text line among the JSON.
+			fail := func(stage string, request *http.Request, start time.Time, err error) {
+				atomic.AddInt32(&failed, 1)
+				elapsed := time.Since(start)
+				if !*jsonoutput {
+					fmt.Println(lib.LogWithTimestamp(webModule, stage+" "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", elapsed, "error", err.Error()), true))
+					return
+				}
+				reqHeaders := http.Header{}
+				if request != nil {
+					reqHeaders = request.Header
+				}
+				sent, received := meter.totals()
+				stat := lib.WebStats{
+					URL:           URL.String(),
+					Errors:        append(append([]string{}, errors...), err.Error()),
+					Request:       map[string]any{"method": method, "body": data, "headers": reqHeaders},
+					Response:      map[string]any{},
+					Success:       false,
+					SentTime:      start.UnixMicro(),
+					RecvTime:      time.Now().UnixMicro(),
+					TimeTaken:     elapsed.Microseconds(),
+					BytesSent:     sent,
+					BytesReceived: received,
+				}
+				statsMutex.Lock()
+				output.Stats = append(output.Stats.([]lib.WebStats), stat)
+				statsMutex.Unlock()
+			}
 
 			request, err := http.NewRequest(method, URL.String(), strings.NewReader(data))
 			if err != nil {
-				fmt.Println(lib.LogWithTimestamp(webModule, "request build failed "+lib.Fields("url", URL.String(), "error", err.Error()), true))
+				fail("request build failed", nil, time.Now(), err)
 				return
 			}
 			request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT)
@@ -138,13 +177,12 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			// everything that actually travelled (request line, headers and
 			// body out; status line, headers and body in), the same way
 			// listen http counts them - and every hop, if a redirect is followed.
-			var meter wireMeter
 			request = request.WithContext(httptrace.WithClientTrace(request.Context(), meter.clientTrace()))
 
 			start := time.Now()
 			response, err := client.Do(request)
 			if err != nil {
-				fmt.Println(lib.LogWithTimestamp(webModule, "request failed "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", time.Since(start), "error", err.Error()), true))
+				fail("request failed", request, start, err)
 				return
 			}
 			defer func() { _ = response.Body.Close() }()
@@ -207,6 +245,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		statsMutex.Unlock()
 		fmt.Println(lib.LogWithTimestamp(webModule, "done "+lib.Fields("total_time", time.Since(istart)), false))
 	}
+	return atomic.LoadInt32(&failed) == 0
 }
 
 func parsePort(raw string) (int, error) {

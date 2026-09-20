@@ -54,7 +54,12 @@ func probeUDP(ip string, port int, timeout int, payload []byte) (state string, r
 	return "error", nil, rerr
 }
 
-func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payloadSize int, data string, port int, host string) {
+// UDPHandler sends the probe iterations times to every address host resolves
+// to. It reports false if the lookup failed or any probe found the port closed
+// (the OS surfaced an ICMP port-unreachable) or hit an error. An "open|filtered"
+// probe - no reply, no ICMP error - is inconclusive rather than a failure: many
+// UDP services simply do not answer input they do not understand.
+func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payloadSize int, data string, port int, host string) (ok bool) {
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	payload := []byte(data)
@@ -88,7 +93,7 @@ func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			JS, _ := json.MarshalIndent(output, "", "  ")
 			fmt.Println(string(JS))
 		}
-		return
+		return false
 	}
 
 	if !*jsonoutput {
@@ -100,7 +105,7 @@ func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 
 	var WG sync.WaitGroup
-	var openCount int
+	var openCount, failures int
 	for i := 0; i < iterations; i++ {
 		attempt := i + 1
 		for _, ip := range ipaddresses {
@@ -123,6 +128,9 @@ func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				statsMutex.Lock()
 				if state == "open" {
 					openCount++
+				}
+				if state == "closed" || state == "error" {
+					failures++
 				}
 				if *jsonoutput {
 					stat := lib.UDPStats{
@@ -166,4 +174,5 @@ func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	} else {
 		fmt.Println(lib.LogWithTimestamp(udpModule, "done "+lib.Fields("probes_sent", iterations*len(ipaddresses), "open", openCount, "total_time", time.Since(istart)), false))
 	}
+	return failures == 0
 }
