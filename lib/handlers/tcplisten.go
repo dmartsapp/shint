@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/dmartsapp/shint/v4/lib"
 )
@@ -20,14 +22,51 @@ import (
 const listenTCPModule = "listen-tcp"
 
 // previewBytes renders a short, single-line, human-safe preview of received
-// bytes for logging: trailing newlines trimmed and long payloads truncated.
+// bytes for logging: trailing newlines trimmed, long payloads truncated (at a
+// character boundary), printable text shown as it is and everything else
+// escaped - \n \r \t for line breaks and tabs, \xNN for other control
+// characters and for bytes that are not valid UTF-8, \uNNNN for non-printable
+// characters above 0x7F.
+//
+// A payload is whatever a stranger sent. Written raw it garbles the terminal,
+// lets terminal escape sequences (ESC [ ...) act on it, and lets a line break
+// forge a log line of its own; escaped it can do none of those.
 func previewBytes(b []byte) string {
 	const maxPreview = 120
-	s := strings.TrimRight(string(b), "\r\n")
-	if len(s) > maxPreview {
-		return s[:maxPreview] + "..."
+	trimmed := []byte(strings.TrimRight(string(b), "\r\n"))
+	truncated := false
+	if len(trimmed) > maxPreview {
+		cut := maxPreview
+		for cut > 0 && !utf8.RuneStart(trimmed[cut]) { // do not cut a character in half
+			cut--
+		}
+		trimmed, truncated = trimmed[:cut], true
 	}
-	return s
+	var sb strings.Builder
+	for len(trimmed) > 0 {
+		r, size := utf8.DecodeRune(trimmed)
+		switch {
+		case r == utf8.RuneError && size == 1:
+			fmt.Fprintf(&sb, "\\x%02x", trimmed[0])
+		case r == '\n':
+			sb.WriteString(`\n`)
+		case r == '\r':
+			sb.WriteString(`\r`)
+		case r == '\t':
+			sb.WriteString(`\t`)
+		case r < 0x20 || r == 0x7f:
+			fmt.Fprintf(&sb, "\\x%02x", r)
+		case !unicode.IsPrint(r):
+			fmt.Fprintf(&sb, "\\u%04x", r)
+		default:
+			sb.WriteRune(r)
+		}
+		trimmed = trimmed[size:]
+	}
+	if truncated {
+		sb.WriteString("...")
+	}
+	return sb.String()
 }
 
 // TCPListenHandler starts a plain TCP listener so other shint commands
