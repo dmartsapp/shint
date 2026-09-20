@@ -72,7 +72,7 @@ These are defined once, so they mean the same thing everywhere they apply:
 | `web` | each request may take, from connecting to the last byte of the response |
 | `nmap` | each *port* may take to answer, and the DNS lookup |
 | `udp` | each probe waits for a reply, and the DNS lookup |
-| `ping` | (not applied - each echo request waits one second for its reply) |
+| `ping` | each echo request waits for its reply before it counts as lost (the name lookup keeps the ping library's own fixed 5-second limit) |
 | `listen` | a connection may sit idle before it is closed |
 
 ## Reading the output

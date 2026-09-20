@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dmartsapp/go-ping/v2/netutils"
 	"github.com/dmartsapp/shint/lib"
 )
 
@@ -59,5 +60,56 @@ func TestHandleICMPJSONMode(t *testing.T) {
 		// rather than a shint bug, since dns/JSON plumbing above already
 		// verified the handler itself worked correctly.
 		t.Skip("no ICMP packets succeeded; unprivileged ICMP is likely unavailable in this environment")
+	}
+}
+
+// TestConfigurePingerAppliesTimeout is the regression test for --timeout being
+// ignored by ping: the value must reach the library as the per-reply wait
+// (whole seconds -> milliseconds). It used to stay at the library's fixed
+// one second whatever the flag said.
+func TestConfigurePingerAppliesTimeout(t *testing.T) {
+	for _, seconds := range []int{1, 3, 10} {
+		pinger := new(netutils.Pinger)
+		configurePinger(pinger, 2, 250, false, seconds, 16)
+		if pinger.ReplyTimeoutMS != seconds*1000 {
+			t.Errorf("--timeout %d gave ReplyTimeoutMS %d, want %d", seconds, pinger.ReplyTimeoutMS, seconds*1000)
+		}
+		if pinger.Count != 2 || pinger.PingDelay != 250 || len(pinger.Payload) != 16 {
+			t.Errorf("other flags were not applied: count=%d delay=%d payload=%d", pinger.Count, pinger.PingDelay, len(pinger.Payload))
+		}
+	}
+}
+
+func TestValidatePingPayload(t *testing.T) {
+	max := MaxPingPayload()
+	if max <= 0 || max > 65507 {
+		t.Fatalf("MaxPingPayload() = %d, want a sane positive size", max)
+	}
+	for _, ok := range []int{0, 4, max} {
+		if err := ValidatePingPayload(ok); err != nil {
+			t.Errorf("payload %d should be valid: %v", ok, err)
+		}
+	}
+	for _, bad := range []int{-1, max + 1, 65535} {
+		if err := ValidatePingPayload(bad); err == nil {
+			t.Errorf("payload %d should be rejected", bad)
+		}
+	}
+	// The limit is the library's own: a value it would silently clamp is rejected.
+	if got := len(new(netutils.Pinger).SetPayloadSizeInBytes(max + 100).Payload); got != max {
+		t.Errorf("library clamps to %d but MaxPingPayload() says %d", got, max)
+	}
+}
+
+func TestIsLostPing(t *testing.T) {
+	for line, want := range map[string]bool{
+		"received reply for request #1 from 127.0.0.1 (ipv4) in 0ms":        false,
+		"received reply for request #2 from 2607:f8b0::200e (ipv6) in 31ms": false,
+		"no reply for request #1 from 192.0.2.1: read udp: i/o timeout":     true,
+		"no reply for request #3 from 2001:db8::1: read udp: i/o timeout":   true,
+	} {
+		if got := isLostPing(line); got != want {
+			t.Errorf("isLostPing(%q) = %v, want %v", line, got, want)
+		}
 	}
 }

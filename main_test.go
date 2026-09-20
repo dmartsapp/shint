@@ -154,6 +154,9 @@ func TestExitStatus(t *testing.T) {
 
 		// ping (no ICMP privileges needed for these)
 		{"ping dns failure", []string{"ping", dead}, 1},
+		{"ping timeout zero", []string{"ping", "127.0.0.1", "--timeout", "0"}, 2},
+		{"ping payload too large", []string{"ping", "127.0.0.1", "--payload", "5000"}, 2},
+		{"ping payload negative", []string{"ping", "127.0.0.1", "--payload", "-1"}, 2},
 
 		// listen
 		{"listen bad port", []string{"listen", "tcp", "99999"}, 2},

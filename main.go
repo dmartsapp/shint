@@ -145,6 +145,14 @@ var pingCmd = &cobra.Command{
 			usage(err.Error())
 			return
 		}
+		if err := lib.RequirePositive("timeout", timeout); err != nil {
+			usage(err.Error())
+			return
+		}
+		if err := handlers.ValidatePingPayload(payload_size); err != nil {
+			usage(err.Error())
+			return
+		}
 		finish(handlers.HandleICMP(args[0], &jsonoutput, iterations, delay, &throttle, timeout, payload_size))
 	},
 }

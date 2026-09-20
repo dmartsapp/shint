@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -13,10 +14,51 @@ import (
 
 const icmpModule = "icmp"
 
+// MaxPingPayload is the largest echo payload, in bytes, the ping library will
+// send in one unfragmented packet. It is read from the library itself rather
+// than copied, so it cannot drift: SetPayloadSizeInBytes clamps to its limit.
+func MaxPingPayload() int {
+	return len(new(netutils.Pinger).SetPayloadSizeInBytes(math.MaxInt32).Payload)
+}
+
+// ValidatePingPayload rejects a --payload the ping library would silently
+// shrink (or, for a negative value, silently zero). Called before anything is
+// sent so misuse is a usage error, not a quietly different ping.
+func ValidatePingPayload(size int) error {
+	if max := MaxPingPayload(); size < 0 || size > max {
+		return fmt.Errorf("--payload for ping must be between 0 and %d bytes (larger echo requests would fragment), got %d", max, size)
+	}
+	return nil
+}
+
+// isLostPing reports whether a line streamed by the ping library describes an
+// echo request that got no reply. The library emits exactly two kinds of line -
+// "received reply for request #N ..." and "no reply for request #N ..." - each
+// from a single place, so the prefix is a reliable signal. A lost request is a
+// failed check and is logged at ERROR level like one in every other command;
+// it used to be logged as OK while the exit status said 1.
+func isLostPing(line string) bool {
+	return strings.HasPrefix(line, "no reply")
+}
+
+// configurePinger applies the shared flags to a pinger. timeout (seconds) is
+// how long each echo request waits for its reply before it counts as lost.
+// The name lookup is not covered: netutils.NewPinger resolves inside its
+// constructor with the library's own fixed 5 second limit, so there is
+// nothing left to configure by the time a pinger exists.
+func configurePinger(pinger *netutils.Pinger, iterations, delay int, throttle bool, timeout, payloadSize int) {
+	pinger.
+		SetPingCount(iterations).
+		SetParallelPing(true).
+		SetPayloadSizeInBytes(payloadSize).
+		SetPingDelayInMS(delay).
+		SetRandomizedPingDelay(throttle).
+		SetReplyTimeoutInMS(timeout * 1000)
+}
+
 // HandleICMP pings every address host resolves to and reports true only if no
-// echo request was lost. Note that timeout is recorded in the JSON input
-// parameters but not applied: the ping library waits its own fixed reply
-// timeout (one second) per echo request.
+// echo request was lost. timeout is how long each echo request waits for its
+// reply (the name lookup keeps the ping library's own 5 second limit).
 func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int) (ok bool) {
 
 	output := lib.JSONOutput{}
@@ -62,17 +104,12 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 		go func(pinger *netutils.Pinger, wg *sync.WaitGroup) {
 			defer wg.Done()
 			for log := range pinger.StreamLog() {
-				fmt.Println(lib.LogWithTimestamp(icmpModule, log, false))
+				fmt.Println(lib.LogWithTimestamp(icmpModule, log, isLostPing(log)))
 			}
 		}(pinger, &wg)
 	}
 
-	pinger.
-		SetPingCount(iterations).
-		SetParallelPing(true).
-		SetPayloadSizeInBytes(payload_size).
-		SetPingDelayInMS(delay).
-		SetRandomizedPingDelay(*throttle)
+	configurePinger(pinger, iterations, delay, *throttle, timeout, payload_size)
 	err = pinger.PingAll()
 	if err != nil {
 		if *jsonoutput {

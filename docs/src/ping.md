@@ -17,7 +17,7 @@ nav: ping
 shint ping <host> [--count N] [--delay MS] [--payload BYTES] [--throttle] [--json]
 ```
 
-The [shared flags](usage.md#flags-shared-by-every-command) apply. `--timeout` is not applied to ping: each echo request waits one second for its reply.
+The [shared flags](usage.md#flags-shared-by-every-command) apply. `--timeout` is how long each echo request waits for its reply before it counts as lost (default 5 seconds). It does not cover the name lookup, which keeps the ping library's own fixed 5-second limit. `--payload` must be between 0 and 1448 bytes.
 
 ## Examples
 
@@ -87,6 +87,26 @@ shint ping 127.0.0.1 --json
 ```
 Ping times in JSON are in **milliseconds**, unlike the other commands, which use microseconds.
 
+### A host that does not answer
+
+A request that gets no reply counts as lost once `--timeout` has passed - here 2 seconds, so the run takes about 2 seconds:
+
+```bash
+shint ping 192.0.2.1 --count 1 --delay 0 --timeout 2
+```
+
+```text
+Sun Sep 20 10:27:13 MDT 2026: [icmp] OK dns resolved host=192.0.2.1 addresses=1 ips=[192.0.2.1] time=92.917µs
+Sun Sep 20 10:27:15 MDT 2026: [icmp] ERROR no reply for request #1 from 192.0.2.1: read udp 0.0.0.0:0: raw-read udp 0.0.0.0:0: i/o timeout
+
+========================================= icmp STATISTICS =========================================
+Requests sent: 1, Response received: 0
+Latency: minimum: 0, average: 0, maximum: 0
+Sun Sep 20 10:27:15 MDT 2026: [icmp] OK done packets_lost=1 stddev_ms=0.000 resolve_time=92.917µs total_time=2.002622083s
+```
+
+The lost request is logged as an `ERROR` line, like any other failed check, and the exit status is `1`. (`192.0.2.1` is a reserved documentation address that never answers.)
+
 ## Reading the results
 
 - **`received reply ... in 29ms`** - one echo request was answered; the time is the round trip.
@@ -105,5 +125,5 @@ ICMP normally needs privileges, but shint uses the unprivileged ICMP sockets tha
 
 ## Good to know
 
-- The size of each request's payload is `--payload` (default 4 bytes).
+- The size of each request's payload is `--payload` (default 4 bytes). It can be at most 1448 bytes, so an echo request never has to fragment; a larger or negative value is a usage error (exit status `2`) rather than being quietly changed.
 - Some networks block ICMP entirely. A failed ping does not always mean a host is down - try [`telnet`](telnet.md) against a port you know should be open.

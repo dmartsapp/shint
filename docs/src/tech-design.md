@@ -72,4 +72,4 @@ UDP has no handshake, so `probeUDP` uses a *connected* UDP socket and reads the 
 
 JSON keys are a contract (see [Command-line design](tech-cli.md#the-output-contract)). Three historical quirks are kept for compatibility rather than fixed, and are documented so nobody is surprised: `timeout_ms` holds seconds; `ping` reports milliseconds where the rest report microseconds; and `ping`'s `from_port`/`to_port` hold `7`, the echo port, which means nothing for ICMP.
 
-`ping` also does not apply `--timeout`: its reply wait is go-ping's fixed one second.
+`ping` applies `--timeout` to each echo reply (`configurePinger` calls go-ping's `SetReplyTimeoutInMS`), but not to the name lookup: go-ping's `NewPinger` resolves inside its constructor with a fixed 5-second limit, so nothing is left to configure by the time a pinger exists. A `--payload` the library would silently shrink is rejected up front (`ValidatePingPayload`), with the limit read from the library itself (`MaxPingPayload`) so it cannot drift.
