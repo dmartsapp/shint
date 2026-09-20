@@ -45,8 +45,8 @@
 │   └── handlers/           one file per command (plus TLS and wire counting)
 ├── docs/                   this documentation site (Markdown sources + build script)
 ├── .github/workflows/      the five CI/CD workflows, plus the tag guard they all call
-├── .github/scripts/        the tag guard's script and its offline test
-├── Makefile                cross-compilation for every release platform
+├── .github/scripts/        the tag guard, the workflow trigger rule and their tests
+├── Makefile                cross-compilation for every platform, and every check (make check)
 ├── Dockerfile              multi-arch container image
 ├── basic_module_test.sh    live-internet smoke test
 ├── CHANGELOG.md            release history

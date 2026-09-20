@@ -68,6 +68,20 @@ A trigger filter looks only at the tag's *name*. It cannot ask "is the tagged co
 - **What it is not.** It protects against mistakes, not against someone who can push tags *and* edit workflow files - they could change the guard too. Who may create tags is a repository-settings matter.
 - **Testing it.** Workflows only run on tags, so the script has its own offline test, with a fake `gh`: `bash .github/scripts/test-verify-release-tag.sh`. It covers accepted and refused names (a bad name must not reach GitHub at all), both compare outcomes, an API error, and missing inputs.
 
+## The workflow trigger rule
+
+**Only `main` runs actions, and a release is a `vX.Y.Z` tag on `main`.** Nothing a branch, a pull request, a schedule or a person can start may run a workflow. That rule covers every workflow, including ones not yet written, so it is checked rather than remembered: `python3 .github/scripts/check-workflow-triggers.py`, run by `make workflows` and so by `make check`, reads the `on:` block of every file in `.github/workflows/` and fails on anything else.
+
+| A workflow may be started by | Only in this shape |
+|---|---|
+| A release tag | `push: tags: ['v[0-9]+.[0-9]+.[0-9]+']`, and no other filter |
+| A merge to `main` | `push: branches: [main]` **with** `paths-ignore: ['.github/**']`, so a merge that only changes workflow files runs nothing |
+| Another workflow | `workflow_call` alone (a reusable workflow, like the tag guard) |
+
+Everything else - `pull_request`, `schedule`, `workflow_dispatch`, `workflow_run`, other branches, a bare `push:` - is refused, and so is any form the checker cannot read (it fails closed: the `on:` block must be written in block style). The check has its own tests (`python3 .github/scripts/test_check_workflow_triggers.py`), including one that runs it over the real workflow files. Today the five release workflows use the first shape, the tag guard the third, and nothing uses the second; it is there for the `make check` job planned for v4.1.0.
+
+The GitHub-managed automation listed [below](#automation-github-manages) is not defined by workflow files, so this check cannot see it. Its default setups (CodeQL, Pages) have no path filter, so a merge that only touches `.github/` still redeploys the site and rescans; neither builds or publishes anything.
+
 ## Lint
 
 `.github/workflows/lint.yaml`
@@ -154,11 +168,11 @@ Typical durations: lint and vulnerability check under a minute, the binary relea
 ## Reproducing the checks locally
 
 ```bash
-go vet ./...
-go test -race ./...
-golangci-lint run ./...          # use v2.13.2, as CI does
-govulncheck ./...
+make check         # gofmt, go vet, go test -race, golangci-lint, govulncheck, docs and workflow checks
+make test-full     # the same, plus the live smoke test - before a release
 ```
+
+The Makefile is the single place these are defined; see [Testing](tech-testing.md#running-the-tests) for what each target does and which tools it needs. The lint version is checked against the one CI pins.
 
 ## What CI does not do
 

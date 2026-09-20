@@ -97,18 +97,13 @@ git push -u origin release/vX.Y.Z
 3. **Update the version constant** in `main.go` and the Docker tag example in the docs if needed.
 4. **Update `CHANGELOG.md`**: add or finish the `## vX.Y.Z` section, newest first. Rebuild the site (`python3 docs/build.py`) so the [Changelog](changelog.md) page matches.
 5. **Update the README roadmap**: mark the release as shipped, and shift the later windows if the sprint slipped.
-6. **Run every check locally.** CI will not run the tests for you:
+6. **Run every check locally.** CI will not run the tests for you. The Makefile is the one place they are defined:
 
 ```bash
-gofmt -l .                       # should list nothing
-go vet ./...
-go test -race ./...
-golangci-lint run ./...          # v2.13.2, as CI uses
-govulncheck ./...
-bash basic_module_test.sh        # optional, needs the internet
-python3 docs/test_build.py       # the docs generator's own tests
-python3 docs/build.py --check    # the site is current; every link, anchor and site URL resolves
+make test-full
 ```
+
+That is `make check` - `gofmt`, `go vet`, `go test -race`, `golangci-lint` (v2.13.2, as CI uses), `govulncheck`, the documentation tests and check (the site is current; every link, anchor and site URL resolves), and the workflow checks - followed by `make test-live`, the smoke test against real hosts, which needs the internet. See [Testing](tech-testing.md#running-the-tests).
 
 7. **Commit the release** as the last commit on the branch, with the message convention above; the body is the changelog. Push the branch.
 

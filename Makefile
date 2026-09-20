@@ -89,3 +89,90 @@ clean:
 
 no-dirty:
 	git diff --exit-code
+
+# ---------------------------------------------------------------------------
+# Checks. The Makefile is the one place to build and test from: nothing in CI
+# or the release checklist should run these commands any other way.
+#
+#   make check       everything that needs no network - run before every push
+#   make test-live   the smoke test against real hosts (internet + ICMP)
+#   make test-full   check + test-live - run before a release
+#
+# The tools are run from PATH; override a path with e.g.
+#   make check GOLANGCI_LINT=/path/to/golangci-lint
+# ---------------------------------------------------------------------------
+GOLANGCI_LINT ?= golangci-lint
+GOVULNCHECK ?= govulncheck
+ACTIONLINT ?= actionlint
+# Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
+GOLANGCI_LINT_VERSION = 2.13.2
+
+.PHONY: help check test-full test-live tools fmt-check vet test lint vuln docs-check workflows
+
+help:
+	echo "make check       fmt, vet, race tests, lint, vulncheck, docs and workflow checks (no network)"
+	echo "make test-live   smoke test against real hosts (needs the internet and ICMP)"
+	echo "make test-full   check + test-live"
+	echo "make test        just the Go tests, with the race detector"
+	echo "make <platform>  build for one platform (linux-amd64, darwin-arm64, ...); all-platforms builds every one"
+
+check: tools fmt-check vet test lint vuln docs-check workflows
+	echo "==> all checks passed"
+
+test-full: check test-live
+	echo "==> full test run passed"
+
+# Fail early, with the install command, rather than half-way through a run.
+tools:
+	missing=0; \
+	command -v $(GOLANGCI_LINT) >/dev/null 2>&1 || { echo "missing golangci-lint $(GOLANGCI_LINT_VERSION): go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v$(GOLANGCI_LINT_VERSION)"; missing=1; }; \
+	command -v $(GOVULNCHECK) >/dev/null 2>&1 || { echo "missing govulncheck: go install golang.org/x/vuln/cmd/govulncheck@latest"; missing=1; }; \
+	command -v $(ACTIONLINT) >/dev/null 2>&1 || { echo "missing actionlint: go install github.com/rhysd/actionlint/cmd/actionlint@latest"; missing=1; }; \
+	command -v python3 >/dev/null 2>&1 || { echo "missing python3 (the documentation generator and workflow checks use it)"; missing=1; }; \
+	[ $$missing -eq 0 ] || exit 1; \
+	$(GOLANGCI_LINT) --version | grep -q "version $(GOLANGCI_LINT_VERSION) " || { echo "golangci-lint must be v$(GOLANGCI_LINT_VERSION), as CI uses; found: $$($(GOLANGCI_LINT) --version | head -n1)"; exit 1; }
+
+fmt-check:
+	echo "==> gofmt"
+	unformatted="$$(gofmt -l .)"; [ -z "$$unformatted" ] || { echo "not gofmt-formatted (run gofmt -w):"; echo "$$unformatted"; exit 1; }
+
+vet:
+	echo "==> go vet"
+	go vet ./...
+
+test:
+	echo "==> go test -race"
+	go test -race ./...
+
+lint:
+	echo "==> golangci-lint"
+	$(GOLANGCI_LINT) run ./...
+
+vuln:
+	echo "==> govulncheck"
+	$(GOVULNCHECK) ./...
+
+# The documentation site: generator tests, then "the committed pages are
+# current and every link resolves".
+docs-check:
+	echo "==> documentation"
+	python3 docs/test_build.py
+	python3 docs/build.py --check
+
+# The release pipeline. Workflows only run on a release tag, so they cannot be
+# tried out any other way: the trigger rule, the tag guard (against a fake gh)
+# and actionlint. The ignored actionlint message is the one existing warning -
+# softprops/action-gh-release@v1 still works (v4.0.3 shipped with it); moving
+# to a newer major is a change to make and try deliberately.
+workflows:
+	echo "==> workflows"
+	python3 .github/scripts/test_check_workflow_triggers.py
+	python3 .github/scripts/check-workflow-triggers.py
+	bash .github/scripts/test-verify-release-tag.sh
+	$(ACTIONLINT) -ignore 'runner of "softprops/action-gh-release@v1" action is too old' .github/workflows/*.yaml
+
+# Needs the internet and unprivileged ICMP; builds ./shint, runs one check per
+# command against real hosts, and removes the binary again.
+test-live:
+	echo "==> live smoke test"
+	bash basic_module_test.sh

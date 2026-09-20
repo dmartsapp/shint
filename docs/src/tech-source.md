@@ -14,10 +14,10 @@ nav: Source reference
 | `main.go` | The command line. Defines the cobra commands (`telnet`, `ping`, `web`, `nmap`, `udp`, `listen tcp|udp|http`), every flag, argument validation, the exit-status scheme, and `scanContext`. Holds the `Version` constant. |
 | `main_test.go` | End-to-end tests of the CLI. `TestMain` makes the test binary behave as `shint` when `SHINT_TEST_RUN_MAIN=1`, so tests run it as a subprocess and assert real exit statuses and stdout/stderr. |
 | `go.mod`, `go.sum` | The module (`github.com/dmartsapp/shint`), the Go version, and pinned dependencies. |
-| `Makefile` | Cross-compilation targets for every release platform, and the version-string logic for local builds. |
+| `Makefile` | The one place to build and test from: cross-compilation targets for every release platform, the version-string logic for local builds, and the checks (`make check`, `make test-live`, `make test-full`). |
 | `Dockerfile` | Two-stage image build: Go build stage, distroless final stage. |
 | `.dockerignore`, `.gitignore` | What stays out of the Docker build context and out of git (`bin/`, `*.json`, `.DS_Store`). |
-| `basic_module_test.sh` | Live-internet smoke test: builds the binary and runs one check per command against real hosts. |
+| `basic_module_test.sh` | Live-internet smoke test: builds the binary and runs one check per command against real hosts. Run it with `make test-live`. |
 | `CHANGELOG.md` | The release history; also rendered as the [Changelog](changelog.md) page. |
 | `readme.md` | The short introduction that GitHub shows on the front page. |
 | `LICENSE` | MIT. |
@@ -78,7 +78,7 @@ nav: Source reference
 
 | File | Purpose |
 |---|---|
-| `Makefile` | One target per platform (`linux-amd64`, `darwin-arm64`, ...), the groups `linux`/`darwin`/`windows`/..., `all` (the desktop triad), `all-platforms` (every release target), `run`, `clean`. Builds with `CGO_ENABLED=0 -trimpath -ldflags "-s -w -X main.Version=..."`. |
+| `Makefile` | One target per platform (`linux-amd64`, `darwin-arm64`, ...), the groups `linux`/`darwin`/`windows`/..., `all` (the desktop triad), `all-platforms` (every release target), `run`, `clean`. Builds with `CGO_ENABLED=0 -trimpath -ldflags "-s -w -X main.Version=..."`. It also holds every check: `check`, `test`, `test-live`, `test-full`, `fmt-check`, `vet`, `lint`, `vuln`, `docs-check`, `workflows`, `tools` and `help` (see [Testing](tech-testing.md#running-the-tests)). |
 | `Dockerfile` | Stage 1 `golang:1.27.1-alpine` compiles the binary for `TARGETOS`/`TARGETARCH`; stage 2 `gcr.io/distroless/static-debian12:nonroot` carries only the binary and CA certificates. `ENTRYPOINT ["/shint"]`, `CMD ["--help"]`. |
 | `.dockerignore` | Keeps `.git`, `.github`, `bin`, markdown files and scripts out of the build context. |
 
@@ -89,6 +89,8 @@ nav: Source reference
 | `.github/workflows/verify-release-tag.yaml` | The tag guard, a reusable workflow every other workflow calls first: the tag must be `vX.Y.Z` and its commit must be on `main`. No trigger of its own. |
 | `.github/scripts/verify-release-tag.sh` | The guard's checks (tag format, then the GitHub compare API). |
 | `.github/scripts/test-verify-release-tag.sh` | Offline tests for the guard, with a fake `gh`: `bash .github/scripts/test-verify-release-tag.sh`. |
+| `.github/scripts/check-workflow-triggers.py` | Fails if any workflow can be started by anything other than a `vX.Y.Z` tag (or a push to `main` that ignores `.github/**`). See [the trigger rule](tech-ci.md#the-workflow-trigger-rule). |
+| `.github/scripts/test_check_workflow_triggers.py` | Tests for that check, including a run over the real workflow files. |
 | `.github/workflows/lint.yaml` | Guard, then `golangci-lint`; opens an issue on failure. |
 | `.github/workflows/vulncheck.yaml` | Guard, then `govulncheck` with a step summary; opens an issue on failure. |
 | `.github/workflows/build.yaml` | Guard, gate, then 14 cross-builds, then the GitHub Release with the binaries attached. |

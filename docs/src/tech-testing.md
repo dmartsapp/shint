@@ -14,18 +14,30 @@ nav: Testing
 - **The race detector is on.** Handlers are concurrent; run `go test -race`.
 - **Every bug gets a test that fails without the fix.** Each regression test below was checked against the broken behaviour before the fix was kept.
 
-There are 99 top-level Go tests: 68 in `lib/handlers`, 25 in `lib` and 6 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 27 scenarios). Outside `go test` there is a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), and a Python test for the documentation generator.
+There are 99 top-level Go tests: 68 in `lib/handlers`, 25 in `lib` and 6 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 27 scenarios). Outside `go test`, `make check` also runs a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), Python tests for the [workflow trigger rule](tech-ci.md#the-workflow-trigger-rule) (18) and for the documentation generator (10).
 
 ## Running the tests
 
+**The Makefile is the one place to build and test from.** Every check has a `make` target, and CI and the release checklist use those targets rather than their own copies of the commands:
+
+| Command | What it runs | Needs |
+|---|---|---|
+| `make check` | Everything below except the live test, in this order: tool check, `gofmt`, `go vet`, `go test -race ./...`, `golangci-lint`, `govulncheck`, the documentation tests and check, the workflow checks | the tools below; no network for the tests (`govulncheck` reads the vulnerability database) |
+| `make test-live` | The [live smoke test](#the-live-smoke-test) | the internet and unprivileged ICMP |
+| `make test-full` | `make check`, then `make test-live` - run this before a release | both |
+| `make test` | Just the Go tests, with the race detector | Go |
+| `make fmt-check`, `vet`, `lint`, `vuln`, `docs-check`, `workflows` | One step of `make check` on its own | as above |
+
+`make check` takes about twenty seconds. The first thing it does is check that the tools are installed and prints the install command for any that are not: `golangci-lint` (it must be **v2.13.2**, the version CI pins - a different version is refused), `govulncheck`, `actionlint`, and `python3`. A tool that is not on `PATH` can be named: `make check GOLANGCI_LINT=/path/to/golangci-lint`.
+
+For finer control, call `go test` directly:
+
 ```bash
-go test ./...                      # everything
-go test -race ./...                # what you should run before a release
-go test -race -count=3 ./...       # shake out flakiness
-go test -run TestNmap -v ./lib/handlers/   # one family, verbosely
+go test -race -count=3 ./...                   # shake out flakiness
+go test -run TestNmap -v ./lib/handlers/       # one family, verbosely
 ```
 
-The full suite takes under a minute. `go test -race` on the root package takes longer (about 15 seconds) because its tests start the CLI as subprocesses.
+`go test -race` on the root package takes about 15 seconds because its tests start the CLI as subprocesses.
 
 ## Building blocks
 
@@ -74,15 +86,15 @@ Two package-level variables exist only so tests can control time and slowness de
 
 ## The live smoke test
 
-`basic_module_test.sh` builds the binary and runs one check per command against real hosts (`google.com`, `httpbin.org`, `8.8.8.8`), asserting on exit status *and* an expected string in the output. It needs the internet and ICMP, so it is not part of `go test`; run it before a release when you can. It counts failures and continues rather than stopping at the first.
+`make test-live` (which runs `basic_module_test.sh`) builds the binary and runs one check per command against real hosts (`google.com`, `httpbin.org`, `8.8.8.8`), asserting on exit status *and* an expected string in the output - including that `ping` shows its payload size. It needs the internet and ICMP, so it is not part of `make check` or `go test`; `make test-full` includes it, and it should pass before a release. It counts failures and continues rather than stopping at the first.
 
 ## The release-tag guard
 
-Workflows run only for a release tag, so a mistake in one would first show itself on release day. Two things stand in for that. `bash .github/scripts/test-verify-release-tag.sh` runs the guard script against a fake `gh` (no network) and checks: a name that is not `vX.Y.Z` is refused **without** calling GitHub; `identical` and `behind` pass; `ahead` and `diverged` are refused; an API error refuses; a missing input is an error. And the script was run once against the real repository - v4.0.3's commit passes, a release-branch tip is refused as `ahead` - with the same `gh api` call the workflow makes. The workflow files themselves are checked with [actionlint](https://github.com/rhysd/actionlint).
+Workflows run only for a release tag, so a mistake in one would first show itself on release day. Two things stand in for that. `bash .github/scripts/test-verify-release-tag.sh` runs the guard script against a fake `gh` (no network) and checks: a name that is not `vX.Y.Z` is refused **without** calling GitHub; `identical` and `behind` pass; `ahead` and `diverged` are refused; an API error refuses; a missing input is an error. And the script was run once against the real repository - v4.0.3's commit passes, a release-branch tip is refused as `ahead` - with the same `gh api` call the workflow makes. The workflow files themselves are checked with [actionlint](https://github.com/rhysd/actionlint), and by the [trigger-rule check](tech-ci.md#the-workflow-trigger-rule), which fails if any workflow could be started by anything but a release tag on `main` (or, for a future workflow, a push to `main` that ignores `.github/**`). All three run as `make workflows`, part of `make check`.
 
 ## Lint and vulnerability checks
 
-`golangci-lint` (v2.13.2, default linters) and `govulncheck` gate every release in CI ([CI/CD workflows](tech-ci.md)). Run them locally first; CI will not tell you about a failure until the tag is already pushed.
+`golangci-lint` (v2.13.2, default linters) and `govulncheck` gate every release in CI ([CI/CD workflows](tech-ci.md)). `make lint` and `make vuln` run them locally, as part of `make check`; CI will not tell you about a failure until the tag is already pushed.
 
 ## Writing a good test here
 

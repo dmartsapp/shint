@@ -72,6 +72,7 @@ run_test "UDP" "$BINARY udp 8.8.8.8 53 --data test" "[udp] OK probe"
 
 # Ping Test
 run_test "Ping" "$BINARY ping google.com --count 1" "icmp STATISTICS"
+run_test "Ping shows the payload size" "$BINARY ping google.com --count 1 --payload 16" "bytes=16"
 
 
 # --- Summary ---
