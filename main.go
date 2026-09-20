@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/dmartsapp/shint/lib"
 	"github.com/dmartsapp/shint/lib/handlers"
@@ -71,10 +70,7 @@ var telnetCmd = &cobra.Command{
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-		defer cancel()
-
-		handlers.TelnetHandler(&jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, ctx, host)
+		handlers.TelnetHandler(&jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, host)
 	},
 }
 

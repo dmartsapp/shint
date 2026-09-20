@@ -15,7 +15,14 @@ import (
 
 const telnetModule = "telnet"
 
-func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, CTXTIMEOUT context.Context, host string) {
+// TelnetHandler checks TCP connectivity to host:port, once per resolved
+// address per iteration. timeout (seconds) is what each individual
+// connection attempt - and the DNS lookup - gets to complete; it is not a
+// budget for the whole run. That matters because --count and --delay
+// stretch a run well past --timeout (8 attempts one second apart take 8
+// seconds), and an attempt that started after a run-wide deadline had
+// already passed used to fail instantly with a bogus "i/o timeout".
+func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, host string) {
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
@@ -32,7 +39,9 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 	}
 	output.ModuleName = telnetModule
 	istart := time.Now() // capture initial time
-	ipaddresses, err := lib.ResolveName(CTXTIMEOUT, host)
+	dnsCtx, cancelDNS := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	ipaddresses, err := lib.ResolveName(dnsCtx, host)
+	cancelDNS()
 	var stats = make([]time.Duration, 0)
 	if err != nil {
 		if *jsonoutput {
@@ -78,7 +87,7 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 				go func(ip string, attempt int) {
 					defer WG.Done()
 					start := time.Now()
-					_, err := lib.IsPortUp(CTXTIMEOUT, ip, port, timeout)
+					_, err := lib.IsPortUp(context.Background(), ip, port, timeout)
 					timeTaken := time.Since(start)
 					if err != nil {
 						if *jsonoutput {

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"net"
 	"strconv"
@@ -57,11 +56,8 @@ func TestTelnetHandlerIPv6Loopback(t *testing.T) {
 	defer closeFn()
 
 	jsonOutput, throttle := true, false
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 1, 0, &throttle, 3, 4, port, ctx, "::1")
+		TelnetHandler(&jsonOutput, 1, 0, &throttle, 3, 4, port, "::1")
 	})
 
 	var result lib.JSONOutput
@@ -83,11 +79,8 @@ func TestTelnetHandlerSuccessJSON(t *testing.T) {
 	defer closeFn()
 
 	jsonOutput, throttle := true, false
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 1, 0, &throttle, 3, 4, port, ctx, "127.0.0.1")
+		TelnetHandler(&jsonOutput, 1, 0, &throttle, 3, 4, port, "127.0.0.1")
 	})
 
 	var result lib.JSONOutput
@@ -115,11 +108,8 @@ func TestTelnetHandlerFailureText(t *testing.T) {
 	_ = listener.Close()
 
 	jsonOutput, throttle := false, false
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 1, 0, &throttle, 2, 4, port, ctx, "127.0.0.1")
+		TelnetHandler(&jsonOutput, 1, 0, &throttle, 2, 4, port, "127.0.0.1")
 	})
 
 	if !strings.Contains(out, "[telnet] ERROR connect failed") {
@@ -132,11 +122,8 @@ func TestTelnetHandlerFailureText(t *testing.T) {
 
 func TestTelnetHandlerDNSFailure(t *testing.T) {
 	jsonOutput, throttle := false, false
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 1, 0, &throttle, 2, 4, 80, ctx, "this-host-should-not-exist.invalid")
+		TelnetHandler(&jsonOutput, 1, 0, &throttle, 2, 4, 80, "this-host-should-not-exist.invalid")
 	})
 
 	if !strings.Contains(out, "[telnet] ERROR dns resolution failed") {
@@ -149,11 +136,8 @@ func TestTelnetHandlerMultipleIterationsNoRace(t *testing.T) {
 	defer closeFn()
 
 	jsonOutput, throttle := true, false
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 10, 0, &throttle, 3, 4, port, ctx, "127.0.0.1")
+		TelnetHandler(&jsonOutput, 10, 0, &throttle, 3, 4, port, "127.0.0.1")
 	})
 
 	var result lib.JSONOutput
@@ -167,5 +151,44 @@ func TestTelnetHandlerMultipleIterationsNoRace(t *testing.T) {
 	}
 	if len(stats) != 10 {
 		t.Fatalf("expected 10 stat entries from 10 iterations, got %d", len(stats))
+	}
+}
+
+// TestTelnetHandlerRunLongerThanTimeoutStillSucceeds is the regression test
+// for false "i/o timeout" failures on later attempts: --timeout is what each
+// connection attempt gets, so a run whose --count x --delay adds up to several
+// times --timeout must still report every attempt against a healthy listener
+// as a success. Four attempts 400ms apart take ~1.6s against a 1s timeout;
+// when the timeout was also a deadline for the whole run, the attempts after
+// the first second failed instantly.
+func TestTelnetHandlerRunLongerThanTimeoutStillSucceeds(t *testing.T) {
+	port, closeFn := startEchoListener(t)
+	defer closeFn()
+
+	jsonOutput, throttle := true, false
+	start := time.Now()
+	out := captureStdout(t, func() {
+		TelnetHandler(&jsonOutput, 4, 400, &throttle, 1, 4, port, "127.0.0.1")
+	})
+	if elapsed := time.Since(start); elapsed < 1200*time.Millisecond {
+		t.Fatalf("run took only %v; the test needs to outlast the 1s --timeout to mean anything", elapsed)
+	}
+
+	var result lib.JSONOutput
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("failed to unmarshal JSON output: %v\noutput:\n%s", err, out)
+	}
+	statsJSON, _ := json.Marshal(result.Stats)
+	var stats []lib.TelnetStats
+	if err := json.Unmarshal(statsJSON, &stats); err != nil {
+		t.Fatalf("failed to unmarshal stats: %v", err)
+	}
+	if len(stats) != 4 {
+		t.Fatalf("expected 4 attempts, got %d", len(stats))
+	}
+	for i, s := range stats {
+		if !s.Success {
+			t.Errorf("attempt %d against a listener that is up failed: %q", i+1, s.Error)
+		}
 	}
 }
