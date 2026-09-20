@@ -1,6 +1,6 @@
 ---
 title: CI/CD workflows
-lead: The five GitHub Actions workflows - what triggers them, what each job does, what they need, and how to watch them.
+lead: The six GitHub Actions workflows (five for releases, one that checks main) - what triggers them, what each job does, what they need, and how to watch them.
 description: Documentation of shint's GitHub Actions - lint, vulnerability check, binary build and release, Docker Hub and GHCR publishing - plus the GitHub-managed automation around them.
 section: Technical
 order: 5
@@ -9,9 +9,11 @@ nav: CI/CD workflows
 
 ## Overview
 
-All five workflows are triggered by **the same event: pushing a tag of the form `vX.Y.Z` (digits only) that points at a commit on `main`**. Nothing else starts them: not a push to a branch (whatever its name), not a push to `main`, not a pull request, not a manual run. That is a deliberate choice - a release is the unit of quality here - and it has consequences covered under [What CI does not do](#what-ci-does-not-do).
+**Five release workflows** - Lint, Vulnerability Check, Binary Build & Release, Docker Hub Release and GHCR Release - are triggered by **the same event: pushing a tag of the form `vX.Y.Z` (digits only) that points at a commit on `main`**. Nothing else starts them: not a push to a branch (whatever its name), not a push to `main`, not a pull request, not a manual run. That is a deliberate choice - a release is the unit of quality here - and it has consequences covered under [What CI does not do](#what-ci-does-not-do).
 
-The "on `main`" half is enforced by a [guard](#the-release-tag-guard) that every workflow runs first.
+The "on `main`" half is enforced by a [guard](#the-release-tag-guard) that every release workflow runs first.
+
+**One more workflow, [Check](#check-after-a-merge-to-main)**, runs `make check` after a merge to `main` (and only then), so tests do not wait for release day. It publishes nothing.
 
 They are separate files so that each has its own status and its own failure mode: a Docker Hub credential problem shows up as *that* workflow failing, not as a vague failure of "the release".
 
@@ -80,9 +82,26 @@ A trigger filter looks only at the tag's *name*. It cannot ask "is the tagged co
 | A merge to `main` | `push: branches: [main]` **with** `paths-ignore: ['.github/**']`, so a merge that only changes workflow files runs nothing |
 | Another workflow | `workflow_call` alone (a reusable workflow, like the tag guard) |
 
-Everything else - `pull_request`, `schedule`, `workflow_dispatch`, `workflow_run`, other branches, a bare `push:` - is refused, and so is any form the checker cannot read (it fails closed: the `on:` block must be written in block style). The check has its own tests (`python3 .github/scripts/test_check_workflow_triggers.py`), including one that runs it over the real workflow files. Today the five release workflows use the first shape, the tag guard the third, and nothing uses the second; it is there for the `make check` job planned for v4.1.0.
+Everything else - `pull_request`, `schedule`, `workflow_dispatch`, `workflow_run`, other branches, a bare `push:` - is refused, and so is any form the checker cannot read (it fails closed: the `on:` block must be written in block style). The check has its own tests (`python3 .github/scripts/test_check_workflow_triggers.py`), including one that runs it over the real workflow files. Today the five release workflows use the first shape, [Check](#check-after-a-merge-to-main) the second, and the tag guard the third.
 
 The GitHub-managed automation listed [below](#automation-github-manages) is not defined by workflow files, so this check cannot see it. Its default setups (CodeQL, Pages) have no path filter, so a merge that only touches `.github/` still redeploys the site and rescans; neither builds or publishes anything.
+
+## Check after a merge to main
+
+`.github/workflows/check.yaml`
+
+`on: push: branches: [main]` with `paths-ignore: ['.github/**']`: it runs when something is pushed to `main`, and not when the push only changes workflow files. It does not run for a branch, a pull request or a tag.
+
+| Job | What it does |
+|---|---|
+| `check` | Checks out the code, sets up Go, installs `golangci-lint` v2.13.2 (the version `make check` insists on), `govulncheck` and `actionlint` with `go install`, and runs **`make check`**: the same command you run locally ([Testing](tech-testing.md#running-the-tests)). It does not run the live smoke test, which needs real hosts. |
+| `report-failure` | If `check` itself failed, files an issue "CI Failure: make check" (see [Failure issues](#failure-issues)). |
+
+Because it runs *after* the merge, a failure does not stop the merge; it opens an issue. That fits the process: `main` is only updated on release day, and the release is tagged after Check has passed ([Releases and tagging](tech-release.md#release-checklist)).
+
+## Failure issues
+
+Lint, Vulnerability Check and Check each file an issue when their check fails: title "CI Failure: <name>", labels `bug` and `ci-failure`, assigned to the person who pushed. The body is written by `.github/scripts/write-ci-failure-issue.sh` from values the workflow passes in, so it names the workflow, the tag or branch, the commit and - the point of doing it this way - the **real URL of the failed run**. (Earlier issues used a template file, and GitHub expands `${{ }}` expressions only inside workflow files, so they showed the raw expression text; #6 to #10 are the examples.) The script has its own test, `.github/scripts/test-write-ci-failure-issue.sh`, part of `make workflows`.
 
 ## Lint
 
@@ -92,7 +111,7 @@ The GitHub-managed automation listed [below](#automation-github-manages) is not 
 |---|---|---|
 | `verify-tag` | - | The [guard](#the-release-tag-guard). |
 | `lint` | `verify-tag` | Runs `golangci-lint` with the default linter set. |
-| `report-failure` | `lint` | Runs only if `lint` itself failed (not if the tag was refused and `lint` never ran): files an issue titled "CI Failure: Lint" (labels `bug`, `ci-failure`, assigned to the person who pushed the tag) from `.github/ISSUE_TEMPLATE/ci_failure.md`, using `peter-evans/create-issue-from-file@v5`. The file is static text: GitHub expands `${{ }}` expressions only inside workflow files, so the issue points at the Actions tab rather than at one specific run. |
+| `report-failure` | `lint` | Runs only if `lint` itself failed (not if the tag was refused and `lint` never ran): files the "CI Failure: Lint" issue described under [Failure issues](#failure-issues), using `peter-evans/create-issue-from-file@v5`. |
 
 ## Vulnerability check
 
@@ -176,7 +195,7 @@ A few more things run that are **not defined by files in this repository**; they
 Push the tag and the result arrives in Slack when the last workflow finishes (see [Slack notification](#slack-notification)). To follow it from the terminal instead, use the GitHub CLI:
 
 ```bash
-gh run list --limit 8                       # the five workflows for the tag, and the notifier
+gh run list --limit 8                       # the five workflows for the tag, and the notifier (and Check, for a merge)
 gh run watch <run-id> --exit-status         # block until one finishes
 gh run view <run-id> --log-failed           # only the failing steps' logs
 gh run rerun <run-id> --failed              # retry just the failed jobs
@@ -196,7 +215,7 @@ The Makefile is the single place these are defined; see [Testing](tech-testing.m
 
 ## What CI does not do
 
-- **It does not run the test suite.** The workflows lint, check vulnerabilities and build; none runs `go test`. Tests are the release checklist's job ([Releases and tagging](tech-release.md#release-checklist)) and must pass locally before a tag is pushed.
-- **It does not run on branches or pull requests**, so problems surface at tag time. Run the local checks above first. (`main` does not pick up workflow runs from other branches either: a workflow file on a branch does nothing until it is merged, and even then only a `vX.Y.Z` tag on `main` can start it.)
+- **It does not run the tests before a merge.** The release workflows lint, check vulnerabilities and build; none runs `go test`. [Check](#check-after-a-merge-to-main) runs the whole suite, but only after a push to `main`; nothing runs on a branch or a pull request. Run `make check` locally first ([Testing](tech-testing.md#running-the-tests)).
+- **It does not run on branches or pull requests**, so problems surface after a merge or at tag time. (`main` does not pick up workflow runs from other branches either: a workflow file on a branch does nothing until it is merged, and even then only a `vX.Y.Z` tag on `main` can start it.)
 - **It does not accept just any tag.** A tag that is not `vX.Y.Z`, or is on a commit that is not on `main`, is refused by the [guard](#the-release-tag-guard) before anything is built.
 - **It cannot un-publish.** A tag push that fails halfway can leave a partial release or images; see the recovery notes in [Releases and tagging](tech-release.md#when-a-release-goes-wrong).

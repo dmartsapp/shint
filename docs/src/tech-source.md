@@ -99,7 +99,9 @@ nav: Source reference
 | `.github/workflows/build.yaml` | Guard, gate, then 14 cross-builds, then the GitHub Release with the binaries attached. |
 | `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
 | `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
-| `.github/ISSUE_TEMPLATE/ci_failure.md` | The body of the issue a failed lint or vulnerability run files. |
+| `.github/workflows/check.yaml` | `make check` after a merge to `main` (never a branch, PR or tag; ignores `.github/**`); opens an issue on failure. |
+| `.github/scripts/write-ci-failure-issue.sh` | Writes the body of the issue a failed check files, with the real run URL. |
+| `.github/scripts/test-write-ci-failure-issue.sh` | Offline tests for it. |
 
 Each workflow is explained in [CI/CD workflows](tech-ci.md).
 

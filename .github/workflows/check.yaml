@@ -1,0 +1,78 @@
+name: Check
+
+# Runs `make check` after a merge to main, so the tests, lint, vulnerability
+# check and workflow checks are not left for release day. It starts for a push
+# to main and nothing else - no pull requests, no other branch, no manual run -
+# and not when the push only changes .github/. That exact shape is enforced by
+# .github/scripts/check-workflow-triggers.py (part of make check).
+#
+# It publishes nothing. Releases are a vX.Y.Z tag on main (see the other workflows).
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '.github/**'
+
+jobs:
+  check:
+    name: make check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      # The tools make check runs. golangci-lint is pinned to the version the
+      # release workflows use (make check refuses any other); the others are
+      # the current release.
+      - name: Install the checking tools
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: make check
+        run: make check
+
+  report-failure:
+    name: Report Failure as Issue
+    runs-on: ubuntu-latest
+    needs: check
+    # Only when make check itself failed. always() is needed: without a status
+    # function GitHub adds an implicit success(), which is false exactly then.
+    if: always() && needs.check.result == 'failure'
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          sparse-checkout: .github/scripts
+
+      - name: Write the issue body
+        env:
+          WORKFLOW: ${{ github.workflow }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REF: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          NOTE: "This ran after a merge to main. Nothing was published; fix it and merge the fix. Run make check locally to reproduce it."
+        run: bash .github/scripts/write-ci-failure-issue.sh "$RUNNER_TEMP/issue.md"
+
+      - name: Create issue on make check failure
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "CI Failure: make check"
+          content-filepath: ${{ runner.temp }}/issue.md
+          labels: bug, ci-failure
+          assignees: ${{ github.actor }}
+          token: ${{ secrets.GITHUB_TOKEN }}

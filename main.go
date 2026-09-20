@@ -1,4 +1,4 @@
-// Command shint - "that SHIt Network Tool" - bundles the everyday network
+// Command shint - "Simple Host INspection Toolkit" - bundles the everyday network
 // checks (telnet-style port checks, ping, an HTTP client, a port scanner, a
 // UDP probe and local test listeners) into one static binary.
 //
@@ -106,7 +106,7 @@ func finish(ok bool) {
 
 var rootCmd = &cobra.Command{
 	Use:     filepath.Base(os.Args[0]),
-	Short:   "SHINT - that SHIt Network Tool",
+	Short:   "shint - Simple Host INspection Toolkit",
 	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, and listener functionalities.`,
 	Version: Version,
 }

@@ -51,7 +51,7 @@ What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 | Push | Starts |
 |---|---|
 | a `release/**` branch | nothing |
-| `main` | the documentation site deploy and CodeQL - but no release workflow |
+| `main` (a merge) | the documentation site deploy, CodeQL and the [Check](tech-ci.md#check-after-a-merge-to-main) workflow (`make check`) - but no release workflow. Nothing at all if the push only changes `.github/`, apart from the site deploy and CodeQL, which GitHub manages |
 | a `vX.Y.Z` tag on a commit on `main` | the whole release pipeline: lint, vulnerability check, binaries, GitHub Release, both Docker images |
 | a tag of any other form, or a `vX.Y.Z` tag on a commit that is not on `main` | the workflows start, the [guard](tech-ci.md#the-release-tag-guard) refuses, and nothing is built or published |
 
@@ -119,7 +119,7 @@ git tag -a vX.Y.Z -m "vX.Y.Z: summary" -m "<changelog>"
 git push origin refs/tags/vX.Y.Z
 ```
 
-9. **Watch the five workflows** - the result is posted to Slack when the last one finishes ([Slack notification](tech-ci.md#slack-notification)), or follow them with the [commands here](tech-ci.md#watching-a-release) - and confirm the release has 14 assets.
+9. **Watch the five workflows** - the result is posted to Slack when the last one finishes ([Slack notification](tech-ci.md#slack-notification)), or follow them with the [commands here](tech-ci.md#watching-a-release) - and confirm the release has 14 assets. (Before tagging, let the [Check](tech-ci.md#check-after-a-merge-to-main) run for the merge to `main` finish green.)
 10. **Verify**: download a binary and run `--version`; pull the image.
 
 ## When a release goes wrong

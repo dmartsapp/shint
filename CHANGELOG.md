@@ -7,6 +7,10 @@ Releases before v3.0.0 predate this file; see the [GitHub releases](https://gith
 ## v4.1.0 - unreleased
 
 - The test suite now compiles for Windows (it used `syscall.Kill`, which does not exist there): the three "runs until interrupted" listener tests use a small helper with a Unix and a Windows version, and are skipped on Windows. `make vet` now also vets for Windows, FreeBSD and Solaris, so a Unix-only test cannot slip in again. The shipped binaries were never affected; this is about running the tests. (Issue #13)
+- **The tool's expansion is now "Simple Host INspection Toolkit"** (shint = **S**imple **H**ost **IN**spection **T**oolkit). It appears in `shint --help`, the README and the documentation home page. The name `shint`, the binary, the repository, the image and every URL are unchanged.
+- The README gained a row of build-status badges (Lint, Vulnerability check, Build, Docker Hub, GHCR, Check) and a one-line link for supporting the project at the very bottom. Nothing else - no documentation page, no command output - mentions it.
+- **New `Check` workflow: `make check` now runs after every merge to `main`** (never for a branch, a pull request or a tag, and not when the push only changes `.github/`), so the test suite, lint, vulnerability check and workflow checks no longer wait for release day. It publishes nothing and files an issue if it fails. The trigger shape is enforced by the workflow-trigger check.
+- The issue that CI files when a check fails now carries the **real URL of the failed run**, the tag or branch and the commit. It is written by `.github/scripts/write-ci-failure-issue.sh` (with its own test) from values the workflow passes in; the static template file it replaces could not, because GitHub expands `${{ }}` only in workflow files. Lint and Vulnerability Check use it too.
 
 ## v4.0.6 - 2026-09-21
 

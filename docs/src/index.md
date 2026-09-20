@@ -17,7 +17,7 @@ nav: Overview
 
 ## What is shint?
 
-shint - *that SHIt Network Tool* - puts the small utilities you keep reaching for into **one program**: a `telnet`-style port check, `ping`, an HTTP client, a port scanner, a UDP probe, and local test servers to try them all against. Nothing to install alongside it, nothing to configure, and every command reports what it found in the same readable format.
+shint - *Simple Host INspection Toolkit* - puts the small utilities you keep reaching for into **one program**: a `telnet`-style port check, `ping`, an HTTP client, a port scanner, a UDP probe, and local test servers to try them all against. Nothing to install alongside it, nothing to configure, and every command reports what it found in the same readable format.
 
 :::html
 <div class="facts">
