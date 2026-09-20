@@ -1,9 +1,15 @@
 # shint
 
-**that SHIt Network Tool** - the network checks you run every day, in one small program.
+**Simple Host INspection Toolkit** - the network checks you run every day, in one small program.
 
 [![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Lint](https://github.com/dmartsapp/shint/actions/workflows/lint.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/lint.yaml)
+[![Vulnerability check](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml)
+[![Build](https://github.com/dmartsapp/shint/actions/workflows/build.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/build.yaml)
+[![Docker Hub](https://github.com/dmartsapp/shint/actions/workflows/docker-hub.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/docker-hub.yaml)
+[![GHCR](https://github.com/dmartsapp/shint/actions/workflows/ghcr.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/ghcr.yaml)
+[![Check](https://github.com/dmartsapp/shint/actions/workflows/check.yaml/badge.svg?branch=main)](https://github.com/dmartsapp/shint/actions/workflows/check.yaml)
 
 **[Download](https://github.com/dmartsapp/shint/releases/latest)** &nbsp;|&nbsp; **[Documentation](https://dmartsapp.github.io/shint/)** &nbsp;|&nbsp; [Changelog](CHANGELOG.md)
 
@@ -100,3 +106,5 @@ shint collects nothing. The only network traffic is what a check itself needs - 
 ## License
 
 [MIT](LICENSE) &copy; Farhan Sabbir Siddique
+
+If shint saves you time, you can [support its development](https://www.paypal.com/paypalme/farhanssiddique).
