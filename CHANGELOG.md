@@ -4,6 +4,10 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.1.0 - unreleased
+
+- The test suite now compiles for Windows (it used `syscall.Kill`, which does not exist there): the three "runs until interrupted" listener tests use a small helper with a Unix and a Windows version, and are skipped on Windows. `make vet` now also vets for Windows, FreeBSD and Solaris, so a Unix-only test cannot slip in again. The shipped binaries were never affected; this is about running the tests. (Issue #13)
+
 ## v4.0.6 - 2026-09-21
 
 A patch release that fixes two wrong answers - a check that reported success when it had not succeeded - and adds the test battery that found them, and a Slack message with the result of every release.

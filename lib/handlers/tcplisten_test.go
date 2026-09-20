@@ -3,10 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net"
-	"os"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -225,6 +223,7 @@ func TestTCPListenHandlerJSONEventEchoMeasurements(t *testing.T) {
 }
 
 func TestTCPListenHandlerZeroCountRunsUntilInterrupted(t *testing.T) {
+	requireInterrupt(t)
 	// count=0 means "unlimited": it must not return on its own, and must
 	// shut down cleanly on SIGINT (the Ctrl+C path).
 	port := freeTCPPort(t)
@@ -244,9 +243,7 @@ func TestTCPListenHandlerZeroCountRunsUntilInterrupted(t *testing.T) {
 		// Expected: still running.
 	}
 
-	if err := syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
-		t.Fatalf("failed to signal SIGINT: %v", err)
-	}
+	sendInterrupt(t)
 
 	select {
 	case out := <-done:

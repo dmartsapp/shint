@@ -3,10 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net"
-	"os"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -131,6 +129,7 @@ func TestUDPListenHandlerJSONEvent(t *testing.T) {
 }
 
 func TestUDPListenHandlerZeroCountRunsUntilInterrupted(t *testing.T) {
+	requireInterrupt(t)
 	port := freeUDPPort(t)
 	jsonOutput := false
 
@@ -147,9 +146,7 @@ func TestUDPListenHandlerZeroCountRunsUntilInterrupted(t *testing.T) {
 	case <-time.After(300 * time.Millisecond):
 	}
 
-	if err := syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
-		t.Fatalf("failed to signal SIGINT: %v", err)
-	}
+	sendInterrupt(t)
 
 	select {
 	case out := <-done:

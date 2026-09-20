@@ -138,9 +138,13 @@ fmt-check:
 	echo "==> gofmt"
 	unformatted="$$(gofmt -l .)"; [ -z "$$unformatted" ] || { echo "not gofmt-formatted (run gofmt -w):"; echo "$$unformatted"; exit 1; }
 
+# Also vets for the other operating systems, which compiles their test files
+# too: a test that only builds on Unix (issue #13) fails here, not in a user's
+# hands.
 vet:
 	echo "==> go vet"
 	go vet ./...
+	for os in windows freebsd solaris; do echo "    go vet (GOOS=$$os)"; GOOS=$$os GOARCH=amd64 go vet ./... || exit 1; done
 
 test: test-go test-battery
 

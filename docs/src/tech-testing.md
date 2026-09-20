@@ -22,7 +22,7 @@ There are 111 top-level Go tests: 79 in `lib/handlers`, 25 in `lib` and 7 end-to
 
 | Command | What it runs | Needs |
 |---|---|---|
-| `make check` | Everything below except the live test, in this order: tool check, `gofmt`, `go vet`, `go test -race ./...`, the black-box battery, `golangci-lint`, `govulncheck`, the documentation tests and check, the workflow checks | the tools below; no network for the tests (`govulncheck` reads the vulnerability database) |
+| `make check` | Everything below except the live test, in this order: tool check, `gofmt`, `go vet` (also for Windows, FreeBSD and Solaris, so every test file compiles on every kind of target), `go test -race ./...`, the black-box battery, `golangci-lint`, `govulncheck`, the documentation tests and check, the workflow checks | the tools below; no network for the tests (`govulncheck` reads the vulnerability database) |
 | `make test-live` | The [live smoke test](#the-live-smoke-test) | the internet and unprivileged ICMP |
 | `make test-full` | `make check`, then `make test-live` - run this before a release | both |
 | `make test` | The Go tests with the race detector, then the [black-box battery](#the-black-box-battery) | Go, python3 |
@@ -45,6 +45,7 @@ go test -run TestNmap -v ./lib/handlers/       # one family, verbosely
 | Helper | Where | What it gives you |
 |---|---|---|
 | `captureStdout(t, fn)` | `testhelpers_test.go` | Runs `fn` with `os.Stdout` redirected and returns what it printed. The pipe is drained by a goroutine *while* `fn` runs, so a handler that prints more than the pipe buffer cannot deadlock. |
+| `requireInterrupt`, `sendInterrupt` | `interrupt_unix_test.go`, `interrupt_windows_test.go` | The Ctrl+C tests for the listeners: `sendInterrupt` delivers SIGINT to the test process itself. Windows has no `syscall.Kill`, so there `requireInterrupt` skips the test - which still compiles. |
 | `freeTCPPort`, `freeUDPPort` | `testhelpers_test.go` | An unused port number, for tests that need to know it in advance. |
 | `generateTestCA`, `issueCert` | `testhelpers_test.go` | A self-signed CA plus server and client certificates written to a temp directory, for mutual-TLS tests. |
 | `startEchoListener` (+ IPv6 form) | `telnet_test.go` | A TCP listener that accepts and closes. |

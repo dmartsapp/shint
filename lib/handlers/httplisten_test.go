@@ -5,10 +5,8 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -207,6 +205,7 @@ func TestHTTPListenHandlerJSONEventMeasurements(t *testing.T) {
 }
 
 func TestHTTPListenHandlerZeroCountRunsUntilInterrupted(t *testing.T) {
+	requireInterrupt(t)
 	port := freeTCPPort(t)
 	jsonOutput := false
 
@@ -225,9 +224,7 @@ func TestHTTPListenHandlerZeroCountRunsUntilInterrupted(t *testing.T) {
 	case <-time.After(300 * time.Millisecond):
 	}
 
-	if err := syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
-		t.Fatalf("failed to signal SIGINT: %v", err)
-	}
+	sendInterrupt(t)
 
 	select {
 	case out := <-done:

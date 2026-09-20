@@ -66,6 +66,7 @@ nav: Source reference
 | File | What it covers |
 |---|---|
 | `testhelpers_test.go` | Shared helpers: `captureStdout` (redirects stdout to a pipe drained concurrently), `freeTCPPort`, `freeUDPPort`, and a throw-away certificate authority (`generateTestCA`, `issueCert`, `writePEM`) for TLS tests. |
+| `interrupt_unix_test.go`, `interrupt_windows_test.go` | `sendInterrupt` / `requireInterrupt`: how the "runs until interrupted" tests stop a listener (SIGINT to the test process; skipped on Windows, where a process cannot signal itself). |
 | `telnet_test.go` | Success and failure output, IPv6 loopback, DNS failure, concurrency (no data race), and the regression test that a run longer than `--timeout` still succeeds. |
 | `icmp_test.go` | Text and JSON mode, the payload size shown on replies, and the pieces that need no network: `--timeout` reaching the pinger, payload validation, and which log lines count as a lost request (the live tests skip themselves where unprivileged ICMP is unavailable). |
 | `web_test.go` | A full request/response round trip and mutual-TLS scenarios (with the client certificate, without it, without trusting the CA, and with `--insecure`). |
