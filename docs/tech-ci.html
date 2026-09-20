@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CI/CD workflows · shint</title>
+<meta name="description" content="Documentation of shint&#x27;s GitHub Actions - lint, vulnerability check, binary build and release, Docker Hub and GHCR publishing - plus the GitHub-managed automation around them.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html" class="active" aria-current="page">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Technical</p>
+<h1>CI/CD workflows</h1>
+<p class="lead">The five GitHub Actions workflows - what triggers them, what each job does, what they need, and how to watch them.</p>
+<h2 id="overview">Overview<a class="anchor" href="#overview" aria-label="Link to this section">#</a></h2>
+<p>All five workflows are triggered by <strong>the same event: pushing a tag that matches <code>v*.*.*</code></strong>. Nothing runs on a push to <code>main</code> or on a pull request. That is a deliberate choice - a release is the unit of quality here - and it has consequences covered under <a href="#what-ci-does-not-do">What CI does not do</a>.</p>
+<p>They are separate files so that each has its own status and its own failure mode: a Docker Hub credential problem shows up as <em>that</em> workflow failing, not as a vague failure of "the release".</p>
+<div class="diagram">
+<svg viewBox="0 0 700 300" role="img" aria-label="Workflow graph: one tag push starts five workflows">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>
+  <rect class="box accent" x="10" y="122" width="130" height="56" rx="10"/>
+  <text class="h" x="75" y="146" text-anchor="middle">git push tag</text>
+  <text class="sub" x="75" y="164" text-anchor="middle">v4.0.3</text>
+  <path class="arrow" d="M140 150C170 150 170 30 200 30"/>
+  <path class="arrow" d="M140 150C170 150 170 90 200 90"/>
+  <path class="arrow" d="M140 150H200"/>
+  <path class="arrow" d="M140 150C170 150 170 210 200 210"/>
+  <path class="arrow" d="M140 150C170 150 170 270 200 270"/>
+  <rect class="box" x="200" y="8" width="150" height="44" rx="9"/><text class="h" x="275" y="34" text-anchor="middle">Lint</text>
+  <rect class="box" x="200" y="68" width="150" height="44" rx="9"/><text class="h" x="275" y="94" text-anchor="middle">Vulnerability Check</text>
+  <rect class="box" x="200" y="128" width="150" height="44" rx="9"/><text class="h" x="275" y="154" text-anchor="middle">Binary Build &amp; Release</text>
+  <rect class="box" x="200" y="188" width="150" height="44" rx="9"/><text class="h" x="275" y="214" text-anchor="middle">Docker Hub Release</text>
+  <rect class="box" x="200" y="248" width="150" height="44" rx="9"/><text class="h" x="275" y="274" text-anchor="middle">GHCR Release</text>
+  <text class="sub" x="372" y="34">reports failures as an issue</text>
+  <text class="sub" x="372" y="94">reports failures as an issue</text>
+  <text class="sub" x="372" y="146">gate → 14 builds → GitHub Release</text>
+  <text class="sub" x="372" y="206">gate → multi-arch image → docker.io</text>
+  <text class="sub" x="372" y="266">gate → multi-arch image → ghcr.io</text>
+</svg>
+</div>
+<h2 id="common-ground">Common ground<a class="anchor" href="#common-ground" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>Trigger:</strong> <code>on: push: tags: ['v*.*.*']</code>.</li><li><strong>Go toolchain:</strong> <code>actions/setup-go@v5</code> with <code>go-version-file: go.mod</code> and <code>check-latest: true</code>, so CI builds with the version the module declares (or the newest patch of it).</li><li><strong>Checkout:</strong> <code>actions/checkout@v5</code>.</li><li><strong>Linter:</strong> <code>golangci-lint</code> <strong>pinned to <code>v2.13.2</code></strong> through <code>golangci/golangci-lint-action@v7</code>. It is pinned because <code>latest</code> once resolved to a build made with an older Go than the module targets and failed for that reason alone; and action v6 does not support golangci-lint v2.</li><li><strong>Vulnerabilities:</strong> <code>golang/govulncheck-action@v1</code>.</li><li><strong>Least privilege:</strong> every job declares <code>permissions</code> explicitly (<code>contents: read</code> by default; <code>contents: write</code> only to create the release; <code>issues: write</code> only to file failure issues; <code>packages: write</code> only to push to GHCR).</li></ul>
+<h2 id="lint">Lint<a class="anchor" href="#lint" aria-label="Link to this section">#</a></h2>
+<p><code>.github/workflows/lint.yaml</code></p>
+<div class="tablewrap"><table><thead><tr><th>Job</th><th>What it does</th></tr></thead><tbody><tr><td><code>lint</code></td><td>Runs <code>golangci-lint</code> with the default linter set.</td></tr><tr><td><code>report-failure</code></td><td>Runs only if <code>lint</code> failed: files an issue titled "CI Failure: Lint" (labels <code>bug</code>, <code>ci-failure</code>, assigned to the person who pushed the tag) from <code>.github/ISSUE_TEMPLATE/ci_failure.md</code>, using <code>peter-evans/create-issue-from-file@v5</code>.</td></tr></tbody></table></div>
+<h2 id="vulnerability-check">Vulnerability check<a class="anchor" href="#vulnerability-check" aria-label="Link to this section">#</a></h2>
+<p><code>.github/workflows/vulncheck.yaml</code></p>
+<div class="tablewrap"><table><thead><tr><th>Job</th><th>What it does</th></tr></thead><tbody><tr><td><code>govulncheck</code></td><td>Runs <code>govulncheck</code>, writes its report to a file, and turns it into a step summary table (status, vulnerability count, checked modules, details).</td></tr><tr><td><code>report-failure</code></td><td>On failure, files an issue "CI Failure: Vulnerability Check" like the lint workflow does.</td></tr></tbody></table></div>
+<h2 id="binary-build-and-release">Binary build and release<a class="anchor" href="#binary-build-and-release" aria-label="Link to this section">#</a></h2>
+<p><code>.github/workflows/build.yaml</code></p>
+<div class="tablewrap"><table><thead><tr><th>Job</th><th>Needs</th><th>What it does</th></tr></thead><tbody><tr><td><code>gate</code></td><td>-</td><td>Re-runs <code>golangci-lint</code> and <code>govulncheck</code> <strong>quietly</strong>. It does not report (the standalone workflows do); it exists so a failing check stops this workflow from shipping binaries.</td></tr><tr><td><code>build</code></td><td><code>gate</code></td><td>A matrix of 8 operating systems x 2 architectures, minus two exclusions (Solaris has no arm64 port; Android/amd64 needs cgo), giving <strong>14 binaries</strong>. Each builds with <code>CGO_ENABLED=0 -buildvcs=true -trimpath -ldflags "-s -w -X main.Version=&lt;tag&gt;/&lt;sha&gt;/&lt;time&gt;"</code> and uploads a <code>binary-for-&lt;os&gt;-&lt;arch&gt;</code> artifact. <code>fail-fast</code> is off so one bad platform does not hide the others.</td></tr><tr><td><code>create-release</code></td><td><code>build</code></td><td>Downloads every artifact, writes the release notes, and creates the GitHub Release (<code>softprops/action-gh-release@v1</code>) with all binaries attached. It needs <code>contents: write</code>.</td></tr></tbody></table></div>
+<h3 id="release-notes">Release notes<a class="anchor" href="#release-notes" aria-label="Link to this section">#</a></h3>
+<p>The notes are assembled by the workflow and contain, in order:</p>
+<ol><li><strong>The commit message of the tagged commit</strong> (<code>github.event.head_commit.message</code>). <em>This is where the changelog for a release shows up on GitHub</em>, which is why the release commit's message should carry it. See <a href="tech-release.html">Releases and tagging</a>.</li><li>A <strong>build status table</strong>: one row per platform, checking the artifact exists.</li><li>A <strong>compare link</strong> from the previous tag, and a <code>git diff --stat</code> summary (limited to 60,000 characters, to stay under GitHub's release-body size limit).</li></ol>
+<div class="callout callout-note"><p class="callout-title">A note on script injection</p><p>The commit message is free text written by a person, so it is passed to the shell through an environment variable (<code>COMMIT_MSG</code>) and never interpolated into the script. Interpolating <code>${{ github.event.head_commit.message }}</code> directly would let a backtick in a commit message run as a command. This is GitHub's own documented footgun.</p></div>
+<h2 id="docker-hub-and-ghcr">Docker Hub and GHCR<a class="anchor" href="#docker-hub-and-ghcr" aria-label="Link to this section">#</a></h2>
+<p><code>.github/workflows/docker-hub.yaml</code> and <code>ghcr.yaml</code> are identical except for the registry.</p>
+<div class="tablewrap"><table><thead><tr><th>Step</th><th>Detail</th></tr></thead><tbody><tr><td><code>gate</code></td><td>The same quiet lint + vulnerability gate.</td></tr><tr><td>QEMU and Buildx</td><td><code>docker/setup-qemu-action@v3</code>, <code>docker/setup-buildx-action@v3</code>, so one job builds for two architectures.</td></tr><tr><td>Login</td><td>Docker Hub uses the repository secrets <code>DOCKERHUB_USERNAME</code> and <code>DOCKERHUB_TOKEN</code>. GHCR uses the workflow's own <code>GITHUB_TOKEN</code> (needs <code>packages: write</code>).</td></tr><tr><td>Compute tags</td><td>From the tag <code>v4.0.3</code>: <code>v4.0.3</code>, <code>4.0.3</code>, <code>4.0</code>, <code>4</code>, and <code>latest</code>.</td></tr><tr><td>Build and push</td><td><code>docker/build-push-action@v6</code>, platforms <code>linux/amd64,linux/arm64</code>, build argument <code>VERSION=&lt;tag&gt;</code>, and OCI labels for version, revision and source.</td></tr></tbody></table></div>
+<p>Image names: <code>docker.io/&lt;DOCKERHUB_USERNAME&gt;/shint</code> and <code>ghcr.io/dmartsapp/shint</code>. The Dockerfile is described in the <a href="tech-source.html#build-and-packaging">Source reference</a>.</p>
+<h2 id="automation-github-manages">Automation GitHub manages<a class="anchor" href="#automation-github-manages" aria-label="Link to this section">#</a></h2>
+<p>Three more things run that are <strong>not defined by files in this repository</strong>; they are switched on in the repository settings:</p>
+<div class="tablewrap"><table><thead><tr><th>Name</th><th>What it is</th></tr></thead><tbody><tr><td>CodeQL</td><td>GitHub's "default setup" code scanning; it appears in the Actions list as a dynamic workflow on pushes to <code>main</code>.</td></tr><tr><td>pages-build-deployment</td><td>Publishes the <a href="tech-docs.html">documentation site</a> from <code>main</code> after a push.</td></tr><tr><td>Dependabot</td><td>Opens pull requests to update Go module dependencies (branches named <code>dependabot/go_modules/...</code>).</td></tr></tbody></table></div>
+<h2 id="watching-a-release">Watching a release<a class="anchor" href="#watching-a-release" aria-label="Link to this section">#</a></h2>
+<p>Push the tag, then follow it from the terminal with the GitHub CLI:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">gh</span> run list <span class="tok-flag">--limit</span> 8                       <span class="tok-com"># the five workflows for the tag</span>
+<span class="tok-cmd">gh</span> run watch &lt;run-id&gt; <span class="tok-flag">--exit-status</span>         <span class="tok-com"># block until one finishes</span>
+<span class="tok-cmd">gh</span> run view &lt;run-id&gt; <span class="tok-flag">--log-failed</span>           <span class="tok-com"># only the failing steps' logs</span>
+<span class="tok-cmd">gh</span> run rerun &lt;run-id&gt; <span class="tok-flag">--failed</span>              <span class="tok-com"># retry just the failed jobs</span>
+<span class="tok-cmd">gh</span> release view v4.0.3                      <span class="tok-com"># the release and its assets</span></code></pre></div>
+<p>Typical durations: lint and vulnerability check under a minute, the binary release about two minutes, the two image builds four to six.</p>
+<h2 id="reproducing-the-checks-locally">Reproducing the checks locally<a class="anchor" href="#reproducing-the-checks-locally" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">go</span> vet ./...
+<span class="tok-cmd">go</span> test <span class="tok-flag">-race</span> ./...
+<span class="tok-cmd">golangci-lint</span> run ./...          <span class="tok-com"># use v2.13.2, as CI does</span>
+<span class="tok-cmd">govulncheck</span> ./...</code></pre></div>
+<h2 id="what-ci-does-not-do">What CI does not do<a class="anchor" href="#what-ci-does-not-do" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>It does not run the test suite.</strong> The workflows lint, check vulnerabilities and build; none runs <code>go test</code>. Tests are the release checklist's job (<a href="tech-release.html#release-checklist">Releases and tagging</a>) and must pass locally before a tag is pushed.</li><li><strong>It does not run on branches or pull requests</strong>, so problems surface at tag time. Run the local checks above first.</li><li><strong>It cannot un-publish.</strong> A tag push that fails halfway can leave a partial release or images; see the recovery notes in <a href="tech-release.html#when-a-release-goes-wrong">Releases and tagging</a>.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="tech-design.html"><span>Previous</span>Design notes</a><a class="next" href="tech-release.html"><span>Next</span>Releases and tagging</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-ci.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#overview">Overview</a></li><li class="toc2"><a href="#common-ground">Common ground</a></li><li class="toc2"><a href="#lint">Lint</a></li><li class="toc2"><a href="#vulnerability-check">Vulnerability check</a></li><li class="toc2"><a href="#binary-build-and-release">Binary build and release</a></li><li class="toc3"><a href="#release-notes">Release notes</a></li><li class="toc2"><a href="#docker-hub-and-ghcr">Docker Hub and GHCR</a></li><li class="toc2"><a href="#automation-github-manages">Automation GitHub manages</a></li><li class="toc2"><a href="#watching-a-release">Watching a release</a></li><li class="toc2"><a href="#reproducing-the-checks-locally">Reproducing the checks locally</a></li><li class="toc2"><a href="#what-ci-does-not-do">What CI does not do</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

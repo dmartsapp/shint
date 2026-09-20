@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>web · shint</title>
+<meta name="description" content="shint web is a small HTTP(S) client for diagnostics - methods, headers, bodies, TLS options, mutual TLS, wire-accurate byte counts and JSON output.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html" class="active" aria-current="page">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>web</h1>
+<p class="lead">Make an HTTP or HTTPS request and see exactly what happened - status, timing, and how many bytes travelled each way - with support for custom headers, request bodies, private certificate authorities and mutual TLS.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p><code>shint web</code> sends an HTTP request and reports the outcome: whether a response came back, the status, how long it took, the transfer speed, and the number of bytes sent and received. Add <code>--json</code> for the full request and response headers (and, with <code>-W</code>, the body).</p>
+<p>It is a diagnostic tool, not a browser: it follows redirects (up to 10) but does not fetch a page's images, scripts or other embedded resources. If the URL has no scheme, <code>https://</code> is assumed.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web &lt;url&gt; [<span class="tok-flag">-X</span> METHOD] [<span class="tok-flag">-H</span> <span class="tok-str">"Name: value"</span>]... [<span class="tok-flag">-P</span> body] [<span class="tok-flag">-W</span>] [flags]</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th>Flag</th><th>Meaning</th></tr></thead><tbody><tr><td><code>-X</code>, <code>--method</code></td><td>HTTP method: <code>GET</code> (default), <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, ...</td></tr><tr><td><code>-H</code>, <code>--header</code></td><td>A header to send, as <code>"Name: value"</code>. Repeat for several.</td></tr><tr><td><code>-P</code>, <code>--payload</code></td><td>The request body.</td></tr><tr><td><code>-W</code>, <code>--withbody</code></td><td>Include the response body in the <code>--json</code> output.</td></tr><tr><td><code>--cacert FILE</code></td><td>Trust this PEM CA bundle <em>in addition to</em> the system roots.</td></tr><tr><td><code>--cert FILE</code>, <code>--key FILE</code></td><td>Client certificate and key for mutual TLS (give both).</td></tr><tr><td><code>-k</code>, <code>--insecure</code></td><td>Skip certificate verification. Diagnostics only.</td></tr></tbody></table></div>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<p>The examples below run against <code>shint listen http 8080</code> (see <a href="listen.html">listen</a>) so you can reproduce them on your own machine.</p>
+<h3 id="a-simple-get">A simple GET<a class="anchor" href="#a-simple-get" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web http://127.0.0.1:8080/</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=114.5µs
+<span class="tok-ts">Sun Sep 20 01:50:19 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=http://127.0.0.1:8080/ <span class="tok-key">status</span>=200 <span class="tok-key">bytes_sent</span>=97 <span class="tok-key">bytes_received</span>=160 <span class="tok-key">speed</span>=50.92KB/s <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=3.0685ms
+
+<span class="tok-banner">========================================== web STATISTICS ==========================================</span>
+Requests sent: 1, Response received: 1, Success: 100%
+Latency: minimum: 3.0685ms, average: 3.0685ms, maximum: 3.0685ms
+<span class="tok-ts">Sun Sep 20 01:50:19 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=1.005419583s</code></pre></div>
+<h3 id="a-path-that-does-not-exist">A path that does not exist<a class="anchor" href="#a-path-that-does-not-exist" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web http://127.0.0.1:8080/missing</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:19 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=118.625µs
+<span class="tok-ts">Sun Sep 20 01:50:20 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=http://127.0.0.1:8080/missing <span class="tok-key">status</span>=404 <span class="tok-key">bytes_sent</span>=104 <span class="tok-key">bytes_received</span>=175 <span class="tok-key">speed</span>=67.90KB/s <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=2.516959ms
+
+<span class="tok-banner">========================================== web STATISTICS ==========================================</span>
+Requests sent: 1, Response received: 1, Success: 100%
+Latency: minimum: 2.516959ms, average: 2.516959ms, maximum: 2.516959ms
+<span class="tok-ts">Sun Sep 20 01:50:20 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=1.004834208s</code></pre></div>
+<p>A 404 is still a <em>response</em>, so the exit status stays <code>0</code> - only a request that gets no response at all (refused, timed out, TLS failure) exits <code>1</code>. Read the status from the output or <code>--json</code> if you need to act on it.</p>
+<h3 id="post-with-a-body-and-headers">POST with a body and headers<a class="anchor" href="#post-with-a-body-and-headers" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">-X</span> POST <span class="tok-flag">-P</span> <span class="tok-str">'{"name":"shint"}'</span> \
+  <span class="tok-flag">-H</span> <span class="tok-str">'Content-Type: application/json'</span> <span class="tok-flag">-H</span> <span class="tok-str">'X-Request-Id: demo-42'</span> \
+  http://127.0.0.1:8080/</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:20 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=108.833µs
+<span class="tok-ts">Sun Sep 20 01:50:21 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=http://127.0.0.1:8080/ <span class="tok-key">status</span>=200 <span class="tok-key">bytes_sent</span>=189 <span class="tok-key">bytes_received</span>=160 <span class="tok-key">speed</span>=160.16KB/s <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=975.584µs
+
+<span class="tok-banner">========================================== web STATISTICS ==========================================</span>
+Requests sent: 1, Response received: 1, Success: 100%
+Latency: minimum: 975.584µs, average: 975.584µs, maximum: 975.584µs
+<span class="tok-ts">Sun Sep 20 01:50:21 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=1.0029005s</code></pre></div>
+<p>The request was 189 bytes on the wire against 97 for the plain GET. The extra 92 bytes are exactly what was added: the 16-byte body, the <code>Content-Type</code> (32) and <code>X-Request-Id</code> (23) headers you passed, the <code>Content-Length</code> header (20) that a body requires, and one more letter in <code>POST</code>.</p>
+<h3 id="repeat-the-request">Repeat the request<a class="anchor" href="#repeat-the-request" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web http://127.0.0.1:8080/ <span class="tok-flag">--count</span> 2 <span class="tok-flag">--delay</span> 300</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:21 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=44.125µs
+<span class="tok-ts">Sun Sep 20 01:50:21 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=http://127.0.0.1:8080/ <span class="tok-key">status</span>=200 <span class="tok-key">bytes_sent</span>=97 <span class="tok-key">bytes_received</span>=160 <span class="tok-key">speed</span>=125.82KB/s <span class="tok-key">attempt</span>=1/2 <span class="tok-key">time</span>=1.241875ms
+<span class="tok-ts">Sun Sep 20 01:50:22 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=http://127.0.0.1:8080/ <span class="tok-key">status</span>=200 <span class="tok-key">bytes_sent</span>=97 <span class="tok-key">bytes_received</span>=160 <span class="tok-key">speed</span>=64.04KB/s <span class="tok-key">attempt</span>=2/2 <span class="tok-key">time</span>=2.44ms
+
+<span class="tok-banner">========================================== web STATISTICS ==========================================</span>
+Requests sent: 2, Response received: 2, Success: 100%
+Latency: minimum: 1.241875ms, average: 1.840937ms, maximum: 2.44ms
+<span class="tok-ts">Sun Sep 20 01:50:22 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=605.185875ms</code></pre></div>
+<h3 id="json-with-the-response-body">JSON, with the response body<a class="anchor" href="#json-with-the-response-body" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">--json</span> <span class="tok-flag">-W</span> http://127.0.0.1:8080/</code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"web"</span>,
+  <span class="tok-key">"dns_lookup"</span>: { ... },
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"url"</span>: <span class="tok-str">"http://127.0.0.1:8080/"</span>,
+      <span class="tok-key">"errors"</span>: [],
+      <span class="tok-key">"request"</span>: {
+        <span class="tok-key">"body"</span>: <span class="tok-str">""</span>,
+        <span class="tok-key">"headers"</span>: {
+          <span class="tok-key">"User-Agent"</span>: [
+            <span class="tok-str">"dmarts.app-http-v0.1"</span>
+          ]
+        },
+        <span class="tok-key">"method"</span>: <span class="tok-str">"GET"</span>
+      },
+      <span class="tok-key">"response"</span>: {
+        <span class="tok-key">"body"</span>: {
+          <span class="tok-key">"status"</span>: <span class="tok-str">"ok"</span>
+        },
+        <span class="tok-key">"header"</span>: {
+          <span class="tok-key">"Content-Type"</span>: [
+            <span class="tok-str">"application/json"</span>
+          ],
+          <span class="tok-key">"Date"</span>: [
+            <span class="tok-str">"Sun, 20 Sep 2026 07:50:23 GMT"</span>
+          ]
+        }
+      },
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>,
+      <span class="tok-key">"recv_unixtime_µs"</span>: <span class="tok-num">1789890623262263</span>,
+      <span class="tok-key">"sent_unixtime_µs"</span>: <span class="tok-num">1789890623259517</span>,
+      <span class="tok-key">"time_taken_µs"</span>: <span class="tok-num">2452</span>,
+      <span class="tok-key">"bytes_sent"</span>: <span class="tok-num">97</span>,
+      <span class="tok-key">"bytes_received"</span>: <span class="tok-num">160</span>,
+      <span class="tok-key">"status_code"</span>: <span class="tok-num">200</span>,
+      <span class="tok-key">"bandwidth_kbs"</span>: <span class="tok-num">63.70725243361704</span>
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1789890623262274</span>,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1789890622257625</span>,
+  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">1004649</span>,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<h2 id="bytes-sent-and-received">Bytes sent and received<a class="anchor" href="#bytes-sent-and-received" aria-label="Link to this section">#</a></h2>
+<p><code>bytes_sent</code> and <code>bytes_received</code> are <strong>everything that crossed the connection</strong> for the request - the request line, headers and body going out; the status line, headers and body coming back - not just the bodies. That is why a <code>GET</code> with no body still reports 97 bytes sent.</p>
+<p>Two properties make the numbers trustworthy:</p>
+<ul><li><strong>They are measured on the connection</strong>, not estimated from the parsed message, so they include headers the client adds itself (<code>Host</code>, <code>User-Agent</code>, <code>Accept-Encoding</code>, <code>Content-Length</code>) and chunked-encoding framing.</li><li><strong>They match the other side.</strong> <a href="listen.html"><code>shint listen http</code></a> counts its traffic the same way, so <code>web</code>'s <code>bytes_sent</code> equals the listener's <code>bytes_received</code> and vice versa. In the examples above both report 97 sent / 160 received for the GET.</li></ul>
+<p>Over HTTPS the count is taken on the decrypted side (the HTTP bytes, without TLS record overhead), and when a redirect is followed the bytes of every hop are added up.</p>
+<h2 id="https-and-certificates">HTTPS and certificates<a class="anchor" href="#https-and-certificates" aria-label="Link to this section">#</a></h2>
+<h3 id="a-certificate-that-is-not-trusted">A certificate that is not trusted<a class="anchor" href="#a-certificate-that-is-not-trusted" aria-label="Link to this section">#</a></h3>
+<p>Verification is on by default. A certificate that was not issued by a trusted authority fails:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web https://localhost:9443/</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:54:17 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=localhost <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[::1,127.0.0.1] <span class="tok-key">time</span>=3.918125ms
+<span class="tok-ts">Sun Sep 20 01:54:17 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-err">ERROR</span> request failed <span class="tok-key">url</span>=https://localhost:9443/ <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=16.314208ms <span class="tok-key">error</span>="Get \"https://localhost:9443/\": tls: failed to verify certificate: x509: “localhost” certificate is not trusted"</code></pre></div>
+<h3 id="trust-your-own-certificate-authority">Trust your own certificate authority<a class="anchor" href="#trust-your-own-certificate-authority" aria-label="Link to this section">#</a></h3>
+<p>For an internal service, give <code>--cacert</code> the PEM file of the CA that signed its certificate (it is used in addition to the system roots):</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">--cacert</span> ca.pem https://localhost:9443/</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> using custom CA bundle to verify server certificate
+<span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=localhost <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[::1,127.0.0.1] <span class="tok-key">time</span>=1.848583ms
+<span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=https://localhost:9443/ <span class="tok-key">status</span>=200 <span class="tok-key">bytes_sent</span>=97 <span class="tok-key">bytes_received</span>=175 <span class="tok-key">speed</span>=17.66KB/s <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=9.677334ms</code></pre></div>
+<h3 id="skip-verification-diagnostics-only">Skip verification (diagnostics only)<a class="anchor" href="#skip-verification-diagnostics-only" aria-label="Link to this section">#</a></h3>
+<p><code>-k</code> disables certificate checks, like <code>curl -k</code>. shint prints a warning line to remind you the answer cannot be trusted:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">-k</span> https://localhost:9443/</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-err">ERROR</span> tls verification disabled <span class="tok-key">warning</span>="certificate checks are skipped, response may not be trustworthy"
+<span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=localhost <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[::1,127.0.0.1] <span class="tok-key">time</span>=2.149791ms
+<span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=https://localhost:9443/ <span class="tok-key">status</span>=200 <span class="tok-key">bytes_sent</span>=97 <span class="tok-key">bytes_received</span>=175 <span class="tok-key">speed</span>=38.07KB/s <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=4.48925ms</code></pre></div>
+<h3 id="mutual-tls">Mutual TLS<a class="anchor" href="#mutual-tls" aria-label="Link to this section">#</a></h3>
+<p>Some services require the client to present a certificate too. Pass both <code>--cert</code> and <code>--key</code>. Without them the server refuses the handshake:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">--cacert</span> ca.pem https://localhost:9444/</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-err">ERROR</span> request failed <span class="tok-key">url</span>=https://localhost:9444/ <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=8.781459ms <span class="tok-key">error</span>="Get \"https://localhost:9444/\": remote error: tls: handshake failure"</code></pre></div>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">--cacert</span> ca.pem <span class="tok-flag">--cert</span> client.pem <span class="tok-flag">--key</span> client-key.pem https://localhost:9444/</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> using client certificate for mutual TLS
+<span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> using custom CA bundle to verify server certificate
+<span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=localhost <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[::1,127.0.0.1] <span class="tok-key">time</span>=1.388416ms
+<span class="tok-ts">Sun Sep 20 01:54:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=https://localhost:9444/ <span class="tok-key">status</span>=200 <span class="tok-key">bytes_sent</span>=97 <span class="tok-key">bytes_received</span>=175 <span class="tok-key">speed</span>=18.41KB/s <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=9.285083ms</code></pre></div>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>Redirects</strong> are followed (up to 10); the final response is what is reported, and the bytes of every hop are counted.</li><li><strong>Timeouts.</strong> <code>--timeout</code> limits each request from connecting to the last byte of the response.</li><li><strong><code>--payload</code></strong> means the <em>size</em> of filler data for <code>ping</code> and <code>udp</code>, but on <code>web</code> the <code>-P</code> form means the request <em>body</em>.</li><li><strong>HTTP/1.1</strong> is used for all requests; the byte counts describe that plain byte stream.</li><li>The default <code>User-Agent</code> is <code>dmarts.app-http-v0.1</code>; override it with <code>-H "User-Agent: ..."</code>.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="ping.html"><span>Previous</span>ping</a><a class="next" href="nmap.html"><span>Next</span>nmap</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/web.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-simple-get">A simple GET</a></li><li class="toc3"><a href="#a-path-that-does-not-exist">A path that does not exist</a></li><li class="toc3"><a href="#post-with-a-body-and-headers">POST with a body and headers</a></li><li class="toc3"><a href="#repeat-the-request">Repeat the request</a></li><li class="toc3"><a href="#json-with-the-response-body">JSON, with the response body</a></li><li class="toc2"><a href="#bytes-sent-and-received">Bytes sent and received</a></li><li class="toc2"><a href="#https-and-certificates">HTTPS and certificates</a></li><li class="toc3"><a href="#a-certificate-that-is-not-trusted">A certificate that is not trusted</a></li><li class="toc3"><a href="#trust-your-own-certificate-authority">Trust your own certificate authority</a></li><li class="toc3"><a href="#skip-verification-diagnostics-only">Skip verification (diagnostics only)</a></li><li class="toc3"><a href="#mutual-tls">Mutual TLS</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

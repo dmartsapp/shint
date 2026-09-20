@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Releases and tagging · shint</title>
+<meta name="description" content="Semantic versioning, tag format, branch conventions, the release checklist, commit-message conventions and recovery procedures for shint releases.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html" class="active" aria-current="page">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Technical</p>
+<h1>Releases and tagging</h1>
+<p class="lead">The philosophy behind shint's versions and tags, how a release is cut step by step, and how the version string gets into every kind of build.</p>
+<h2 id="philosophy">Philosophy<a class="anchor" href="#philosophy" aria-label="Link to this section">#</a></h2>
+<p><strong>A tag is a release, and a release is forever.</strong> Pushing a tag matching <code>v*.*.*</code> starts the entire release pipeline (<a href="tech-ci.html">CI/CD workflows</a>): binaries are built and attached to a GitHub Release, and container images are pushed under that version. People download those files and pull those images, so a published tag is treated as <strong>immutable</strong>. It is never moved, deleted or re-pushed. If something is wrong, the answer is a new, higher version.</p>
+<p><strong>Versions describe what users experience</strong>, following <a href="https://semver.org">semantic versioning</a>:</p>
+<div class="tablewrap"><table><thead><tr><th>Bump</th><th>When</th><th>Examples from this project</th></tr></thead><tbody><tr><td><strong>Major</strong> (<code>v4.0.0</code>)</td><td>A change in how existing commands behave broadly enough that scripts and habits may notice</td><td>v4.0.0 made every command dual-stack (IPv4 <em>and</em> IPv6) - the same command now tests more addresses</td></tr><tr><td><strong>Minor</strong> (<code>v3.1.0</code>)</td><td>A new capability, existing behaviour intact</td><td>v3.1.0 added <code>listen http</code></td></tr><tr><td><strong>Patch</strong> (<code>v4.0.2</code>)</td><td>Fixes, measurement corrections, documentation</td><td>v4.0.1 per-request listener metrics; v4.0.2 wire-accurate byte counts; v4.0.3 timeout fixes, exit status, progress output, this documentation</td></tr></tbody></table></div>
+<p>When a patch changes something a script could observe (v4.0.3's exit status is the example), the changelog says so plainly and in bold, rather than the version pretending it did not happen.</p>
+<p><strong>The tag message and the release commit carry the story.</strong> A tag is annotated, with a message of the form <code>vX.Y.Z: one-line summary</code> followed by the changelog. The commit the tag points at has a message that <em>is</em> the changelog, because the release workflow copies it into the GitHub release notes.</p>
+<h2 id="tag-format">Tag format<a class="anchor" href="#tag-format" aria-label="Link to this section">#</a></h2>
+<ul><li><code>v</code> + <code>MAJOR.MINOR.PATCH</code>: <code>v4.0.3</code>. The workflows match <code>v*.*.*</code>.</li><li><strong>Annotated</strong> (<code>git tag -a</code>), never lightweight, so a tag has an author, a date and a message.</li><li>The tag points at the commit that contains the version bump and the changelog - normally the tip of <code>main</code>.</li></ul>
+<div class="callout callout-note"><p class="callout-title">History you will see in the tag list</p><p>Tags up to <code>v2.2.6</code> predate the current process, and the list contains a run of letter-suffixed tags (<code>v2.2.2a</code>, <code>v2.2.4ae</code>, ...) that appear to have been created while the CI pipeline was being developed. They are historical; the current rule is one tag per real release.</p></div>
+<h2 id="branches">Branches<a class="anchor" href="#branches" aria-label="Link to this section">#</a></h2>
+<p><code>main</code> always contains the latest release. Release preparation has used a branch named after the version (<code>v3</code>, <code>v3.1</code>, <code>v4.0.0</code>, <code>v4.0.1</code> exist on the remote) which is then merged into <code>main</code>. History on <code>main</code> is linear: a release is merged with <code>--ff-only</code>, so the tag, the branch tip and <code>main</code> all point at the same commit.</p>
+<p>Because CI triggers only on tags (see <a href="tech-ci.html#what-ci-does-not-do">What CI does not do</a>), pushing <code>main</code> is safe and starts nothing.</p>
+<h2 id="commit-messages">Commit messages<a class="anchor" href="#commit-messages" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-plain"><pre><code>&lt;type&gt;: &lt;what changed and why, in one line&gt; (vX.Y.Z)
+
+&lt;body: the changelog for this release, and anything a reader needs&gt;</code></pre></div>
+<ul><li><strong>Types</strong> seen in the history: <code>feat:</code> (new capability), <code>fix:</code> (correction), <code>docs:</code> (documentation only). Release commits also name the version in the subject.</li><li><strong>The release commit's body is the changelog</strong> for that version, plus how it was verified. It is what appears on the GitHub release page under "Commit Message".</li><li>Bodies explain <em>why</em>, especially for behaviour changes, and name the tests that pin the behaviour.</li></ul>
+<h2 id="how-the-version-string-gets-into-the-binary">How the version string gets into the binary<a class="anchor" href="#how-the-version-string-gets-into-the-binary" aria-label="Link to this section">#</a></h2>
+<p><code>main.Version</code> is a string variable with a default in the source, overridden at link time. Each build path sets it differently:</p>
+<div class="tablewrap"><table><thead><tr><th>Build</th><th>Version reported by <code>shint --version</code></th><th>Set by</th></tr></thead><tbody><tr><td><code>go build</code> from a clone</td><td><code>4.0.3</code></td><td>The default in <code>main.go</code> (bump it in the release commit)</td></tr><tr><td><code>make &lt;target&gt;</code></td><td><code>&lt;tag-or-dev&gt;-&lt;commit date as ddmmyyyyHHMMSS&gt;</code></td><td><code>Makefile</code> (<code>git tag --contains</code>, <code>git show --format=%cd</code>)</td></tr><tr><td>Release binary (CI)</td><td><code>v4.0.3/&lt;full commit sha&gt;/&lt;UTC build time&gt;</code></td><td><code>build.yaml</code> (<code>-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT</code>)</td></tr><tr><td>Docker image</td><td><code>v4.0.3</code></td><td><code>Dockerfile</code> (<code>ARG VERSION</code>, passed as <code>VERSION=&lt;tag&gt;</code>; <code>dev</code> when built locally)</td></tr></tbody></table></div>
+<p>So a release binary is traceable to an exact commit and moment, and a source build tells you which release it descends from.</p>
+<h2 id="release-checklist">Release checklist<a class="anchor" href="#release-checklist" aria-label="Link to this section">#</a></h2>
+<ol><li><strong>Decide the version</strong> using the table above.</li><li><strong>Update the version constant</strong> in <code>main.go</code> and the Docker tag example in the docs if needed.</li><li><strong>Update <code>CHANGELOG.md</code></strong>: add a <code>## vX.Y.Z</code> section, newest first. Rebuild the site (<code>python3 docs/build.py</code>) so the <a href="changelog.html">Changelog</a> page matches.</li><li><strong>Run every check locally.</strong> CI will not run the tests for you:</li></ol>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">gofmt</span> <span class="tok-flag">-l</span> .                       <span class="tok-com"># should list nothing new</span>
+<span class="tok-cmd">go</span> vet ./...
+<span class="tok-cmd">go</span> test <span class="tok-flag">-race</span> ./...
+<span class="tok-cmd">golangci-lint</span> run ./...          <span class="tok-com"># v2.13.2, as CI uses</span>
+<span class="tok-cmd">govulncheck</span> ./...
+<span class="tok-cmd">bash</span> basic_module_test.sh        <span class="tok-com"># optional, needs the internet</span>
+<span class="tok-cmd">python3</span> docs/build.py <span class="tok-flag">--check</span>    <span class="tok-com"># the site is current and its links resolve</span></code></pre></div>
+<ol><li><strong>Commit</strong> with the message convention above; the body is the changelog.</li><li><strong>Tag</strong> the commit, annotated, with the changelog in the message:</li></ol>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">git</span> tag <span class="tok-flag">-a</span> v4.0.3 <span class="tok-flag">-m</span> <span class="tok-str">"v4.0.3: summary"</span> <span class="tok-flag">-m</span> <span class="tok-str">"&lt;changelog&gt;"</span></code></pre></div>
+<ol><li><strong>Merge to <code>main</code></strong> (fast-forward) and <strong>push</strong> - <code>main</code> first, then the tag, which starts the pipeline:</li></ol>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">git</span> checkout main &amp;&amp; git merge <span class="tok-flag">--ff-only</span> &lt;branch&gt;
+<span class="tok-cmd">git</span> push origin main
+<span class="tok-cmd">git</span> push origin refs/tags/v4.0.3</code></pre></div>
+<ol><li><strong>Watch the five workflows</strong> (<a href="tech-ci.html#watching-a-release">commands here</a>) and confirm the release has 14 assets.</li><li><strong>Verify</strong>: download a binary and run <code>--version</code>; pull the image.</li></ol>
+<h2 id="when-a-release-goes-wrong">When a release goes wrong<a class="anchor" href="#when-a-release-goes-wrong" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>Never move or delete a published tag.</strong> Binaries and images built from it are already out there; a moved tag makes the source disagree with what people have.</li><li><strong>A bug in a published release:</strong> fix it, and publish the next patch version.</li><li><strong>A workflow failed partway</strong> (a flaky registry login, say): re-run the failed jobs (<code>gh run rerun &lt;run-id&gt; --failed</code>). Only if the <em>content</em> was wrong does it need a new version.</li><li><strong>A tag pushed by mistake before it was ready:</strong> if nothing has been downloaded, remove the release and images first, then the tag, and say so. This is the one case for deleting a tag, and it should be a deliberate, announced act.</li></ul>
+<h2 id="the-module-path">The module path<a class="anchor" href="#the-module-path" aria-label="Link to this section">#</a></h2>
+<p><code>go.mod</code> declares <code>module github.com/dmartsapp/shint</code> with no <code>/v4</code> suffix, although the tags are v4. Go requires the major version in the module path for v2 and above, so <code>go install github.com/dmartsapp/shint@v4.x</code> does <strong>not</strong> work. The supported ways to get shint are release binaries, the Docker images, and building from a clone; the <a href="install.html">Install page</a> says so. Changing the path would be a breaking change for anyone importing the packages, so it has been left as is.</p>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="tech-ci.html"><span>Previous</span>CI/CD workflows</a><a class="next" href="tech-testing.html"><span>Next</span>Testing</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-release.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#philosophy">Philosophy</a></li><li class="toc2"><a href="#tag-format">Tag format</a></li><li class="toc2"><a href="#branches">Branches</a></li><li class="toc2"><a href="#commit-messages">Commit messages</a></li><li class="toc2"><a href="#how-the-version-string-gets-into-the-binary">How the version string gets into the binary</a></li><li class="toc2"><a href="#release-checklist">Release checklist</a></li><li class="toc2"><a href="#when-a-release-goes-wrong">When a release goes wrong</a></li><li class="toc2"><a href="#the-module-path">The module path</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

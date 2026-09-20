@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install · shint</title>
+<meta name="description" content="Install shint on Linux, macOS, Windows, the BSDs, Solaris or Android - or run it from Docker, or build it from source.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html" class="active" aria-current="page">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Get started</p>
+<h1>Install</h1>
+<p class="lead">shint is a single file. Download it, make it executable, and run it.</p>
+<h2 id="download-a-release">Download a release<a class="anchor" href="#download-a-release" aria-label="Link to this section">#</a></h2>
+<p>Every release publishes one binary per platform on the <a href="https://github.com/dmartsapp/shint/releases/latest">releases page</a>. The file name is <code>shint.&lt;os&gt;.&lt;arch&gt;</code>, with <code>.exe</code> on Windows:</p>
+<div class="tablewrap"><table><thead><tr><th>Platform</th><th>amd64 (Intel / AMD)</th><th>arm64 (Apple silicon, ARM)</th></tr></thead><tbody><tr><td>Linux</td><td><code>shint.linux.amd64</code></td><td><code>shint.linux.arm64</code></td></tr><tr><td>macOS</td><td><code>shint.darwin.amd64</code></td><td><code>shint.darwin.arm64</code></td></tr><tr><td>Windows</td><td><code>shint.windows.amd64.exe</code></td><td><code>shint.windows.arm64.exe</code></td></tr><tr><td>FreeBSD</td><td><code>shint.freebsd.amd64</code></td><td><code>shint.freebsd.arm64</code></td></tr><tr><td>OpenBSD</td><td><code>shint.openbsd.amd64</code></td><td><code>shint.openbsd.arm64</code></td></tr><tr><td>NetBSD</td><td><code>shint.netbsd.amd64</code></td><td><code>shint.netbsd.arm64</code></td></tr><tr><td>Solaris</td><td><code>shint.solaris.amd64</code></td><td>(Go has no Solaris arm64 port)</td></tr><tr><td>Android</td><td>(arm64 only)</td><td><code>shint.android.arm64</code></td></tr></tbody></table></div>
+<p>Each binary is statically linked and about 10 MB. There is nothing else to install.</p>
+<h3 id="macos-and-linux">macOS and Linux<a class="anchor" href="#macos-and-linux" aria-label="Link to this section">#</a></h3>
+<p>Pick the file for your machine (<code>uname -sm</code> tells you), then:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-com"># macOS on Apple silicon; use shint.linux.amd64 etc. for other platforms</span>
+<span class="tok-cmd">curl</span> <span class="tok-flag">-L</span> <span class="tok-flag">-o</span> shint https://github.com/dmartsapp/shint/releases/latest/download/shint.darwin.arm64
+<span class="tok-cmd">chmod</span> +x shint
+<span class="tok-cmd">sudo</span> mv shint /usr/local/bin/shint
+<span class="tok-cmd">shint</span> <span class="tok-flag">--version</span></code></pre></div>
+<div class="callout callout-note"><p class="callout-title">macOS "cannot be opened because the developer cannot be verified"</p><p>Files downloaded with a browser carry a quarantine flag. Clear it once with <code>xattr -d com.apple.quarantine shint</code> (files fetched with <code>curl</code>, as above, are not flagged).</p></div>
+<h3 id="windows">Windows<a class="anchor" href="#windows" aria-label="Link to this section">#</a></h3>
+<p>In PowerShell:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">Invoke-WebRequest</span> <span class="tok-flag">-Uri</span> https://github.com/dmartsapp/shint/releases/latest/download/shint.windows.amd64.exe <span class="tok-flag">-OutFile</span> shint.exe
+.\shint.exe <span class="tok-flag">--version</span></code></pre></div>
+<p>Move <code>shint.exe</code> into a folder that is on your <code>PATH</code> to run it as <code>shint</code> from anywhere.</p>
+<h3 id="check-it-works">Check it works<a class="anchor" href="#check-it-works" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> <span class="tok-flag">--version</span></code></pre></div>
+<p>A release binary prints the tag, the commit it was built from and the build time; a build from source prints just the version number:</p>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code>v4.0.2/1c4421137f2609ad420af60415c8e6fa1756da46/2026-09-20T05:34:40+0000</code></pre></div>
+<h2 id="docker">Docker<a class="anchor" href="#docker" aria-label="Link to this section">#</a></h2>
+<p>Every release is also published as a multi-architecture image (<code>linux/amd64</code>, <code>linux/arm64</code>) to two registries. The image is tiny: the same static binary on a distroless base, running as a non-root user.</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> farhansabbir/shint:latest telnet example.com 443
+<span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> farhansabbir/shint:latest web https://example.com <span class="tok-flag">--json</span>
+<span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> farhansabbir/shint:latest nmap example.com <span class="tok-flag">--from</span> 1 <span class="tok-flag">--to</span> 1024 <span class="tok-flag">--timeout</span> 1</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th>Registry</th><th>Image</th></tr></thead><tbody><tr><td>Docker Hub</td><td><code>docker.io/farhansabbir/shint</code></td></tr><tr><td>GitHub Container Registry</td><td><code>ghcr.io/dmartsapp/shint</code></td></tr></tbody></table></div>
+<p>Tags: <code>latest</code>, the full version (<code>4.0.3</code> and <code>v4.0.3</code>), and rolling <code>4.0</code> and <code>4</code>. Pin a full version in anything you care about.</p>
+<p>The listen commands need their port published so you can reach them from outside the container:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> <span class="tok-flag">-p</span> 9000:9000/tcp farhansabbir/shint:latest listen tcp 9000
+<span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> <span class="tok-flag">-p</span> 8080:8080/tcp farhansabbir/shint:latest listen http 8080</code></pre></div>
+<h2 id="build-from-source">Build from source<a class="anchor" href="#build-from-source" aria-label="Link to this section">#</a></h2>
+<p>You need <a href="https://go.dev/dl/">Go</a> (the version in <a href="https://github.com/dmartsapp/shint/blob/main/go.mod">go.mod</a> or newer) and, optionally, <code>make</code>.</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">git</span> clone https://github.com/dmartsapp/shint.git
+<span class="tok-cmd">cd</span> shint
+<span class="tok-cmd">go</span> build <span class="tok-flag">-o</span> shint .          <span class="tok-com"># a binary for this machine</span>
+<span class="tok-cmd">make</span> linux-amd64             <span class="tok-com"># or any other target, into ./bin</span>
+<span class="tok-cmd">make</span> all-platforms           <span class="tok-com"># every release target</span></code></pre></div>
+<div class="callout callout-note"><p class="callout-title">Why not go install?</p><p>The module path has no <code>/v4</code> suffix, so <code>go install github.com/dmartsapp/shint@v4.x</code> is not supported. Use a release binary or build from a clone as above.</p></div>
+<h2 id="shell-completion">Shell completion<a class="anchor" href="#shell-completion" aria-label="Link to this section">#</a></h2>
+<p>shint can generate completion scripts for your shell:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">source</span> &lt;(shint completion bash)                              <span class="tok-com"># bash</span>
+<span class="tok-cmd">source</span> &lt;(shint completion zsh)                               <span class="tok-com"># zsh (after compinit)</span>
+<span class="tok-cmd">shint</span> completion fish | source                               <span class="tok-com"># fish</span>
+<span class="tok-cmd">shint</span> completion powershell | Out-String | Invoke-Expression <span class="tok-com"># PowerShell</span></code></pre></div>
+<p>Add the line to your shell's startup file to keep it.</p>
+<h2 id="upgrade-and-uninstall">Upgrade and uninstall<a class="anchor" href="#upgrade-and-uninstall" aria-label="Link to this section">#</a></h2>
+<p><strong>Upgrade:</strong> download the new file over the old one - there is no state to migrate. <strong>Uninstall:</strong> delete the file. shint writes nothing else to your system.</p>
+<h2 id="platform-notes">Platform notes<a class="anchor" href="#platform-notes" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>ping and privileges.</strong> On macOS, the BSDs and Windows, ICMP echo works for a normal user. On Linux it depends on the <code>net.ipv4.ping_group_range</code> setting; most desktop distributions allow everyone already, but a hardened system may restrict it to root. If <code>ping</code> fails with a permission error, either run it as root or widen the range: <code>sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"</code>. Inside Docker the same rules apply, and no extra capabilities should be needed.</li><li><strong>UDP and port-scan results are best effort.</strong> Neither has a reliable way to tell "nothing is listening" from "a firewall silently dropped the packet", so an <code>open|filtered</code> UDP result or an unresponsive TCP port means exactly that - see <a href="troubleshooting.html">troubleshooting</a>.</li><li><strong>IPv6 listening.</strong> Pass <code>--bind ::</code> to the listen commands to listen on IPv6. This is verified to accept IPv4 clients as well on macOS and Linux; other platforms follow Go's networking defaults but have not been verified independently.</li></ul>
+<h2 id="next">Next<a class="anchor" href="#next" aria-label="Link to this section">#</a></h2>
+<p>Head to <a href="usage.html">Using shint</a> for the flags every command shares, or jump to a command: <a href="telnet.html">telnet</a>, <a href="ping.html">ping</a>, <a href="web.html">web</a>, <a href="nmap.html">nmap</a>, <a href="udp.html">udp</a>, <a href="listen.html">listen</a>.</p>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="index.html"><span>Previous</span>shint</a><a class="next" href="usage.html"><span>Next</span>Using shint</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/install.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#download-a-release">Download a release</a></li><li class="toc3"><a href="#macos-and-linux">macOS and Linux</a></li><li class="toc3"><a href="#windows">Windows</a></li><li class="toc3"><a href="#check-it-works">Check it works</a></li><li class="toc2"><a href="#docker">Docker</a></li><li class="toc2"><a href="#build-from-source">Build from source</a></li><li class="toc2"><a href="#shell-completion">Shell completion</a></li><li class="toc2"><a href="#upgrade-and-uninstall">Upgrade and uninstall</a></li><li class="toc2"><a href="#platform-notes">Platform notes</a></li><li class="toc2"><a href="#next">Next</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

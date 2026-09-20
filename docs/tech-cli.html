@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command-line design · shint</title>
+<meta name="description" content="The philosophy and conventions of the shint command line - grammar, shared flags, defaults, validation, output contract, exit status - and how to add a command.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html" class="active" aria-current="page">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Technical</p>
+<h1>Command-line design</h1>
+<p class="lead">The conventions behind shint's commands and flags - and the reasoning, so new commands feel like they were always there.</p>
+<h2 id="principles">Principles<a class="anchor" href="#principles" aria-label="Link to this section">#</a></h2>
+<p><strong>1. One grammar, learned once.</strong> <code>shint &lt;command&gt; &lt;target&gt; [flags]</code>. The target is positional because it is what you are <em>about</em>; flags are how the check behaves. Commands are named after the tools whose muscle memory they inherit - <code>telnet</code>, <code>ping</code>, <code>nmap</code> - rather than for what they technically do, and <code>web</code> and <code>listen</code> are short verbs for the rest.</p>
+<p><strong>2. Shared flags are defined once.</strong> <code>--count</code>, <code>--timeout</code>, <code>--delay</code>, <code>--throttle</code>, <code>--payload</code> and <code>--json</code> live on the root command as <em>persistent</em> flags, so they have identical names, defaults and help text everywhere. A command simply ignores the ones that do not apply. Two shadowing cases exist, both deliberate and both documented in the flag help:</p>
+<div class="tablewrap"><table><thead><tr><th>Shadow</th><th>Why</th></tr></thead><tbody><tr><td><code>listen --count</code> defaults to <code>0</code> (run until <code>Ctrl+C</code>) instead of <code>1</code></td><td>A listener's point is usually to stay up; every other command's default is "one check and done".</td></tr><tr><td><code>web -P/--payload</code> is the request <em>body</em></td><td>On <code>ping</code> and <code>udp</code>, <code>--payload</code> is a <em>size</em> of filler. HTTP needs actual content, and <code>-P</code> mirrors <code>curl</code>'s single-letter style.</td></tr></tbody></table></div>
+<p><strong>3. Safe, quick defaults.</strong> <code>--count 1</code>, <code>--timeout 5</code>, <code>--delay 1000</code>. A bare command does one polite check. Nothing scans, floods or listens forever unless asked.</p>
+<p><strong>4. Validate first, then act.</strong> Ports must be 1-65535, <code>--count</code> and <code>--timeout</code> at least 1, <code>--from</code> no greater than <code>--to</code>, TLS options must be consistent. A bad value prints one clear line to <strong>stderr</strong>, exits <code>2</code>, and does nothing else - no half-run.</p>
+<p><strong>5. Errors are data, not the end of the run.</strong> A failed connection is a <em>result</em>: it is printed as an <code>ERROR</code> line (or a <code>success: false</code> entry in JSON) and the remaining checks still run. The program decides at the end whether everything passed.</p>
+<p><strong>6. Streams have jobs.</strong> Results - including <code>ERROR</code> lines about failed checks - go to stdout; usage errors go to stderr. That keeps <code>shint ... --json | jq</code> clean in every situation.</p>
+<p><strong>7. No hidden state.</strong> No configuration file, no environment variables, no saved history, no telemetry. The same command line always means the same thing, on any machine.</p>
+<h2 id="the-output-contract">The output contract<a class="anchor" href="#the-output-contract" aria-label="Link to this section">#</a></h2>
+<p>Text output follows one grammar (<code>&lt;time&gt;: [&lt;module&gt;] OK|ERROR &lt;message&gt; key=value ...</code>), implemented once in <code>lib/output.go</code>. Anyone adding a message uses <code>lib.LogWithTimestamp</code> and <code>lib.Fields</code> rather than formatting by hand, which is what keeps every command grep-able the same way.</p>
+<p>JSON output is one document per run (one line per event for listeners). The rules:</p>
+<ul><li><strong>Keys are stable.</strong> They are <code>lower_snake_case</code>, with the unit in the name where there is one (<code>_µs</code>, <code>_ms</code>, <code>_bytes</code>). A rename or removal is called out in the changelog.</li><li><strong>Failure is still JSON.</strong> A failed check appears in <code>stats</code> with <code>success: false</code> and the reason; the run-level <code>error</code> field carries lookup failures. No text line is ever printed in front of the document.</li><li><strong>One skeleton, per-command <code>stats</code>.</strong> <code>input_params</code>, <code>dns_lookup</code>, <code>start/end/total time</code> and <code>error</code> are identical across commands; only the entries in <code>stats</code> differ.</li><li><strong>Text and JSON come from the same measurements.</strong> A handler measures once and renders twice, so the two modes cannot disagree.</li></ul>
+<p>Known wrinkles in the contract, kept for compatibility and listed on <a href="output.html">Output formats</a>: <code>timeout_ms</code> carries seconds, and <code>ping</code> reports milliseconds where everything else reports microseconds.</p>
+<h2 id="exit-status">Exit status<a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody><tr><td><code>0</code></td><td>Every check passed.</td></tr><tr><td><code>1</code></td><td>At least one check failed.</td></tr><tr><td><code>2</code></td><td>The command was misused; nothing ran.</td></tr></tbody></table></div>
+<p>The scheme follows <code>fping</code> because shint has the same shape of problem: one invocation makes several checks (one per resolved address per iteration), so "the exit status is the verdict on all of them" is the only rule that never lies. The judgement calls, each covered by a test in <code>main_test.go</code>:</p>
+<ul><li><strong>An HTTP status is data.</strong> A <code>404</code> or <code>500</code> is a response and exits <code>0</code>, as with <code>curl</code> without <code>-f</code>. Whether that status is acceptable is the caller's policy, and it is one <code>jq</code> expression away.</li><li><strong>A completed scan is a success</strong>, whatever it found. Finding nothing open is a result. A lookup failure or a scan cut short is a failure.</li><li><strong>UDP <code>open|filtered</code> is inconclusive</strong>, not a failure: many services never answer input they do not understand. Only <code>closed</code> (an explicit ICMP refusal) and errors fail.</li><li><strong>Handlers report, <code>main</code> decides.</strong> Handlers return a <code>bool</code> ("every check passed"); only <code>main.go</code> knows about process exit. That keeps handlers testable as ordinary functions.</li></ul>
+<h2 id="adding-a-command">Adding a command<a class="anchor" href="#adding-a-command" aria-label="Link to this section">#</a></h2>
+<ol><li><strong>Handler.</strong> Create <code>lib/handlers/&lt;name&gt;.go</code> with a <code>&lt;name&gt;Module</code> constant (it becomes the <code>[module]</code> in log lines) and a function that takes plain values plus <code>jsonoutput *bool</code> and returns <code>bool</code>. Print with <code>lib.LogWithTimestamp</code>/<code>lib.Fields</code>, and render JSON through <code>lib.JSONOutput</code>.</li><li><strong>Output types.</strong> Add a <code>&lt;Name&gt;Stats</code> struct to <code>lib/output.go</code> with tagged fields, and document it on <a href="output.html">Output formats</a>.</li><li><strong>Command.</strong> In <code>main.go</code>, add a <code>cobra.Command</code>: <code>Args:</code> for the positional shape, <code>Run</code> that validates (each failure <code>usage(...)</code>; <code>return</code>), then calls <code>finish(handlers.YourHandler(...))</code>. Register any flag in <code>init()</code> and the command in <code>main()</code>.</li><li><strong>Bound every operation</strong> with <code>--timeout</code>, never the whole run.</li><li><strong>Tests.</strong> A handler test with a locally started target; an entry in <code>TestExitStatus</code> (main_test.go) for each of the 0, 1 and 2 paths; a <code>--json</code> failure case in <code>TestFailuresUnderJSONAreStillJSON</code>.</li><li><strong>Docs.</strong> A command page under <code>docs/src/</code>, a line in <a href="usage.html">Using shint</a> if it changes the shared tables, and a changelog entry.</li></ol>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="tech-source.html"><span>Previous</span>Source reference</a><a class="next" href="tech-design.html"><span>Next</span>Design notes</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-cli.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#principles">Principles</a></li><li class="toc2"><a href="#the-output-contract">The output contract</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#adding-a-command">Adding a command</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

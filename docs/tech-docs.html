@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>This documentation · shint</title>
+<meta name="description" content="How the shint documentation site is structured, built with docs/build.py, and published with GitHub Pages.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html" class="active" aria-current="page">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Technical</p>
+<h1>This documentation</h1>
+<p class="lead">How the documentation site is built, hosted and maintained - and how to add or change a page.</p>
+<h2 id="structure">Structure<a class="anchor" href="#structure" aria-label="Link to this section">#</a></h2>
+<p>The site is plain static HTML served by GitHub Pages. There is no framework and no external service: no JavaScript build, no CDN, no web fonts.</p>
+<div class="codeblock lang-plain"><pre><code>docs/
+├── build.py           the generator (Python 3, standard library only)
+├── src/*.md           one Markdown source per page
+├── assets/            style.css, site.js, favicon.svg
+└── *.html             generated pages - committed, never edited by hand
+CHANGELOG.md           at the repo root; rendered as the Changelog page
+index.html, .nojekyll  at the repo root; see Hosting</code></pre></div>
+<p>The generator turns each <code>docs/src/&lt;name&gt;.md</code> into <code>docs/&lt;name&gt;.html</code>, wraps it in the shared layout (top bar, sidebar, "On this page" list, previous/next links), and renders <code>CHANGELOG.md</code> as the <a href="changelog.html">Changelog</a> page - so the changelog has exactly one source of truth.</p>
+<h2 id="changing-a-page">Changing a page<a class="anchor" href="#changing-a-page" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code>$EDITOR docs/src/telnet.md
+<span class="tok-cmd">python3</span> docs/build.py           <span class="tok-com"># regenerate the HTML</span>
+<span class="tok-cmd">python3</span> docs/build.py <span class="tok-flag">--check</span>   <span class="tok-com"># verify pages are current and every link and anchor resolves</span>
+<span class="tok-cmd">git</span> add docs &amp;&amp; git commit</code></pre></div>
+<p><code>--check</code> exits non-zero if a generated page is stale or an internal link or <code>#anchor</code> is broken, so it can be used as a pre-commit or release check.</p>
+<h2 id="page-format">Page format<a class="anchor" href="#page-format" aria-label="Link to this section">#</a></h2>
+<p>Each source starts with a small header, then Markdown:</p>
+<div class="codeblock lang-plain"><pre><code>---
+title: telnet
+lead: One-sentence summary shown under the title.
+description: Text for search engines and link previews.
+section: Commands
+order: 1
+nav: telnet
+---
+
+## First section</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th>Header key</th><th>Meaning</th></tr></thead><tbody><tr><td><code>title</code></td><td>The page heading and browser title.</td></tr><tr><td><code>lead</code></td><td>The larger introductory sentence under the title.</td></tr><tr><td><code>description</code></td><td>The <code>&lt;meta name="description"&gt;</code>.</td></tr><tr><td><code>section</code></td><td>Sidebar group: <code>Get started</code>, <code>Commands</code>, <code>Guides</code>, <code>Reference</code> or <code>Technical</code>.</td></tr><tr><td><code>order</code></td><td>Position within the group.</td></tr><tr><td><code>nav</code></td><td>The sidebar label, if different from <code>title</code>.</td></tr></tbody></table></div>
+<p>The page title is drawn from the header, so the body starts at <code>##</code>. The Markdown is a deliberately small dialect:</p>
+<div class="tablewrap"><table><thead><tr><th>Write</th><th>To get</th></tr></thead><tbody><tr><td><code>## Heading</code>, <code>### Sub</code></td><td>Section headings with anchors; they feed "On this page"</td></tr><tr><td><code>- item</code>, <code>1. item</code></td><td>Lists (nest by indenting)</td></tr><tr><td><code>| a | b |</code> with a <code>|---|---|</code> row</td><td>A table</td></tr><tr><td>text between single backticks</td><td>Inline code</td></tr><tr><td><code>**bold**</code>, <code>*italic*</code>, <code>[text](other.md#anchor)</code></td><td>Bold, italic, and links (<code>.md</code> links become <code>.html</code>)</td></tr><tr><td>a fenced block with <code>bash</code>, <code>text</code>, <code>json</code>, <code>yaml</code>, <code>go</code>, <code>dockerfile</code> or <code>makefile</code></td><td>A code block with a label, copy button and light syntax colouring; <code>text</code> colours log lines (<code>OK</code> green, <code>ERROR</code> red)</td></tr><tr><td><code>:::note Title</code> ... <code>:::</code> (also <code>tip</code>, <code>warning</code>)</td><td>A callout box</td></tr><tr><td><code>:::html</code> ... <code>:::</code></td><td>Raw HTML, for the home-page cards and the diagrams</td></tr></tbody></table></div>
+<h3 id="adding-a-page">Adding a page<a class="anchor" href="#adding-a-page" aria-label="Link to this section">#</a></h3>
+<ol><li>Create <code>docs/src/&lt;name&gt;.md</code> with the header above.</li><li>Run <code>python3 docs/build.py</code>. The page appears in the sidebar automatically, ordered by <code>section</code> and <code>order</code>.</li><li>Link to it from wherever it belongs, using <code>[text](&lt;name&gt;.md)</code>.</li></ol>
+<h2 id="writing-guidelines">Writing guidelines<a class="anchor" href="#writing-guidelines" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>Real output only.</strong> Examples show output from the real binary, copied verbatim - never typed by hand. If behaviour changes, regenerate the example.</li><li><strong>Plain language first.</strong> The user-facing pages explain what and why before how; technical detail lives in the Technical section.</li><li><strong>Every claim checkable.</strong> State versions, defaults and limits exactly as the code has them, and link to the page that goes deeper.</li><li><strong>The README stays short.</strong> It introduces shint and links here; detail belongs on this site.</li></ul>
+<h2 id="hosting">Hosting<a class="anchor" href="#hosting" aria-label="Link to this section">#</a></h2>
+<p>The repository's Pages setting builds from the <code>main</code> branch, folder <code>/</code>. Two small files at the repository root make that work for a site that lives under <code>docs/</code>:</p>
+<ul><li><strong><code>.nojekyll</code></strong> tells GitHub Pages to serve files exactly as they are instead of running them through Jekyll (which would try to process the Markdown sources and skip anything starting with <code>_</code>).</li><li><strong><code>index.html</code></strong> at the root redirects the site's front door to <code>docs/</code>, so <code>https://dmartsapp.github.io/shint/</code> lands on the home page.</li></ul>
+<p>If the Pages source is ever switched to the <code>/docs</code> folder, the pages keep working unchanged and the root stub simply becomes unused.</p>
+<p>Publishing is automatic: a push to <code>main</code> runs GitHub's own <code>pages-build-deployment</code> workflow, and the change is live within a minute or two. Nothing in this repository's workflows builds the site, which is why the generated HTML is committed.</p>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="tech-testing.html"><span>Previous</span>Testing</a><span></span></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-docs.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#structure">Structure</a></li><li class="toc2"><a href="#changing-a-page">Changing a page</a></li><li class="toc2"><a href="#page-format">Page format</a></li><li class="toc3"><a href="#adding-a-page">Adding a page</a></li><li class="toc2"><a href="#writing-guidelines">Writing guidelines</a></li><li class="toc2"><a href="#hosting">Hosting</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

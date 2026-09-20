@@ -1,0 +1,83 @@
+---
+title: Testing
+lead: How shint is tested, what the tests are built on, and which past bugs each regression test guards.
+description: Testing strategy for shint - hermetic tests, helpers, test hooks, end-to-end exit-status tests, the smoke test, and how to run everything.
+section: Technical
+order: 7
+nav: Testing
+---
+
+## Approach
+
+- **Hermetic.** Unit and integration tests never leave the machine: each test starts its own listener on `127.0.0.1` or `::1` (port `0`, so the OS picks a free one) and points the code at it. No test needs the internet, DNS, or root - except where noted for ICMP.
+- **Real sockets, not mocks.** The tests dial real listeners and run real TLS handshakes with a throw-away certificate authority. A mock would not catch a wrong timeout or a byte-count that is only wrong on the wire.
+- **The race detector is on.** Handlers are concurrent; run `go test -race`.
+- **Every bug gets a test that fails without the fix.** Each regression test below was checked against the broken behaviour before the fix was kept.
+
+There are 93 top-level tests: 63 in `lib/handlers`, 25 in `lib` and 5 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 24 scenarios).
+
+## Running the tests
+
+```bash
+go test ./...                      # everything
+go test -race ./...                # what you should run before a release
+go test -race -count=3 ./...       # shake out flakiness
+go test -run TestNmap -v ./lib/handlers/   # one family, verbosely
+```
+
+The full suite takes under a minute. `go test -race` on the root package takes longer (about 15 seconds) because its tests start the CLI as subprocesses.
+
+## Building blocks
+
+| Helper | Where | What it gives you |
+|---|---|---|
+| `captureStdout(t, fn)` | `testhelpers_test.go` | Runs `fn` with `os.Stdout` redirected and returns what it printed. The pipe is drained by a goroutine *while* `fn` runs, so a handler that prints more than the pipe buffer cannot deadlock. |
+| `freeTCPPort`, `freeUDPPort` | `testhelpers_test.go` | An unused port number, for tests that need to know it in advance. |
+| `generateTestCA`, `issueCert` | `testhelpers_test.go` | A self-signed CA plus server and client certificates written to a temp directory, for mutual-TLS tests. |
+| `startEchoListener` (+ IPv6 form) | `telnet_test.go` | A TCP listener that accepts and closes. |
+| `rawServer` | `wirebytes_test.go` | A bare TCP/TLS responder that knows exactly how many bytes each request occupied, to check `web`'s counts against ground truth. |
+| `recordingListener` | `wirebytes_test.go` | Wraps accepted connections in counters so a test can total what a real server read and wrote. |
+| `runShint`, `TestMain` | `main_test.go` | Runs the *real CLI* as a subprocess and returns its exit status, stdout and stderr. |
+
+### Hooks for testing
+
+Two package-level variables exist only so tests can control time and slowness deterministically:
+
+- `probePort` (`nmap.go`) - the single-port check. Tests swap in a slow or scripted probe instead of depending on a genuinely unresponsive host.
+- `progressInterval` (`nmap.go`) - how often `nmap` prints progress. Tests shorten it to milliseconds.
+
+### The CLI as a subprocess
+
+`TestMain` checks `SHINT_TEST_RUN_MAIN=1`. When it is set, the test binary calls `main()` and exits - so `os.Args[0]` *is* shint. `runShint` re-executes the test binary with that variable and a real argument list, and captures the true process exit status and both output streams. There is no build step and no dependence on a `shint` binary on `PATH`. This is how the exit-status rules are tested: what a shell script sees is exactly what is asserted.
+
+## What guards what
+
+| Test | The bug it prevents |
+|---|---|
+| `TestTelnetHandlerRunLongerThanTimeoutStillSucceeds` | `--timeout` used as a run-wide deadline: later attempts failed instantly with a bogus `i/o timeout`. |
+| `TestNmapHandlerCoversWholeRangeEvenWhenItOutlastsPerPortTimeout`, `TestScanContextHasNoDeadline` | The same flaw in `nmap`: scans stopping partway through the range. |
+| `TestNmapHandlerReportsInterruptedScan` | A cut-short scan presented as complete; aborted dials recorded as "closed". |
+| `TestNmapHandlerThrottleDelayIsInterruptible` | `Ctrl+C` having to wait out a random 10-second throttle delay. |
+| `TestNmapHandlerReportsProgress`, `...FastScanPrintsNoProgress`, `...JSONHasNoProgressLines` | Progress output: present for slow scans, absent for quick ones, never in JSON. |
+| `TestWebAndHTTPListenAgreeOnBytes` | Client and server disagreeing about bytes (0 B to 2 MB, including bodies over `net/http`'s discard limit). |
+| `TestWebHandlerBytesIncludeHeaders`, `...CoverEveryRedirectHop`, `...ReusedConnectionCountsPerRequest` | Byte counts that were body-only, last-hop-only, or cumulative across a reused connection. |
+| `TestHTTPListenHandlerIgnoresRequestHeaders` | The listener acting on conditional headers or emitting validators. |
+| `TestExitStatus` (24 scenarios) | Failed checks or bad usage exiting `0`; the 404-is-a-response, completed-scan and `open|filtered` rules. |
+| `TestUsageErrorsGoToStderrOnly` | Usage errors on stdout, or printed twice. |
+| `TestFailuresUnderJSONAreStillJSON` | A stray text line in front of the JSON when a check fails. |
+| `TestListenExitsZeroWhenDone` | A finished listener exiting non-zero. |
+
+## The live smoke test
+
+`basic_module_test.sh` builds the binary and runs one check per command against real hosts (`google.com`, `httpbin.org`, `8.8.8.8`), asserting on exit status *and* an expected string in the output. It needs the internet and ICMP, so it is not part of `go test`; run it before a release when you can. It counts failures and continues rather than stopping at the first.
+
+## Lint and vulnerability checks
+
+`golangci-lint` (v2.13.2, default linters) and `govulncheck` gate every release in CI ([CI/CD workflows](tech-ci.md)). Run them locally first; CI will not tell you about a failure until the tag is already pushed.
+
+## Writing a good test here
+
+- Start a real listener, and use port `0`.
+- Keep durations short but assert on *behaviour*, not timing, where you can; where timing is the point (a run outlasting a timeout), make the margin generous.
+- Never call `t.Fatal` from inside a `captureStdout` callback - it would leave stdout redirected.
+- Add a test that fails without your fix, and confirm it does.

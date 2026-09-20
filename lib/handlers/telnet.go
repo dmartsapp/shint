@@ -78,6 +78,10 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 		for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 			attempt := i + 1
 			for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
+				// Attempts are launched one at a time, --delay apart (a random
+				// delay with --throttle), each in its own goroutine so a slow
+				// attempt does not hold up the next. The delay comes before
+				// every attempt, including the first.
 				if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
 					in, err := rand.Int(rand.Reader, big.NewInt(10000))
 					if err != nil {

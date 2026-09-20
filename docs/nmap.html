@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nmap · shint</title>
+<meta name="description" content="shint nmap scans a range of TCP ports on a host over IPv4 and IPv6, reports open ports, and shows progress on long scans.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html" class="active" aria-current="page">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>nmap</h1>
+<p class="lead">Find which TCP ports are open on a host, across a range you choose, with live progress so long scans never look stuck.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p><code>shint nmap</code> tries to open a TCP connection to every port in a range and reports the ones that answer. It is a small, single-host scanner for everyday questions ("what is listening on this machine?"), not a replacement for the full <a href="https://nmap.org">nmap</a>. Up to 500 ports are tried at the same time, so even wide ranges are practical.</p>
+<p>If the host name resolves to several addresses, every address is scanned.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap &lt;host&gt; [<span class="tok-flag">--from</span> PORT] [<span class="tok-flag">--to</span> PORT] [<span class="tok-flag">--timeout</span> S] [<span class="tok-flag">--json</span>]</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td><code>--from</code></td><td><code>1</code></td><td>First port to scan.</td></tr><tr><td><code>--to</code></td><td><code>80</code></td><td>Last port to scan (inclusive).</td></tr><tr><td><code>--timeout</code></td><td><code>5</code></td><td>Seconds <strong>each port</strong> is given to answer. It is not a limit on the whole scan.</td></tr><tr><td><code>--count</code></td><td><code>1</code></td><td>Scan the whole range this many times.</td></tr><tr><td><code>--throttle</code></td><td>off</td><td>Wait a random 0-10 seconds before each port (slow and quiet).</td></tr><tr><td><code>--json</code></td><td>off</td><td>One JSON document with every port's result.</td></tr></tbody></table></div>
+<p><code>--from</code> and <code>--to</code> must be between 1 and 65535, with <code>--from</code> not greater than <code>--to</code>.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="a-small-range">A small range<a class="anchor" href="#a-small-range" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">--from</span> 2220 <span class="tok-flag">--to</span> 2225</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=75.709µs
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan started <span class="tok-key">ports_total</span>=6 <span class="tok-key">timeout</span>=5s <span class="tok-key">max_in_flight</span>=500
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=2222
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan complete <span class="tok-key">ports_scanned</span>=6 <span class="tok-key">open</span>=1 <span class="tok-key">time</span>=705.125µs
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=723.167µs</code></pre></div>
+<p>Only <strong>open</strong> ports are printed in text mode. The <code>scan started</code> line tells you how much is about to happen, and <code>scan complete</code> confirms every port was tried.</p>
+<h3 id="a-wider-range">A wider range<a class="anchor" href="#a-wider-range" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">--from</span> 2000 <span class="tok-flag">--to</span> 3000</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=53.167µs
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan started <span class="tok-key">ports_total</span>=1001 <span class="tok-key">timeout</span>=5s <span class="tok-key">max_in_flight</span>=500
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=2500
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=2222
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan complete <span class="tok-key">ports_scanned</span>=1001 <span class="tok-key">open</span>=2 <span class="tok-key">time</span>=15.927792ms
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=15.9805ms</code></pre></div>
+<p>Ports are reported as they answer, so they can appear out of order. Use <code>--json</code> for a complete, per-port list.</p>
+<h3 id="a-host-that-does-not-answer">A host that does not answer<a class="anchor" href="#a-host-that-does-not-answer" aria-label="Link to this section">#</a></h3>
+<p>When packets are silently dropped (a firewall in the way), every port has to run out its timeout. The scan prints its size up front and a progress line every three seconds, so you can see it is working:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 192.0.2.1 <span class="tok-flag">--from</span> 1 <span class="tok-flag">--to</span> 2000 <span class="tok-flag">--timeout</span> 2</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=192.0.2.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[192.0.2.1] <span class="tok-key">time</span>=54.291µs
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan started <span class="tok-key">ports_total</span>=2000 <span class="tok-key">timeout</span>=2s <span class="tok-key">max_in_flight</span>=500
+<span class="tok-ts">Sun Sep 20 01:50:40 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> progress <span class="tok-key">ports_scanned</span>=550/2000 <span class="tok-key">percent</span>=27.5% <span class="tok-key">open</span>=0 <span class="tok-key">in_flight</span>=500 <span class="tok-key">elapsed</span>=3.002s
+<span class="tok-ts">Sun Sep 20 01:50:43 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> progress <span class="tok-key">ports_scanned</span>=1065/2000 <span class="tok-key">percent</span>=53.2% <span class="tok-key">open</span>=0 <span class="tok-key">in_flight</span>=500 <span class="tok-key">elapsed</span>=6.001s
+<span class="tok-ts">Sun Sep 20 01:50:45 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan complete <span class="tok-key">ports_scanned</span>=2000 <span class="tok-key">open</span>=0 <span class="tok-key">time</span>=8.0430845s
+<span class="tok-ts">Sun Sep 20 01:50:45 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=8.04328325s</code></pre></div>
+<p><code>in_flight</code> is how many ports are currently waiting for an answer. A steady <code>in_flight=500</code> with a slow count means "waiting on unresponsive ports", not "stuck". Scans that finish before the first three-second tick print no progress lines.</p>
+<h3 id="stopping-early">Stopping early<a class="anchor" href="#stopping-early" aria-label="Link to this section">#</a></h3>
+<p>Press <code>Ctrl+C</code> and the scan stops and says how far it got, instead of pretending to be complete:</p>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:53:06 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=192.0.2.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[192.0.2.1] <span class="tok-key">time</span>=82.417µs
+<span class="tok-ts">Sun Sep 20 01:53:06 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan started <span class="tok-key">ports_total</span>=3000 <span class="tok-key">timeout</span>=5s <span class="tok-key">max_in_flight</span>=500
+<span class="tok-ts">Sun Sep 20 01:53:09 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> progress <span class="tok-key">ports_scanned</span>=0/3000 <span class="tok-key">percent</span>=0.0% <span class="tok-key">open</span>=0 <span class="tok-key">in_flight</span>=500 <span class="tok-key">elapsed</span>=3.002s
+<span class="tok-ts">Sun Sep 20 01:53:10 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-err">ERROR</span> scan interrupted <span class="tok-key">ports_scanned</span>=0 <span class="tok-key">ports_total</span>=3000 <span class="tok-key">open</span>=0 <span class="tok-key">time</span>=4.004428042s
+<span class="tok-ts">Sun Sep 20 01:53:10 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=4.004508667s</code></pre></div>
+<p>An interrupted scan exits with status <code>1</code>.</p>
+<h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">--from</span> 2220 <span class="tok-flag">--to</span> 2224 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"nmap"</span>,
+  <span class="tok-key">"dns_lookup"</span>: { ... },
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">2221</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">false</span>
+    },
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">2224</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">false</span>
+    },
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">2222</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>
+    },
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">2223</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">false</span>
+    },
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">2220</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">false</span>
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1789890637883939</span>,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1789890637883635</span>,
+  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">304</span>,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<p>Every port scanned appears in <code>stats</code>, open or not.</p>
+<h2 id="how-long-will-it-take">How long will it take?<a class="anchor" href="#how-long-will-it-take" aria-label="Link to this section">#</a></h2>
+<p><code>--timeout</code> is what each port gets, so total time depends on <strong>how many ports do not answer</strong>:</p>
+<div class="tablewrap"><table><thead><tr><th>Port behaviour</th><th>Cost</th></tr></thead><tbody><tr><td>Open, or actively refused (<code>connection refused</code>)</td><td>Milliseconds - the host answers at once</td></tr><tr><td>Silently dropped by a firewall</td><td>The full <code>--timeout</code>, for every such port</td></tr></tbody></table></div>
+<p>With up to 500 ports in flight, a worst case (a host that drops everything) takes about <strong>ports ÷ 500 × timeout</strong> seconds:</p>
+<div class="tablewrap"><table><thead><tr><th>Range</th><th><code>--timeout 5</code> (default)</th><th><code>--timeout 1</code></th></tr></thead><tbody><tr><td>1-1024</td><td>about 15 s</td><td>about 3 s</td></tr><tr><td>20-9000</td><td>about 90 s</td><td>about 18 s</td></tr><tr><td>1-65535</td><td>about 11 min</td><td>about 2 min</td></tr></tbody></table></div>
+<p>On a fast, reliable network, <code>--timeout 1</code> is usually plenty and makes silent hosts much quicker to scan.</p>
+<h2 id="reading-the-results">Reading the results<a class="anchor" href="#reading-the-results" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>A port listed as open</strong> accepted the connection.</li><li><strong>A port not listed</strong> was refused, or nothing answered in time. TCP scanning cannot tell a stopped service from a firewall that drops packets - a filtered port and a closed one look the same here.</li><li>The exit status is <code>0</code> for a completed scan (whether or not anything was open), and <code>1</code> if the lookup failed or the scan was cut short.</li></ul>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li>Only TCP is scanned. For UDP, use <a href="udp.html"><code>udp</code></a>, one port at a time.</li><li>Scanning hosts you do not own or manage may be against the rules of the network you are on. Scan your own systems, or ones you have permission to test.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="web.html"><span>Previous</span>web</a><a class="next" href="udp.html"><span>Next</span>udp</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/nmap.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-small-range">A small range</a></li><li class="toc3"><a href="#a-wider-range">A wider range</a></li><li class="toc3"><a href="#a-host-that-does-not-answer">A host that does not answer</a></li><li class="toc3"><a href="#stopping-early">Stopping early</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#how-long-will-it-take">How long will it take?</a></li><li class="toc2"><a href="#reading-the-results">Reading the results</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

@@ -54,6 +54,8 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 
 	wg := sync.WaitGroup{}
 
+	// In text mode go-ping's own log lines are streamed as replies arrive; in
+	// JSON mode everything is reported once at the end from Stats.Packets.
 	if !*jsonoutput {
 		fmt.Println(lib.LogWithTimestamp(icmpModule, "dns resolved "+lib.Fields("host", host, "addresses", len(pinger.Destination), "ips", "["+strings.Join(lib.ConvertIPToStringSlice(pinger.Destination), ",")+"]", "time", pinger.Stats.ResolveTime), false))
 		wg.Add(1)

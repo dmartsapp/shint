@@ -1,0 +1,151 @@
+---
+title: Using shint
+lead: Every command works the same way - a target, some flags, and readable output. Learn the shared parts once.
+description: Command syntax, the flags shared by every shint command, text and JSON output, and exit status.
+section: Get started
+order: 3
+nav: Using shint
+---
+
+## The shape of a command
+
+```plain
+shint <command> <target> [flags]
+```
+
+The target comes first (a host and port, a URL, a port to listen on); flags change how the check runs. Flags can go before or after the target.
+
+```text
+A simple network utility tool that provides telnet, ping, nmap, udp, web client, and listener functionalities.
+
+Usage:
+  shint [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  listen      Start a local TCP, UDP, or HTTP listener for testing
+  nmap        Scan for open TCP ports on a host
+  ping        Send ICMP ECHO_REQUEST to a host
+  telnet      Connect to a host on a specific port
+  udp         Send a UDP probe to a host on a specific port
+  web         Make an HTTP request to a URL
+
+Flags:
+      --count int     Number of times to check connectivity (listen commands: max connections/packets to accept, 0 = unlimited) (default 1)
+      --delay int     Milliseconds delay between each iteration given in count (default 1000)
+  -h, --help          help for shint
+      --json          Flag option to output only in JSON format
+      --payload int   Ping/UDP payload size in bytes (filler content, ignored if --data is set on udp) (default 4)
+      --throttle      Flag option to throttle between every iteration of count to simulate non-uniform request.
+      --timeout int   Timeout in seconds to connect (listen commands: idle read timeout, 0 = no timeout) (default 5)
+  -v, --version       version for shint
+
+Use "shint [command] --help" for more information about a command.
+```
+`shint <command> --help` shows the details for one command, and `shint --version` prints the version.
+
+## Flags shared by every command
+
+These are defined once, so they mean the same thing everywhere they apply:
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--count N` | `1` | How many times to repeat the check. For `listen`, the number of connections, packets or requests to accept before exiting (default `0`: keep going until Ctrl+C). |
+| `--timeout S` | `5` | Seconds to wait - see [what it limits](#what-timeout-limits) below. For `listen`, the idle time before a quiet connection is closed (`0`: never). |
+| `--delay MS` | `1000` | Milliseconds to pause before each attempt. Use `--delay 0` for back-to-back checks. |
+| `--throttle` | off | Wait a random 0-10 seconds between attempts instead of a fixed `--delay`, to imitate uneven traffic. |
+| `--payload N` | `4` | Filler payload size in bytes for `ping` and `udp`. (On `web`, `-P` is the request *body* instead.) |
+| `--json` | off | Print one machine-readable JSON document instead of log lines. |
+
+:::note Every attempt waits first
+`--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer.
+:::
+
+### What --timeout limits
+
+`--timeout` always bounds one operation, never the whole run - so `--count 20 --delay 2000` is free to take 40 seconds.
+
+| Command | `--timeout` is how long... |
+|---|---|
+| `telnet` | each connection attempt, and the DNS lookup, may take |
+| `web` | each request may take, from connecting to the last byte of the response |
+| `nmap` | each *port* may take to answer, and the DNS lookup |
+| `udp` | each probe waits for a reply, and the DNS lookup |
+| `ping` | (not applied - each echo request waits one second for its reply) |
+| `listen` | a connection may sit idle before it is closed |
+
+## Reading the output
+
+Every command prints one line per event in the same shape:
+
+```plain
+<time>: [<module>] OK|ERROR <message> key=value key=value ...
+```
+
+```text
+Sun Sep 20 01:50:09 MDT 2026: [telnet] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=165.625µs
+Sun Sep 20 01:50:10 MDT 2026: [telnet] OK connect ok host=127.0.0.1 port=9000 attempt=1/1 time=4.606042ms
+
+======================================= telnet STATISTICS =======================================
+Requests sent: 1, Response received: 1, Success: 100%
+Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
+Sun Sep 20 01:50:10 MDT 2026: [telnet] OK done total_time=1.006831458s
+```
+- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `nmap`, `udp`, `listen-tcp`, `listen-udp`, `listen-http`).
+- **OK or ERROR** is the level of that one line.
+- The `key=value` pairs are easy to `grep` and `awk`; values with spaces are quoted.
+- Commands that repeat a check finish with a **statistics** block: requests sent, responses received, and minimum, average and maximum latency.
+
+The full description, including every JSON field, is on the [Output formats](output.md) page.
+
+## JSON output
+
+`--json` replaces the log lines with a single JSON document (the listen commands print one JSON line per event instead). Pipe it into `jq`, a script, or a monitoring agent:
+
+```bash
+shint web --json https://example.com | jq '.stats[0].status_code'
+```
+
+Failed checks are still valid JSON: they appear in `stats` with `"success": false` and the reason, so `--json` output never mixes text lines into the document.
+
+## Exit status
+
+shint checks several things per run - every address a name resolves to, every `--count` iteration - so its exit status follows the convention of `fping`, which does the same:
+
+| Status | Meaning |
+|---|---|
+| `0` | Every check passed. |
+| `1` | At least one check failed: connection refused or timed out, DNS failure, no HTTP response, a UDP port reported closed, a lost ping, or a scan cut short. |
+| `2` | The command was used wrongly - a bad argument, flag or value. Nothing ran. |
+
+That makes shint usable in shell conditions and CI:
+
+```bash
+if shint telnet db.internal 5432 --timeout 2; then
+  echo "database reachable"
+else
+  echo "database NOT reachable"
+fi
+```
+
+What counts as a failure, per command:
+
+| Command | Exit `1` when |
+|---|---|
+| `telnet` | the lookup or any connection attempt failed |
+| `ping` | the lookup failed or any echo request went unanswered |
+| `web` | any attempt got no HTTP response. **A 404 or 500 is still a response** and exits `0` - read the status from the output or `--json` |
+| `nmap` | the lookup failed or the scan was cut short. Finding no open ports is a completed scan and exits `0` |
+| `udp` | the lookup failed, the port was reported `closed`, or the probe errored. `open|filtered` (no reply) is inconclusive, not a failure |
+| `listen` | the port could not be bound |
+
+Results, including `ERROR` lines about failed checks, go to **stdout**; usage errors go to **stderr**. So `shint ... --json | jq` only ever sees JSON.
+
+## Stopping early
+
+Press `Ctrl+C`. The listen commands stop and print their summary; `nmap` stops and reports how far it got. Other commands end right away.
+
+## Next
+
+Pick a command: [telnet](telnet.md), [ping](ping.md), [web](web.md), [nmap](nmap.md), [udp](udp.md) or [listen](listen.md) - or browse the [cookbook](cookbook.md).

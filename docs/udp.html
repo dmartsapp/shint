@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>udp · shint</title>
+<meta name="description" content="shint udp sends a UDP probe to a host and port over IPv4 and IPv6 and reports whether it was answered, refused, or unanswered.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html" class="active" aria-current="page">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>udp</h1>
+<p class="lead">Send a UDP datagram and classify what comes back - open, closed, or open|filtered - the way a UDP port scan does.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p>UDP has no handshake, so there is no direct way to ask "is anything listening?". <code>shint udp</code> sends one datagram to the host and port and watches for the answer, then reports the best conclusion that evidence allows:</p>
+<div class="tablewrap"><table><thead><tr><th>State</th><th>What happened</th><th>What it means</th></tr></thead><tbody><tr><td><code>open</code></td><td>A reply datagram came back before the timeout.</td><td>A service is listening and answered.</td></tr><tr><td><code>closed</code></td><td>The operating system reported an ICMP "port unreachable".</td><td>Nothing is listening on that port.</td></tr><tr><td><code>open|filtered</code></td><td>Nothing came back before the timeout.</td><td>Cannot be told apart: either a service that simply does not reply to input it does not understand, or a firewall silently dropping the packet.</td></tr></tbody></table></div>
+<p>If the name resolves to several addresses, each one is probed.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> udp &lt;host&gt; &lt;port&gt; [<span class="tok-flag">--data</span> TEXT | <span class="tok-flag">--payload</span> BYTES] [<span class="tok-flag">--count</span> N] [<span class="tok-flag">--timeout</span> S] [<span class="tok-flag">--json</span>]</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th>Flag</th><th>Meaning</th></tr></thead><tbody><tr><td><code>-D</code>, <code>--data TEXT</code></td><td>The payload to send. Sent exactly as typed - it is text, and backslash escapes such as <code>\x00</code> are <strong>not</strong> interpreted.</td></tr><tr><td><code>--payload N</code></td><td>If <code>--data</code> is not given, send N bytes of filler (default 4).</td></tr></tbody></table></div>
+<p>The other <a href="usage.html#flags-shared-by-every-command">shared flags</a> apply; <code>--timeout</code> is how long to wait for a reply.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="a-service-that-answers">A service that answers<a class="anchor" href="#a-service-that-answers" aria-label="Link to this section">#</a></h3>
+<p>Start an echo listener in another terminal with <code>shint listen udp 9001 --echo</code>, then:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> udp 127.0.0.1 9001 <span class="tok-flag">--data</span> hello</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:30 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=132.541µs
+<span class="tok-ts">Sun Sep 20 01:50:31 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> probe open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=9001 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">sent</span>=5 <span class="tok-key">received</span>=5 <span class="tok-key">time</span>=962.833µs
+<span class="tok-ts">Sun Sep 20 01:50:31 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">probes_sent</span>=1 <span class="tok-key">open</span>=1 <span class="tok-key">total_time</span>=1.002634541s</code></pre></div>
+<p><code>sent=5 received=5</code>: five bytes went out and the listener echoed them back.</p>
+<h3 id="a-closed-port">A closed port<a class="anchor" href="#a-closed-port" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> udp 127.0.0.1 9998 <span class="tok-flag">--timeout</span> 2</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:33 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=114.625µs
+<span class="tok-ts">Sun Sep 20 01:50:34 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> probe closed <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=9998 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">sent</span>=4 <span class="tok-key">received</span>=0 <span class="tok-key">time</span>=1.312875ms
+<span class="tok-ts">Sun Sep 20 01:50:34 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">probes_sent</span>=1 <span class="tok-key">open</span>=0 <span class="tok-key">total_time</span>=1.002529458s</code></pre></div>
+<h3 id="no-answer">No answer<a class="anchor" href="#no-answer" aria-label="Link to this section">#</a></h3>
+<p>Public DNS servers ignore a datagram that is not a valid query, so the probe is unanswered for the whole timeout:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> udp 8.8.8.8 53 <span class="tok-flag">--timeout</span> 2</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:34 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=8.8.8.8 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[8.8.8.8] <span class="tok-key">time</span>=122µs
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> probe open|filtered <span class="tok-key">host</span>=8.8.8.8 <span class="tok-key">port</span>=53 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">sent</span>=4 <span class="tok-key">received</span>=0 <span class="tok-key">time</span>=2.003359834s
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[udp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">probes_sent</span>=1 <span class="tok-key">open</span>=0 <span class="tok-key">total_time</span>=3.005550834s</code></pre></div>
+<p><code>open|filtered</code> here does not mean the port is closed - only that no reply was seen. To learn more, send a payload the service understands (a real query, for a DNS server).</p>
+<h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> udp 127.0.0.1 9001 <span class="tok-flag">--payload</span> 16 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"udp"</span>,
+  <span class="tok-key">"dns_lookup"</span>: { ... },
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">9001</span>,
+      <span class="tok-key">"state"</span>: <span class="tok-str">"open"</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>,
+      <span class="tok-key">"bytes_sent"</span>: <span class="tok-num">16</span>,
+      <span class="tok-key">"bytes_received"</span>: <span class="tok-num">16</span>,
+      <span class="tok-key">"response_preview"</span>: <span class="tok-str">"dddddddddddddddd"</span>,
+      <span class="tok-key">"sent_unixtime_µs"</span>: <span class="tok-num">1789890632670582</span>,
+      <span class="tok-key">"recv_unixtime_µs"</span>: <span class="tok-num">1789890632671846</span>,
+      <span class="tok-key">"time_taken_µs"</span>: <span class="tok-num">1263</span>
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1789890632671871</span>,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1789890631669283</span>,
+  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">1002588</span>,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<h2 id="exit-status">Exit status<a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<p><code>0</code> when the probe was answered or is inconclusive (<code>open</code> or <code>open|filtered</code>), <code>1</code> when the port was reported <code>closed</code>, the probe hit an error, or the name could not be resolved.</p>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li>On networks that drop ICMP, a genuinely closed UDP port looks like <code>open|filtered</code>.</li><li><code>--payload</code> is filler; use <code>--data</code> when the service expects something specific.</li><li>To scan many UDP ports, run <code>udp</code> in a shell loop - <code>nmap</code> is TCP only.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="nmap.html"><span>Previous</span>nmap</a><a class="next" href="listen.html"><span>Next</span>listen</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/udp.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-service-that-answers">A service that answers</a></li><li class="toc3"><a href="#a-closed-port">A closed port</a></li><li class="toc3"><a href="#no-answer">No answer</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

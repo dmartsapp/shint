@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>telnet · shint</title>
+<meta name="description" content="shint telnet tests TCP connectivity to a host and port over IPv4 and IPv6, with timing, repeat counts and JSON output.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html" class="active" aria-current="page">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>telnet</h1>
+<p class="lead">Check whether a TCP connection to a host and port can be opened - the modern, scriptable version of typing <code>telnet host port</code> just to see if it connects.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p><code>shint telnet</code> opens a TCP connection to the host and port you give it, reports whether it succeeded and how long it took, and closes it again. Nothing is sent; it only proves the port is reachable. If the name resolves to several addresses - typically one IPv4 and one IPv6 - <strong>each address is tested separately</strong>.</p>
+<p>Use it to answer "can I reach this service from here?" before blaming the application.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet &lt;host&gt; &lt;port&gt; [<span class="tok-flag">--count</span> N] [<span class="tok-flag">--delay</span> MS] [<span class="tok-flag">--timeout</span> S] [<span class="tok-flag">--throttle</span>] [<span class="tok-flag">--json</span>]</code></pre></div>
+<p><code>&lt;host&gt;</code> is a name or an IP address; <code>&lt;port&gt;</code> is 1-65535. The <a href="usage.html#flags-shared-by-every-command">shared flags</a> apply; <code>--payload</code> is not used.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="check-a-port">Check a port<a class="anchor" href="#check-a-port" aria-label="Link to this section">#</a></h3>
+<p>Start something to connect to (in another terminal, <code>shint listen tcp 9000</code>), then:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet 127.0.0.1 9000</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:09 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=165.625µs
+<span class="tok-ts">Sun Sep 20 01:50:10 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> connect ok <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=9000 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=4.606042ms
+
+<span class="tok-banner">======================================= telnet STATISTICS =======================================</span>
+Requests sent: 1, Response received: 1, Success: 100%
+Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
+<span class="tok-ts">Sun Sep 20 01:50:10 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=1.006831458s</code></pre></div>
+<h3 id="check-a-public-service-ipv4-and-ipv6">Check a public service (IPv4 and IPv6)<a class="anchor" href="#check-a-public-service-ipv4-and-ipv6" aria-label="Link to this section">#</a></h3>
+<p><code>google.com</code> resolves to two addresses, so two connections are made and both appear in the results:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet google.com 443</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:14 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=google.com <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[2607:f8b0:400a:803::200e,142.251.46.78] <span class="tok-key">time</span>=47.672458ms
+<span class="tok-ts">Sun Sep 20 01:50:15 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> connect ok <span class="tok-key">host</span>=2607:f8b0:400a:803::200e <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=30.388833ms
+<span class="tok-ts">Sun Sep 20 01:50:16 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> connect ok <span class="tok-key">host</span>=142.251.46.78 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=30.467459ms
+
+<span class="tok-banner">======================================= telnet STATISTICS =======================================</span>
+Requests sent: 2, Response received: 2, Success: 100%
+Latency: minimum: 30.388833ms, average: 30.428146ms, maximum: 30.467459ms
+<span class="tok-ts">Sun Sep 20 01:50:16 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=2.081599125s</code></pre></div>
+<h3 id="repeat-the-check">Repeat the check<a class="anchor" href="#repeat-the-check" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet 127.0.0.1 9000 <span class="tok-flag">--count</span> 2 <span class="tok-flag">--delay</span> 300</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:10 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=148.709µs
+<span class="tok-ts">Sun Sep 20 01:50:10 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> connect ok <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=9000 <span class="tok-key">attempt</span>=1/2 <span class="tok-key">time</span>=1.276833ms
+<span class="tok-ts">Sun Sep 20 01:50:10 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> connect ok <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=9000 <span class="tok-key">attempt</span>=2/2 <span class="tok-key">time</span>=1.144375ms
+
+<span class="tok-banner">======================================= telnet STATISTICS =======================================</span>
+Requests sent: 2, Response received: 2, Success: 100%
+Latency: minimum: 1.144375ms, average: 1.210604ms, maximum: 1.276833ms
+<span class="tok-ts">Sun Sep 20 01:50:10 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=604.396834ms</code></pre></div>
+<h3 id="a-port-that-is-closed">A port that is closed<a class="anchor" href="#a-port-that-is-closed" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet 127.0.0.1 9999 <span class="tok-flag">--timeout</span> 2</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:11 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=91.708µs
+<span class="tok-ts">Sun Sep 20 01:50:12 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-err">ERROR</span> connect failed <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=9999 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=1.015625ms <span class="tok-key">error</span>="dial tcp 127.0.0.1:9999: connect: connection refused"
+
+<span class="tok-banner">======================================= telnet STATISTICS =======================================</span>
+Requests sent: 1, Response received: 0
+Latency: minimum: 0, average: 0, maximum: 0
+<span class="tok-ts">Sun Sep 20 01:50:12 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=1.00302275s</code></pre></div>
+<p>The exit status is <code>1</code> whenever a connection fails, so this works in scripts:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet 127.0.0.1 9999 <span class="tok-flag">--timeout</span> 2 <span class="tok-flag">--delay</span> 0 || echo <span class="tok-str">"not reachable"</span></code></pre></div>
+<h2 id="reading-the-results">Reading the results<a class="anchor" href="#reading-the-results" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Message</th><th>What it means</th></tr></thead><tbody><tr><td><code>connect ok</code></td><td>The connection was established. <code>time</code> is how long that took.</td></tr><tr><td><code>connection refused</code></td><td>The host answered, but nothing is listening on that port.</td></tr><tr><td><code>i/o timeout</code></td><td>Nothing answered at all within <code>--timeout</code> - typically a firewall silently dropping the packets, or a host that is down.</td></tr><tr><td><code>no route to host</code> / <code>network is unreachable</code></td><td>There is no path to that address from this machine (common for an IPv6 address on a network without IPv6).</td></tr><tr><td><code>dns resolution failed</code></td><td>The name could not be resolved, so no connection was tried.</td></tr></tbody></table></div>
+<div class="callout callout-tip"><p class="callout-title">Tell a firewall from a stopped service</p><p>"Connection refused" comes back in milliseconds because the target actively said no. A timeout means silence. If a port that should be open times out, suspect a firewall on the path; if it is refused, the host is up but the service is not.</p></div>
+<h2 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet 127.0.0.1 9000 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"telnet"</span>,
+  <span class="tok-key">"dns_lookup"</span>: { ... },
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">false</span>,
+      <span class="tok-key">"recv_unixtime_µs"</span>: <span class="tok-num">0</span>,
+      <span class="tok-key">"sent_unixtime_µs"</span>: <span class="tok-num">1789890611755345</span>,
+      <span class="tok-key">"time_taken_µs"</span>: <span class="tok-num">709</span>,
+      <span class="tok-key">"error"</span>: <span class="tok-str">"dial tcp 127.0.0.1:9000: connect: connection refused"</span>
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1789890611756071</span>,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1789890610754105</span>,
+  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">1001966</span>,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<p>Each attempt is one entry in <code>stats</code>; failed attempts have <code>"success": false</code> and an <code>error</code>. Times are in microseconds. See <a href="output.html">Output formats</a> for every field.</p>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li><code>--timeout</code> applies to each connection attempt (and to the DNS lookup), not to the whole run.</li><li>With <code>--count N</code>, N attempts are made against <strong>every</strong> address, one after another, each preceded by <code>--delay</code>.</li><li>The default <code>--delay 1000</code> means a single check takes about a second; use <code>--delay 0</code> for an immediate answer.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="usage.html"><span>Previous</span>Using shint</a><a class="next" href="ping.html"><span>Next</span>ping</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/telnet.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#check-a-port">Check a port</a></li><li class="toc3"><a href="#check-a-public-service-ipv4-and-ipv6">Check a public service (IPv4 and IPv6)</a></li><li class="toc3"><a href="#repeat-the-check">Repeat the check</a></li><li class="toc3"><a href="#a-port-that-is-closed">A port that is closed</a></li><li class="toc2"><a href="#reading-the-results">Reading the results</a></li><li class="toc2"><a href="#json">JSON</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

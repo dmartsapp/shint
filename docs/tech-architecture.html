@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture · shint</title>
+<meta name="description" content="Technical overview of shint - repository layout, layers, request lifecycle, dependencies and concurrency.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html" class="active" aria-current="page">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Technical</p>
+<h1>Architecture</h1>
+<p class="lead">How shint is put together - the layers, the life of a command, the dependencies and the concurrency model.</p>
+<h2 id="goals">Goals<a class="anchor" href="#goals" aria-label="Link to this section">#</a></h2>
+<p>The design follows from a few goals, and most decisions in the code can be traced back to one of them:</p>
+<ul><li><strong>One static binary.</strong> No runtime, no config files, no helper programs. Everything is built with <code>CGO_ENABLED=0</code>, so a release is a single file per platform.</li><li><strong>One way of working.</strong> Every command takes a target, shares the same flags, prints the same line grammar and offers the same JSON skeleton.</li><li><strong>Testable without a network.</strong> Every check can be pointed at a listener the tests start themselves (<code>127.0.0.1</code> or <code>::1</code>); the <code>listen</code> commands exist partly for this reason.</li><li><strong>No privileges.</strong> Nothing requires root: ICMP uses unprivileged sockets, and there is no raw-socket scanning.</li><li><strong>Honest measurement.</strong> Timeouts bound the operation they are named for, and byte counts are taken on the wire. See <a href="tech-design.html">Design notes</a>.</li></ul>
+<h2 id="repository-layout">Repository layout<a class="anchor" href="#repository-layout" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-plain"><pre><code>shint/
+├── main.go                 command line: cobra commands, flags, validation, exit status
+├── main_test.go            end-to-end tests: real exit statuses via the test binary
+├── lib/
+│   ├── lib.go              shared helpers: DNS, dialing, validation, statistics
+│   ├── output.go           JSON output types and the text log format
+│   └── handlers/           one file per command (plus TLS and wire counting)
+├── docs/                   this documentation site (Markdown sources + build script)
+├── .github/workflows/      the five CI/CD workflows
+├── Makefile                cross-compilation for every release platform
+├── Dockerfile              multi-arch container image
+├── basic_module_test.sh    live-internet smoke test
+├── CHANGELOG.md            release history
+└── readme.md               the short introduction</code></pre></div>
+<p>The full, file-by-file description is in the <a href="tech-source.html">Source reference</a>.</p>
+<h2 id="layers">Layers<a class="anchor" href="#layers" aria-label="Link to this section">#</a></h2>
+<div class="diagram">
+<svg viewBox="0 0 660 372" role="img" aria-label="shint architecture: command line, handlers, shared library, Go standard library">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>
+  <rect class="box accent" x="110" y="14" width="440" height="62" rx="10"/>
+  <text class="h" x="330" y="41" text-anchor="middle">main.go - the command line</text>
+  <text class="sub" x="330" y="61" text-anchor="middle">cobra commands · flags · validation · exit status</text>
+  <path class="arrow" d="M330 76V108"/>
+  <rect class="box" x="110" y="108" width="300" height="70" rx="10"/>
+  <text class="h" x="260" y="135" text-anchor="middle">lib/handlers - one per command</text>
+  <text class="sub" x="260" y="155" text-anchor="middle">telnet · icmp · web · nmap · udp · listen</text>
+  <text class="sub" x="260" y="170" text-anchor="middle">concurrency, output (text or JSON), result</text>
+  <rect class="box" x="440" y="108" width="110" height="70" rx="10"/>
+  <text class="h" x="495" y="135" text-anchor="middle">go-ping/v2</text>
+  <text class="sub" x="495" y="155" text-anchor="middle">ICMP echo</text>
+  <path class="arrow" d="M410 143H440"/>
+  <path class="arrow" d="M260 178V210"/>
+  <rect class="box" x="110" y="210" width="300" height="64" rx="10"/>
+  <text class="h" x="260" y="236" text-anchor="middle">lib - shared building blocks</text>
+  <text class="sub" x="260" y="256" text-anchor="middle">DNS · dialing · validation · log lines · JSON types</text>
+  <path class="arrow" d="M260 274V306"/>
+  <rect class="box" x="110" y="306" width="440" height="52" rx="10"/>
+  <text class="h" x="330" y="330" text-anchor="middle">Go standard library</text>
+  <text class="sub" x="330" y="347" text-anchor="middle">net · net/http · crypto/tls · context → the operating system's network stack</text>
+</svg>
+</div>
+<ul><li><strong><code>main.go</code></strong> owns everything about <em>invoking</em> shint: it defines the commands and flags, validates arguments, and turns a handler's result into the process exit status. It contains no networking.</li><li><strong><code>lib/handlers</code></strong> owns everything about <em>running</em> a check: the concurrency, the timing, the choice between text and JSON output, and the decision of whether every check passed. Each handler takes plain values (not cobra types), which is what makes it directly testable.</li><li><strong><code>lib</code></strong> holds the pieces shared by more than one handler: name resolution, the single-port dial, argument validators, the statistics helpers, and the output types and log formatting that keep every command consistent.</li></ul>
+<p>The dependency direction is strictly downward: <code>main</code> → <code>handlers</code> → <code>lib</code>.</p>
+<h2 id="life-of-a-command">Life of a command<a class="anchor" href="#life-of-a-command" aria-label="Link to this section">#</a></h2>
+<p>Following <code>shint telnet example.com 443 --count 2</code>:</p>
+<ol><li><code>main()</code> adds the commands to the root command and calls <code>Execute</code>. cobra parses the arguments into the package-level flag variables and calls <code>telnetCmd.Run</code>.</li><li><code>Run</code> validates the port and the numeric flags. A bad value calls <code>usage(...)</code>, which prints to stderr and records exit status <code>2</code>; nothing else runs.</li><li><code>Run</code> calls <code>handlers.TelnetHandler</code>, which resolves the name with <code>lib.ResolveName</code> (both A and AAAA records), bounded by <code>--timeout</code>.</li><li>For each iteration and each address it waits <code>--delay</code>, then starts a goroutine that calls <code>lib.IsPortUp</code> - a <code>net.Dialer</code> with the per-attempt timeout - and records the result under a mutex.</li><li>Once every goroutine is done, the handler prints the statistics block (text) or marshals the JSON document, and returns <code>true</code> only if every attempt succeeded.</li><li><code>Run</code> passes that to <code>finish(ok)</code>, which records exit status <code>1</code> if it was <code>false</code>; <code>main</code> then exits with the recorded status.</li></ol>
+<p>The other commands follow the same six steps; only step 4 differs.</p>
+<h2 id="dependencies">Dependencies<a class="anchor" href="#dependencies" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Module</th><th>Version</th><th>Used for</th></tr></thead><tbody><tr><td>Go</td><td>1.27.1 (<code>go.mod</code>)</td><td>The toolchain, and the whole networking stack (<code>net</code>, <code>net/http</code>, <code>crypto/tls</code>)</td></tr><tr><td><code>github.com/spf13/cobra</code></td><td>v1.10.2</td><td>Commands, flags, help, shell completion</td></tr><tr><td><code>github.com/dmartsapp/go-ping/v2</code></td><td>v2.0.0</td><td>ICMP echo over IPv4 and IPv6 (used only by <code>ping</code>)</td></tr><tr><td><code>github.com/spf13/pflag</code>, <code>mousetrap</code></td><td>indirect</td><td>cobra's flag parsing and Windows support</td></tr><tr><td><code>golang.org/x/net</code>, <code>golang.org/x/sys</code></td><td>indirect</td><td>Pulled in by go-ping</td></tr></tbody></table></div>
+<p>Everything else - DNS, TCP, UDP, HTTP, TLS, JSON, signal handling - is the standard library. There is no HTTP framework, no logging library and no configuration library.</p>
+<h2 id="concurrency-model">Concurrency model<a class="anchor" href="#concurrency-model" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Command</th><th>How the work is spread</th></tr></thead><tbody><tr><td><code>telnet</code>, <code>web</code>, <code>udp</code></td><td>Attempts are launched one at a time, <code>--delay</code> apart, each in its own goroutine. Results are collected under a mutex and a <code>WaitGroup</code> waits for all of them.</td></tr><tr><td><code>ping</code></td><td>go-ping runs the echo requests in parallel; shint streams its log lines from a channel.</td></tr><tr><td><code>nmap</code></td><td>A launcher loop starts one goroutine per port, but a channel used as a semaphore keeps at most <strong>500</strong> in flight. A separate goroutine prints progress from a ticker.</td></tr><tr><td><code>listen tcp</code></td><td>An accept loop starts one goroutine per connection.</td></tr><tr><td><code>listen udp</code></td><td>A single read loop.</td></tr><tr><td><code>listen http</code></td><td>Go's <code>net/http</code> server; each connection is wrapped so its bytes can be counted and reported when it closes.</td></tr></tbody></table></div>
+<p>Cancellation is by <code>context</code>. <code>nmap</code> and the listeners cancel on <code>Ctrl+C</code> (<code>SIGINT</code>/<code>SIGTERM</code>); no command imposes a run-wide deadline, because <code>--timeout</code> bounds single operations only.</p>
+<h2 id="cross-cutting-concerns">Cross-cutting concerns<a class="anchor" href="#cross-cutting-concerns" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Concern</th><th>Where it lives</th></tr></thead><tbody><tr><td>Text vs JSON output</td><td>Each handler checks its <code>jsonoutput</code> flag; both modes are produced from the same measurements.</td></tr><tr><td>Log grammar</td><td><code>lib.LogWithTimestamp</code>, <code>lib.Fields</code>, <code>lib.LogStats</code> in <code>lib/output.go</code>.</td></tr><tr><td>JSON schema</td><td>The structs in <code>lib/output.go</code>; field tags are the contract.</td></tr><tr><td>Dual-stack</td><td><code>lib.NetworkType = "ip"</code> makes every lookup return A and AAAA records; handlers test each address separately.</td></tr><tr><td>Byte counting</td><td><code>lib/handlers/wireconn.go</code>, shared by <code>web</code> and <code>listen http</code>.</td></tr><tr><td>Exit status</td><td><code>exitCode</code>, <code>usage()</code> and <code>finish()</code> in <code>main.go</code>; handlers only report success or failure.</td></tr></tbody></table></div>
+<h2 id="where-to-change-what">Where to change what<a class="anchor" href="#where-to-change-what" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>To change...</th><th>Look in</th></tr></thead><tbody><tr><td>A flag, a default, a help text</td><td><code>main.go</code></td></tr><tr><td>What a command does</td><td>its file in <code>lib/handlers/</code></td></tr><tr><td>A log line's wording</td><td>the handler that prints it (and its test)</td></tr><tr><td>A JSON field</td><td><code>lib/output.go</code> (and update <a href="output.html">Output formats</a>)</td></tr><tr><td>How addresses are resolved or dialed</td><td><code>lib/lib.go</code></td></tr><tr><td>The release build</td><td><code>.github/workflows/build.yaml</code>, <code>Makefile</code>, <code>Dockerfile</code></td></tr></tbody></table></div>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="changelog.html"><span>Previous</span>Changelog</a><a class="next" href="tech-source.html"><span>Next</span>Source reference</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-architecture.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#goals">Goals</a></li><li class="toc2"><a href="#repository-layout">Repository layout</a></li><li class="toc2"><a href="#layers">Layers</a></li><li class="toc2"><a href="#life-of-a-command">Life of a command</a></li><li class="toc2"><a href="#dependencies">Dependencies</a></li><li class="toc2"><a href="#concurrency-model">Concurrency model</a></li><li class="toc2"><a href="#cross-cutting-concerns">Cross-cutting concerns</a></li><li class="toc2"><a href="#where-to-change-what">Where to change what</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

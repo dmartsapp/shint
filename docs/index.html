@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shint</title>
+<meta name="description" content="shint is a single-binary network diagnostics tool - telnet-style port checks, ping, HTTP requests, port scans, UDP probes and local test listeners - with readable output, JSON, and proper exit codes.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html" class="active" aria-current="page">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+
+<h1>shint</h1>
+<p class="lead">One small tool for the network checks you run every day - connect, ping, request, scan, probe and listen - with the same clear output on every platform.</p>
+<div class="hero-actions">
+  <a class="btn primary" href="install.html">Install shint</a>
+  <a class="btn" href="usage.html">Read the docs</a>
+  <a class="btn" href="https://github.com/dmartsapp/shint/releases/latest">Download the latest release</a>
+</div>
+<h2 id="what-is-shint">What is shint?<a class="anchor" href="#what-is-shint" aria-label="Link to this section">#</a></h2>
+<p>shint - <em>that SHIt Network Tool</em> - puts the small utilities you keep reaching for into <strong>one program</strong>: a <code>telnet</code>-style port check, <code>ping</code>, an HTTP client, a port scanner, a UDP probe, and local test servers to try them all against. Nothing to install alongside it, nothing to configure, and every command reports what it found in the same readable format.</p>
+<div class="facts">
+  <div class="fact"><b>6</b><span>commands in one tool</span></div>
+  <div class="fact"><b>14</b><span>OS / CPU combinations</span></div>
+  <div class="fact"><b>1 file</b><span>static binary, ~10 MB</span></div>
+  <div class="fact"><b>IPv4 + IPv6</b><span>checked in one run</span></div>
+</div>
+<h2 id="why-people-use-it">Why people use it<a class="anchor" href="#why-people-use-it" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>Answers, not noise.</strong> Every line says what was checked, whether it worked, and how long it took: <code>[telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=30.89725ms</code>.</li><li><strong>The same everywhere.</strong> One download per platform (Linux, macOS, Windows, the BSDs, Solaris, Android) or one Docker image. The commands, flags and output are identical on all of them.</li><li><strong>Made for scripts.</strong> Add <code>--json</code> for machine-readable output, and rely on standard exit codes: <code>0</code> everything passed, <code>1</code> something failed, <code>2</code> you used it wrongly.</li><li><strong>Practise safely.</strong> <code>shint listen</code> starts a TCP, UDP or HTTP server on your own machine, so you can test firewalls, load balancers and other tools without touching anything real.</li><li><strong>Honest numbers.</strong> Timeouts apply to the thing they are named for, and byte counts are measured on the wire - headers included - so the client's and the server's figures match.</li><li><strong>Private by design.</strong> No telemetry, no accounts, no configuration files. shint only talks to the addresses you give it.</li></ul>
+<h2 id="see-it-work">See it work<a class="anchor" href="#see-it-work" aria-label="Link to this section">#</a></h2>
+<p>Is the port open - over IPv4 <em>and</em> IPv6?</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet google.com 443</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:14 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=google.com <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[2607:f8b0:400a:803::200e,142.251.46.78] <span class="tok-key">time</span>=47.672458ms
+<span class="tok-ts">Sun Sep 20 01:50:15 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> connect ok <span class="tok-key">host</span>=2607:f8b0:400a:803::200e <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=30.388833ms
+<span class="tok-ts">Sun Sep 20 01:50:16 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> connect ok <span class="tok-key">host</span>=142.251.46.78 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=30.467459ms
+
+<span class="tok-banner">======================================= telnet STATISTICS =======================================</span>
+Requests sent: 2, Response received: 2, Success: 100%
+Latency: minimum: 30.388833ms, average: 30.428146ms, maximum: 30.467459ms
+<span class="tok-ts">Sun Sep 20 01:50:16 MDT 2026:</span> <span class="tok-mod">[telnet]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=2.081599125s</code></pre></div>
+<p>Start a test web server on your machine, and call it:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> listen http 8080          <span class="tok-com"># in one terminal</span>
+<span class="tok-cmd">shint</span> web http://127.0.0.1:8080/   <span class="tok-com"># in another</span></code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:18 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=114.5µs
+<span class="tok-ts">Sun Sep 20 01:50:19 MDT 2026:</span> <span class="tok-mod">[web]</span> <span class="tok-ok">OK</span> response <span class="tok-key">url</span>=http://127.0.0.1:8080/ <span class="tok-key">status</span>=200 <span class="tok-key">bytes_sent</span>=97 <span class="tok-key">bytes_received</span>=160 <span class="tok-key">speed</span>=50.92KB/s <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=3.0685ms</code></pre></div>
+<p>Which ports are open on a machine?</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">--from</span> 2000 <span class="tok-flag">--to</span> 3000</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=53.167µs
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan started <span class="tok-key">ports_total</span>=1001 <span class="tok-key">timeout</span>=5s <span class="tok-key">max_in_flight</span>=500
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=2500
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=2222
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan complete <span class="tok-key">ports_scanned</span>=1001 <span class="tok-key">open</span>=2 <span class="tok-key">time</span>=15.927792ms
+<span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=15.9805ms</code></pre></div>
+<h2 id="the-commands">The commands<a class="anchor" href="#the-commands" aria-label="Link to this section">#</a></h2>
+<div class="cards">
+  <a class="card" href="telnet.html"><strong><code>telnet</code></strong><span>Can I open a TCP connection to this host and port?</span></a>
+  <a class="card" href="ping.html"><strong><code>ping</code></strong><span>Is this host reachable, and how fast does it answer?</span></a>
+  <a class="card" href="web.html"><strong><code>web</code></strong><span>Make an HTTP or HTTPS request and see what came back, including TLS and mutual TLS.</span></a>
+  <a class="card" href="nmap.html"><strong><code>nmap</code></strong><span>Which TCP ports are open on this host?</span></a>
+  <a class="card" href="udp.html"><strong><code>udp</code></strong><span>Send a UDP probe and classify the result: open, closed, or open|filtered.</span></a>
+  <a class="card" href="listen.html"><strong><code>listen</code></strong><span>Run a local TCP, UDP or HTTP server to test against.</span></a>
+</div>
+<h2 id="instead-of-juggling-tools">Instead of juggling tools<a class="anchor" href="#instead-of-juggling-tools" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>You would normally use</th><th>With shint</th></tr></thead><tbody><tr><td><code>telnet host port</code>, <code>nc -zv host port</code></td><td><code>shint telnet host port</code></td></tr><tr><td><code>ping host</code></td><td><code>shint ping host</code></td></tr><tr><td><code>curl -v https://host/</code></td><td><code>shint web https://host/</code></td></tr><tr><td><code>nmap -p 20-9000 host</code></td><td><code>shint nmap host --from 20 --to 9000</code></td></tr><tr><td><code>nc -u host port</code></td><td><code>shint udp host port</code></td></tr><tr><td><code>nc -l 9000</code>, <code>python3 -m http.server</code></td><td><code>shint listen tcp 9000</code>, <code>shint listen http 8080</code></td></tr></tbody></table></div>
+<p>shint covers the everyday checks; it does not replace the full feature sets of <code>curl</code> or <code>nmap</code>.</p>
+<h2 id="where-to-next">Where to next<a class="anchor" href="#where-to-next" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>New here?</strong> <a href="install.html">Install shint</a> takes a minute, then <a href="usage.html">Using shint</a> explains the flags every command shares.</li><li><strong>Have a specific job?</strong> The <a href="cookbook.html">cookbook</a> has ready-made recipes, and <a href="troubleshooting.html">troubleshooting</a> covers the common surprises.</li><li><strong>Curious how it works?</strong> The <a href="tech-architecture.html">Technical</a> section documents the architecture, every source file, the CI/CD pipeline and how releases are cut.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><span></span><a class="next" href="install.html"><span>Next</span>Install</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/index.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-is-shint">What is shint?</a></li><li class="toc2"><a href="#why-people-use-it">Why people use it</a></li><li class="toc2"><a href="#see-it-work">See it work</a></li><li class="toc2"><a href="#the-commands">The commands</a></li><li class="toc2"><a href="#instead-of-juggling-tools">Instead of juggling tools</a></li><li class="toc2"><a href="#where-to-next">Where to next</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

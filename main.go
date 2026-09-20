@@ -1,3 +1,11 @@
+// Command shint - "that SHIt Network Tool" - bundles the everyday network
+// checks (telnet-style port checks, ping, an HTTP client, a port scanner, a
+// UDP probe and local test listeners) into one static binary.
+//
+// This file is only the command line: it declares the cobra commands and
+// their flags, validates arguments, and turns each handler's result into the
+// process exit status. All the networking lives in lib/handlers, and the
+// pieces they share in lib. See docs/src/tech-architecture.md.
 package main
 
 import (
@@ -15,19 +23,31 @@ import (
 )
 
 var (
-	// Version is overridden at build time via -ldflags "-X main.Version=...".
+	// Version is what `shint --version` prints. The default is the release
+	// this source describes (bump it in the release commit); the Makefile,
+	// the release workflow (tag/commit/time) and the Dockerfile each override
+	// it at link time with -ldflags "-X main.Version=...", so every kind of
+	// build reports something traceable. See docs/src/tech-release.md.
 	Version string = "4.0.3"
 )
 
+// Flag values, bound in init(). cobra parses the command line into these
+// package-level variables before a command's Run function is called.
 var (
-	iterations          int
-	delay               int
-	throttle            bool
-	timeout             int
-	payload_size        int
-	jsonoutput          bool
-	fromport            int
-	endport             int
+	// Shared flags: persistent on the root command, so every command has them
+	// with the same name, default and meaning.
+	iterations   int
+	delay        int
+	throttle     bool
+	timeout      int
+	payload_size int
+	jsonoutput   bool
+
+	// nmap
+	fromport int
+	endport  int
+
+	// web
 	httpmethod          string
 	httpdata            string
 	httpheaders         []string
@@ -36,10 +56,15 @@ var (
 	certFile            string
 	keyFile             string
 	insecureSkipVerify  bool
-	udpData             string
-	listenBind          string
-	listenEcho          bool
-	listenMaxCount      int
+
+	// udp
+	udpData string
+
+	// listen. listenMaxCount shadows the root --count so that a listener
+	// defaults to "run until Ctrl+C" rather than "one and done".
+	listenBind     string
+	listenEcho     bool
+	listenMaxCount int
 )
 
 // Exit status. shint checks several things per run (every resolved address,
@@ -313,6 +338,9 @@ func init() {
 	rootCmd.Version = Version
 }
 
+// main registers the commands (here rather than in init(), so the command
+// variables above are fully initialised first), runs cobra, and exits with the
+// status the chosen command recorded - see the exit-status notes above.
 func main() {
 	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, listenCmd)
 	// cobra has already printed the error (and usage help) to stderr. Every

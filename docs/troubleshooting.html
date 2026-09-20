@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting &amp; FAQ · shint</title>
+<meta name="description" content="Answers to common shint questions - timeouts vs refusals, ping permissions, slow scans, UDP results, TLS errors, exit codes and privacy.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html" class="active" aria-current="page">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Guides</p>
+<h1>Troubleshooting &amp; FAQ</h1>
+<p class="lead">The things that most often surprise people, and what they mean.</p>
+<h2 id="connection-refused-or-i-o-timeout">"Connection refused" or "i/o timeout"?<a class="anchor" href="#connection-refused-or-i-o-timeout" aria-label="Link to this section">#</a></h2>
+<p>They mean different things:</p>
+<ul><li><strong><code>connection refused</code></strong> - the target machine answered, and said nothing is listening on that port. The host is up and reachable; the service is stopped or on a different port.</li><li><strong><code>i/o timeout</code></strong> - no answer at all within <code>--timeout</code>. Usually a firewall silently dropping packets, a wrong address, or a host that is down.</li><li><strong><code>no route to host</code> / <code>network is unreachable</code></strong> - this machine has no path to that address. For an IPv6 address, your network probably has no IPv6.</li></ul>
+<h2 id="a-scan-takes-a-long-time">A scan takes a long time<a class="anchor" href="#a-scan-takes-a-long-time" aria-label="Link to this section">#</a></h2>
+<p><code>nmap</code> waits up to <code>--timeout</code> (default 5 seconds) for <em>each</em> port that does not answer, with up to 500 ports at once. A host that drops packets makes every port wait the full timeout - about 90 seconds for 9,000 ports. Add <code>--timeout 1</code> on a fast network. The progress lines show the scan is working. See <a href="nmap.html#how-long-will-it-take">nmap</a>.</p>
+<h2 id="a-scan-says-a-port-is-closed-but-the-service-is-running">A scan says a port is closed, but the service is running<a class="anchor" href="#a-scan-says-a-port-is-closed-but-the-service-is-running" aria-label="Link to this section">#</a></h2>
+<p>TCP scanning cannot tell a stopped service from a firewall that drops packets - both simply produce no connection. Check from a machine on the same network as the service, and make sure the service listens on the address you are scanning (a service bound to <code>127.0.0.1</code> is invisible from other machines).</p>
+<h2 id="ping-says-permission-denied-linux">ping says permission denied (Linux)<a class="anchor" href="#ping-says-permission-denied-linux" aria-label="Link to this section">#</a></h2>
+<p>Unprivileged ICMP is controlled by <code>net.ipv4.ping_group_range</code>. Run as root, or allow everyone:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">sudo</span> sysctl <span class="tok-flag">-w</span> net.ipv4.ping_group_range=<span class="tok-str">"0 2147483647"</span></code></pre></div>
+<p>macOS, the BSDs and Windows do not need this.</p>
+<h2 id="ping-and-telnet-report-an-ipv6-failure-but-the-host-works">ping and telnet report an IPv6 failure but the host works<a class="anchor" href="#ping-and-telnet-report-an-ipv6-failure-but-the-host-works" aria-label="Link to this section">#</a></h2>
+<p>A name with both IPv4 and IPv6 addresses is tested over both, and each is reported separately. If your network has no IPv6 route, the IPv6 attempt fails with <code>network is unreachable</code> while the IPv4 one succeeds. That is real information about your network, not a fault in the host. The exit status is <code>1</code> because one of the checks failed; test the IPv4 address directly if that is what you care about.</p>
+<h2 id="udp-says-open-filtered">UDP says <code>open|filtered</code><a class="anchor" href="#udp-says-open-filtered" aria-label="Link to this section">#</a></h2>
+<p>UDP gives no acknowledgement, so silence is ambiguous: the service may simply not reply to input it does not understand, or a firewall may be dropping the packet. Send a payload the service understands with <code>--data</code>. <code>closed</code> (the host explicitly said "port unreachable") is the only definite negative.</p>
+<h2 id="certificate-is-not-trusted-x509-certificate-signed-by-unknown-authority">"certificate is not trusted" / "x509: certificate signed by unknown authority"<a class="anchor" href="#certificate-is-not-trusted-x509-certificate-signed-by-unknown-authority" aria-label="Link to this section">#</a></h2>
+<p><code>web</code> verifies certificates by default. For a service that uses an internal CA, pass <code>--cacert ca.pem</code>. For a quick, unverified look, pass <code>-k</code> - but the answer cannot then be trusted. See <a href="web.html#https-and-certificates">web</a>.</p>
+<h2 id="why-does-my-script-think-a-500-error-succeeded">Why does my script think a 500 error succeeded?<a class="anchor" href="#why-does-my-script-think-a-500-error-succeeded" aria-label="Link to this section">#</a></h2>
+<p><code>web</code> reports the HTTP status but treats any response as a completed request (as <code>curl</code> does without <code>-f</code>), so a 404 or 500 exits <code>0</code>. Check the status yourself:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">--json</span> https://example.com/ | jq <span class="tok-flag">-e</span> <span class="tok-str">'.stats[0].status_code &lt; 400'</span></code></pre></div>
+<h2 id="what-are-the-exit-codes">What are the exit codes?<a class="anchor" href="#what-are-the-exit-codes" aria-label="Link to this section">#</a></h2>
+<p><code>0</code> every check passed, <code>1</code> at least one check failed, <code>2</code> the command was used wrongly. See <a href="usage.html#exit-status">Exit status</a> for exactly what counts as a failure for each command.</p>
+<h2 id="a-check-takes-a-second-even-when-it-is-instant">A check takes a second even when it is instant<a class="anchor" href="#a-check-takes-a-second-even-when-it-is-instant" aria-label="Link to this section">#</a></h2>
+<p><code>--delay</code> (default 1000 ms) is applied before each attempt, including the first. Use <code>--delay 0</code>.</p>
+<h2 id="macos-says-the-file-cannot-be-opened-because-the-developer-cannot-be-verified">macOS says the file "cannot be opened because the developer cannot be verified"<a class="anchor" href="#macos-says-the-file-cannot-be-opened-because-the-developer-cannot-be-verified" aria-label="Link to this section">#</a></h2>
+<p>A file downloaded through a browser is quarantined. Clear the flag once: <code>xattr -d com.apple.quarantine shint</code>. Files downloaded with <code>curl</code> are not flagged.</p>
+<h2 id="the-listener-asks-to-allow-incoming-connections">The listener asks to allow incoming connections<a class="anchor" href="#the-listener-asks-to-allow-incoming-connections" aria-label="Link to this section">#</a></h2>
+<p>The operating system's firewall is asking whether <code>shint</code> may accept connections from the network. Allow it if you want other machines to reach it, or start the listener with <code>--bind 127.0.0.1</code> to keep it local.</p>
+<h2 id="address-already-in-use">"address already in use"<a class="anchor" href="#address-already-in-use" aria-label="Link to this section">#</a></h2>
+<p>Another program owns that port. Pick another, or find the owner (<code>lsof -i :8080</code> on macOS and Linux). <code>shint listen</code> exits with status <code>1</code> in this case.</p>
+<h2 id="does-shint-collect-any-data">Does shint collect any data?<a class="anchor" href="#does-shint-collect-any-data" aria-label="Link to this section">#</a></h2>
+<p>No. shint has no telemetry, accounts or configuration files. It sends only what the check itself needs - DNS queries, TCP connections, UDP datagrams, ICMP echo requests and the HTTP requests you ask for - to the addresses you name.</p>
+<h2 id="where-do-i-report-a-problem">Where do I report a problem?<a class="anchor" href="#where-do-i-report-a-problem" aria-label="Link to this section">#</a></h2>
+<p>Open an issue at <a href="https://github.com/dmartsapp/shint/issues">github.com/dmartsapp/shint/issues</a> with the command you ran, its output (with <code>--json</code> if possible) and the version from <code>shint --version</code>.</p>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="cookbook.html"><span>Previous</span>Cookbook</a><a class="next" href="output.html"><span>Next</span>Output formats</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/troubleshooting.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#connection-refused-or-i-o-timeout">"Connection refused" or "i/o timeout"?</a></li><li class="toc2"><a href="#a-scan-takes-a-long-time">A scan takes a long time</a></li><li class="toc2"><a href="#a-scan-says-a-port-is-closed-but-the-service-is-running">A scan says a port is closed, but the service is running</a></li><li class="toc2"><a href="#ping-says-permission-denied-linux">ping says permission denied (Linux)</a></li><li class="toc2"><a href="#ping-and-telnet-report-an-ipv6-failure-but-the-host-works">ping and telnet report an IPv6 failure but the host works</a></li><li class="toc2"><a href="#udp-says-open-filtered">UDP says <code>open|filtered</code></a></li><li class="toc2"><a href="#certificate-is-not-trusted-x509-certificate-signed-by-unknown-authority">"certificate is not trusted" / "x509: certificate signed by unknown authority"</a></li><li class="toc2"><a href="#why-does-my-script-think-a-500-error-succeeded">Why does my script think a 500 error succeeded?</a></li><li class="toc2"><a href="#what-are-the-exit-codes">What are the exit codes?</a></li><li class="toc2"><a href="#a-check-takes-a-second-even-when-it-is-instant">A check takes a second even when it is instant</a></li><li class="toc2"><a href="#macos-says-the-file-cannot-be-opened-because-the-developer-cannot-be-verified">macOS says the file "cannot be opened because the developer cannot be verified"</a></li><li class="toc2"><a href="#the-listener-asks-to-allow-incoming-connections">The listener asks to allow incoming connections</a></li><li class="toc2"><a href="#address-already-in-use">"address already in use"</a></li><li class="toc2"><a href="#does-shint-collect-any-data">Does shint collect any data?</a></li><li class="toc2"><a href="#where-do-i-report-a-problem">Where do I report a problem?</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

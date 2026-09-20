@@ -21,6 +21,8 @@ import (
 )
 
 const (
+	// HTTP_CLIENT_USER_AGENT is the default User-Agent; -H "User-Agent: ..."
+	// overrides it.
 	HTTP_CLIENT_USER_AGENT string = "dmarts.app-http-v0.1"
 	webModule              string = "web"
 )
@@ -99,6 +101,9 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		output.Stats = make([]lib.WebStats, 0)
 	}
 
+	// One client for the whole run. Timeout bounds each request end to end
+	// (connect, TLS, response); the transport counts bytes on the wire (see
+	// wireconn.go). Redirects are followed (net/http's default, up to 10).
 	client := &http.Client{
 		Timeout:   time.Duration(timeout) * time.Second,
 		Transport: newCountingTransport(tlsConfig),
@@ -164,6 +169,8 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				return
 			}
 			request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT)
+			// -H values are "Name: value"; a malformed one is skipped and
+			// reported in the JSON "errors" field.
 			for _, h := range headers {
 				parts := strings.SplitN(h, ":", 2)
 				if len(parts) == 2 {

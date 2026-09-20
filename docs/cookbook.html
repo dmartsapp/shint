@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cookbook · shint</title>
+<meta name="description" content="Practical shint recipes - check reachability, monitor in scripts, compare client and server byte counts, test firewalls and TLS.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html" class="active" aria-current="page">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Guides</p>
+<h1>Cookbook</h1>
+<p class="lead">Ready-made recipes for the jobs shint is most often used for.</p>
+<h2 id="is-this-service-reachable">Is this service reachable?<a class="anchor" href="#is-this-service-reachable" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet db.internal 5432 <span class="tok-flag">--timeout</span> 2</code></pre></div>
+<p>A refusal or a timeout exits <code>1</code>, so it drops straight into a script:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">if</span> shint telnet db.internal 5432 <span class="tok-flag">--timeout</span> 2 <span class="tok-flag">--delay</span> 0 &gt; /dev/null; then
+  echo <span class="tok-str">"up"</span>
+<span class="tok-cmd">else</span>
+  echo <span class="tok-str">"down"</span>
+<span class="tok-cmd">fi</span></code></pre></div>
+<p>Both the IPv4 and the IPv6 address are tried, and <em>every</em> one must connect for the exit status to be <code>0</code>. If your network has no IPv6 route, the IPv6 attempt fails and so does the exit status - test the IPv4 address directly (<code>shint telnet 192.0.2.10 5432</code>), or read the per-address <code>success</code> fields from <code>--json</code>.</p>
+<h2 id="watch-reachability-over-time">Watch reachability over time<a class="anchor" href="#watch-reachability-over-time" aria-label="Link to this section">#</a></h2>
+<p>Twenty checks, two seconds apart:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet example.com 443 <span class="tok-flag">--count</span> 20 <span class="tok-flag">--delay</span> 2000</code></pre></div>
+<p>The statistics block at the end shows how many succeeded and the minimum, average and maximum connect time.</p>
+<h2 id="health-check-an-http-endpoint-in-a-script">Health-check an HTTP endpoint in a script<a class="anchor" href="#health-check-an-http-endpoint-in-a-script" aria-label="Link to this section">#</a></h2>
+<p><code>web</code> exits <code>0</code> for any HTTP response, so check the status explicitly:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">status</span>=$(shint web <span class="tok-flag">--json</span> https://example.com/health | jq <span class="tok-str">'.stats[0].status_code'</span>)
+[ <span class="tok-str">"$status"</span> = <span class="tok-str">"200"</span> ] || { echo <span class="tok-str">"unhealthy: $status"</span>; exit 1; }</code></pre></div>
+<p>If the request gets no response at all (refused, timeout, TLS failure), <code>web</code> itself exits <code>1</code> and the JSON has <code>"success": false</code> with the reason.</p>
+<h2 id="compare-what-the-client-sent-with-what-the-server-received">Compare what the client sent with what the server received<a class="anchor" href="#compare-what-the-client-sent-with-what-the-server-received" aria-label="Link to this section">#</a></h2>
+<p>Both sides count the same bytes, headers included, so a mismatch points at something in between - a proxy that rewrites headers, say.</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> listen http 8080 <span class="tok-flag">--count</span> 1      <span class="tok-com"># terminal 1</span>
+<span class="tok-cmd">shint</span> web http://127.0.0.1:8080/      <span class="tok-com"># terminal 2</span></code></pre></div>
+<p><code>web</code> reports <code>bytes_sent=97 bytes_received=160</code>; the listener reports <code>bytes_received=97 bytes_sent=160</code>. Point <code>web</code> at a real service instead and compare its numbers with that service's own access logs.</p>
+<h2 id="test-a-firewall-rule">Test a firewall rule<a class="anchor" href="#test-a-firewall-rule" aria-label="Link to this section">#</a></h2>
+<p>On the machine that should accept traffic:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> listen tcp 9000</code></pre></div>
+<p>From another machine:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet server.example.com 9000 <span class="tok-flag">--timeout</span> 2</code></pre></div>
+<p><code>connect ok</code> means the rule allows it. A timeout means something is dropping the packets; a refusal means the packets got through but nothing was listening (start the listener and retry).</p>
+<h2 id="find-what-is-open-on-a-machine">Find what is open on a machine<a class="anchor" href="#find-what-is-open-on-a-machine" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 192.168.1.10 <span class="tok-flag">--from</span> 1 <span class="tok-flag">--to</span> 1024 <span class="tok-flag">--timeout</span> 1</code></pre></div>
+<p>Lower <code>--timeout</code> makes scans of hosts with many filtered ports much quicker. See <a href="nmap.html#how-long-will-it-take">nmap</a> for the timing rules.</p>
+<h2 id="check-a-private-https-service">Check a private HTTPS service<a class="anchor" href="#check-a-private-https-service" aria-label="Link to this section">#</a></h2>
+<p>With an internal certificate authority:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">--cacert</span> internal-ca.pem https://intranet.example.com/</code></pre></div>
+<p>With mutual TLS:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">--cacert</span> ca.pem <span class="tok-flag">--cert</span> client.pem <span class="tok-flag">--key</span> client-key.pem https://api.example.com/</code></pre></div>
+<p>For a quick look at a service with a self-signed certificate, <code>-k</code> skips verification - but treat the answer as untrusted.</p>
+<h2 id="probe-a-udp-service">Probe a UDP service<a class="anchor" href="#probe-a-udp-service" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> udp 192.168.1.1 53 <span class="tok-flag">--data</span> <span class="tok-str">"hello"</span> <span class="tok-flag">--timeout</span> 3</code></pre></div>
+<p><code>open</code> means it answered; <code>closed</code> means the host said nothing is listening; <code>open|filtered</code> means silence. See <a href="udp.html">udp</a> for how to read that.</p>
+<h2 id="use-shint-from-docker">Use shint from Docker<a class="anchor" href="#use-shint-from-docker" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> farhansabbir/shint:latest telnet example.com 443
+<span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> farhansabbir/shint:latest web <span class="tok-flag">--json</span> https://example.com/health</code></pre></div>
+<p>Inside a container, "localhost" is the container itself. To test something on the host, use the host's address (<code>host.docker.internal</code> on Docker Desktop) or <code>--network host</code> on Linux.</p>
+<h2 id="imitate-uneven-traffic">Imitate uneven traffic<a class="anchor" href="#imitate-uneven-traffic" aria-label="Link to this section">#</a></h2>
+<p><code>--throttle</code> waits a random 0-10 seconds between attempts, which is useful for exercising monitoring or rate limits:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web https://example.com/ <span class="tok-flag">--count</span> 10 <span class="tok-flag">--throttle</span></code></pre></div>
+<h2 id="keep-machine-readable-results">Keep machine-readable results<a class="anchor" href="#keep-machine-readable-results" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> web <span class="tok-flag">--json</span> https://example.com/ &gt; result.json
+<span class="tok-cmd">shint</span> telnet example.com 443 <span class="tok-flag">--json</span> | jq <span class="tok-str">'.stats[] | {address, success, micros: .["time_taken_µs"]}'</span></code></pre></div>
+<p>Failed checks are valid JSON too, so the same pipeline works on failure.</p>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="listen.html"><span>Previous</span>listen</a><a class="next" href="troubleshooting.html"><span>Next</span>Troubleshooting &amp; FAQ</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/cookbook.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#is-this-service-reachable">Is this service reachable?</a></li><li class="toc2"><a href="#watch-reachability-over-time">Watch reachability over time</a></li><li class="toc2"><a href="#health-check-an-http-endpoint-in-a-script">Health-check an HTTP endpoint in a script</a></li><li class="toc2"><a href="#compare-what-the-client-sent-with-what-the-server-received">Compare what the client sent with what the server received</a></li><li class="toc2"><a href="#test-a-firewall-rule">Test a firewall rule</a></li><li class="toc2"><a href="#find-what-is-open-on-a-machine">Find what is open on a machine</a></li><li class="toc2"><a href="#check-a-private-https-service">Check a private HTTPS service</a></li><li class="toc2"><a href="#probe-a-udp-service">Probe a UDP service</a></li><li class="toc2"><a href="#use-shint-from-docker">Use shint from Docker</a></li><li class="toc2"><a href="#imitate-uneven-traffic">Imitate uneven traffic</a></li><li class="toc2"><a href="#keep-machine-readable-results">Keep machine-readable results</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

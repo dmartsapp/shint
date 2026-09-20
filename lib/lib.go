@@ -1,3 +1,10 @@
+// Package lib holds the pieces shared by more than one command handler: name
+// resolution, the single-port TCP dial, argument validators and latency
+// statistics here, and in output.go the JSON output types and the text log
+// format that keep every command's output consistent.
+//
+// It knows nothing about cobra or the process: handlers call into it, never
+// the other way around. See docs/src/tech-architecture.md.
 package lib
 
 import (
@@ -11,7 +18,8 @@ import (
 )
 
 const (
-	// DATETIMEFORMAT string = "Mon, 02 Jan 2006 15:04:05 MST"
+	// DATETIMEFORMAT is the timestamp layout at the start of every text log
+	// line: Go's time.UnixDate, e.g. "Sun Sep 20 01:26:48 MDT 2026".
 	DATETIMEFORMAT string = time.UnixDate
 	// NetworkType controls DNS resolution family for telnet/nmap/udp/web's
 	// diagnostic lookups (ping's own resolution lives in the go-ping
@@ -20,9 +28,13 @@ const (
 	// with both records gets checked over both protocols, the same way
 	// ping already does.
 	NetworkType string = "ip"
-	Protocol       string = "tcp"
+	// Protocol is the network IsPortUp dials.
+	Protocol string = "tcp"
 )
 
+// ResolveName resolves name to its IP addresses as strings - IPv4 and IPv6
+// alike (see NetworkType). ctx bounds the lookup; callers derive it from
+// --timeout, and never from anything wider than the lookup itself.
 func ResolveName(ctx context.Context, name string) ([]string, error) {
 	var resolver net.Resolver
 	ipaddresses, err := resolver.LookupIP(ctx, NetworkType, name)
@@ -33,11 +45,15 @@ func ResolveName(ctx context.Context, name string) ([]string, error) {
 	return addresses, err
 }
 
+// ResolveNameToIPs is ResolveName returning parsed net.IP values, for callers
+// that need the addresses themselves rather than their text.
 func ResolveNameToIPs(ctx context.Context, name string) ([]net.IP, error) {
 	var resolver net.Resolver
 	return resolver.LookupIP(ctx, NetworkType, name)
 }
 
+// GetMinAvgMax returns the smallest, mean and largest of stats. stats must not
+// be empty; callers (LogStats) check before calling.
 func GetMinAvgMax(stats []time.Duration) (time.Duration, time.Duration, time.Duration) {
 	max := slices.Max(stats)
 	min := slices.Min(stats)
@@ -48,6 +64,8 @@ func GetMinAvgMax(stats []time.Duration) (time.Duration, time.Duration, time.Dur
 	return min, time.Duration(avg / len(stats)), max
 }
 
+// SortTimeDurationSlice sorts *stats ascending, in place. Nothing in the
+// commands uses it today; it is exercised by the tests only.
 func SortTimeDurationSlice(stats *[]time.Duration) {
 	sort.SliceStable(*stats, func(i, j int) bool {
 		return ((*stats)[i] <= (*stats)[j])
@@ -90,6 +108,8 @@ func RequirePositive(name string, value int) error {
 	return nil
 }
 
+// ConvertIPToStringSlice returns the text form of each address; nil for an
+// empty input.
 func ConvertIPToStringSlice(ips []net.IP) []string {
 	var result []string
 	for _, ip := range ips {

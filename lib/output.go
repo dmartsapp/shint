@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// DNSLookup is the outcome of resolving the target's host name; every JSON
+// document carries one.
 type DNSLookup struct {
 	Hostname          string   `json:"hostname"`
 	ResolvedAddresses []string `json:"resolved_addresses"`
@@ -15,6 +17,10 @@ type DNSLookup struct {
 	TimeTaken         int64    `json:"time_taken_µs"`
 }
 
+// InputParams records what a command ran with, so a saved JSON document says
+// how it was produced. Compatibility notes: Timeout carries the --timeout
+// value in seconds despite the key name (timeout_ms); FromPort/ToPort hold 7
+// for ping and mean nothing there; Sequential is always false.
 type InputParams struct {
 	Mode       string   `json:"module_name"`
 	Sequential bool     `json:"sequential"`
@@ -32,6 +38,8 @@ type InputParams struct {
 	Headers    []string `json:"headers"`
 }
 
+// TelnetStats is one connection attempt, in microseconds; Error is set only
+// when the attempt failed.
 type TelnetStats struct {
 	Address   string `json:"address"`
 	Success   bool   `json:"success"`
@@ -41,6 +49,8 @@ type TelnetStats struct {
 	Error     string `json:"error,omitempty"`
 }
 
+// WebStats is one HTTP attempt. A failed attempt (no response at all) is still
+// recorded, with Success false and the reason in Errors.
 type WebStats struct {
 	URL       string         `json:"url"`
 	Errors    []string       `json:"errors"`
@@ -60,12 +70,16 @@ type WebStats struct {
 	BandwidthKBs  float64 `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
 }
 
+// NmapStats is one scanned port. Every port in the range is listed, open or
+// not; Success means the connection was accepted.
 type NmapStats struct {
 	Address string `json:"address"`
 	Port    int    `json:"port"`
 	Success bool   `json:"success"`
 }
 
+// ICMPStats is one echo request. Unlike the other stats its times are in
+// milliseconds (the ping library's resolution).
 type ICMPStats struct {
 	Address     string `json:"address"`
 	Success     bool   `json:"success"`
@@ -131,6 +145,10 @@ type HTTPListenEvent struct {
 	UnixTimeUs       int64  `json:"unixtime_µs"`
 }
 
+// JSONOutput is the document every command prints with --json: a shared
+// skeleton (inputs, DNS result, timing, run-level error) around Stats, which
+// holds a slice of the command's own stats type. Even a run whose checks all
+// failed is one valid document. See docs/src/output.md.
 type JSONOutput struct {
 	InputParams    InputParams `json:"input_params"`
 	ModuleName     string      `json:"module_name"`

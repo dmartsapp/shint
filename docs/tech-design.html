@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design notes · shint</title>
+<meta name="description" content="Design notes for shint - timeouts, wire-level byte counting, the port scanner, UDP classification, dual-stack behaviour and the minimal HTTP listener.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.3</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html" class="active" aria-current="page">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Technical</p>
+<h1>Design notes</h1>
+<p class="lead">The non-obvious decisions in shint, why they were made, and the bugs that shaped them.</p>
+<p>These notes explain the parts of shint that look surprising until you know the history. Each ends with what pins the behaviour in place.</p>
+<h2 id="timeouts-bound-one-operation-never-the-whole-run">Timeouts bound one operation, never the whole run<a class="anchor" href="#timeouts-bound-one-operation-never-the-whole-run" aria-label="Link to this section">#</a></h2>
+<p><strong>The rule.</strong> <code>--timeout</code> is what <em>one</em> thing gets: one connection attempt, one request, one port, one probe, one DNS lookup. It is never a deadline for the whole command.</p>
+<p><strong>Why.</strong> <code>--count</code> and <code>--delay</code> stretch a run far past <code>--timeout</code> (eight attempts one second apart take eight seconds), and a scan of thousands of ports takes many times the per-port timeout. Two commands once handed <code>--timeout</code> to the <em>whole run</em> as a context deadline as well:</p>
+<ul><li><code>telnet --count 8</code> reported attempts 5-8 as <code>i/o timeout</code> after ~100 microseconds - even against a listener that was up - because the run-wide deadline had already passed when they started.</li><li><code>nmap --from 20 --to 9000</code> against a host that drops packets silently stopped after about 5 seconds, having tried a fraction of the range, and printed nothing to say so.</li></ul>
+<p>Both were false results presented as real ones, which is the worst kind of bug for a diagnostic tool.</p>
+<p><strong>How it is enforced.</strong> <code>main.go</code> gives no command a deadline. <code>nmap</code> gets <code>scanContext()</code> - cancelled only by <code>Ctrl+C</code>. <code>TelnetHandler</code> no longer accepts a context at all, so a deadline cannot be passed back in. DNS lookups get their own <code>context.WithTimeout</code> inside the handler.</p>
+<p><strong>What pins it.</strong> <code>TestTelnetHandlerRunLongerThanTimeoutStillSucceeds</code>, <code>TestNmapHandlerCoversWholeRangeEvenWhenItOutlastsPerPortTimeout</code>, <code>TestScanContextHasNoDeadline</code>.</p>
+<h2 id="bytes-are-counted-on-the-wire">Bytes are counted on the wire<a class="anchor" href="#bytes-are-counted-on-the-wire" aria-label="Link to this section">#</a></h2>
+<p><strong>The rule.</strong> <code>bytes_sent</code> and <code>bytes_received</code> (in <code>web</code>) and <code>bytes_received</code> / <code>bytes_sent</code> (in <code>listen http</code>) are the raw bytes that crossed the connection - request or status line, headers and body - and both sides count them the same way, so they agree.</p>
+<p><strong>Why.</strong> An earlier version estimated the response-header size from the parsed headers and never measured what was sent, while the listener counted only body bytes. The two could never match, and an estimate cannot see what the HTTP client adds itself (<code>Host</code>, <code>Accept-Encoding</code>, <code>Content-Length</code>) or chunked-encoding framing.</p>
+<p><strong>How it works.</strong></p>
+<ul><li><code>countingConn</code> wraps a <code>net.Conn</code> and tallies bytes read and written.</li><li>On the client, <code>newCountingTransport</code> wraps every connection. HTTPS connections are dialed and handshaken inside <code>DialTLSContext</code> so the wrapper sits <em>above</em> TLS and counts HTTP bytes, matching what a plain-HTTP listener sees.</li><li>A connection can be reused (keep-alive) or several can be used (redirects), so <code>wireMeter</code> snapshots each connection's counters when the request first gets it (<code>httptrace.GotConn</code>) and reports only the difference, summed over every connection touched.</li><li>On the server, <code>countingListener</code> wraps accepted connections, and the request is <em>reported when its connection closes</em> - the only moment the counts are final, since <code>net/http</code> finishes reading a body and writing the last chunk after the handler returns.</li></ul>
+<p><strong>Details that matter.</strong></p>
+<ul><li>The listener answers <code>Connection: close</code>, so each connection carries exactly one request and the connection's counts <em>are</em> the request's counts.</li><li>The listener <strong>reads and discards the request body before answering.</strong> Go's HTTP client abandons an upload still in progress the moment a complete <code>Connection: close</code> response arrives, so answering first would cut a large POST short (a 200 KB body stopped at ~168 KB) and both sides' counts with it. The body is never inspected.</li><li>It never parses or acts on headers - no conditional requests, no <code>ETag</code>. A validator is only useful if <code>If-None-Match</code> were honoured, and the listener deliberately does not.</li><li><code>net/http</code> half-closes with <code>CloseWrite</code> when it leaves a body unread; the wrapper passes that through so the behaviour is not silently lost.</li></ul>
+<p><strong>What pins it.</strong> <code>TestWebAndHTTPListenAgreeOnBytes</code> (0 B to 2 MB), <code>TestWebHandlerBytesIncludeHeaders</code> (plain and TLS, against a raw server that knows the truth), <code>TestWebHandlerReusedConnectionCountsPerRequest</code>, <code>TestWebHandlerBytesCoverEveryRedirectHop</code>, <code>TestHTTPListenHandlerCountsRawBytes</code>, <code>TestHTTPListenHandlerIgnoresRequestHeaders</code>.</p>
+<h2 id="the-port-scanner">The port scanner<a class="anchor" href="#the-port-scanner" aria-label="Link to this section">#</a></h2>
+<p><strong>Concurrency.</strong> One goroutine per port, but a buffered channel used as a semaphore holds at most <code>maxConcurrentPortScans</code> (500) in flight, so <code>--from 1 --to 65535</code> cannot exhaust file descriptors or flood the target.</p>
+<p><strong>Time is dominated by silence.</strong> A port that refuses answers in milliseconds; a port whose packets are dropped costs the whole <code>--timeout</code>. Worst-case time is roughly <code>ports / 500 x timeout</code>, and results arrive in bursts because a whole batch times out together. That is why a scan prints <code>scan started</code> with the total, then a <code>progress</code> line every three seconds including <code>in_flight</code> - so a burst-wise scan does not look hung.</p>
+<p><strong>Honest counts.</strong> <code>ports_scanned</code> counts probes that <em>finished</em>. A dial aborted by cancellation is neither open nor closed, so it is not recorded as either; a scan that did not reach its plan says <code>scan interrupted ports_scanned=X ports_total=Y</code> and exits <code>1</code> instead of looking complete.</p>
+<p><strong>Testability.</strong> The single-port check is the variable <code>probePort</code>, and the progress period is <code>progressInterval</code>; tests substitute a slow or scripted probe and a short interval rather than depending on real slow networks.</p>
+<h2 id="udp-classification">UDP classification<a class="anchor" href="#udp-classification" aria-label="Link to this section">#</a></h2>
+<p>UDP has no handshake, so <code>probeUDP</code> uses a <em>connected</em> UDP socket and reads the result the way a UDP scanner does: a reply means <code>open</code>; an ICMP port-unreachable surfaces as a "connection refused" read error and means <code>closed</code>; a read timeout means <code>open|filtered</code>, which cannot be told apart from a firewall dropping the datagram. The exit status treats only <code>closed</code> and errors as failures, because <code>open|filtered</code> is genuinely inconclusive.</p>
+<h2 id="dual-stack-by-default">Dual-stack by default<a class="anchor" href="#dual-stack-by-default" aria-label="Link to this section">#</a></h2>
+<p><code>lib.NetworkType</code> is <code>"ip"</code>, so every lookup returns both A and AAAA records, and <code>telnet</code>, <code>ping</code>, <code>nmap</code> and <code>udp</code> test <em>each address separately</em> (<code>web</code> resolves the name for its report, and the HTTP client then picks an address itself). That is the useful behaviour - IPv6 problems are exactly the ones you would otherwise miss - and it has a consequence worth knowing: on a network without IPv6, the IPv6 attempt fails, so the exit status is <code>1</code> even though the service works over IPv4. Test a specific address, or read per-address results from <code>--json</code>, when that matters.</p>
+<h2 id="the-http-listener-is-deliberately-minimal">The HTTP listener is deliberately minimal<a class="anchor" href="#the-http-listener-is-deliberately-minimal" aria-label="Link to this section">#</a></h2>
+<p><code>listen http</code> answers <code>{"status":"ok"}</code> on <code>/</code> and 404 elsewhere, for any method, and does nothing else. It makes no attempt to interpret requests, so it is a <em>fixed point</em> to measure against: the same request always gets the same response, byte for byte. On shutdown it flushes the response and waits (<code>Server.Shutdown</code> plus a short grace period) so the process cannot exit a beat before the operating system has sent the last response - a real race that once produced <code>curl: (52) Empty reply from server</code> on the final request.</p>
+<h2 id="output-stability-and-known-quirks">Output stability and known quirks<a class="anchor" href="#output-stability-and-known-quirks" aria-label="Link to this section">#</a></h2>
+<p>JSON keys are a contract (see <a href="tech-cli.html#the-output-contract">Command-line design</a>). Three historical quirks are kept for compatibility rather than fixed, and are documented so nobody is surprised: <code>timeout_ms</code> holds seconds; <code>ping</code> reports milliseconds where the rest report microseconds; and <code>ping</code>'s <code>from_port</code>/<code>to_port</code> hold <code>7</code>, the echo port, which means nothing for ICMP.</p>
+<p><code>ping</code> also does not apply <code>--timeout</code>: its reply wait is go-ping's fixed one second.</p>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="tech-cli.html"><span>Previous</span>Command-line design</a><a class="next" href="tech-ci.html"><span>Next</span>CI/CD workflows</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-design.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#timeouts-bound-one-operation-never-the-whole-run">Timeouts bound one operation, never the whole run</a></li><li class="toc2"><a href="#bytes-are-counted-on-the-wire">Bytes are counted on the wire</a></li><li class="toc2"><a href="#the-port-scanner">The port scanner</a></li><li class="toc2"><a href="#udp-classification">UDP classification</a></li><li class="toc2"><a href="#dual-stack-by-default">Dual-stack by default</a></li><li class="toc2"><a href="#the-http-listener-is-deliberately-minimal">The HTTP listener is deliberately minimal</a></li><li class="toc2"><a href="#output-stability-and-known-quirks">Output stability and known quirks</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>
