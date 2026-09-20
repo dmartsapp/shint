@@ -38,9 +38,18 @@ Tags up to `v2.2.6` predate the current process, and the list contains a run of 
 
 `main` always contains the latest release. A repository ruleset (`protect_mother`) forbids deleting it and forbids non-fast-forward pushes to it, so its history is linear: a release is merged with `--ff-only`, and the tag, the release branch tip and `main` all end up on the same commit. No other branch is restricted.
 
-**One release branch per release: `release/vX.Y.Z`.** It is created from `main` when the release's sprint starts (for example `release/v4.1.0`), pushed at once, and all of the sprint's work lands on it, ending with the release commit (version bump, changelog, README roadmap). Never name a branch like a tag: a branch and a tag both called `v4.0.1` make `git` warn that the name is ambiguous. The older version-named branches on the remote (`v3`, `v3.1`, `v4.0.0`, `v4.0.1`) are history and are left alone.
+**One release branch per release: `release/vX.Y.Z`.** It is created from `main` when the release's sprint starts (for example `release/v4.1.0`), pushed at once, and all of the sprint's work lands on it, ending with the release commit (version bump, changelog). Never name a branch like a tag: a branch and a tag both called `v4.0.1` make `git` warn that the name is ambiguous. The older version-named branches on the remote (`v3`, `v3.1`, `v4.0.0`, `v4.0.1`) are history and are left alone.
 
-**Cadence: one release every two weeks, one at a time.** A sprint is two weeks, Monday to Sunday, and the next release's branch is not started until the previous release has shipped. The README's roadmap lists the planned releases and their sprint windows, and is updated as part of each release so it never disagrees with what shipped.
+**Cadence: one release every two weeks, one at a time.** A sprint is two weeks, Monday to Sunday, and the next release's branch is not started until the previous release has shipped. The roadmap in `main`'s README lists the planned releases and their sprint windows; it is kept up to date on `main` (see below), so it never disagrees with what shipped.
+
+**Two kinds of README.** A README is scoped to the branch it is on:
+
+| Branch | What `readme.md` is |
+|---|---|
+| a release branch (`release/vX.Y.Z`) | A working page for **that branch alone**: the release's milestone targets, the bugs it fixes, and the changes and diffs that exist only there. It is updated as the branch moves and is **never merged into `main`**. |
+| `main` | The project README: **every milestone in one place** (the roadmap), the releases, and the install and usage overview. It shows the latest release dynamically - the release badge and the download link point at "latest" - so a release does not need an edit to it. |
+
+`main`'s README is never synced from a branch: a change to it is made on `main`, as a commit of its own (a README-only commit, made before or after a release, never inside it). The consequence for a release is mechanical: the release branch's `readme.md` is put back to `main`'s before the merge, so the fast-forward changes nothing in `main`'s README, and `make release-check` refuses to pass otherwise. If `main`'s README changed while the branch was in flight, rebase the branch on `main` and, on a conflict in `readme.md`, keep the branch's own page - the release commit restores `main`'s anyway.
 
 **Ready is not published.** Finishing early does not mean shipping early: finished work waits on its branch, and the release happens on the last day of the sprint window. That keeps the cadence predictable for users, and keeps `main` - which the documentation site deploys from, and whose `main.go` gives the site its version - in step with what is actually published. An urgent fix does not have to wait for its window; it is released as soon as it is ready.
 
@@ -96,7 +105,7 @@ git push -u origin release/vX.Y.Z
 2. **Decide the version** using the table above.
 3. **Update the version constant** in `main.go` and the Docker tag example in the docs if needed.
 4. **Update `CHANGELOG.md`**: add or finish the `## vX.Y.Z` section, newest first. Rebuild the site (`python3 docs/build.py`) so the [Changelog](changelog.md) page matches.
-5. **Update the README roadmap**: mark the release as shipped, and shift the later windows if the sprint slipped.
+5. **Leave `main`'s README alone.** Whether the roadmap now shows this release as shipped, or the later windows must shift because the sprint slipped, is a README-only commit **on `main`**, not part of the branch. Keep the branch's own README (targets, bugs, changes) up to date as you go.
 6. **Run every check locally.** CI will not run the tests for you. The Makefile is the one place they are defined:
 
 ```bash
@@ -105,11 +114,11 @@ make test-full
 
 That is `make check` - `gofmt`, `go vet`, `go test -race`, the black-box battery, `golangci-lint` (v2.13.2, as CI uses), `govulncheck`, the documentation tests and check (the site is current; every link, anchor and site URL resolves), and the workflow checks - followed by `make test-live`, the smoke test against real hosts, which needs the internet. See [Testing](tech-testing.md#running-the-tests).
 
-7. **Commit the release** as the last commit on the branch, with the message convention above; the body is the changelog. Push the branch.
+7. **Commit the release** as the last commit on the branch, with the message convention above; the body is the changelog. The same commit puts the README back to `main`'s (`git checkout origin/main -- readme.md`). Push the branch, then run **`make release-check`**: it confirms the branch is on top of `main`, `readme.md` matches `main`'s, the version, dated changelog and release-commit message agree, there are no attribution trailers, and the tag is free.
 
 **On release day** (the last day of the sprint window, or earlier for an urgent fix)
 
-8. **Rebase if `main` moved, merge, tag, push** - `main` first, then the tag, which starts the pipeline:
+8. **Rebase if `main` moved, merge, tag, push** - `main` first, then the tag, which starts the pipeline (re-run `make release-check` after a rebase):
 
 ```bash
 git fetch origin && git rebase origin/main        # on the release branch, only if main moved

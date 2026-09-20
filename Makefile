@@ -107,12 +107,13 @@ ACTIONLINT ?= actionlint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.13.2
 
-.PHONY: help check test-full test-live tools fmt-check vet test test-go test-battery lint vuln docs-check workflows
+.PHONY: help check test-full test-live tools fmt-check vet test test-go test-battery lint vuln docs-check workflows release-check
 
 help:
 	echo "make check       fmt, vet, race tests, black-box battery, lint, vulncheck, docs and workflow checks (no network)"
 	echo "make test-live   smoke test against real hosts (needs the internet and ICMP)"
 	echo "make test-full   check + test-live"
+	echo "make release-check   on a release branch, after the release commit: is it safe to fast-forward main and tag?"
 	echo "make test        the Go tests (race detector), then the black-box battery in test/battery"
 	echo "make test-go     just the Go tests, with the race detector"
 	echo "make test-battery  just the black-box battery (BATTERY_ARGS=\"--group F\" to pick, --list to see the cases)"
@@ -188,6 +189,7 @@ workflows:
 	bash .github/scripts/test-verify-release-tag.sh
 	bash .github/scripts/test-write-ci-failure-issue.sh
 	bash .github/scripts/test-write-checksums.sh
+	bash .github/scripts/test-release-check.sh
 	python3 .github/scripts/test_notify_slack.py
 	$(ACTIONLINT) .github/workflows/*.yaml
 
@@ -196,3 +198,11 @@ workflows:
 test-live:
 	echo "==> live smoke test"
 	bash basic_module_test.sh
+
+# Release day preflight, on the release branch after the release commit: the
+# branch is on top of main, main's readme.md is untouched (a release branch's
+# README never reaches main), the version, changelog and release commit agree,
+# and the tag is free. Not part of `check`: it only makes sense on a finished
+# release branch. See docs/src/tech-release.md.
+release-check:
+	bash .github/scripts/release-check.sh

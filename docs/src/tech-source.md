@@ -19,7 +19,7 @@ nav: Source reference
 | `.dockerignore`, `.gitignore` | What stays out of the Docker build context and out of git (`bin/`, `*.json`, `.DS_Store`). |
 | `basic_module_test.sh` | Live-internet smoke test: builds the binary and runs one check per command against real hosts. Run it with `make test-live`. |
 | `CHANGELOG.md` | The release history; also rendered as the [Changelog](changelog.md) page. |
-| `readme.md` | The short introduction that GitHub shows on the front page. |
+| `readme.md` | The short introduction that GitHub shows on the front page. On `main` it is the project README (all milestones and releases); on a release branch it is a working page for that branch alone and is never merged into `main` (see [Releases and tagging](tech-release.md#branches-and-cadence)). |
 | `LICENSE` | MIT. |
 | `index.html`, `.nojekyll` | Make GitHub Pages serve the site under `docs/` as plain static files (see [This documentation](tech-docs.md)). |
 
@@ -100,6 +100,8 @@ nav: Source reference
 | `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
 | `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
 | `.github/workflows/check.yaml` | `make check` after a merge to `main` (never a branch, PR or tag; ignores `.github/**`); opens an issue on failure. |
+| `.github/scripts/release-check.sh` | `make release-check`: the release-day preflight on a release branch (on top of `main`, `readme.md` equal to `main`'s, version, changelog, release commit, no attribution trailers, tag free). |
+| `.github/scripts/test-release-check.sh` | Tests for it, in throw-away git repositories. |
 | `.github/scripts/write-checksums.sh` | Writes `<binary>.sha256` next to each release binary and verifies it. |
 | `.github/scripts/test-write-checksums.sh` | Offline tests for it: format, an independent hash, the platform's own verifier, tampering. |
 | `.github/scripts/write-ci-failure-issue.sh` | Writes the body of the issue a failed check files, with the real run URL. |
