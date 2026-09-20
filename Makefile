@@ -179,10 +179,8 @@ docs-check:
 	python3 docs/build.py --check
 
 # The release pipeline. Workflows only run on a release tag, so they cannot be
-# tried out any other way: the trigger rule, the tag guard (against a fake gh)
-# and actionlint. The ignored actionlint message is the one existing warning -
-# softprops/action-gh-release@v1 still works (v4.0.3 shipped with it); moving
-# to a newer major is a change to make and try deliberately.
+# tried out any other way: the trigger rule, the scripts they call (against a
+# fake gh, and so on) and actionlint.
 workflows:
 	echo "==> workflows"
 	python3 .github/scripts/test_check_workflow_triggers.py
@@ -191,7 +189,7 @@ workflows:
 	bash .github/scripts/test-write-ci-failure-issue.sh
 	bash .github/scripts/test-write-checksums.sh
 	python3 .github/scripts/test_notify_slack.py
-	$(ACTIONLINT) -ignore 'runner of "softprops/action-gh-release@v1" action is too old' .github/workflows/*.yaml
+	$(ACTIONLINT) .github/workflows/*.yaml
 
 # Needs the internet and unprivileged ICMP; builds ./shint, runs one check per
 # command against real hosts, and removes the binary again.

@@ -210,7 +210,7 @@ jobs:
           ls -lhR
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           body_path: release_notes.md
