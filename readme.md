@@ -68,14 +68,30 @@ Or use Docker:
 docker run --rm farhansabbir/shint:latest telnet example.com 443
 ```
 
-Step-by-step instructions for every platform, building from source and shell completion are in the **[installation guide](https://dmartsapp.github.io/shint/install.html)**.
+Step-by-step instructions for every platform, building from source and shell completion are in the **[installation guide](https://dmartsapp.github.io/shint/docs/install.html)**.
 
 ## Learn more
 
-- **[Using shint](https://dmartsapp.github.io/shint/usage.html)** - the flags every command shares, output formats and exit codes
-- **[Cookbook](https://dmartsapp.github.io/shint/cookbook.html)** - ready-made recipes
-- **[Troubleshooting](https://dmartsapp.github.io/shint/troubleshooting.html)** - the common surprises, explained
-- **[Technical documentation](https://dmartsapp.github.io/shint/tech-architecture.html)** - architecture, every source file, CI/CD, releases and testing
+- **[Using shint](https://dmartsapp.github.io/shint/docs/usage.html)** - the flags every command shares, output formats and exit codes
+- **[Cookbook](https://dmartsapp.github.io/shint/docs/cookbook.html)** - ready-made recipes
+- **[Troubleshooting](https://dmartsapp.github.io/shint/docs/troubleshooting.html)** - the common surprises, explained
+- **[Technical documentation](https://dmartsapp.github.io/shint/docs/tech-architecture.html)** - architecture, every source file, CI/CD, releases and testing
+
+## Roadmap
+
+shint ships **one release every two weeks, one at a time**. Here is what is planned. Dates are targets, and the plan may change as we learn what is most useful.
+
+| Release | Sprint | What is coming |
+|---|---|---|
+| **v4.0.4** | Sep 21 - Oct 4 | Fixes: `ping --timeout` now works, clearer `udp` help, documentation fixes |
+| **v4.1.0** | Oct 5 - Oct 18 | `web --timing` (where the time went: DNS, connect, TLS, first byte, download), `wol` (wake a machine on your network), `cidr` (subnet calculator), `ntp` (check your clock against a time server). Verified downloads: SHA-256 checksums and signed build attestations for every binary |
+| **v4.2.0** | Oct 19 - Nov 1 | `ip` (your interfaces and addresses), `dns` (lookups like `dig`), authoritative name servers shown whenever shint resolves a name, banner grabbing in `telnet`, `udp --hex` for binary payloads |
+| **v4.3.0** | Nov 2 - Nov 15 | `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names |
+| **v4.4.0** | Nov 16 - Nov 29 | `ip route` (routing table and default gateway), richer `ping`: sub-millisecond timings, and "unreachable" replies told apart from timeouts |
+| **v4.5.0** | Nov 30 - Dec 13 | `speed` (measure throughput between two of your machines) |
+| **Later** | | Package managers such as Homebrew |
+
+Everything on the list keeps shint's ground rules: one small file, nothing to configure, and **never any need for administrator or root privileges**. Have an idea, or want something moved up? [Open an issue](https://github.com/dmartsapp/shint/issues).
 
 ## Privacy
 
