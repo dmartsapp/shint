@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.0.3</span>
+  <span class="version">v4.0.4</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -59,7 +59,7 @@
 <span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> farhansabbir/shint:latest web https://example.com <span class="tok-flag">--json</span>
 <span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> farhansabbir/shint:latest nmap example.com <span class="tok-flag">--from</span> 1 <span class="tok-flag">--to</span> 1024 <span class="tok-flag">--timeout</span> 1</code></pre></div>
 <div class="tablewrap"><table><thead><tr><th>Registry</th><th>Image</th></tr></thead><tbody><tr><td>Docker Hub</td><td><code>docker.io/farhansabbir/shint</code></td></tr><tr><td>GitHub Container Registry</td><td><code>ghcr.io/dmartsapp/shint</code></td></tr></tbody></table></div>
-<p>Tags: <code>latest</code>, the full version (<code>4.0.3</code> and <code>v4.0.3</code>), and rolling <code>4.0</code> and <code>4</code>. Pin a full version in anything you care about.</p>
+<p>Tags: <code>latest</code>, the full version (<code>4.0.4</code> and <code>v4.0.4</code>), and rolling <code>4.0</code> and <code>4</code>. Pin a full version in anything you care about.</p>
 <p>The listen commands need their port published so you can reach them from outside the container:</p>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> <span class="tok-flag">-p</span> 9000:9000/tcp farhansabbir/shint:latest listen tcp 9000
 <span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> <span class="tok-flag">-p</span> 8080:8080/tcp farhansabbir/shint:latest listen http 8080</code></pre></div>
@@ -86,7 +86,7 @@
 <p>Head to <a href="usage.html">Using shint</a> for the flags every command shares, or jump to a command: <a href="telnet.html">telnet</a>, <a href="ping.html">ping</a>, <a href="web.html">web</a>, <a href="nmap.html">nmap</a>, <a href="udp.html">udp</a>, <a href="listen.html">listen</a>.</p>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="index.html"><span>Previous</span>shint</a><a class="next" href="usage.html"><span>Next</span>Using shint</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/install.md">Edit this page on GitHub</a><span>shint v4.0.3 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/install.md">Edit this page on GitHub</a><span>shint v4.0.4 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#download-a-release">Download a release</a></li><li class="toc3"><a href="#macos-and-linux">macOS and Linux</a></li><li class="toc3"><a href="#windows">Windows</a></li><li class="toc3"><a href="#check-it-works">Check it works</a></li><li class="toc2"><a href="#docker">Docker</a></li><li class="toc2"><a href="#build-from-source">Build from source</a></li><li class="toc2"><a href="#shell-completion">Shell completion</a></li><li class="toc2"><a href="#upgrade-and-uninstall">Upgrade and uninstall</a></li><li class="toc2"><a href="#platform-notes">Platform notes</a></li><li class="toc2"><a href="#next">Next</a></li></ul></aside>
 </div>

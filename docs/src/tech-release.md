@@ -17,7 +17,7 @@ nav: Releases and tagging
 |---|---|---|
 | **Major** (`v4.0.0`) | A change in how existing commands behave broadly enough that scripts and habits may notice | v4.0.0 made every command dual-stack (IPv4 *and* IPv6) - the same command now tests more addresses |
 | **Minor** (`v3.1.0`) | A new capability, existing behaviour intact | v3.1.0 added `listen http` |
-| **Patch** (`v4.0.2`) | Fixes, measurement corrections, documentation | v4.0.1 per-request listener metrics; v4.0.2 wire-accurate byte counts; v4.0.3 timeout fixes, exit status, progress output, this documentation |
+| **Patch** (`v4.0.2`) | Fixes, measurement corrections, documentation | v4.0.1 per-request listener metrics; v4.0.2 wire-accurate byte counts; v4.0.3 timeout fixes, exit status, progress output, this documentation; v4.0.4 `ping` timeout and payload size, the tag-only release pipeline |
 
 When a patch changes something a script could observe (v4.0.3's exit status is the example), the changelog says so plainly and in bold, rather than the version pretending it did not happen.
 
@@ -73,10 +73,10 @@ What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 
 | Build | Version reported by `shint --version` | Set by |
 |---|---|---|
-| `go build` from a clone | `4.0.3` | The default in `main.go` (bump it in the release commit) |
+| `go build` from a clone | `4.0.4` | The default in `main.go` (bump it in the release commit) |
 | `make <target>` | `<tag-or-dev>-<commit date as ddmmyyyyHHMMSS>` | `Makefile` (`git tag --contains`, `git show --format=%cd`) |
-| Release binary (CI) | `v4.0.3/<full commit sha>/<UTC build time>` | `build.yaml` (`-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT`) |
-| Docker image | `v4.0.3` | `Dockerfile` (`ARG VERSION`, passed as `VERSION=<tag>`; `dev` when built locally) |
+| Release binary (CI) | `v4.0.4/<full commit sha>/<UTC build time>` | `build.yaml` (`-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT`) |
+| Docker image | `v4.0.4` | `Dockerfile` (`ARG VERSION`, passed as `VERSION=<tag>`; `dev` when built locally) |
 
 So a release binary is traceable to an exact commit and moment, and a source build tells you which release it descends from.
 
