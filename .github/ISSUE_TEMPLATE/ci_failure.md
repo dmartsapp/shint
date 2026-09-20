@@ -1,11 +1,7 @@
-### CI Failure Report: Linting or Vulnerability Check
+### CI failure on a release tag
 
-This issue was automatically created because the `Lint and Vulnerability Check` job failed in the CI workflow.
+A check that runs on every `v*.*.*` release tag failed. The issue title names the workflow: **Lint** or **Vulnerability Check**.
 
-**Workflow Run URL:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+Find the failed run under **Actions** - https://github.com/dmartsapp/shint/actions - it is the run for the tag that was just pushed - and read the log of the failing step.
 
-**Failed Job:** lint-and-vuln-check
-**Commit:** `${{ github.sha }}`
-**Branch:** `${{ github.ref_name }}`
-
-Please investigate the workflow run logs to find the cause of the failure.
+A failed check does not publish anything: the binary build and both Docker workflows run the same lint and vulnerability gate first and stop if it fails.

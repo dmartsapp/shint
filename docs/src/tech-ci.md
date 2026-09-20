@@ -55,7 +55,7 @@ They are separate files so that each has its own status and its own failure mode
 | Job | What it does |
 |---|---|
 | `lint` | Runs `golangci-lint` with the default linter set. |
-| `report-failure` | Runs only if `lint` failed: files an issue titled "CI Failure: Lint" (labels `bug`, `ci-failure`, assigned to the person who pushed the tag) from `.github/ISSUE_TEMPLATE/ci_failure.md`, using `peter-evans/create-issue-from-file@v5`. |
+| `report-failure` | Runs only if `lint` failed: files an issue titled "CI Failure: Lint" (labels `bug`, `ci-failure`, assigned to the person who pushed the tag) from `.github/ISSUE_TEMPLATE/ci_failure.md`, using `peter-evans/create-issue-from-file@v5`. The file is static text: GitHub expands `${{ }}` expressions only inside workflow files, so the issue points at the Actions tab rather than at one specific run. |
 
 ## Vulnerability check
 
