@@ -19,8 +19,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
-	"github.com/dmartsapp/shint/lib/handlers"
+	"github.com/dmartsapp/shint/v4/lib"
+	"github.com/dmartsapp/shint/v4/lib/handlers"
 	"github.com/spf13/cobra"
 )
 

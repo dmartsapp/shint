@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 // fakeNTP is an SNTP server whose clock and behaviour a test controls. It

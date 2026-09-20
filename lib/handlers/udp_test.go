@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 // startEchoUDPServer listens on a UDP port and echoes back whatever it

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 func mustSubnet(t *testing.T, input string) lib.CIDRStats {

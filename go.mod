@@ -1,4 +1,4 @@
-module github.com/dmartsapp/shint
+module github.com/dmartsapp/shint/v4
 
 go 1.27.1
 

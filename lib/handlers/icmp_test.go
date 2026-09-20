@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dmartsapp/go-ping/v2/netutils"
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 func TestHandleICMPTextMode(t *testing.T) {

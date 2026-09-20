@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dmartsapp/go-ping/v2/netutils"
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 const icmpModule = "icmp"

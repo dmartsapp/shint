@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 func startEchoListener(t *testing.T) (port int, closeFn func()) {

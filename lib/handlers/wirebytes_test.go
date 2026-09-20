@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 // rawServer is a bare TCP (or TLS) HTTP responder that knows exactly how

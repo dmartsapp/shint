@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 func TestHTTPListenHandlerIPv6Bind(t *testing.T) {

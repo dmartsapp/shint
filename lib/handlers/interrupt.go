@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 // How the repeating checks (telnet, web, udp, ntp, rdns, wol) end when the user

@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 const listenHTTPModule = "listen-http"

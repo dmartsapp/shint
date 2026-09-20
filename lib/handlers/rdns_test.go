@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 // withLookup swaps the reverse resolver for the duration of a test.

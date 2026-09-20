@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dmartsapp/shint/lib"
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 func TestUDPListenHandlerIPv6BindReceivesAndEchoes(t *testing.T) {
