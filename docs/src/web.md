@@ -28,6 +28,7 @@ shint web <url> [-X METHOD] [-H "Name: value"]... [-P body] [-W] [flags]
 | `--cacert FILE` | Trust this PEM CA bundle *in addition to* the system roots. |
 | `--cert FILE`, `--key FILE` | Client certificate and key for mutual TLS (give both). |
 | `-k`, `--insecure` | Skip certificate verification. Diagnostics only. |
+| `--timing` | Show where each request's time went: DNS, connect, TLS, wait, download. See [Timing](#timing-where-the-time-went). |
 
 ## Examples
 
@@ -225,11 +226,159 @@ Sun Sep 20 01:54:18 MDT 2026: [web] OK using custom CA bundle to verify server c
 Sun Sep 20 01:54:18 MDT 2026: [web] OK dns resolved host=localhost addresses=2 ips=[::1,127.0.0.1] time=1.388416ms
 Sun Sep 20 01:54:18 MDT 2026: [web] OK response url=https://localhost:9444/ status=200 bytes_sent=97 bytes_received=175 speed=18.41KB/s attempt=1/1 time=9.285083ms
 ```
+## Timing: where the time went
+
+A slow request is a different problem depending on *where* it is slow. `--timing` adds the breakdown to each request: how long the name lookup, the connection, the TLS handshake, the wait for the server, and the download each took.
+
+| Phase | What it measures |
+|---|---|
+| `dns` | The name lookup for this request. `0s` when the URL has an IP address instead of a name, or the connection is reused. |
+| `connect` | Opening the TCP connection. `0s` on a reused connection. If the name has several addresses and the first fails, this includes the time spent on it, up to the address that worked. |
+| `tls` | The TLS handshake. `0s` for `http://` and for a reused connection. |
+| `wait` | From the request being fully sent to the **first byte of the response**: the server's time to respond, plus one network round trip. This is what browsers call "time to first byte" less the connection set-up. |
+| `download` | From the first byte of the response to the last byte of its body. |
+| `total` | The whole hop, from asking for a connection to the last byte read. |
+
+The phases add up to the total (to within the trace's own bookkeeping, microseconds).
+
+### One request
+
+```bash
+shint web https://example.com --timing
+```
+
+```text
+Sun Sep 20 17:36:50 MDT 2026: [web] OK dns resolved host=example.com addresses=4 ips=[2606:4700:10::6814:179a,2606:4700:10::ac42:93f3,172.66.147.243,104.20.23.154] time=5.305375ms
+Sun Sep 20 17:36:51 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=4.85KB/s attempt=1/1 time=141.889375ms
+Sun Sep 20 17:36:51 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 connection=new dns=3.845ms connect=34.038ms tls=55.517ms wait=45.806ms download=1.907ms total=141.678ms attempt=1/1
+
+========================================== web STATISTICS ==========================================
+Requests sent: 1, Response received: 1, Success: 100%
+Latency: minimum: 141.889375ms, average: 141.889375ms, maximum: 141.889375ms
+Sun Sep 20 17:36:51 MDT 2026: [web] OK done total_time=1.14980475s
+```
+
+Read the `timing` line: of the 141 ms, 55 ms was the TLS handshake, 46 ms the server taking to answer, 34 ms opening the connection and 4 ms the lookup. The download of the small page was 2 ms. (`time=` on the `response` line is the same request measured end to end; the `dns resolved` line at the top is a separate lookup made before the request, so its time is not one of these.)
+
+### A redirect: one line per hop
+
+When a redirect is followed, each hop gets its own line, numbered `hop=1/2`, with the status that hop returned:
+
+```bash
+shint web http://google.com --timing
+```
+
+```text
+Sun Sep 20 17:36:51 MDT 2026: [web] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=5.836708ms
+Sun Sep 20 17:36:53 MDT 2026: [web] OK response url=http://google.com status=200 bytes_sent=218 bytes_received=30872 speed=69.91KB/s attempt=1/1 time=431.219708ms
+Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=http://google.com hop=1/2 status=301 connection=new dns=3.677ms connect=199.103ms tls=0s wait=46.649ms download=625µs total=250.689ms attempt=1/1
+Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=http://www.google.com/ hop=2/2 status=200 connection=new dns=4.932ms connect=42.979ms tls=0s wait=74.752ms download=56.807ms total=180.304ms attempt=1/1
+
+========================================== web STATISTICS ==========================================
+Requests sent: 1, Response received: 1, Success: 100%
+Latency: minimum: 431.219708ms, average: 431.219708ms, maximum: 431.219708ms
+Sun Sep 20 17:36:53 MDT 2026: [web] OK done total_time=1.439891417s
+```
+
+The first hop is the `301` from `http://google.com` (which itself needed a connection: 199 ms here), the second the `200` from `http://www.google.com/`, on a new connection to a different host. The two hops account for the request's whole `time=`.
+
+### A connection that is reused
+
+With `--count`, later requests can use the connection an earlier one left open, and `--timing` shows it:
+
+```bash
+shint web https://example.com --timing --count 2 --delay 500
+```
+
+```text
+Sun Sep 20 17:36:53 MDT 2026: [web] OK dns resolved host=example.com addresses=4 ips=[2606:4700:10::ac42:93f3,2606:4700:10::6814:179a,172.66.147.243,104.20.23.154] time=6.259083ms
+Sun Sep 20 17:36:53 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=5.86KB/s attempt=1/2 time=117.558167ms
+Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 connection=new dns=5.217ms connect=28.472ms tls=47.975ms wait=35.328ms download=87µs total=117.461ms attempt=1/2
+Sun Sep 20 17:36:54 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=18.04KB/s attempt=2/2 time=38.163792ms
+Sun Sep 20 17:36:54 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 connection=reused dns=0s connect=0s tls=0s wait=37.862ms download=166µs total=38.092ms attempt=2/2
+
+========================================== web STATISTICS ==========================================
+Requests sent: 2, Response received: 2, Success: 100%
+Latency: minimum: 38.163792ms, average: 77.860979ms, maximum: 117.558167ms
+Sun Sep 20 17:36:54 MDT 2026: [web] OK done total_time=1.047312667s
+```
+
+The second request says `connection=reused` and has no `dns`, `connect` or `tls` at all - which is why it took 38 ms instead of 117 ms.
+
+### A request that fails
+
+A failed request still reports the time it spent before it failed:
+
+```bash
+shint web http://127.0.0.1:1 --timing --timeout 2
+```
+
+```text
+Sun Sep 20 17:36:54 MDT 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=58.209µs
+Sun Sep 20 17:36:55 MDT 2026: [web] ERROR request failed url=http://127.0.0.1:1 attempt=1/1 time=893.5µs error="Get \"http://127.0.0.1:1\": dial tcp 127.0.0.1:1: connect: connection refused"
+Sun Sep 20 17:36:55 MDT 2026: [web] OK timing url=http://127.0.0.1:1 hop=1/1 connection=new dns=0s connect=602µs tls=0s wait=0s download=0s total=788µs attempt=1/1
+
+========================================== web STATISTICS ==========================================
+Requests sent: 1, Response received: 0
+Latency: minimum: 0, average: 0, maximum: 0
+Sun Sep 20 17:36:55 MDT 2026: [web] OK done total_time=1.002765167s
+```
+
+There is no `status` on the `timing` line - no response arrived - and the 602 µs of `connect` is how long the refusal took.
+
+### JSON
+
+With `--json`, each stat gains a `timing` object (and only with `--timing`: without the flag the field is absent, so existing consumers see no change). `hops` has one entry per hop, times in microseconds:
+
+```json
+{
+  ...
+  "stats": [
+    {
+      "url": "http://google.com",
+      "success": true,
+      "status_code": 200,
+      "time_taken_µs": 434854,
+      "timing": {
+        "hops": [
+          {
+            "url": "http://google.com",
+            "status_code": 301,
+            "reused_connection": false,
+            "dns_µs": 3891,
+            "connect_µs": 208242,
+            "tls_µs": 0,
+            "wait_µs": 43617,
+            "download_µs": 469,
+            "total_µs": 256947
+          },
+          {
+            "url": "http://www.google.com/",
+            "status_code": 200,
+            "reused_connection": false,
+            "dns_µs": 4370,
+            "connect_µs": 45324,
+            "tls_µs": 0,
+            "wait_µs": 75112,
+            "download_µs": 52380,
+            "total_µs": 177746
+          }
+        ]
+      },
+      ...
+    }
+  ]
+}
+```
+
+`status_code` on a hop is `0` when that hop got no response. `reused_connection` is `true` when the connection was one an earlier request had left open.
+
 ## Good to know
 
 - **`Ctrl+C` shows the summary.** A run with a large `--count` stops, prints how far it got, the statistics and the `done` line, and exits `1` (cut short) - see [Stopping early](usage.md#stopping-early).
 - **Redirects** are followed (up to 10); the final response is what is reported, and the bytes of every hop are counted.
 - **Timeouts.** `--timeout` limits each request from connecting to the last byte of the response.
+- **Timing.** `--timing` changes nothing about how the request is made: the redirect limit, the byte counts and the exit status are the same with and without it.
 - **`--payload`** means the *size* of filler data for `ping` and `udp`, but on `web` the `-P` form means the request *body*.
 - **HTTP/1.1** is used for all requests; the byte counts describe that plain byte stream.
 - The default `User-Agent` is `dmarts.app-http-v0.1`; override it with `-H "User-Agent: ..."`.

@@ -141,4 +141,6 @@ git push origin refs/tags/vX.Y.Z
 
 ## The module path
 
-`go.mod` declares `module github.com/dmartsapp/shint` with no `/v4` suffix, although the tags are v4. Go requires the major version in the module path for v2 and above, so `go install github.com/dmartsapp/shint@v4.x` does **not** work. The supported ways to get shint are release binaries, the Docker images, and building from a clone; the [Install page](install.md) says so. Changing the path would be a breaking change for anyone importing the packages, so it has been left as is.
+Since v4.1.0 `go.mod` declares `module github.com/dmartsapp/shint/v4`. Go requires the major version in the module path for v2 and above, so before that - with the path `github.com/dmartsapp/shint` and v4 tags - `go install github.com/dmartsapp/shint@v4.x` could never work. From v4.1.0, `go install github.com/dmartsapp/shint/v4@latest` (or `@v4.1.0`) does. The older tags, v4.0.0 to v4.0.4, keep the old path: a published tag is never changed, so they cannot be `go install`ed and never will be.
+
+Changing the path was a breaking change for anyone importing the packages (`lib` and `lib/handlers`). Nobody does - shint is distributed as binaries and images - so it was judged safe (the decision is on the issue that tracked it). Every import inside the repository uses the new path. The next major version would need the next suffix, `/v5`.

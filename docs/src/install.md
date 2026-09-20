@@ -136,8 +136,14 @@ make linux-amd64             # or any other target, into ./bin
 make all-platforms           # every release target
 ```
 
-:::note Why not go install?
-The module path has no `/v4` suffix, so `go install github.com/dmartsapp/shint@v4.x` is not supported. Use a release binary or build from a clone as above.
+From v4.1.0 you can also let Go fetch and build it for you:
+
+```bash
+go install github.com/dmartsapp/shint/v4@latest       # puts `shint` in $(go env GOPATH)/bin
+```
+
+:::note Releases before v4.1.0
+The module path gained its `/v4` suffix in v4.1.0. Earlier tags (`v4.0.4` and older) were published without it, and a published tag is never changed, so `go install` cannot fetch them: for those, use the release binary or build from a clone.
 :::
 
 ## Shell completion

@@ -3,7 +3,7 @@ title: listen
 lead: Start a TCP, UDP or HTTP server on your own machine, so you can test firewalls, load balancers, monitoring and the other shint commands without touching anything real.
 description: shint listen runs a local TCP, UDP or minimal JSON HTTP listener that reports every connection, packet or request, with byte counts.
 section: Commands
-order: 6
+order: 10
 nav: listen
 ---
 
@@ -118,6 +118,7 @@ It is deliberately dumb, so it behaves the same every time:
 
 ## Good to know
 
+- **The `preview` is always one safe line.** Plain text is shown as it is; anything else is shown escaped - `\n`, `\r`, `\t`, `\xNN` for other control characters and for bytes that are not valid text, `\uNNNN` for other non-printable characters - and long payloads are cut at 120 bytes with `...`. A binary packet (see [`wol`](wol.md) for a real one) cannot garble your terminal, and a payload cannot pass off a line break or an escape sequence as your terminal's or the log's own.
 - **Ports below 1024** normally need administrator rights (or a capability) on Linux; other systems vary. Use a high port such as 8080 or 9000 to avoid the question.
 - **Firewalls.** macOS and Windows may ask whether to allow incoming connections the first time; choose the network scope you intend. Bind to `127.0.0.1` when you only want to test locally.
 - **IPv6.** `--bind ::` listens on IPv6 (and, on macOS and Linux, IPv4 as well).

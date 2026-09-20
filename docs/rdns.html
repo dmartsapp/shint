@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rdns · shint</title>
+<meta name="description" content="shint rdns does a reverse DNS lookup for an IP address (or for every address of a host name), over IPv4 and IPv6, and reports the names or their absence.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.6</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="ntp.html">ntp</a></li><li><a href="wol.html">wol</a></li><li><a href="rdns.html" class="active" aria-current="page">rdns</a></li><li><a href="cidr.html">cidr</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>rdns</h1>
+<p class="lead">Reverse DNS - which host names does an IP address map back to? The PTR lookup, without dig.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p>Forward DNS turns a name into addresses. <strong>Reverse DNS</strong> goes the other way: given <code>8.8.8.8</code>, which names is it known by? The answer lives in <strong>PTR</strong> records, filed under a special name made from the address written backwards (<code>8.8.8.8.in-addr.arpa.</code>), and it is what shows up in mail-server checks, log analysis and "whose address is this?" questions.</p>
+<p><code>shint rdns</code> does that lookup as an ordinary DNS query through your system's resolver, so it needs no privileges. Like every shint command, it takes either an <strong>IP address</strong> or a <strong>host name</strong> - a name is resolved first, and every address it resolves to is looked up, over IPv4 and IPv6.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> rdns &lt;ip-or-host&gt; [<span class="tok-flag">--count</span> N] [<span class="tok-flag">--timeout</span> S] [<span class="tok-flag">--delay</span> MS] [<span class="tok-flag">--json</span>]</code></pre></div>
+<p>The <a href="usage.html#flags-shared-by-every-command">shared flags</a> apply: <code>--timeout</code> is how long each lookup gets, <code>--count</code> repeats them, <code>--delay</code> pauses before each. There are no flags of its own.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="an-address-with-a-name">An address with a name<a class="anchor" href="#an-address-with-a-name" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> rdns 8.8.8.8</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=8.8.8.8 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[8.8.8.8] <span class="tok-key">time</span>=109.292µs
+<span class="tok-ts">Sun Sep 20 17:30:34 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> reverse lookup <span class="tok-key">address</span>=8.8.8.8 <span class="tok-key">query</span>=8.8.8.8.in-addr.arpa. <span class="tok-key">attempt</span>=1/1 <span class="tok-key">names</span>=[dns.google.] <span class="tok-key">time</span>=5.165042ms
+<span class="tok-ts">Sun Sep 20 17:30:34 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> done <span class="tok-key">lookups</span>=1 <span class="tok-key">resolved</span>=1 <span class="tok-key">total_time</span>=1.006806792s</code></pre></div>
+<p><code>names=[dns.google.]</code> is the answer. <code>query=</code> is the name that was actually asked for - the address reversed under <code>in-addr.arpa.</code> - so the result can be checked against <code>dig -x 8.8.8.8</code> or any other tool. The trailing dot is DNS's way of writing a name in full.</p>
+<h3 id="an-address-with-no-name">An address with no name<a class="anchor" href="#an-address-with-no-name" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> rdns 192.0.2.1</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:34 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=192.0.2.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[192.0.2.1] <span class="tok-key">time</span>=98.541µs
+<span class="tok-ts">Sun Sep 20 17:30:35 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-err">ERROR</span> reverse lookup failed <span class="tok-key">address</span>=192.0.2.1 <span class="tok-key">query</span>=1.2.0.192.in-addr.arpa. <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=4.320042ms <span class="tok-key">error</span>="lookup 192.0.2.1: no such host"
+<span class="tok-ts">Sun Sep 20 17:30:35 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> done <span class="tok-key">lookups</span>=1 <span class="tok-key">resolved</span>=0 <span class="tok-key">total_time</span>=1.005892916s</code></pre></div>
+<p>Many addresses have no PTR record, and knowing that is often the point of asking. It is reported as a <strong>failed check</strong>: an <code>ERROR</code> line and exit status <code>1</code>.</p>
+<h3 id="a-host-name-every-address-is-looked-up">A host name: every address is looked up<a class="anchor" href="#a-host-name-every-address-is-looked-up" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> rdns one.one.one.one</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:35 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=one.one.one.one <span class="tok-key">addresses</span>=4 <span class="tok-key">ips</span>=[2606:4700:4700::1001,2606:4700:4700::1111,1.1.1.1,1.0.0.1] <span class="tok-key">time</span>=5.194167ms
+<span class="tok-ts">Sun Sep 20 17:30:36 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> reverse lookup <span class="tok-key">address</span>=2606:4700:4700::1001 <span class="tok-key">query</span>=1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.7.4.0.0.7.4.6.0.6.2.ip6.arpa. <span class="tok-key">attempt</span>=1/1 <span class="tok-key">names</span>=[one.one.one.one.] <span class="tok-key">time</span>=9.695625ms
+<span class="tok-ts">Sun Sep 20 17:30:37 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> reverse lookup <span class="tok-key">address</span>=2606:4700:4700::1111 <span class="tok-key">query</span>=1.1.1.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.7.4.0.0.7.4.6.0.6.2.ip6.arpa. <span class="tok-key">attempt</span>=1/1 <span class="tok-key">names</span>=[one.one.one.one.] <span class="tok-key">time</span>=43.543958ms
+<span class="tok-ts">Sun Sep 20 17:30:38 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> reverse lookup <span class="tok-key">address</span>=1.1.1.1 <span class="tok-key">query</span>=1.1.1.1.in-addr.arpa. <span class="tok-key">attempt</span>=1/1 <span class="tok-key">names</span>=[one.one.one.one.] <span class="tok-key">time</span>=39.611ms
+<span class="tok-ts">Sun Sep 20 17:30:39 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> reverse lookup <span class="tok-key">address</span>=1.0.0.1 <span class="tok-key">query</span>=1.0.0.1.in-addr.arpa. <span class="tok-key">attempt</span>=1/1 <span class="tok-key">names</span>=[one.one.one.one.] <span class="tok-key">time</span>=2.445208ms
+<span class="tok-ts">Sun Sep 20 17:30:39 MDT 2026:</span> <span class="tok-mod">[rdns]</span> <span class="tok-ok">OK</span> done <span class="tok-key">lookups</span>=4 <span class="tok-key">resolved</span>=4 <span class="tok-key">total_time</span>=4.107195958s</code></pre></div>
+<p>The name resolves to four addresses (two IPv6, two IPv4), and each one is asked. The IPv6 <code>query=</code> names are long: one label per hex digit of the address, in reverse, under <code>ip6.arpa.</code> (see <a href="https://www.rfc-editor.org/rfc/rfc3596">RFC 3596</a>). The lookups are a second apart because of the default <code>--delay</code>; use <code>--delay 0</code> to run them back to back.</p>
+<h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> rdns 8.8.8.8 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"rdns"</span>,
+  <span class="tok-key">"dns_lookup"</span>: { ... },
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"8.8.8.8"</span>,
+      <span class="tok-key">"query"</span>: <span class="tok-str">"8.8.8.8.in-addr.arpa."</span>,
+      <span class="tok-key">"names"</span>: [
+        <span class="tok-str">"dns.google."</span>
+      ],
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>,
+      <span class="tok-key">"sent_unixtime_µs"</span>: <span class="tok-num">1789947410638062</span>,
+      <span class="tok-key">"recv_unixtime_µs"</span>: <span class="tok-num">1789947410644229</span>,
+      <span class="tok-key">"time_taken_µs"</span>: <span class="tok-num">6166</span>
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: ...,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: ...,
+  <span class="tok-key">"total_time_taken_µs"</span>: ...,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<p><code>dns_lookup</code> describes the first step (resolving the argument, which for an address is trivial). <code>names</code> is always a list - empty for an address with no name, never <code>null</code> - and a failed lookup has <code>success: false</code> with the reason in <code>error</code>.</p>
+<h2 id="exit-status">Exit status<a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<p><code>0</code> when every address had at least one name. <code>1</code> when any address had none, a lookup failed or timed out, or the argument was a name that did not resolve. <code>2</code> for a bad flag value or a missing argument.</p>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>A PTR record is set by whoever owns the address block</strong> (your ISP, your cloud provider, your own DNS), not by the machine itself, so it may be missing, generic (<code>ec2-...compute.amazonaws.com</code>) or out of date. It says nothing about whether the name maps <em>forward</em> to the same address: that "forward-confirmed" check is not done here.</li><li><strong>An address can have several names</strong> - the PTR set - and all of them are listed.</li><li><strong>IPv4-mapped IPv6 addresses</strong> (<code>::ffff:192.0.2.1</code>) are looked up as the IPv4 address they carry.</li><li>It uses the <strong>system's DNS servers</strong>, like the other commands, so a private address may have a name in your organization's DNS that public resolvers do not know.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="wol.html"><span>Previous</span>wol</a><a class="next" href="cidr.html"><span>Next</span>cidr</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/rdns.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#an-address-with-a-name">An address with a name</a></li><li class="toc3"><a href="#an-address-with-no-name">An address with no name</a></li><li class="toc3"><a href="#a-host-name-every-address-is-looked-up">A host name: every address is looked up</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

@@ -14,7 +14,7 @@ nav: Testing
 - **The race detector is on.** Handlers are concurrent; run `go test -race`.
 - **Every bug gets a test that fails without the fix.** Each regression test below was checked against the broken behaviour before the fix was kept.
 
-There are 111 top-level Go tests: 79 in `lib/handlers`, 25 in `lib` and 7 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 27 scenarios). Outside `go test`, `make check` also runs a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), Python tests for the [workflow trigger rule](tech-ci.md#the-workflow-trigger-rule) (18) and for the documentation generator (10).
+There are 159 top-level Go tests: 127 in `lib/handlers`, 25 in `lib` and 7 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 51 scenarios). Outside `go test`, `make check` also runs a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), Python tests for the [workflow trigger rule](tech-ci.md#the-workflow-trigger-rule) (18) and for the documentation generator (10).
 
 ## Running the tests
 
@@ -86,6 +86,12 @@ Two package-level variables exist only so tests can control time and slowness de
 | `TestValidatePingPayload`, the `ping` cases of `TestExitStatus` | A `--payload` outside 0-1448 silently clamped, and `--timeout 0` accepted, instead of a usage error (exit `2`). |
 | `TestIsLostPing` | A lost echo request logged at `OK` level while the run exited `1`. |
 | `TestWithPayloadSize`, `TestHandleICMPShowsPayloadSize` | Reply lines without the payload size; `payload_size_bytes` in the JSON being `0`. |
+| `TestPreviewBytes...` (4 tests) | Listener and `udp` previews printing raw bytes: binary garbling the terminal, escape sequences acting on it, a line break forging a log line, a character cut in half. |
+| `TestSubnetStats`, `TestSubnetStatsAgreeWithNetParseCIDR`, `TestParseSubnetsRejectsBadInput` | Wrong host counts (`/31`, `/32`), wildcard or last address; a prefix the standard library would read differently; bad input reaching the output. |
+| `TestMagicPacketLayout`, `TestWOLHandlerSendsTheMagicPacket` | A magic packet of the wrong size or layout, or one that never reaches the wire. |
+| `TestQueryNTPMeasuresTheOffset`, `TestQueryNTPSubtractsTheServersProcessingTime`, `TestParseNTPReplyRefusesWhatIsNotAnAnswer` | A wrong sign or size of the offset, server processing counted as network delay, and untrustworthy replies (spoofed, kiss-o'-death, unsynchronized) accepted as data. |
+| `TestRDNSHandler...` | A missing PTR record reported as success, a hung lookup not bounded by `--timeout`, and `names` being `null` instead of `[]`. |
+| `TestTimingRecorder...`, `TestWebTiming...` | Timing phases measured from the wrong moment; the TLS handshake missing (the dialer does it itself); a redirect losing its hop; `--timing` changing the redirect policy or appearing in output it was not asked for. |
 | `TestUDPHelpDoesNotPromiseEscapes` | `udp --help` showing `\x00` escapes, which are never interpreted. |
 
 ## The black-box battery

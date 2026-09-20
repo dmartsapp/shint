@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wol · shint</title>
+<meta name="description" content="shint wol broadcasts a Wake-on-LAN magic packet as a UDP datagram to wake a sleeping or switched-off machine on the local network segment.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.6</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="ntp.html">ntp</a></li><li><a href="wol.html" class="active" aria-current="page">wol</a></li><li><a href="rdns.html">rdns</a></li><li><a href="cidr.html">cidr</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>wol</h1>
+<p class="lead">Send a Wake-on-LAN magic packet to switch on a machine on your network - no privileges needed.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p>Wake-on-LAN lets a machine that is asleep or switched off be powered on by a network message. <code>shint wol</code> builds that message - the <strong>magic packet</strong>: six bytes of <code>0xFF</code> followed by the target's MAC address sixteen times, 102 bytes in all - and broadcasts it as a UDP datagram to the local network.</p>
+<p>It is an ordinary UDP send. It needs <strong>no special privileges</strong> and no raw sockets.</p>
+<div class="callout callout-note"><p class="callout-title">What "sent" means</p><p>Wake-on-LAN has no reply. <code>shint wol</code> can tell you the packet was handed to the network; it cannot tell you the machine woke up. Whether it does depends on the machine, not on shint.</p></div>
+<h2 id="before-you-use-it">Before you use it<a class="anchor" href="#before-you-use-it" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>The machine must be set up for it.</strong> Wake-on-LAN is switched on in the machine's firmware (BIOS/UEFI, often "Wake on LAN" or "Power on by PCIe") and in its network card's settings in the operating system. Wi-Fi rarely supports it; a wired connection almost always does.</li><li><strong>You need its MAC address</strong>, the hardware address of its network card (<code>ip link</code> on Linux, <code>ifconfig</code> on macOS, <code>ipconfig /all</code> on Windows).</li><li><strong>It must be on the same network segment</strong> as the machine running shint. Broadcasts do not cross routers, so this does not work across the internet, and usually not across a VPN.</li></ul>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> wol &lt;mac&gt; [<span class="tok-flag">--broadcast</span> ADDR] [<span class="tok-flag">--port</span> N] [<span class="tok-flag">--count</span> N] [<span class="tok-flag">--delay</span> MS] [<span class="tok-flag">--json</span>]</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td><code>--broadcast ADDR</code></td><td><code>255.255.255.255</code></td><td>The IPv4 broadcast address to send to. The default reaches every host on the network of the interface your default route uses. To target one subnet - or when the machine has several network interfaces - give that subnet's broadcast address, such as <code>192.168.1.255</code> (<code>shint cidr</code> can work it out).</td></tr><tr><td><code>--port N</code></td><td><code>9</code></td><td>The UDP port. Machines listen for the magic packet regardless of port; <code>9</code> (discard) and <code>7</code> (echo) are the conventional ones.</td></tr></tbody></table></div>
+<p>The other <a href="usage.html#flags-shared-by-every-command">shared flags</a> apply: <code>--count</code> sends the packet more than once (<code>--delay</code> apart), which can help on a busy network, and <code>--timeout</code> bounds each send.</p>
+<p>The MAC address may be written <code>aa:bb:cc:dd:ee:ff</code>, <code>aa-bb-cc-dd-ee-ff</code>, in Cisco's dotted groups <code>aabb.ccdd.eeff</code>, or as twelve bare hex digits <code>aabbccddeeff</code>, in either case.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="wake-a-machine">Wake a machine<a class="anchor" href="#wake-a-machine" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> wol aa:bb:cc:dd:ee:ff</code></pre></div>
+<p>The packet goes to <code>255.255.255.255:9</code>. For one particular subnet:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> wol aa:bb:cc:dd:ee:ff <span class="tok-flag">--broadcast</span> 192.168.1.255</code></pre></div>
+<h3 id="see-exactly-what-is-sent">See exactly what is sent<a class="anchor" href="#see-exactly-what-is-sent" aria-label="Link to this section">#</a></h3>
+<p>To try it without waking anything, aim it at a listener on this machine. In one terminal:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> listen udp 9098 <span class="tok-flag">--count</span> 1</code></pre></div>
+<p>In another:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> wol aa:bb:cc:dd:ee:ff <span class="tok-flag">--broadcast</span> 127.0.0.1 <span class="tok-flag">--port</span> 9098</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:36:27 MDT 2026:</span> <span class="tok-mod">[wol]</span> <span class="tok-ok">OK</span> magic packet sent <span class="tok-key">mac</span>=aa:bb:cc:dd:ee:ff <span class="tok-key">to</span>=127.0.0.1:9098 <span class="tok-key">bytes</span>=102 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=1.210209ms
+<span class="tok-ts">Sun Sep 20 17:36:27 MDT 2026:</span> <span class="tok-mod">[wol]</span> <span class="tok-ok">OK</span> done <span class="tok-key">packets_sent</span>=1 <span class="tok-key">total_time</span>=1.003254875s</code></pre></div>
+<p>and the listener reports the packet it received:</p>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:36:25 MDT 2026:</span> <span class="tok-mod">[listen-udp]</span> <span class="tok-ok">OK</span> listening <span class="tok-key">address</span>=0.0.0.0:9098 <span class="tok-key">max_packets</span>=1 <span class="tok-key">echo</span>=false
+<span class="tok-ts">Sun Sep 20 17:36:27 MDT 2026:</span> <span class="tok-mod">[listen-udp]</span> <span class="tok-ok">OK</span> packet received <span class="tok-key">remote</span>=127.0.0.1:62695 <span class="tok-key">bytes</span>=102 <span class="tok-key">preview</span>=\xff\xff\xff\xff\xff\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff\xaa\xbb\xcc\xdd\xee\xff
+<span class="tok-ts">Sun Sep 20 17:36:27 MDT 2026:</span> <span class="tok-mod">[listen-udp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">packets</span>=1 <span class="tok-key">bytes_received</span>=102 <span class="tok-key">total_time</span>=2.016482125s</code></pre></div>
+<p><code>bytes=102</code> is the whole magic packet. The preview shows it byte by byte: six <code>\xff</code>, then <code>\xaa\xbb\xcc\xdd\xee\xff</code> again and again - the MAC address sixteen times. (Listeners show anything that is not plain text as <code>\xNN</code> escapes, so a binary packet cannot disturb your terminal.)</p>
+<h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> wol aa:bb:cc:dd:ee:ff <span class="tok-flag">--broadcast</span> 127.0.0.1 <span class="tok-flag">--port</span> 9097 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"wol"</span>,
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"mac"</span>: <span class="tok-str">"aa:bb:cc:dd:ee:ff"</span>,
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">9097</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>,
+      <span class="tok-key">"bytes_sent"</span>: <span class="tok-num">102</span>,
+      <span class="tok-key">"sent_unixtime_µs"</span>: <span class="tok-num">1789947265536073</span>,
+      <span class="tok-key">"time_taken_µs"</span>: <span class="tok-num">365</span>
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1789947265536440</span>,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1789947265536068</span>,
+  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">372</span>,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<p>Like <a href="cidr.html"><code>cidr</code></a>, the document has no <code>dns_lookup</code>: nothing is looked up. In <code>input_params</code>, <code>data</code> holds the MAC address, <code>payload_bytes</code> is <code>102</code>, and (as for every command) <code>timeout_ms</code> carries the <code>--timeout</code> value in seconds. In a stat, <code>success</code> means the operating system accepted the packet for sending.</p>
+<h3 id="a-mistake">A mistake<a class="anchor" href="#a-mistake" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> wol not-a-mac</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code>invalid MAC address "not-a-mac": use six hex bytes, such as aa:bb:cc:dd:ee:ff</code></pre></div>
+<p>Standard error, exit status <code>2</code>. <code>--broadcast ::1</code> is refused the same way: Wake-on-LAN here is IPv4 broadcast, and IPv6 has no broadcast.</p>
+<h2 id="exit-status">Exit status<a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<p><code>0</code> when every packet was handed to the network, <code>1</code> when a send failed (for example, "network is unreachable" on a machine with no network), <code>2</code> for a malformed MAC address, broadcast address or port.</p>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>It did not wake?</strong> Check the machine's firmware and network-card settings first; then try <code>--broadcast</code> with the subnet's own broadcast address; then check the machine is on the same segment (wired, same VLAN).</li><li><strong>A machine that is fully powered off</strong> (not just asleep) often needs Wake-on-LAN enabled for the "S5" state, a separate setting on many boards.</li><li>A <strong>directed broadcast</strong> to another subnet (<code>--broadcast 10.1.2.255</code> while you are on <code>10.1.1.0/24</code>) is only forwarded if the routers in between are set up to forward it, which they usually are not.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="ntp.html"><span>Previous</span>ntp</a><a class="next" href="rdns.html"><span>Next</span>rdns</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/wol.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#before-you-use-it">Before you use it</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#wake-a-machine">Wake a machine</a></li><li class="toc3"><a href="#see-exactly-what-is-sent">See exactly what is sent</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc3"><a href="#a-mistake">A mistake</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

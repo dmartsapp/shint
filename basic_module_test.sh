@@ -74,6 +74,14 @@ run_test "UDP" "$BINARY udp 8.8.8.8 53 --data test" "[udp] OK probe"
 run_test "Ping" "$BINARY ping google.com --count 1" "icmp STATISTICS"
 run_test "Ping shows the payload size" "$BINARY ping google.com --count 1 --payload 16" "bytes=16"
 
+# Timing, reverse DNS, clock check, Wake-on-LAN (aimed at this machine, so
+# nothing is woken) and the subnet calculator (offline)
+run_test "Web timing" "$BINARY web https://google.com --timing --count 1" "timing url="
+run_test "Reverse DNS" "$BINARY rdns 8.8.8.8" "dns.google."
+run_test "NTP" "$BINARY ntp time.cloudflare.com" "[ntp] OK response"
+run_test "Wake-on-LAN" "$BINARY wol aa:bb:cc:dd:ee:ff --broadcast 127.0.0.1 --port 9" "magic packet sent"
+run_test "CIDR" "$BINARY cidr 192.168.1.10/24" "network=192.168.1.0/24"
+
 
 # --- Summary ---
 echo ""

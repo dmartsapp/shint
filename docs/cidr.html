@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cidr · shint</title>
+<meta name="description" content="shint cidr works out the network address, netmask, wildcard, first and last address, broadcast, host counts and kind of one or more IPv4 or IPv6 prefixes, without touching the network.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.6</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="ntp.html">ntp</a></li><li><a href="wol.html">wol</a></li><li><a href="rdns.html">rdns</a></li><li><a href="cidr.html" class="active" aria-current="page">cidr</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>cidr</h1>
+<p class="lead">Subnet arithmetic without a calculator - network, mask, range, size and kind, for IPv4 and IPv6, entirely offline.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p><code>shint cidr</code> takes one or more prefixes in CIDR notation (<code>192.168.1.10/24</code>, <code>2001:db8::/32</code>) and works out everything you usually reach for a subnet calculator for. It is <strong>pure computation</strong>: nothing is looked up and nothing is sent, so it works anywhere, instantly, and needs no network.</p>
+<p>A bare address (<code>8.8.8.8</code>, <code>::1</code>) is treated as a single host: <code>/32</code> for IPv4, <code>/128</code> for IPv6. A prefix does not have to be written with its host bits cleared: <code>192.168.1.10/24</code> is the <code>192.168.1.0/24</code> network.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> cidr &lt;prefix&gt; [&lt;prefix&gt; ...] [<span class="tok-flag">--json</span>]</code></pre></div>
+<p>Only <code>--json</code> applies. The other <a href="usage.html#flags-shared-by-every-command">shared flags</a> (<code>--count</code>, <code>--timeout</code>, <code>--delay</code>, ...) mean nothing for a command that never waits, and are ignored.</p>
+<p>All the prefixes are checked before anything is printed, so one typo in the third is a <a href="#exit-status">usage error</a>, not two results followed by a failure.</p>
+<h2 id="what-it-reports">What it reports<a class="anchor" href="#what-it-reports" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Field</th><th>Meaning</th></tr></thead><tbody><tr><td><code>input</code></td><td>The prefix as you typed it.</td></tr><tr><td><code>network</code></td><td>The network, with the host bits cleared.</td></tr><tr><td><code>family</code></td><td><code>ipv4</code> or <code>ipv6</code>.</td></tr><tr><td><code>netmask</code></td><td>The mask as an address (<code>255.255.255.0</code>, <code>ffff:ffff::</code>).</td></tr><tr><td><code>wildcard</code></td><td>The inverse of the netmask - what routers and ACLs sometimes want. <strong>IPv4 only.</strong></td></tr><tr><td><code>first</code>, <code>last</code> (JSON: <code>first_address</code>, <code>last_address</code>)</td><td>The first and last address of the range.</td></tr><tr><td><code>broadcast</code></td><td>The broadcast address. <strong>IPv4 only, and only for a range that has one</strong> (not <code>/31</code> or <code>/32</code>).</td></tr><tr><td><code>addresses</code></td><td>How many addresses the range holds.</td></tr><tr><td><code>hosts</code> (JSON: <code>usable_hosts</code>)</td><td>How many of them can be given to a machine (see below).</td></tr><tr><td><code>first_host</code>, <code>last_host</code></td><td>The first and last of those.</td></tr><tr><td><code>kind</code></td><td>What sort of range the <em>network address</em> falls in: <code>private</code>, <code>loopback</code>, <code>link-local</code>, <code>multicast</code>, <code>documentation</code>, <code>shared</code> (carrier-grade NAT, <code>100.64.0.0/10</code>), <code>reserved</code>, <code>broadcast</code>, <code>unspecified</code>, or <code>global</code> - none of those.</td></tr></tbody></table></div>
+<p>How the host count works:</p>
+<div class="tablewrap"><table><thead><tr><th>Prefix</th><th><code>hosts</code></th><th>Why</th></tr></thead><tbody><tr><td>IPv4 <code>/0</code> to <code>/30</code></td><td><code>addresses - 2</code></td><td>The first address is the network, the last the broadcast.</td></tr><tr><td>IPv4 <code>/31</code></td><td><code>2</code></td><td>Both addresses are hosts on a point-to-point link (<a href="https://www.rfc-editor.org/rfc/rfc3021">RFC 3021</a>).</td></tr><tr><td>IPv4 <code>/32</code></td><td><code>1</code></td><td>A single host.</td></tr><tr><td>IPv6, any</td><td><code>addresses</code></td><td>IPv6 has no broadcast address; every address in the prefix can be assigned.</td></tr></tbody></table></div>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="a-typical-subnet">A typical subnet<a class="anchor" href="#a-typical-subnet" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> cidr 192.168.1.10/24</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[cidr]</span> <span class="tok-ok">OK</span> subnet <span class="tok-key">input</span>=192.168.1.10/24 <span class="tok-key">network</span>=192.168.1.0/24 <span class="tok-key">family</span>=ipv4 <span class="tok-key">netmask</span>=255.255.255.0 <span class="tok-key">wildcard</span>=0.0.0.255 <span class="tok-key">first</span>=192.168.1.0 <span class="tok-key">last</span>=192.168.1.255 <span class="tok-key">broadcast</span>=192.168.1.255 <span class="tok-key">addresses</span>=256 <span class="tok-key">hosts</span>=254 <span class="tok-key">first_host</span>=192.168.1.1 <span class="tok-key">last_host</span>=192.168.1.254 <span class="tok-key">kind</span>=private
+<span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[cidr]</span> <span class="tok-ok">OK</span> done <span class="tok-key">prefixes</span>=1 <span class="tok-key">total_time</span>=750.5µs</code></pre></div>
+<p>The address you gave (<code>.10</code>) is somewhere in the network; <code>network=192.168.1.0/24</code> is the network itself, and <code>hosts=254</code> because two of the 256 addresses are the network and the broadcast.</p>
+<h3 id="several-prefixes-both-families">Several prefixes, both families<a class="anchor" href="#several-prefixes-both-families" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> cidr 10.0.0.0/8 2001:db8::/32</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[cidr]</span> <span class="tok-ok">OK</span> subnet <span class="tok-key">input</span>=10.0.0.0/8 <span class="tok-key">network</span>=10.0.0.0/8 <span class="tok-key">family</span>=ipv4 <span class="tok-key">netmask</span>=255.0.0.0 <span class="tok-key">wildcard</span>=0.255.255.255 <span class="tok-key">first</span>=10.0.0.0 <span class="tok-key">last</span>=10.255.255.255 <span class="tok-key">broadcast</span>=10.255.255.255 <span class="tok-key">addresses</span>=16777216 <span class="tok-key">hosts</span>=16777214 <span class="tok-key">first_host</span>=10.0.0.1 <span class="tok-key">last_host</span>=10.255.255.254 <span class="tok-key">kind</span>=private
+<span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[cidr]</span> <span class="tok-ok">OK</span> subnet <span class="tok-key">input</span>=2001:db8::/32 <span class="tok-key">network</span>=2001:db8::/32 <span class="tok-key">family</span>=ipv6 <span class="tok-key">netmask</span>=ffff:ffff:: <span class="tok-key">first</span>=2001:db8:: <span class="tok-key">last</span>=2001:db8:ffff:ffff:ffff:ffff:ffff:ffff <span class="tok-key">addresses</span>=79228162514264337593543950336 <span class="tok-key">hosts</span>=79228162514264337593543950336 <span class="tok-key">first_host</span>=2001:db8:: <span class="tok-key">last_host</span>=2001:db8:ffff:ffff:ffff:ffff:ffff:ffff <span class="tok-key">kind</span>=documentation
+<span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[cidr]</span> <span class="tok-ok">OK</span> done <span class="tok-key">prefixes</span>=2 <span class="tok-key">total_time</span>=205.375µs</code></pre></div>
+<p>An IPv6 prefix is enormous: a <code>/32</code> holds 79,228,162,514,264,337,593,543,950,336 addresses (2^96). The count is exact - it is computed with arbitrary-precision integers, not floating point.</p>
+<h3 id="small-prefixes">Small prefixes<a class="anchor" href="#small-prefixes" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> cidr 192.0.2.0/31 8.8.8.8</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[cidr]</span> <span class="tok-ok">OK</span> subnet <span class="tok-key">input</span>=192.0.2.0/31 <span class="tok-key">network</span>=192.0.2.0/31 <span class="tok-key">family</span>=ipv4 <span class="tok-key">netmask</span>=255.255.255.254 <span class="tok-key">wildcard</span>=0.0.0.1 <span class="tok-key">first</span>=192.0.2.0 <span class="tok-key">last</span>=192.0.2.1 <span class="tok-key">addresses</span>=2 <span class="tok-key">hosts</span>=2 <span class="tok-key">first_host</span>=192.0.2.0 <span class="tok-key">last_host</span>=192.0.2.1 <span class="tok-key">kind</span>=documentation
+<span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[cidr]</span> <span class="tok-ok">OK</span> subnet <span class="tok-key">input</span>=8.8.8.8 <span class="tok-key">network</span>=8.8.8.8/32 <span class="tok-key">family</span>=ipv4 <span class="tok-key">netmask</span>=255.255.255.255 <span class="tok-key">wildcard</span>=0.0.0.0 <span class="tok-key">first</span>=8.8.8.8 <span class="tok-key">last</span>=8.8.8.8 <span class="tok-key">addresses</span>=1 <span class="tok-key">hosts</span>=1 <span class="tok-key">first_host</span>=8.8.8.8 <span class="tok-key">last_host</span>=8.8.8.8 <span class="tok-key">kind</span>=global
+<span class="tok-ts">Sun Sep 20 17:30:33 MDT 2026:</span> <span class="tok-mod">[cidr]</span> <span class="tok-ok">OK</span> done <span class="tok-key">prefixes</span>=2 <span class="tok-key">total_time</span>=175.75µs</code></pre></div>
+<p>A <code>/31</code> has no broadcast address and both of its addresses are hosts; a bare address is a <code>/32</code>.</p>
+<h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> cidr 172.16.5.130/26 10.0.0.0/8 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"cidr"</span>,
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"input"</span>: <span class="tok-str">"172.16.5.130/26"</span>,
+      <span class="tok-key">"network"</span>: <span class="tok-str">"172.16.5.128/26"</span>,
+      <span class="tok-key">"family"</span>: <span class="tok-str">"ipv4"</span>,
+      <span class="tok-key">"prefix_length"</span>: <span class="tok-num">26</span>,
+      <span class="tok-key">"netmask"</span>: <span class="tok-str">"255.255.255.192"</span>,
+      <span class="tok-key">"wildcard"</span>: <span class="tok-str">"0.0.0.63"</span>,
+      <span class="tok-key">"first_address"</span>: <span class="tok-str">"172.16.5.128"</span>,
+      <span class="tok-key">"last_address"</span>: <span class="tok-str">"172.16.5.191"</span>,
+      <span class="tok-key">"broadcast"</span>: <span class="tok-str">"172.16.5.191"</span>,
+      <span class="tok-key">"addresses"</span>: <span class="tok-str">"64"</span>,
+      <span class="tok-key">"usable_hosts"</span>: <span class="tok-str">"62"</span>,
+      <span class="tok-key">"first_host"</span>: <span class="tok-str">"172.16.5.129"</span>,
+      <span class="tok-key">"last_host"</span>: <span class="tok-str">"172.16.5.190"</span>,
+      <span class="tok-key">"kind"</span>: <span class="tok-str">"private"</span>
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1789947033226617</span>,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1789947033226581</span>,
+  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">36</span>,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<p>The document has no <code>dns_lookup</code>: nothing is looked up, and an empty lookup would only read as a failed one. <code>stats</code> has one entry per prefix, in the order given (one is shown). <code>addresses</code> and <code>usable_hosts</code> are <strong>strings</strong>, because an IPv6 prefix can hold more addresses than a 64-bit integer, and JSON tools would silently round them.</p>
+<h3 id="bad-input">Bad input<a class="anchor" href="#bad-input" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> cidr 10.0.0.0/33</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code>invalid prefix "10.0.0.0/33": prefix length out of range</code></pre></div>
+<p>This goes to standard error and the exit status is <code>2</code>.</p>
+<h2 id="exit-status">Exit status<a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<p><code>0</code> when every prefix was understood and worked out, <code>2</code> when any of them is not a valid address or prefix (nothing is printed to standard output in that case). There is no <code>1</code>: a subnet calculation cannot fail once the input has parsed.</p>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li><code>kind</code> describes the network address only. A prefix that spans several kinds (<code>0.0.0.0/0</code> covers everything) reports the kind of its first address.</li><li><code>global</code> means "none of the special kinds above" - it is not a promise that the range is routable on the internet.</li><li>An IPv6 address with a zone (<code>fe80::1%eth0</code>) is refused: a zone names an interface on one machine, not a range of addresses.</li><li>Prefixes are read strictly: <code>10.0.0/24</code> (three octets) or <code>10.0.0.0/24/8</code> are errors, not guesses.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="rdns.html"><span>Previous</span>rdns</a><a class="next" href="listen.html"><span>Next</span>listen</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/cidr.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#what-it-reports">What it reports</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-typical-subnet">A typical subnet</a></li><li class="toc3"><a href="#several-prefixes-both-families">Several prefixes, both families</a></li><li class="toc3"><a href="#small-prefixes">Small prefixes</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc3"><a href="#bad-input">Bad input</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

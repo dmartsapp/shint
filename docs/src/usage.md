@@ -16,20 +16,24 @@ shint <command> <target> [flags]
 The target comes first (a host and port, a URL, a port to listen on); flags change how the check runs. Flags can go before or after the target.
 
 ```text
-A simple network utility tool that provides telnet, ping, nmap, udp, web client, and listener functionalities.
+A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, cidr and listener functionalities.
 
 Usage:
   shint [command]
 
 Available Commands:
+  cidr        Work out a subnet: network, mask, range and size
   completion  Generate the autocompletion script for the specified shell
   help        Help about any command
   listen      Start a local TCP, UDP, or HTTP listener for testing
   nmap        Scan for open TCP ports on a host
+  ntp         Check this machine's clock against an NTP time server
   ping        Send ICMP ECHO_REQUEST to a host
+  rdns        Look up the names an IP address maps back to (reverse DNS)
   telnet      Connect to a host on a specific port
   udp         Send a UDP probe to a host on a specific port
   web         Make an HTTP request to a URL
+  wol         Send a Wake-on-LAN magic packet to wake a machine on your network
 
 Flags:
       --count int     Number of times to check connectivity (listen commands: max connections/packets to accept, 0 = unlimited) (default 1)
@@ -59,7 +63,7 @@ These are defined once, so they mean the same thing everywhere they apply:
 | `--json` | off | Print one machine-readable JSON document instead of log lines. |
 
 :::note Every attempt waits first
-`--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer.
+`--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr` does no attempts, so it has no delay.)
 :::
 
 ### What --timeout limits
@@ -73,7 +77,11 @@ These are defined once, so they mean the same thing everywhere they apply:
 | `nmap` | each *port* may take to answer, and the DNS lookup |
 | `udp` | each probe waits for a reply, and the DNS lookup |
 | `ping` | each echo request waits for its reply before it counts as lost (the name lookup keeps the ping library's own fixed 5-second limit) |
+| `ntp` | each server gets to answer, and the DNS lookup |
+| `rdns` | each reverse lookup gets, and the DNS lookup of a host name |
+| `wol` | each send may take (it never waits for a reply - there is none) |
 | `listen` | a connection may sit idle before it is closed |
+| `cidr` | *(not used: it never waits)* |
 
 ## Reading the output
 
@@ -92,7 +100,7 @@ Requests sent: 1, Response received: 1, Success: 100%
 Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 Sun Sep 20 01:50:10 MDT 2026: [telnet] OK done total_time=1.006831458s
 ```
-- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `nmap`, `udp`, `listen-tcp`, `listen-udp`, `listen-http`).
+- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `cidr`, `listen-tcp`, `listen-udp`, `listen-http`).
 - **OK or ERROR** is the level of that one line.
 - The `key=value` pairs are easy to `grep` and `awk`; values with spaces are quoted.
 - Commands that repeat a check finish with a **statistics** block: requests sent, responses received, and minimum, average and maximum latency.
@@ -116,7 +124,7 @@ shint checks several things per run - every address a name resolves to, every `-
 | Status | Meaning |
 |---|---|
 | `0` | Every check passed. |
-| `1` | At least one check failed: connection refused or timed out, DNS failure, no HTTP response, a UDP port reported closed, a lost ping, a scan cut short, or a `telnet`, `web` or `udp` run stopped by `Ctrl+C` before its `--count` was done. |
+| `1` | At least one check failed: connection refused or timed out, DNS failure, no HTTP response, a UDP port reported closed, a lost ping, a scan cut short, a `telnet`, `web` or `udp` run stopped by `Ctrl+C` before its `--count` was done, no usable time reply, an address with no reverse name, or a Wake-on-LAN packet that could not be sent. |
 | `2` | The command was used wrongly - a bad argument, flag or value. Nothing ran. |
 
 That makes shint usable in shell conditions and CI:
@@ -138,6 +146,10 @@ What counts as a failure, per command:
 | `web` | any attempt got no HTTP response. **A 404 or 500 is still a response** and exits `0` - read the status from the output or `--json` |
 | `nmap` | the lookup failed or the scan was cut short. Finding no open ports is a completed scan and exits `0` |
 | `udp` | the lookup failed, the port was reported `closed`, or the probe errored. `open|filtered` (no reply) is inconclusive, not a failure |
+| `ntp` | the lookup failed, a server did not answer, an answer could not be trusted (an unsynchronized server, a mismatched reply, a "kiss-o'-death"), or - with `--max-offset` - the clock is further out than that |
+| `rdns` | the name lookup failed, or an address has no PTR record (or its lookup failed or timed out) |
+| `wol` | a magic packet could not be sent. A packet that was sent is a success: there is no reply to check |
+| `cidr` | never. Bad input is exit `2` and nothing is printed |
 | `listen` | the port could not be bound |
 
 Results, including `ERROR` lines about failed checks, go to **stdout**; usage errors go to **stderr**. So `shint ... --json | jq` only ever sees JSON.

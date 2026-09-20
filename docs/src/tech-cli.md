@@ -9,7 +9,7 @@ nav: Command-line design
 
 ## Principles
 
-**1. One grammar, learned once.** `shint <command> <target> [flags]`. The target is positional because it is what you are *about*; flags are how the check behaves. Commands are named after the tools whose muscle memory they inherit - `telnet`, `ping`, `nmap` - rather than for what they technically do, and `web` and `listen` are short verbs for the rest.
+**1. One grammar, learned once.** `shint <command> <target> [flags]`. The target is positional because it is what you are *about*; flags are how the check behaves. Commands are named after the tools whose muscle memory they inherit - `telnet`, `ping`, `nmap` - rather than for what they technically do, and `web` and `listen` are short verbs for the rest. The newer commands follow the same rule: `ntp` and `wol` are what people already call them, `rdns` is the usual name for reverse DNS, and `cidr` is the notation the tool takes.
 
 **2. Shared flags are defined once.** `--count`, `--timeout`, `--delay`, `--throttle`, `--payload` and `--json` live on the root command as *persistent* flags, so they have identical names, defaults and help text everywhere. A command simply ignores the ones that do not apply. Two shadowing cases exist, both deliberate and both documented in the flag help:
 

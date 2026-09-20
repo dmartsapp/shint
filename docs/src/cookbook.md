@@ -1,7 +1,7 @@
 ---
 title: Cookbook
 lead: Ready-made recipes for the jobs shint is most often used for.
-description: Practical shint recipes - check reachability, monitor in scripts, compare client and server byte counts, test firewalls and TLS.
+description: Practical shint recipes - check reachability, monitor in scripts, find where a request is slow, check a clock, look up an address, wake a machine, compare client and server byte counts, test firewalls and TLS.
 section: Guides
 order: 1
 nav: Cookbook
@@ -104,6 +104,54 @@ shint udp 192.168.1.1 53 --data "hello" --timeout 3
 ```
 
 `open` means it answered; `closed` means the host said nothing is listening; `open|filtered` means silence. See [udp](udp.md) for how to read that.
+
+## Find where a request is slow
+
+`--timing` splits each request into DNS, connect, TLS, wait for the first byte, and download, per redirect hop:
+
+```bash
+shint web https://example.com --timing
+```
+
+A large `dns` points at the resolver, `connect` at the network path or a firewall, `tls` at the handshake (or a distant server), `wait` at the server itself, and `download` at the size of the response or the bandwidth. The [web page](web.md#timing-where-the-time-went) shows real output for each case, and `--json` gives the same numbers in microseconds for a script to alert on.
+
+## Is this machine's clock right?
+
+```bash
+shint ntp pool.ntp.org --max-offset 500
+```
+
+Exit `0` when every server that answered says your clock is within half a second, `1` if one is further out or nothing answered. The offset is signed - positive when your clock is behind - and `--json` gives it as `offset_µs`. See [ntp](ntp.md).
+
+```bash
+if ! shint ntp time.cloudflare.com --max-offset 500 --delay 0 > /dev/null; then
+  echo "clock is off (or the time server cannot be reached)"
+fi
+```
+
+## Whose address is this?
+
+```bash
+shint rdns 203.0.113.9
+```
+
+Lists the names the address maps back to, or exits `1` with `no such host` when it has no PTR record. Given a host name instead, it looks up every address the name has - a quick way to see whether a service's addresses all carry a sensible reverse name. See [rdns](rdns.md).
+
+## Wake a machine on your network
+
+```bash
+shint wol aa:bb:cc:dd:ee:ff --broadcast 192.168.1.255
+```
+
+Sends the magic packet to the subnet. Success means the packet was sent; the machine has to be set up for Wake-on-LAN and be on the same network segment ([wol](wol.md) explains both). To find the subnet's broadcast address, `shint cidr 192.168.1.0/24` prints it.
+
+## Work out a subnet
+
+```bash
+shint cidr 10.20.30.40/22
+```
+
+Prints the network (`10.20.28.0/22`), netmask, wildcard, first and last address, broadcast, and how many hosts fit - for several prefixes at once, IPv4 and IPv6, with no network involved. See [cidr](cidr.md).
 
 ## Use shint from Docker
 

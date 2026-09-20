@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ntp · shint</title>
+<meta name="description" content="shint ntp asks an NTP server for the time over UDP and reports how far this machine&#x27;s clock is from it, for IPv4 and IPv6, with an optional pass/fail threshold.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.6</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="ntp.html" class="active" aria-current="page">ntp</a></li><li><a href="wol.html">wol</a></li><li><a href="rdns.html">rdns</a></li><li><a href="cidr.html">cidr</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>ntp</h1>
+<p class="lead">Check this machine's clock against an NTP time server - the offset, the round trip, and whether the answer can be trusted.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p>Certificates, logs, Kerberos, TOTP codes and distributed databases all break quietly when a machine's clock drifts. <code>shint ntp</code> asks a time server what time it is, works out how far this machine's clock is from the answer, and reports it - so you can tell "my clock is 3 seconds off" from "the network is slow" in one command.</p>
+<p>It sends a single <strong>SNTP</strong> (the simple form of NTP, <a href="https://www.rfc-editor.org/rfc/rfc4330">RFC 4330</a>) request over UDP port 123 to each address the server name resolves to, IPv4 and IPv6. It only <strong>reads</strong> the time: it never changes your clock, and needs no special privileges.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ntp &lt;server&gt; [<span class="tok-flag">--port</span> N] [<span class="tok-flag">--max-offset</span> MS] [<span class="tok-flag">--count</span> N] [<span class="tok-flag">--timeout</span> S] [<span class="tok-flag">--json</span>]</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td><code>--port N</code></td><td><code>123</code></td><td>The server's UDP port.</td></tr><tr><td><code>--max-offset MS</code></td><td><code>0</code> (off)</td><td>Turn the offset into a check: a server whose offset is larger than this many <strong>milliseconds</strong>, in either direction, fails the query and the command exits <code>1</code>.</td></tr></tbody></table></div>
+<p>The other <a href="usage.html#flags-shared-by-every-command">shared flags</a> apply; <code>--timeout</code> is how long each server gets to answer.</p>
+<h2 id="what-it-reports">What it reports<a class="anchor" href="#what-it-reports" aria-label="Link to this section">#</a></h2>
+<div class="tablewrap"><table><thead><tr><th>Field</th><th>Meaning</th></tr></thead><tbody><tr><td><code>offset</code></td><td>The server's time <strong>minus this machine's time</strong>. Positive means this clock is <em>behind</em>; negative means it is <em>ahead</em>.</td></tr><tr><td><code>round_trip</code></td><td>The network delay of the exchange, with the server's own processing time taken out.</td></tr><tr><td><code>stratum</code></td><td>How far the server is from a reference clock: <code>1</code> is attached to one (a GPS receiver, an atomic clock), <code>2</code> gets its time from a stratum 1, and so on.</td></tr><tr><td><code>leap</code></td><td>The server's leap-second warning: <code>none</code>, <code>insert</code> (the last minute of the day has 61 seconds), <code>delete</code> (59) or <code>unsynchronized</code>.</td></tr><tr><td><code>version</code></td><td>The NTP version the server answered with.</td></tr><tr><td><code>reference</code></td><td>What the server is synchronized to: a code such as <code>GPS</code> for stratum 1, otherwise the IPv4 address of its upstream server (or, when that one is IPv6, a hash that only looks like an address).</td></tr></tbody></table></div>
+<p>How the offset is worked out is the standard NTP calculation: with T1 (request sent), T2 (server received it), T3 (server replied) and T4 (reply received),</p>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code>offset     = ((T2 - T1) + (T3 - T4)) / 2
+round trip = (T4 - T1) - (T3 - T2)</code></pre></div>
+<p>which is right even though the two clocks disagree, and correct for the time the server spends between receiving and replying. Its accuracy is limited by how symmetric the network path is: an error of up to half the <code>round_trip</code> is possible, so on a fast network the offset is good to about a millisecond, on a slow or lopsided one less so.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="a-server-with-several-addresses">A server with several addresses<a class="anchor" href="#a-server-with-several-addresses" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ntp time.cloudflare.com</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:39 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=time.cloudflare.com <span class="tok-key">addresses</span>=4 <span class="tok-key">ips</span>=[2606:4700:f1::1,2606:4700:f1::123,162.159.200.1,162.159.200.123] <span class="tok-key">time</span>=65.099125ms
+<span class="tok-ts">Sun Sep 20 17:30:40 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> response <span class="tok-key">server</span>=time.cloudflare.com <span class="tok-key">address</span>=2606:4700:f1::1 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">stratum</span>=3 <span class="tok-key">offset</span>=+342.371µs <span class="tok-key">round_trip</span>=17.080016ms <span class="tok-key">leap</span>=none <span class="tok-key">version</span>=4 <span class="tok-key">reference</span>=10.153.8.152 <span class="tok-key">time</span>=18.36625ms
+<span class="tok-ts">Sun Sep 20 17:30:41 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> response <span class="tok-key">server</span>=time.cloudflare.com <span class="tok-key">address</span>=2606:4700:f1::123 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">stratum</span>=3 <span class="tok-key">offset</span>=+264.983µs <span class="tok-key">round_trip</span>=14.698355ms <span class="tok-key">leap</span>=none <span class="tok-key">version</span>=4 <span class="tok-key">reference</span>=10.153.8.152 <span class="tok-key">time</span>=16.118625ms
+<span class="tok-ts">Sun Sep 20 17:30:42 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> response <span class="tok-key">server</span>=time.cloudflare.com <span class="tok-key">address</span>=162.159.200.1 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">stratum</span>=3 <span class="tok-key">offset</span>=+76.992µs <span class="tok-key">round_trip</span>=15.669518ms <span class="tok-key">leap</span>=none <span class="tok-key">version</span>=4 <span class="tok-key">reference</span>=10.153.8.152 <span class="tok-key">time</span>=16.583291ms
+<span class="tok-ts">Sun Sep 20 17:30:43 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> response <span class="tok-key">server</span>=time.cloudflare.com <span class="tok-key">address</span>=162.159.200.123 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">stratum</span>=3 <span class="tok-key">offset</span>=-81.488µs <span class="tok-key">round_trip</span>=15.396832ms <span class="tok-key">leap</span>=none <span class="tok-key">version</span>=4 <span class="tok-key">reference</span>=10.153.8.152 <span class="tok-key">time</span>=16.096666ms
+<span class="tok-ts">Sun Sep 20 17:30:43 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">queries</span>=4 <span class="tok-key">answered</span>=4 <span class="tok-key">total_time</span>=4.137023958s</code></pre></div>
+<p>All four addresses answered, and this machine's clock is within a third of a millisecond of every one. Each address is asked in turn, <code>--delay</code> apart (a second by default), which is why four addresses took four seconds; <code>--delay 0</code> asks back to back.</p>
+<h3 id="a-threshold-is-the-clock-good-enough">A threshold: is the clock good enough?<a class="anchor" href="#a-threshold-is-the-clock-good-enough" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ntp pool.ntp.org <span class="tok-flag">--max-offset</span> 1</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:43 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=pool.ntp.org <span class="tok-key">addresses</span>=4 <span class="tok-key">ips</span>=[185.214.143.237,72.14.182.49,108.61.215.221,72.14.186.59] <span class="tok-key">time</span>=40.837583ms
+<span class="tok-ts">Sun Sep 20 17:30:44 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-err">ERROR</span> query failed <span class="tok-key">server</span>=pool.ntp.org <span class="tok-key">address</span>=185.214.143.237 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=75.919958ms <span class="tok-key">error</span>="offset -8.77073ms is larger than --max-offset 1ms"
+<span class="tok-ts">Sun Sep 20 17:30:45 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-err">ERROR</span> query failed <span class="tok-key">server</span>=pool.ntp.org <span class="tok-key">address</span>=72.14.182.49 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=67.974458ms <span class="tok-key">error</span>="offset +3.503899ms is larger than --max-offset 1ms"
+<span class="tok-ts">Sun Sep 20 17:30:46 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-err">ERROR</span> query failed <span class="tok-key">server</span>=pool.ntp.org <span class="tok-key">address</span>=108.61.215.221 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=72.541542ms <span class="tok-key">error</span>="offset +8.316053ms is larger than --max-offset 1ms"
+<span class="tok-ts">Sun Sep 20 17:30:47 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-err">ERROR</span> query failed <span class="tok-key">server</span>=pool.ntp.org <span class="tok-key">address</span>=72.14.186.59 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=66.197417ms <span class="tok-key">error</span>="offset +3.618105ms is larger than --max-offset 1ms"
+<span class="tok-ts">Sun Sep 20 17:30:47 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">queries</span>=4 <span class="tok-key">answered</span>=0 <span class="tok-key">total_time</span>=4.32928825s</code></pre></div>
+<p>With a limit of 1 ms, every answer was further out than that - the public pool's servers differ from each other by several milliseconds - so each query is an <code>ERROR</code> and the exit status is <code>1</code>. In a script you would allow whatever suits your use; <code>--max-offset 500</code> (half a second) is plenty for lining up logs from several machines.</p>
+<h3 id="no-server-there">No server there<a class="anchor" href="#no-server-there" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ntp 127.0.0.1 <span class="tok-flag">--timeout</span> 2</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 17:30:47 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=31.458µs
+<span class="tok-ts">Sun Sep 20 17:30:48 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-err">ERROR</span> query failed <span class="tok-key">server</span>=127.0.0.1 <span class="tok-key">address</span>=127.0.0.1 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">time</span>=821.334µs <span class="tok-key">error</span>="read udp 127.0.0.1:55468-&gt;127.0.0.1:123: read: connection refused"
+<span class="tok-ts">Sun Sep 20 17:30:48 MDT 2026:</span> <span class="tok-mod">[ntp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">queries</span>=1 <span class="tok-key">answered</span>=0 <span class="tok-key">total_time</span>=1.002439458s</code></pre></div>
+<p>Nothing listens on UDP 123 on this machine, so the operating system reported "connection refused". A server that is simply unreachable, or a firewall that drops UDP 123, would run out the <code>--timeout</code> instead.</p>
+<h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ntp time.cloudflare.com <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"ntp"</span>,
+  <span class="tok-key">"dns_lookup"</span>: { ... },
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"2606:4700:f1::1"</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>,
+      <span class="tok-key">"stratum"</span>: <span class="tok-num">3</span>,
+      <span class="tok-key">"version"</span>: <span class="tok-num">4</span>,
+      <span class="tok-key">"leap_indicator"</span>: <span class="tok-str">"none"</span>,
+      <span class="tok-key">"reference_id"</span>: <span class="tok-str">"10.153.8.152"</span>,
+      <span class="tok-key">"offset_µs"</span>: <span class="tok-num">187</span>,
+      <span class="tok-key">"round_trip_µs"</span>: <span class="tok-num">13307</span>,
+      <span class="tok-key">"server_unixtime_µs"</span>: <span class="tok-num">1789947406566820</span>,
+      <span class="tok-key">"sent_unixtime_µs"</span>: <span class="tok-num">1789947406558329</span>,
+      <span class="tok-key">"recv_unixtime_µs"</span>: <span class="tok-num">1789947406573287</span>,
+      <span class="tok-key">"time_taken_µs"</span>: <span class="tok-num">15268</span>
+    },
+    ...
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: ...,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: ...,
+  <span class="tok-key">"total_time_taken_µs"</span>: ...,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<p><code>stats</code> has one entry per address and iteration. <code>offset_µs</code> is signed, and <code>round_trip_µs</code> is the network delay; <code>server_unixtime_µs</code> is the time the server said it was. A failed query has <code>success: false</code> and the reason in <code>error</code>.</p>
+<h2 id="exit-status">Exit status<a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<p><code>0</code> when the name resolved and every query got a trustworthy answer (and, with <code>--max-offset</code>, none was out by more than the limit). <code>1</code> when the name could not be resolved, a server did not answer within <code>--timeout</code>, an answer could not be trusted, or an offset exceeded <code>--max-offset</code>. <code>2</code> for a bad port, a negative <code>--max-offset</code>, or a missing server.</p>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>An answer that cannot be trusted is a failed query, not a result.</strong> That covers: a reply that does not echo this request's timestamp (someone else's packet, or a spoof); a "kiss-o'-death" (stratum 0 with a code such as <code>RATE</code> - the server asks you to slow down - or <code>DENY</code>); a server that reports itself unsynchronized (leap indicator <code>3</code>, or stratum 16); and a reply with no transmit time.</li><li><strong>Be gentle with public servers.</strong> Many limit how often one address may ask; a <code>RATE</code> reply means you asked too often. The default <code>--delay</code> of a second already keeps <code>--count</code> polite; do not run it in a tight loop.</li><li><strong>Firewalls</strong> often block outbound UDP 123. If you get timeouts everywhere, that is the first thing to check.</li><li><strong>This reads the clock, it does not set it.</strong> Use your operating system's time service (<code>chronyd</code>, <code>systemd-timesyncd</code>, <code>w32time</code>, <code>timed</code>) for that.</li><li>SNTP asks each server once. It does not do NTP's filtering across many samples, so treat a single reading as a good estimate, and use <code>--count</code> to see how much it varies.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="udp.html"><span>Previous</span>udp</a><a class="next" href="wol.html"><span>Next</span>wol</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/ntp.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#what-it-reports">What it reports</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-server-with-several-addresses">A server with several addresses</a></li><li class="toc3"><a href="#a-threshold-is-the-clock-good-enough">A threshold: is the clock good enough?</a></li><li class="toc3"><a href="#no-server-there">No server there</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

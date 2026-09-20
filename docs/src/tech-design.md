@@ -62,7 +62,7 @@ UDP has no handshake, so `probeUDP` uses a *connected* UDP socket and reads the 
 
 ## Dual-stack by default
 
-`lib.NetworkType` is `"ip"`, so every lookup returns both A and AAAA records, and `telnet`, `ping`, `nmap` and `udp` test *each address separately* (`web` resolves the name for its report, and the HTTP client then picks an address itself). That is the useful behaviour - IPv6 problems are exactly the ones you would otherwise miss - and it has a consequence worth knowing: on a network without IPv6, the IPv6 attempt fails, so the exit status is `1` even though the service works over IPv4. Test a specific address, or read per-address results from `--json`, when that matters.
+`lib.NetworkType` is `"ip"`, so every lookup returns both A and AAAA records, and `telnet`, `ping`, `nmap`, `udp`, `ntp` and `rdns` test *each address separately* (`web` resolves the name for its report, and the HTTP client then picks an address itself). That is the useful behaviour - IPv6 problems are exactly the ones you would otherwise miss - and it has a consequence worth knowing: on a network without IPv6, the IPv6 attempt fails, so the exit status is `1` even though the service works over IPv4. Test a specific address, or read per-address results from `--json`, when that matters.
 
 ## The HTTP listener is deliberately minimal
 
