@@ -217,6 +217,21 @@ type NTPStats struct {
 	Error         string `json:"error,omitempty"`
 }
 
+// RDNSStats is one reverse lookup by "rdns". Query is the in-addr.arpa or
+// ip6.arpa name that was asked for; Names are the host names the address maps
+// back to (a PTR record set, so there may be several). Error is set only for a
+// failed lookup - "no such host" means the address has no PTR record.
+type RDNSStats struct {
+	Address   string   `json:"address"`
+	Query     string   `json:"query"`
+	Names     []string `json:"names"`
+	Success   bool     `json:"success"`
+	SentTime  int64    `json:"sent_unixtime_µs"`
+	RecvTime  int64    `json:"recv_unixtime_µs"`
+	TimeTaken int64    `json:"time_taken_µs"`
+	Error     string   `json:"error,omitempty"`
+}
+
 // LocalJSONOutput is the JSON document of a command that never looks up a
 // name ("cidr", "wol"): JSONOutput without dns_lookup, which would only ever
 // read as a failed lookup. Everything else is the same shape.

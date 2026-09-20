@@ -1,7 +1,7 @@
 // Command shint - "Simple Host INspection Toolkit" - bundles the everyday network
 // checks (telnet-style port checks, ping, an HTTP client, a port scanner, a
-// UDP probe, a clock check against an NTP server, Wake-on-LAN, a subnet
-// calculator and local test listeners) into one static binary.
+// UDP probe, a clock check against an NTP server, Wake-on-LAN, reverse DNS,
+// a subnet calculator and local test listeners) into one static binary.
 //
 // This file is only the command line: it declares the cobra commands and
 // their flags, validates arguments, and turns each handler's result into the
@@ -86,8 +86,8 @@ var (
 //	   failure, no HTTP response, a UDP port reported closed, lost pings,
 //	   a run cut short by Ctrl+C (a scan, or telnet, web or udp stopped
 //	   before their --count was done), no usable time reply (or a clock
-//	   offset beyond --max-offset), or a Wake-on-LAN packet that could not
-//	   be sent
+//	   offset beyond --max-offset), an address with no reverse (PTR) name,
+//	   or a Wake-on-LAN packet that could not be sent
 //	2  the command was used wrongly (bad argument, flag or value); nothing ran
 //
 // Results - including "ERROR" lines about failed checks - go to stdout; usage
@@ -119,7 +119,7 @@ func finish(ok bool) {
 var rootCmd = &cobra.Command{
 	Use:     filepath.Base(os.Args[0]),
 	Short:   "shint - Simple Host INspection Toolkit",
-	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, cidr and listener functionalities.`,
+	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, cidr and listener functionalities.`,
 	Version: Version,
 }
 
@@ -293,6 +293,28 @@ The payload is text, sent exactly as typed: --data sends a message, --payload se
 		defer stop()
 
 		finish(handlers.UDPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, udpData, port, host))
+	},
+}
+
+var rdnsCmd = &cobra.Command{
+	Use:   "rdns [host]",
+	Short: "Look up the names an IP address maps back to (reverse DNS)",
+	Long: `This command does a reverse DNS lookup: it asks which host names an IP address maps back to (its PTR records, found under in-addr.arpa for IPv4 and ip6.arpa for IPv6). Give it an IP address, or a host name - a name is resolved first and every address it resolves to is looked up.
+
+An address that has no PTR record is reported as a failed check (exit status 1); many addresses have none. --timeout is how long each lookup gets. Uses the system's DNS servers, like the other commands.`,
+	Args: cobra.ExactArgs(1),
+	Example: rootCmd.Name() + ` rdns 8.8.8.8` + "\n" +
+		rootCmd.Name() + ` rdns example.com --json`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := lib.RequirePositive("count", iterations); err != nil {
+			usage(err.Error())
+			return
+		}
+		if err := lib.RequirePositive("timeout", timeout); err != nil {
+			usage(err.Error())
+			return
+		}
+		finish(handlers.RDNSHandler(&jsonoutput, iterations, delay, &throttle, timeout, args[0]))
 	},
 }
 
@@ -475,7 +497,7 @@ func init() {
 // variables above are fully initialised first), runs cobra, and exits with the
 // status the chosen command recorded - see the exit-status notes above.
 func main() {
-	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, cidrCmd, listenCmd)
+	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, cidrCmd, listenCmd)
 	// cobra has already printed the error (and usage help) to stderr. Every
 	// error Execute returns is a usage error - the Run functions never return
 	// one; they report through usage() and finish() instead.

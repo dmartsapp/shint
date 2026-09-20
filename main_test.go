@@ -207,6 +207,13 @@ func TestExitStatus(t *testing.T) {
 		{"wol port zero", []string{"wol", "aa:bb:cc:dd:ee:ff", "--port", "0"}, 2},
 		{"wol count zero", []string{"wol", "aa:bb:cc:dd:ee:ff", "--count", "0"}, 2},
 
+		// rdns: a name is a success; an address without one is a failed check
+		{"rdns localhost", []string{"rdns", "127.0.0.1"}, 0},
+		{"rdns no PTR record", []string{"rdns", "192.0.2.1", "--timeout", "2"}, 1},
+		{"rdns dns failure", []string{"rdns", dead}, 1},
+		{"rdns missing argument", []string{"rdns"}, 2},
+		{"rdns count zero", []string{"rdns", "127.0.0.1", "--count", "0"}, 2},
+
 		// cidr: pure computation; only bad input fails, and that is a usage error
 		{"cidr IPv4", []string{"cidr", "192.168.1.10/24"}, 0},
 		{"cidr several, both families", []string{"cidr", "10.0.0.0/8", "2001:db8::/32", "8.8.8.8"}, 0},
@@ -252,6 +259,7 @@ func TestUsageErrorsGoToStderrOnly(t *testing.T) {
 		{"telnet", "127.0.0.1"},
 		{"cidr", "10.0.0.0/33"},
 		{"cidr"},
+		{"rdns"},
 		{"wol", "not-a-mac"},
 		{"ntp", "127.0.0.1", "--port", "0"},
 		{"bogus"},
