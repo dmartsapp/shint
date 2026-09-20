@@ -237,11 +237,14 @@ func scanContext() (context.Context, context.CancelFunc) {
 }
 
 var udpCmd = &cobra.Command{
-	Use:     "udp [host] [port]",
-	Short:   "Send a UDP probe to a host on a specific port",
-	Long:    `This command sends a UDP datagram to a host on a specific port and reports whether a reply, an ICMP port-unreachable, or nothing at all came back within the timeout.`,
-	Args:    cobra.ExactArgs(2),
-	Example: rootCmd.Name() + " udp 8.8.8.8 53 --data \"\\x00\\x00\"",
+	Use:   "udp [host] [port]",
+	Short: "Send a UDP probe to a host on a specific port",
+	Long: `This command sends a UDP datagram to a host on a specific port and reports whether a reply, an ICMP port-unreachable, or nothing at all came back within the timeout.
+
+The payload is text, sent exactly as typed: --data sends a message, --payload sends that many bytes of filler. Backslash escapes such as \x00 are not interpreted (the shell passes them through as ordinary characters), so binary payloads cannot be sent yet.`,
+	Args: cobra.ExactArgs(2),
+	Example: rootCmd.Name() + ` udp 127.0.0.1 9001 --data "hello"` + "\n" +
+		rootCmd.Name() + ` udp 8.8.8.8 53 --payload 16 --timeout 3`,
 	Run: func(cmd *cobra.Command, args []string) {
 		host := args[0]
 		port, err := lib.ValidatePort(args[1])

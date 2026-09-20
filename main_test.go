@@ -295,3 +295,24 @@ func TestScanContextHasNoDeadline(t *testing.T) {
 		t.Fatalf("scan context starts out cancelled: %v", ctx.Err())
 	}
 }
+
+// TestUDPHelpDoesNotPromiseEscapes: the udp help once showed --data "\x00\x00",
+// which reads as two zero bytes but is eight ordinary characters - the shell
+// passes the backslashes through and shint sends the text as typed (a
+// listener received `bytes=8 preview=\x00\x00`). The help must not suggest
+// escapes work, and must say they are not interpreted.
+func TestUDPHelpDoesNotPromiseEscapes(t *testing.T) {
+	code, stdout, stderr := runShint(t, "udp", "--help")
+	if code != 0 {
+		t.Fatalf("udp --help exited %d: %s", code, stderr)
+	}
+	if strings.Contains(stdout, `\x00\x00`) {
+		t.Errorf("udp --help still shows the misleading \\x00\\x00 example:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, "not interpreted") {
+		t.Errorf("udp --help should say that backslash escapes are not interpreted:\n%s", stdout)
+	}
+	if !strings.Contains(stdout, `--data "hello"`) {
+		t.Errorf("udp --help should show a working --data example:\n%s", stdout)
+	}
+}
