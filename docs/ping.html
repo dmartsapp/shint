@@ -40,27 +40,27 @@
 <h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
 <h3 id="ping-the-local-machine">Ping the local machine<a class="anchor" href="#ping-the-local-machine" aria-label="Link to this section">#</a></h3>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ping 127.0.0.1 <span class="tok-flag">--count</span> 2 <span class="tok-flag">--delay</span> 500</code></pre></div>
-<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:16 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=45.625µs
-<span class="tok-ts">Sun Sep 20 01:50:16 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #1 from 127.0.0.1 (ipv4) in 0ms
-<span class="tok-ts">Sun Sep 20 01:50:17 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #2 from 127.0.0.1 (ipv4) in 1ms
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 15:37:48 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=20.375µs
+<span class="tok-ts">Sun Sep 20 15:37:48 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #1 from 127.0.0.1 (ipv4) in 0ms <span class="tok-key">bytes</span>=4
+<span class="tok-ts">Sun Sep 20 15:37:48 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #2 from 127.0.0.1 (ipv4) in 0ms <span class="tok-key">bytes</span>=4
 
 <span class="tok-banner">========================================= icmp STATISTICS =========================================</span>
 Requests sent: 2, Response received: 2, Success: 100%
-Latency: minimum: 0s, average: 500µs, maximum: 1ms
-<span class="tok-ts">Sun Sep 20 01:50:17 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">packets_lost</span>=0 <span class="tok-key">stddev_ms</span>=0.500 <span class="tok-key">resolve_time</span>=45.625µs <span class="tok-key">total_time</span>=503.185166ms</code></pre></div>
+Latency: minimum: 0s, average: 0s, maximum: 0s
+<span class="tok-ts">Sun Sep 20 15:37:48 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">packets_lost</span>=0 <span class="tok-key">stddev_ms</span>=0.000 <span class="tok-key">resolve_time</span>=20.375µs <span class="tok-key">total_time</span>=501.641667ms</code></pre></div>
 <h3 id="a-dual-stack-host">A dual-stack host<a class="anchor" href="#a-dual-stack-host" aria-label="Link to this section">#</a></h3>
 <p>Every iteration pings every address:</p>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ping google.com <span class="tok-flag">--count</span> 2 <span class="tok-flag">--delay</span> 500</code></pre></div>
-<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:17 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=google.com <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[2607:f8b0:400a:803::200e,142.251.46.78] <span class="tok-key">time</span>=6.220834ms
-<span class="tok-ts">Sun Sep 20 01:50:17 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #1 from 142.251.46.78 (ipv4) in 32ms
-<span class="tok-ts">Sun Sep 20 01:50:17 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #1 from 2607:f8b0:400a:803::200e (ipv6) in 34ms
-<span class="tok-ts">Sun Sep 20 01:50:18 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #2 from 142.251.46.78 (ipv4) in 27ms
-<span class="tok-ts">Sun Sep 20 01:50:18 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #2 from 2607:f8b0:400a:803::200e (ipv6) in 28ms
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 15:37:48 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=google.com <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[2607:f8b0:400a:803::200e,142.251.45.142] <span class="tok-key">time</span>=3.208084ms
+<span class="tok-ts">Sun Sep 20 15:37:48 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #1 from 142.251.45.142 (ipv4) in 27ms <span class="tok-key">bytes</span>=4
+<span class="tok-ts">Sun Sep 20 15:37:48 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #1 from 2607:f8b0:400a:803::200e (ipv6) in 32ms <span class="tok-key">bytes</span>=4
+<span class="tok-ts">Sun Sep 20 15:37:49 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #2 from 2607:f8b0:400a:803::200e (ipv6) in 28ms <span class="tok-key">bytes</span>=4
+<span class="tok-ts">Sun Sep 20 15:37:49 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> received reply for request #2 from 142.251.45.142 (ipv4) in 29ms <span class="tok-key">bytes</span>=4
 
 <span class="tok-banner">========================================= icmp STATISTICS =========================================</span>
 Requests sent: 4, Response received: 4, Success: 100%
-Latency: minimum: 27ms, average: 30.25ms, maximum: 34ms
-<span class="tok-ts">Sun Sep 20 01:50:18 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">packets_lost</span>=0 <span class="tok-key">stddev_ms</span>=2.861 <span class="tok-key">resolve_time</span>=6.220834ms <span class="tok-key">total_time</span>=564.165375ms</code></pre></div>
+Latency: minimum: 27ms, average: 29ms, maximum: 32ms
+<span class="tok-ts">Sun Sep 20 15:37:49 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">packets_lost</span>=0 <span class="tok-key">stddev_ms</span>=1.871 <span class="tok-key">resolve_time</span>=3.208084ms <span class="tok-key">total_time</span>=562.66075ms</code></pre></div>
 <h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ping 127.0.0.1 <span class="tok-flag">--json</span></code></pre></div>
 <div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
@@ -72,15 +72,15 @@ Latency: minimum: 27ms, average: 30.25ms, maximum: 34ms
       <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
       <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>,
       <span class="tok-key">"sequence"</span>: <span class="tok-num">1</span>,
-      <span class="tok-key">"payload_size_bytes"</span>: <span class="tok-num">0</span>,
-      <span class="tok-key">"recv_unixtime_ms"</span>: <span class="tok-num">1789890618038</span>,
-      <span class="tok-key">"sent_unixtime_ms"</span>: <span class="tok-num">1789890618038</span>,
+      <span class="tok-key">"payload_size_bytes"</span>: <span class="tok-num">4</span>,
+      <span class="tok-key">"recv_unixtime_ms"</span>: <span class="tok-num">1789940269446</span>,
+      <span class="tok-key">"sent_unixtime_ms"</span>: <span class="tok-num">1789940269446</span>,
       <span class="tok-key">"time_taken_ms"</span>: <span class="tok-num">0</span>
     }
   ],
-  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1789890618038951</span>,
-  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1789890618038099</span>,
-  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">852</span>,
+  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1789940269446986</span>,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1789940269446342</span>,
+  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">644</span>,
   <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
 }</code></pre></div>
 <p>Ping times in JSON are in <strong>milliseconds</strong>, unlike the other commands, which use microseconds.</p>
@@ -96,7 +96,7 @@ Latency: minimum: 0, average: 0, maximum: 0
 <span class="tok-ts">Sun Sep 20 10:27:15 MDT 2026:</span> <span class="tok-mod">[icmp]</span> <span class="tok-ok">OK</span> done <span class="tok-key">packets_lost</span>=1 <span class="tok-key">stddev_ms</span>=0.000 <span class="tok-key">resolve_time</span>=92.917µs <span class="tok-key">total_time</span>=2.002622083s</code></pre></div>
 <p>The lost request is logged as an <code>ERROR</code> line, like any other failed check, and the exit status is <code>1</code>. (<code>192.0.2.1</code> is a reserved documentation address that never answers.)</p>
 <h2 id="reading-the-results">Reading the results<a class="anchor" href="#reading-the-results" aria-label="Link to this section">#</a></h2>
-<ul><li><strong><code>received reply ... in 29ms</code></strong> - one echo request was answered; the time is the round trip.</li><li><strong>Statistics block</strong> - requests sent, replies received, and minimum, average and maximum latency.</li><li><strong><code>packets_lost</code>, <code>stddev_ms</code></strong> - on the final line: how many requests went unanswered and how much the latency varied (jitter).</li></ul>
+<ul><li><strong><code>received reply ... in 29ms bytes=4</code></strong> - one echo request was answered; the time is the round trip, and <code>bytes</code> is the size of the echo payload (see below).</li><li><strong><code>bytes=N</code></strong> is the <strong>payload size</strong> of the echo: what <code>--payload</code> sets (default 4). It does not count the 8-byte ICMP header or the IP header, so it reads like Windows <code>ping</code> (<code>bytes=32</code>); Unix <code>ping</code> prints payload + 8, so its familiar <code>64 bytes</code> is <code>--payload 56</code> here. shint shows the size it sent: the ping library does not report the length of the reply it read, but RFC 792 requires an echo reply to return the request's data unchanged, so the two are the same. A lost request has no reply, so it shows no size.</li><li><strong>Statistics block</strong> - requests sent, replies received, and minimum, average and maximum latency.</li><li><strong><code>packets_lost</code>, <code>stddev_ms</code></strong> - on the final line: how many requests went unanswered and how much the latency varied (jitter).</li></ul>
 <p>The exit status is <code>0</code> only if every echo request was answered, and <code>1</code> if any went unanswered or the name could not be resolved.</p>
 <h2 id="permissions">Permissions<a class="anchor" href="#permissions" aria-label="Link to this section">#</a></h2>
 <p>ICMP normally needs privileges, but shint uses the unprivileged ICMP sockets that modern systems offer:</p>

@@ -113,3 +113,64 @@ func TestIsLostPing(t *testing.T) {
 		}
 	}
 }
+
+func TestWithPayloadSize(t *testing.T) {
+	for _, tc := range []struct{ line, want string }{
+		{"received reply for request #1 from 127.0.0.1 (ipv4) in 0ms", "received reply for request #1 from 127.0.0.1 (ipv4) in 0ms bytes=56"},
+		{"received reply for request #2 from 2607:f8b0::200e (ipv6) in 31ms", "received reply for request #2 from 2607:f8b0::200e (ipv6) in 31ms bytes=56"},
+		// a lost request has no reply to size, and other lines are left alone
+		{"no reply for request #1 from 192.0.2.1: read udp: i/o timeout", "no reply for request #1 from 192.0.2.1: read udp: i/o timeout"},
+		{"error sending request #1 to 192.0.2.1: boom", "error sending request #1 to 192.0.2.1: boom"},
+	} {
+		if got := withPayloadSize(tc.line, 56); got != tc.want {
+			t.Errorf("withPayloadSize(%q, 56) = %q, want %q", tc.line, got, tc.want)
+		}
+	}
+}
+
+// TestHandleICMPShowsPayloadSize: every reply line carries the payload size
+// (bytes=N, like the size on a real ping reply) and the JSON stats carry it as
+// payload_size_bytes - a field that used to be 0 in every document.
+func TestHandleICMPShowsPayloadSize(t *testing.T) {
+	const payload = 32
+	throttle := false
+
+	jsonOutput := false
+	text := captureStdout(t, func() {
+		HandleICMP("127.0.0.1", &jsonOutput, 2, 0, &throttle, 3, payload)
+	})
+	replies := 0
+	for _, line := range strings.Split(text, "\n") {
+		if strings.Contains(line, "received reply") {
+			replies++
+			if !strings.HasSuffix(line, " bytes=32") {
+				t.Errorf("reply line does not end with the payload size:\n%s", line)
+			}
+		}
+	}
+	if replies == 0 {
+		t.Skip("no ICMP replies; unprivileged ICMP is likely unavailable in this environment")
+	}
+
+	jsonOutput = true
+	out := captureStdout(t, func() {
+		HandleICMP("127.0.0.1", &jsonOutput, 2, 0, &throttle, 3, payload)
+	})
+	var result lib.JSONOutput
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("failed to unmarshal JSON output: %v\n%s", err, out)
+	}
+	statsJSON, _ := json.Marshal(result.Stats)
+	var stats []lib.ICMPStats
+	if err := json.Unmarshal(statsJSON, &stats); err != nil {
+		t.Fatal(err)
+	}
+	if len(stats) == 0 {
+		t.Fatal("no stats")
+	}
+	for i, s := range stats {
+		if s.PayloadSize != payload {
+			t.Errorf("stats[%d].payload_size_bytes = %d, want %d", i, s.PayloadSize, payload)
+		}
+	}
+}

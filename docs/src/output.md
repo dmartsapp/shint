@@ -43,7 +43,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Module | Messages |
 |---|---|
 | `telnet` | `dns resolved`, `dns resolution failed`, `connect ok`, `connect failed`, `done` |
-| `icmp` | `dns resolved`, `received reply for request #N from ADDR (ipv4/ipv6) in Nms`, `ping failed`, `done` |
+| `icmp` | `dns resolved`, `received reply for request #N from ADDR (ipv4/ipv6) in Nms bytes=N`, `ping failed`, `done` |
 | `web` | `dns resolved`, `response`, `request failed`, `tls verification disabled`, `using client certificate for mutual TLS`, `using custom CA bundle...`, `done` |
 | `nmap` | `dns resolved`, `scan started`, `progress`, `port open`, `scan complete`, `scan interrupted`, `done` |
 | `udp` | `dns resolved`, `probe open`, `probe closed`, `probe open|filtered`, `probe error`, `done` |
@@ -152,7 +152,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Field | Meaning |
 |---|---|
 | `address`, `success`, `sequence` | Target, whether it was answered, and the request number. |
-| `payload_size_bytes` | Reported payload size. |
+| `payload_size_bytes` | The echo payload size in bytes (`--payload`). |
 | `sent_unixtime_ms`, `recv_unixtime_ms`, `time_taken_ms` | Timing of the echo request and its reply. |
 
 **web**

@@ -28,14 +28,14 @@ shint ping 127.0.0.1 --count 2 --delay 500
 ```
 
 ```text
-Sun Sep 20 01:50:16 MDT 2026: [icmp] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=45.625µs
-Sun Sep 20 01:50:16 MDT 2026: [icmp] OK received reply for request #1 from 127.0.0.1 (ipv4) in 0ms
-Sun Sep 20 01:50:17 MDT 2026: [icmp] OK received reply for request #2 from 127.0.0.1 (ipv4) in 1ms
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=20.375µs
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK received reply for request #1 from 127.0.0.1 (ipv4) in 0ms bytes=4
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK received reply for request #2 from 127.0.0.1 (ipv4) in 0ms bytes=4
 
 ========================================= icmp STATISTICS =========================================
 Requests sent: 2, Response received: 2, Success: 100%
-Latency: minimum: 0s, average: 500µs, maximum: 1ms
-Sun Sep 20 01:50:17 MDT 2026: [icmp] OK done packets_lost=0 stddev_ms=0.500 resolve_time=45.625µs total_time=503.185166ms
+Latency: minimum: 0s, average: 0s, maximum: 0s
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK done packets_lost=0 stddev_ms=0.000 resolve_time=20.375µs total_time=501.641667ms
 ```
 ### A dual-stack host
 
@@ -46,16 +46,16 @@ shint ping google.com --count 2 --delay 500
 ```
 
 ```text
-Sun Sep 20 01:50:17 MDT 2026: [icmp] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=6.220834ms
-Sun Sep 20 01:50:17 MDT 2026: [icmp] OK received reply for request #1 from 142.251.46.78 (ipv4) in 32ms
-Sun Sep 20 01:50:17 MDT 2026: [icmp] OK received reply for request #1 from 2607:f8b0:400a:803::200e (ipv6) in 34ms
-Sun Sep 20 01:50:18 MDT 2026: [icmp] OK received reply for request #2 from 142.251.46.78 (ipv4) in 27ms
-Sun Sep 20 01:50:18 MDT 2026: [icmp] OK received reply for request #2 from 2607:f8b0:400a:803::200e (ipv6) in 28ms
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.45.142] time=3.208084ms
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK received reply for request #1 from 142.251.45.142 (ipv4) in 27ms bytes=4
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK received reply for request #1 from 2607:f8b0:400a:803::200e (ipv6) in 32ms bytes=4
+Sun Sep 20 15:37:49 MDT 2026: [icmp] OK received reply for request #2 from 2607:f8b0:400a:803::200e (ipv6) in 28ms bytes=4
+Sun Sep 20 15:37:49 MDT 2026: [icmp] OK received reply for request #2 from 142.251.45.142 (ipv4) in 29ms bytes=4
 
 ========================================= icmp STATISTICS =========================================
 Requests sent: 4, Response received: 4, Success: 100%
-Latency: minimum: 27ms, average: 30.25ms, maximum: 34ms
-Sun Sep 20 01:50:18 MDT 2026: [icmp] OK done packets_lost=0 stddev_ms=2.861 resolve_time=6.220834ms total_time=564.165375ms
+Latency: minimum: 27ms, average: 29ms, maximum: 32ms
+Sun Sep 20 15:37:49 MDT 2026: [icmp] OK done packets_lost=0 stddev_ms=1.871 resolve_time=3.208084ms total_time=562.66075ms
 ```
 ### JSON
 
@@ -73,15 +73,15 @@ shint ping 127.0.0.1 --json
       "address": "127.0.0.1",
       "success": true,
       "sequence": 1,
-      "payload_size_bytes": 0,
-      "recv_unixtime_ms": 1789890618038,
-      "sent_unixtime_ms": 1789890618038,
+      "payload_size_bytes": 4,
+      "recv_unixtime_ms": 1789940269446,
+      "sent_unixtime_ms": 1789940269446,
       "time_taken_ms": 0
     }
   ],
-  "end_time_unixtime_µs": 1789890618038951,
-  "start_time_unixtime_µs": 1789890618038099,
-  "total_time_taken_µs": 852,
+  "end_time_unixtime_µs": 1789940269446986,
+  "start_time_unixtime_µs": 1789940269446342,
+  "total_time_taken_µs": 644,
   "error": ""
 }
 ```
@@ -109,7 +109,8 @@ The lost request is logged as an `ERROR` line, like any other failed check, and 
 
 ## Reading the results
 
-- **`received reply ... in 29ms`** - one echo request was answered; the time is the round trip.
+- **`received reply ... in 29ms bytes=4`** - one echo request was answered; the time is the round trip, and `bytes` is the size of the echo payload (see below).
+- **`bytes=N`** is the **payload size** of the echo: what `--payload` sets (default 4). It does not count the 8-byte ICMP header or the IP header, so it reads like Windows `ping` (`bytes=32`); Unix `ping` prints payload + 8, so its familiar `64 bytes` is `--payload 56` here. shint shows the size it sent: the ping library does not report the length of the reply it read, but RFC 792 requires an echo reply to return the request's data unchanged, so the two are the same. A lost request has no reply, so it shows no size.
 - **Statistics block** - requests sent, replies received, and minimum, average and maximum latency.
 - **`packets_lost`, `stddev_ms`** - on the final line: how many requests went unanswered and how much the latency varied (jitter).
 

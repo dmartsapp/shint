@@ -41,6 +41,21 @@ func isLostPing(line string) bool {
 	return strings.HasPrefix(line, "no reply")
 }
 
+// withPayloadSize adds the echo payload size to a reply line, the way ping
+// tools show the size of each reply ("64 bytes from ..."): the line ends with
+// bytes=N, which is the payload (what --payload sets), not counting the 8 byte
+// ICMP header or the IP header - as Windows ping's bytes=32 does; Unix ping
+// prints payload + 8. Only replies get it; a lost request has no reply to size.
+// The library records the payload size it sent but not the length of the reply
+// it read; RFC 792 requires an echo reply to return the request's data
+// unchanged, so the two match.
+func withPayloadSize(line string, payload int) string {
+	if strings.HasPrefix(line, "received reply") {
+		return line + " " + lib.Fields("bytes", payload)
+	}
+	return line
+}
+
 // configurePinger applies the shared flags to a pinger. timeout (seconds) is
 // how long each echo request waits for its reply before it counts as lost.
 // The name lookup is not covered: netutils.NewPinger resolves inside its
@@ -94,6 +109,8 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 		return false
 	}
 
+	configurePinger(pinger, iterations, delay, *throttle, timeout, payload_size)
+
 	wg := sync.WaitGroup{}
 
 	// In text mode go-ping's own log lines are streamed as replies arrive; in
@@ -101,15 +118,14 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 	if !*jsonoutput {
 		fmt.Println(lib.LogWithTimestamp(icmpModule, "dns resolved "+lib.Fields("host", host, "addresses", len(pinger.Destination), "ips", "["+strings.Join(lib.ConvertIPToStringSlice(pinger.Destination), ",")+"]", "time", pinger.Stats.ResolveTime), false))
 		wg.Add(1)
-		go func(pinger *netutils.Pinger, wg *sync.WaitGroup) {
+		go func(pinger *netutils.Pinger, payload int, wg *sync.WaitGroup) {
 			defer wg.Done()
 			for log := range pinger.StreamLog() {
-				fmt.Println(lib.LogWithTimestamp(icmpModule, log, isLostPing(log)))
+				fmt.Println(lib.LogWithTimestamp(icmpModule, withPayloadSize(log, payload), isLostPing(log)))
 			}
-		}(pinger, &wg)
+		}(pinger, len(pinger.Payload), &wg)
 	}
 
-	configurePinger(pinger, iterations, delay, *throttle, timeout, payload_size)
 	err = pinger.PingAll()
 	if err != nil {
 		if *jsonoutput {
@@ -160,6 +176,7 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 			stat.Address = pckts.Destination.String()
 			stat.Success = !pckts.ErrorEncountered
 			stat.Sequence = pckts.Sequence
+			stat.PayloadSize = pckts.PayloadSize
 			stat.SentTime = pckts.SentDateTimeUNIX
 			stat.RecvTime = pckts.ReceiveDateTimeUNIX
 			stat.TimeTaken = stat.RecvTime - stat.SentTime
