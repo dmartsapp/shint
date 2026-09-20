@@ -189,6 +189,7 @@ workflows:
 	python3 .github/scripts/check-workflow-triggers.py
 	bash .github/scripts/test-verify-release-tag.sh
 	bash .github/scripts/test-write-ci-failure-issue.sh
+	bash .github/scripts/test-write-checksums.sh
 	python3 .github/scripts/test_notify_slack.py
 	$(ACTIONLINT) -ignore 'runner of "softprops/action-gh-release@v1" action is too old' .github/workflows/*.yaml
 

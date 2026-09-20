@@ -53,7 +53,7 @@ A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag 
 - **Checkout:** `actions/checkout@v5`.
 - **Linter:** `golangci-lint` **pinned to `v2.13.2`** through `golangci/golangci-lint-action@v7`. It is pinned because `latest` once resolved to a build made with an older Go than the module targets and failed for that reason alone; and action v6 does not support golangci-lint v2.
 - **Vulnerabilities:** `golang/govulncheck-action@v1`.
-- **Least privilege:** every job declares `permissions` explicitly (`contents: read` by default; `contents: write` only to create the release; `issues: write` only to file failure issues; `packages: write` only to push to GHCR).
+- **Least privilege:** every job declares `permissions` explicitly (`contents: read` by default; `contents: write` only to create the release; `issues: write` only to file failure issues; `packages: write` only to push to GHCR; `id-token: write` and `attestations: write` only in the binary build, to sign and store its attestation).
 
 ## The release-tag guard
 
@@ -131,8 +131,12 @@ Lint, Vulnerability Check and Check each file an issue when their check fails: t
 |---|---|---|
 | `verify-tag` | - | The [guard](#the-release-tag-guard). |
 | `gate` | `verify-tag` | Re-runs `golangci-lint` and `govulncheck` **quietly**. It does not report (the standalone workflows do); it exists so a failing check stops this workflow from shipping binaries. |
-| `build` | `gate` | A matrix of 8 operating systems x 2 architectures, minus two exclusions (Solaris has no arm64 port; Android/amd64 needs cgo), giving **14 binaries**. Each builds with `CGO_ENABLED=0 -buildvcs=true -trimpath -ldflags "-s -w -X main.Version=<tag>/<sha>/<time>"` and uploads a `binary-for-<os>-<arch>` artifact. `fail-fast` is off so one bad platform does not hide the others. |
+| `build` | `gate` | A matrix of 8 operating systems x 2 architectures, minus two exclusions (Solaris has no arm64 port; Android/amd64 needs cgo), giving **14 binaries**. Each builds with `CGO_ENABLED=0 -buildvcs=true -trimpath -ldflags "-s -w -X main.Version=<tag>/<sha>/<time>"`, then **attests** the binary (`actions/attest@v4`: a signed SLSA build-provenance statement, keyless through Sigstore), then writes its **`.sha256` file** (`.github/scripts/write-checksums.sh`, which verifies it straight away), and uploads both as a `binary-for-<os>-<arch>` artifact. `fail-fast` is off so one bad platform does not hide the others. |
 | `create-release` | `build` | Downloads every artifact, writes the release notes, and creates the GitHub Release (`softprops/action-gh-release@v1`) with all binaries attached. It needs `contents: write`. |
+
+### Verifying a release
+
+Every binary has a `<binary>.sha256` next to it (a line in the format `sha256sum -c` and `shasum -a 256 -c` read) and an attestation that `gh attestation verify <file> --repo dmartsapp/shint` checks. A release therefore has **28 assets: 14 binaries and 14 checksum files**. Users' instructions are on the [Install page](install.md#verify-your-download). The attestation is created in the same job as the binary, before the checksum file is added, so it covers exactly the bytes that are uploaded; the workflow needs no key or certificate of its own.
 
 ### Release notes
 
@@ -140,7 +144,8 @@ The notes are assembled by the workflow and contain, in order:
 
 1. **The commit message of the tagged commit** (`github.event.head_commit.message`). *This is where the changelog for a release shows up on GitHub*, which is why the release commit's message should carry it. See [Releases and tagging](tech-release.md).
 2. A **build status table**: one row per platform, checking the artifact exists.
-3. A **compare link** from the previous tag, and a `git diff --stat` summary (limited to 60,000 characters, to stay under GitHub's release-body size limit).
+3. A **Verify your download** paragraph with the checksum and `gh attestation verify` commands.
+4. A **compare link** from the previous tag, and a `git diff --stat` summary (limited to 60,000 characters, to stay under GitHub's release-body size limit).
 
 :::note A note on script injection
 The commit message is free text written by a person, so it is passed to the shell through an environment variable (`COMMIT_MSG`) and never interpolated into the script. Interpolating `${{ github.event.head_commit.message }}` directly would let a backtick in a commit message run as a command. This is GitHub's own documented footgun.

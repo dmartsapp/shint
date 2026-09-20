@@ -96,10 +96,12 @@ nav: Source reference
 | `.github/scripts/test_check_workflow_triggers.py` | Tests for that check, including a run over the real workflow files. |
 | `.github/workflows/lint.yaml` | Guard, then `golangci-lint`; opens an issue on failure. |
 | `.github/workflows/vulncheck.yaml` | Guard, then `govulncheck` with a step summary; opens an issue on failure. |
-| `.github/workflows/build.yaml` | Guard, gate, then 14 cross-builds, then the GitHub Release with the binaries attached. |
+| `.github/workflows/build.yaml` | Guard, gate, then 14 cross-builds (each attested and given a `.sha256` file), then the GitHub Release with the binaries and checksum files attached. |
 | `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
 | `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
 | `.github/workflows/check.yaml` | `make check` after a merge to `main` (never a branch, PR or tag; ignores `.github/**`); opens an issue on failure. |
+| `.github/scripts/write-checksums.sh` | Writes `<binary>.sha256` next to each release binary and verifies it. |
+| `.github/scripts/test-write-checksums.sh` | Offline tests for it: format, an independent hash, the platform's own verifier, tampering. |
 | `.github/scripts/write-ci-failure-issue.sh` | Writes the body of the issue a failed check files, with the real run URL. |
 | `.github/scripts/test-write-ci-failure-issue.sh` | Offline tests for it. |
 

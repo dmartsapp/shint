@@ -63,6 +63,43 @@ A release binary prints the tag, the commit it was built from and the build time
 v4.0.2/1c4421137f2609ad420af60415c8e6fa1756da46/2026-09-20T05:34:40+0000
 ```
 
+### Verify your download
+
+From v4.1.0 every binary comes with two ways to check it. Earlier releases have neither.
+
+**A checksum** catches a damaged or incomplete download. Each binary has a `.sha256` file next to it on the releases page. Download both into the same folder, **keeping their original names** (the checksum file names the file it belongs to), and check:
+
+```bash
+curl -LO https://github.com/dmartsapp/shint/releases/latest/download/shint.darwin.arm64
+curl -LO https://github.com/dmartsapp/shint/releases/latest/download/shint.darwin.arm64.sha256
+shasum -a 256 -c shint.darwin.arm64.sha256       # macOS; on Linux: sha256sum -c shint.linux.amd64.sha256
+```
+
+```text
+shint.darwin.arm64: OK
+```
+
+On Windows, in PowerShell (`Get-FileHash` uses SHA-256 by default; `-ieq` ignores case):
+
+```bash
+$expected = (Get-Content shint.windows.amd64.exe.sha256).Split(' ')[0]
+(Get-FileHash shint.windows.amd64.exe).Hash -ieq $expected
+```
+
+`True` means it matches. The checksum only proves the file arrived intact: it sits on the same page as the binary, so it cannot tell you the file is genuine.
+
+**A build attestation** does. It is a signed statement, made by the release workflow, that this exact file was built by the `dmartsapp/shint` repository from a named commit. With the [GitHub CLI](https://cli.github.com) installed:
+
+```bash
+gh attestation verify shint.darwin.arm64 --repo dmartsapp/shint
+```
+
+It succeeds only for a file that is byte-for-byte what that workflow built, and reports what it found (the repository, the workflow and the commit). It needs no key of yours: the signature comes from a short-lived certificate from [Sigstore](https://www.sigstore.dev), recorded in a public log.
+
+:::note This is not operating-system code signing
+An attestation proves where a file came from. It does not stop macOS or Windows from warning that the publisher is unknown: shint is not signed with an Apple or Microsoft certificate.
+:::
+
 ## Docker
 
 Every release is also published as a multi-architecture image (`linux/amd64`, `linux/arm64`) to two registries. The image is tiny: the same static binary on a distroless base, running as a non-root user.

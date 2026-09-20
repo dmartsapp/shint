@@ -119,8 +119,8 @@ git tag -a vX.Y.Z -m "vX.Y.Z: summary" -m "<changelog>"
 git push origin refs/tags/vX.Y.Z
 ```
 
-9. **Watch the five workflows** - the result is posted to Slack when the last one finishes ([Slack notification](tech-ci.md#slack-notification)), or follow them with the [commands here](tech-ci.md#watching-a-release) - and confirm the release has 14 assets. (Before tagging, let the [Check](tech-ci.md#check-after-a-merge-to-main) run for the merge to `main` finish green.)
-10. **Verify**: download a binary and run `--version`; pull the image.
+9. **Watch the five workflows** - the result is posted to Slack when the last one finishes ([Slack notification](tech-ci.md#slack-notification)), or follow them with the [commands here](tech-ci.md#watching-a-release) - and confirm the release has 28 assets (14 binaries and their 14 `.sha256` files). (Before tagging, let the [Check](tech-ci.md#check-after-a-merge-to-main) run for the merge to `main` finish green.)
+10. **Verify**: download a binary and its `.sha256`, check it (`shasum -a 256 -c`), run `gh attestation verify <file> --repo dmartsapp/shint`, and run `--version`; pull the image.
 
 ## When a release goes wrong
 

@@ -48,6 +48,10 @@ jobs:
     needs: gate
     permissions:
       contents: read
+      # Only for the attestation step below: a short-lived OIDC token to get a
+      # Sigstore signing certificate, and permission to store the attestation.
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -86,6 +90,19 @@ jobs:
           mkdir -p bin
           DT=($(date +%Y-%m-%dT%H:%M:%S%z))
           go build -buildvcs=true -trimpath -ldflags="-s -w -X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT" -o bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+
+      # A signed statement that this exact file was built by this workflow from
+      # this commit (SLSA build provenance, keyless via Sigstore). Users check it
+      # with: gh attestation verify <file> --repo dmartsapp/shint
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: bin/shint.*
+
+      # bin/ holds only the binary at this point; this adds <binary>.sha256 next
+      # to it (see .github/scripts/write-checksums.sh) and checks it.
+      - name: Write the SHA-256 checksum
+        run: bash .github/scripts/write-checksums.sh bin
 
       - name: Upload artifacts
         if: success() || failure()
@@ -153,6 +170,14 @@ jobs:
               echo "| $os/$arch | ❌ Failed |" >> release_notes.md
             fi
           done
+
+          echo "" >> release_notes.md
+          echo "### Verify your download" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "Every binary has a \`.sha256\` file next to it and a signed build attestation." >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- Checksum: \`sha256sum -c shint.linux.amd64.sha256\` (Linux) or \`shasum -a 256 -c shint.darwin.arm64.sha256\` (macOS), in the folder you downloaded both files to." >> release_notes.md
+          echo "- Provenance: \`gh attestation verify shint.linux.amd64 --repo ${{ github.repository }}\` proves the file was built by this repository's workflow from this release's commit." >> release_notes.md
 
           echo "" >> release_notes.md
           echo "### Code Changes" >> release_notes.md
