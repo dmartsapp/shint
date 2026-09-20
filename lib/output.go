@@ -68,6 +68,38 @@ type WebStats struct {
 	BytesReceived int64   `json:"bytes_received"`
 	StatusCode    int     `json:"status_code"`   // added field to store the HTTP status code
 	BandwidthKBs  float64 `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
+	// Timing is present only with --timing: where the request's time went,
+	// one entry per hop when a redirect was followed.
+	Timing *WebTiming `json:"timing,omitempty"`
+}
+
+// WebTiming is the --timing breakdown of one request.
+type WebTiming struct {
+	Hops []WebHopTiming `json:"hops"`
+}
+
+// WebHopTiming is where the time went for one hop of a request (the request
+// itself, then each redirect it followed), in microseconds:
+//
+//	dns       the name lookup for this hop (0: an IP address, or a reused connection)
+//	connect   opening the TCP connection (0 on a reused connection)
+//	tls       the TLS handshake (0 for http://, or a reused connection)
+//	wait      the request fully sent -> the first byte of the response: the
+//	          server's time to respond plus one network round trip
+//	download  the first byte of the response -> its body fully read
+//	total     the hop from start to finish
+//
+// StatusCode is 0 for a hop that got no response (the request failed there).
+type WebHopTiming struct {
+	URL        string `json:"url"`
+	StatusCode int    `json:"status_code"`
+	Reused     bool   `json:"reused_connection"`
+	DNSUs      int64  `json:"dns_µs"`
+	ConnectUs  int64  `json:"connect_µs"`
+	TLSUs      int64  `json:"tls_µs"`
+	WaitUs     int64  `json:"wait_µs"`
+	DownloadUs int64  `json:"download_µs"`
+	TotalUs    int64  `json:"total_µs"`
 }
 
 // NmapStats is one scanned port. Every port in the range is listed, open or

@@ -135,7 +135,7 @@ func TestWebHandlerInterruptedReportsHowFarItGot(t *testing.T) {
 	var ok bool
 	ctx := cancelAfter(t, 400*time.Millisecond)
 	out := runWithin(t, 3*time.Second, func() {
-		ok = WebHandler(ctx, &jsonOutput, 200, 40, &throttle, 5, u, "GET", "", nil, false, nil)
+		ok = WebHandler(ctx, &jsonOutput, 200, 40, &throttle, 5, u, "GET", "", nil, false, nil, false)
 	})
 	if ok {
 		t.Error("an interrupted run must not report success")
@@ -168,7 +168,7 @@ func TestWebHandlerInterruptAbandonsARequestInFlight(t *testing.T) {
 	jsonOutput, throttle := false, false
 	ctx := cancelAfter(t, 300*time.Millisecond)
 	out := runWithin(t, 2*time.Second, func() {
-		WebHandler(ctx, &jsonOutput, 3, 0, &throttle, 30, u, "GET", "", nil, false, nil)
+		WebHandler(ctx, &jsonOutput, 3, 0, &throttle, 30, u, "GET", "", nil, false, nil, false)
 	})
 	completed, planned := interruptedCounts(t, out)
 	if completed != 0 || planned != 3 {
@@ -187,7 +187,7 @@ func TestWebHandlerInterruptedJSON(t *testing.T) {
 	ctx := cancelAfter(t, 350*time.Millisecond)
 	var ok bool
 	out := runWithin(t, 3*time.Second, func() {
-		ok = WebHandler(ctx, &jsonOutput, 200, 40, &throttle, 5, u, "GET", "", nil, false, nil)
+		ok = WebHandler(ctx, &jsonOutput, 200, 40, &throttle, 5, u, "GET", "", nil, false, nil, false)
 	})
 	var doc struct {
 		Error string        `json:"error"`

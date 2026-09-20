@@ -64,7 +64,7 @@ func TestWebIncompleteBodyIsAFailure(t *testing.T) {
 			text := false
 			var ok bool
 			out := captureStdout(t, func() {
-				ok = WebHandler(context.Background(), &text, 1, 0, &throttle, timeout, target, "GET", "", nil, false, nil)
+				ok = WebHandler(context.Background(), &text, 1, 0, &throttle, timeout, target, "GET", "", nil, false, nil, false)
 			})
 			if ok {
 				t.Errorf("WebHandler reported success for a body that ended early; output:\n%s", out)
@@ -78,7 +78,7 @@ func TestWebIncompleteBodyIsAFailure(t *testing.T) {
 
 			asJSON := true
 			out = captureStdout(t, func() {
-				ok = WebHandler(context.Background(), &asJSON, 1, 0, &throttle, timeout, target, "GET", "", nil, false, nil)
+				ok = WebHandler(context.Background(), &asJSON, 1, 0, &throttle, timeout, target, "GET", "", nil, false, nil, false)
 			})
 			if ok {
 				t.Errorf("--json: WebHandler reported success for a body that ended early")

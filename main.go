@@ -58,6 +58,7 @@ var (
 	certFile            string
 	keyFile             string
 	insecureSkipVerify  bool
+	webTiming           bool
 
 	// udp
 	udpData string
@@ -174,11 +175,12 @@ var pingCmd = &cobra.Command{
 }
 
 var webCmd = &cobra.Command{
-	Use:     "web [url]",
-	Short:   "Make an HTTP request to a URL",
-	Long:    `This command makes an HTTP request to a URL and displays the response. Follows redirects (up to 10, and bytes are counted across every hop) but does not fetch embedded resources.`,
-	Args:    cobra.ExactArgs(1),
-	Example: rootCmd.Name() + " web --json -H \"authorization:Bearer <token>\" -H \"content-type:application/json\" http://google.com --count 1",
+	Use:   "web [url]",
+	Short: "Make an HTTP request to a URL",
+	Long:  `This command makes an HTTP request to a URL and displays the response. Follows redirects (up to 10, and bytes are counted across every hop) but does not fetch embedded resources.`,
+	Args:  cobra.ExactArgs(1),
+	Example: rootCmd.Name() + " web --json -H \"authorization:Bearer <token>\" -H \"content-type:application/json\" http://google.com --count 1" + "\n" +
+		rootCmd.Name() + " web https://example.com --timing",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := lib.RequirePositive("count", iterations); err != nil {
 			usage(err.Error())
@@ -211,7 +213,7 @@ var webCmd = &cobra.Command{
 		ctx, stop := interruptContext()
 		defer stop()
 
-		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig))
+		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming))
 	},
 }
 
@@ -468,6 +470,7 @@ func init() {
 	webCmd.Flags().StringVar(&certFile, "cert", "", "Path to a PEM client certificate for mutual TLS (requires --key)")
 	webCmd.Flags().StringVar(&keyFile, "key", "", "Path to the PEM private key matching --cert (requires --cert)")
 	webCmd.Flags().BoolVarP(&insecureSkipVerify, "insecure", "k", false, "Skip TLS certificate verification (INSECURE, for diagnostics only)")
+	webCmd.Flags().BoolVar(&webTiming, "timing", false, "Show where each request's time went: DNS, connect, TLS, wait for the first byte, download (one line per redirect hop; a timing object per stat with --json)")
 
 	nmapCmd.Flags().IntVar(&fromport, "from", 1, "Start port for TCP scan")
 	nmapCmd.Flags().IntVar(&endport, "to", 80, "End port for TCP scan")

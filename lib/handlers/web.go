@@ -33,7 +33,11 @@ const (
 // such; a refused connection, a timeout, a TLS failure or DNS failure is not.
 // ctx is cancelled by Ctrl+C and nothing else - never a deadline; see
 // interrupt.go for how a cancelled run ends.
-func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config) (ok bool) {
+//
+// With timing, each request also reports where its time went - DNS, connect,
+// TLS, waiting for the first byte, downloading - per hop when a redirect is
+// followed (see webtiming.go).
+func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config, timing bool) (ok bool) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	var stats = make([]time.Duration, 0)
@@ -110,6 +114,9 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 		Timeout:   time.Duration(timeout) * time.Second,
 		Transport: newCountingTransport(tlsConfig),
 	}
+	if timing {
+		client.CheckRedirect = checkRedirect // net/http's default policy, plus telling the recorder
+	}
 
 	var WG sync.WaitGroup
 	var failed int32    // attempts that got no HTTP response
@@ -138,6 +145,10 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			defer WG.Done()
 			errors := make([]string, 0)
 			var meter wireMeter
+			var rec *timingRecorder
+			if timing {
+				rec = newTimingRecorder(URL.String())
+			}
 
 			// fail records an attempt that got no response: as an ERROR log
 			// line in text mode, or as a stats entry with success=false in
@@ -146,8 +157,14 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				atomic.AddInt32(&failed, 1)
 				atomic.AddInt32(&completed, 1)
 				elapsed := time.Since(start)
+				if rec != nil {
+					rec.abort()
+				}
 				if !*jsonoutput {
 					fmt.Println(lib.LogWithTimestamp(webModule, stage+" "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", elapsed, "error", err.Error()), true))
+					for _, line := range timingLines(rec, attempt, iterations) {
+						fmt.Println(line)
+					}
 					return
 				}
 				reqHeaders := http.Header{}
@@ -166,6 +183,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 					TimeTaken:     elapsed.Microseconds(),
 					BytesSent:     sent,
 					BytesReceived: received,
+					Timing:        timingOrNil(rec),
 				}
 				statsMutex.Lock()
 				output.Stats = append(output.Stats.([]lib.WebStats), stat)
@@ -194,6 +212,10 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			// body out; status line, headers and body in), the same way
 			// listen http counts them - and every hop, if a redirect is followed.
 			request = request.WithContext(httptrace.WithClientTrace(request.Context(), meter.clientTrace()))
+			if rec != nil {
+				withRecorder := context.WithValue(request.Context(), timingKey{}, rec)
+				request = request.WithContext(httptrace.WithClientTrace(withRecorder, rec.trace()))
+			}
 
 			start := time.Now()
 			response, err := client.Do(request)
@@ -217,6 +239,9 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				return
 			}
 			atomic.AddInt32(&completed, 1)
+			if rec != nil {
+				rec.finish(response.StatusCode)
+			}
 			header := response.Header
 			timeTaken := time.Since(start)
 			bytesSent, bytesReceived := meter.totals()
@@ -248,12 +273,16 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				stat.RecvTime = time.Now().UnixMicro()
 				stat.TimeTaken = timeTaken.Microseconds()
 				stat.Errors = errors
+				stat.Timing = timingOrNil(rec)
 				output.Stats = append(output.Stats.([]lib.WebStats), stat)
 			}
 			statsMutex.Unlock()
 
 			if !*jsonoutput {
 				fmt.Println(lib.LogWithTimestamp(webModule, "response "+lib.Fields("url", URL.String(), "status", response.StatusCode, "bytes_sent", bytesSent, "bytes_received", bytesReceived, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken), false))
+				for _, line := range timingLines(rec, attempt, iterations) {
+					fmt.Println(line)
+				}
 			}
 		}(URL, attempt)
 	}

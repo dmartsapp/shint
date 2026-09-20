@@ -176,6 +176,8 @@ func TestExitStatus(t *testing.T) {
 		// web: a response is a response, whatever its status; no response is a failure
 		{"web 200", []string{"web", web200.URL}, 0},
 		{"web 404 is still a response", []string{"web", web404.URL}, 0},
+		{"web with --timing", []string{"web", web200.URL, "--timing"}, 0},
+		{"web --timing, connection refused", []string{"web", "http://127.0.0.1:" + closed + "/", "--timing"}, 1},
 		{"web connection refused", []string{"web", "http://127.0.0.1:" + closed + "/"}, 1},
 		{"web unknown flag", []string{"web", web200.URL, "--nope"}, 2},
 

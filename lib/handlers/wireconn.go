@@ -108,7 +108,18 @@ func newCountingTransport(tlsConfig *tls.Config) *http.Transport {
 				}
 			}
 			conn := tls.Client(raw, cfg)
-			if err := conn.HandshakeContext(ctx); err != nil {
+			// net/http reports the handshake to httptrace only when it does
+			// the handshake itself; this dialer does it, so it reports it too
+			// (that is how web --timing sees the TLS time).
+			trace := httptrace.ContextClientTrace(ctx)
+			if trace != nil && trace.TLSHandshakeStart != nil {
+				trace.TLSHandshakeStart()
+			}
+			err = conn.HandshakeContext(ctx)
+			if trace != nil && trace.TLSHandshakeDone != nil {
+				trace.TLSHandshakeDone(conn.ConnectionState(), err)
+			}
+			if err != nil {
 				_ = raw.Close()
 				return nil, err
 			}
