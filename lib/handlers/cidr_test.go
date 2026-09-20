@@ -193,3 +193,16 @@ func TestCIDRHandlerJSONIsOneCleanDocument(t *testing.T) {
 		t.Errorf("addresses should be a decimal string:\n%s", out)
 	}
 }
+
+func TestParseSubnetsErrorsNameTheCause(t *testing.T) {
+	for in, want := range map[string]string{
+		"10.0.0.0/33": `invalid prefix "10.0.0.0/33": prefix length out of range`,
+		"10.0.0.0/x":  `invalid prefix "10.0.0.0/x": bad bits after slash: "x"`,
+		"nope":        `invalid address or prefix "nope"`,
+	} {
+		_, err := ParseSubnets([]string{in})
+		if err == nil || err.Error() != want {
+			t.Errorf("ParseSubnets(%q) error = %v, want %q", in, err, want)
+		}
+	}
+}

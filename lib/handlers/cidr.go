@@ -34,7 +34,7 @@ func ParseSubnets(inputs []string) ([]Subnet, error) {
 		if strings.Contains(text, "/") {
 			p, err := netip.ParsePrefix(text)
 			if err != nil {
-				return nil, fmt.Errorf("invalid prefix %q: %v", input, err)
+				return nil, fmt.Errorf("invalid prefix %q: %s", input, reason(err))
 			}
 			prefix = p
 		} else {
@@ -53,6 +53,16 @@ func ParseSubnets(inputs []string) ([]Subnet, error) {
 		subnets = append(subnets, Subnet{Input: input, Prefix: prefix})
 	}
 	return subnets, nil
+}
+
+// reason is the cause at the end of a net/netip error, without the
+// netip.ParsePrefix("...") calls it wraps around it: "prefix length out of range".
+func reason(err error) string {
+	msg := err.Error()
+	if i := strings.LastIndex(msg, "): "); i >= 0 {
+		return msg[i+3:]
+	}
+	return msg
 }
 
 // kindRanges are the special ranges "cidr" names, checked after the ones
