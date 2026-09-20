@@ -14,7 +14,7 @@ nav: Testing
 - **The race detector is on.** Handlers are concurrent; run `go test -race`.
 - **Every bug gets a test that fails without the fix.** Each regression test below was checked against the broken behaviour before the fix was kept.
 
-There are 93 top-level tests: 63 in `lib/handlers`, 25 in `lib` and 5 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 24 scenarios).
+There are 99 top-level Go tests: 68 in `lib/handlers`, 25 in `lib` and 6 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 27 scenarios). Outside `go test` there is a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), and a Python test for the documentation generator.
 
 ## Running the tests
 
@@ -62,14 +62,23 @@ Two package-level variables exist only so tests can control time and slowness de
 | `TestWebAndHTTPListenAgreeOnBytes` | Client and server disagreeing about bytes (0 B to 2 MB, including bodies over `net/http`'s discard limit). |
 | `TestWebHandlerBytesIncludeHeaders`, `...CoverEveryRedirectHop`, `...ReusedConnectionCountsPerRequest` | Byte counts that were body-only, last-hop-only, or cumulative across a reused connection. |
 | `TestHTTPListenHandlerIgnoresRequestHeaders` | The listener acting on conditional headers or emitting validators. |
-| `TestExitStatus` (24 scenarios) | Failed checks or bad usage exiting `0`; the 404-is-a-response, completed-scan and `open|filtered` rules. |
+| `TestExitStatus` (27 scenarios) | Failed checks or bad usage exiting `0`; the 404-is-a-response, completed-scan and `open|filtered` rules. |
 | `TestUsageErrorsGoToStderrOnly` | Usage errors on stdout, or printed twice. |
 | `TestFailuresUnderJSONAreStillJSON` | A stray text line in front of the JSON when a check fails. |
 | `TestListenExitsZeroWhenDone` | A finished listener exiting non-zero. |
+| `TestConfigurePingerAppliesTimeout` | `ping --timeout` being recorded but never applied: every echo request waited a fixed second. |
+| `TestValidatePingPayload`, the `ping` cases of `TestExitStatus` | A `--payload` outside 0-1448 silently clamped, and `--timeout 0` accepted, instead of a usage error (exit `2`). |
+| `TestIsLostPing` | A lost echo request logged at `OK` level while the run exited `1`. |
+| `TestWithPayloadSize`, `TestHandleICMPShowsPayloadSize` | Reply lines without the payload size; `payload_size_bytes` in the JSON being `0`. |
+| `TestUDPHelpDoesNotPromiseEscapes` | `udp --help` showing `\x00` escapes, which are never interpreted. |
 
 ## The live smoke test
 
 `basic_module_test.sh` builds the binary and runs one check per command against real hosts (`google.com`, `httpbin.org`, `8.8.8.8`), asserting on exit status *and* an expected string in the output. It needs the internet and ICMP, so it is not part of `go test`; run it before a release when you can. It counts failures and continues rather than stopping at the first.
+
+## The release-tag guard
+
+Workflows run only for a release tag, so a mistake in one would first show itself on release day. Two things stand in for that. `bash .github/scripts/test-verify-release-tag.sh` runs the guard script against a fake `gh` (no network) and checks: a name that is not `vX.Y.Z` is refused **without** calling GitHub; `identical` and `behind` pass; `ahead` and `diverged` are refused; an API error refuses; a missing input is an error. And the script was run once against the real repository - v4.0.3's commit passes, a release-branch tip is refused as `ahead` - with the same `gh api` call the workflow makes. The workflow files themselves are checked with [actionlint](https://github.com/rhysd/actionlint).
 
 ## Lint and vulnerability checks
 

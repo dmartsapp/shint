@@ -44,7 +44,8 @@
 │   ├── output.go           JSON output types and the text log format
 │   └── handlers/           one file per command (plus TLS and wire counting)
 ├── docs/                   this documentation site (Markdown sources + build script)
-├── .github/workflows/      the five CI/CD workflows
+├── .github/workflows/      the five CI/CD workflows, plus the tag guard they all call
+├── .github/scripts/        the tag guard's script and its offline test
 ├── Makefile                cross-compilation for every release platform
 ├── Dockerfile              multi-arch container image
 ├── basic_module_test.sh    live-internet smoke test

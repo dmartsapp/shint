@@ -66,7 +66,7 @@ nav: Source reference
 |---|---|
 | `testhelpers_test.go` | Shared helpers: `captureStdout` (redirects stdout to a pipe drained concurrently), `freeTCPPort`, `freeUDPPort`, and a throw-away certificate authority (`generateTestCA`, `issueCert`, `writePEM`) for TLS tests. |
 | `telnet_test.go` | Success and failure output, IPv6 loopback, DNS failure, concurrency (no data race), and the regression test that a run longer than `--timeout` still succeeds. |
-| `icmp_test.go` | Text and JSON mode (skips itself where unprivileged ICMP is unavailable). |
+| `icmp_test.go` | Text and JSON mode, the payload size shown on replies, and the pieces that need no network: `--timeout` reaching the pinger, payload validation, and which log lines count as a lost request (the live tests skip themselves where unprivileged ICMP is unavailable). |
 | `web_test.go` | A full request/response round trip and mutual-TLS scenarios (with the client certificate, without it, without trusting the CA, and with `--insecure`). |
 | `wirebytes_test.go` | The byte-measurement guarantees: `web` and `listen http` agree for bodies from 0 B to 2 MB, `web`'s counts match a raw server over HTTP and HTTPS, keep-alive reuse, redirect hops, header-insensitivity of the listener. |
 | `tls_test.go` | Every branch of `BuildTLSConfig`. |
@@ -86,11 +86,14 @@ nav: Source reference
 
 | File | Purpose |
 |---|---|
-| `.github/workflows/lint.yaml` | `golangci-lint`; opens an issue on failure. |
-| `.github/workflows/vulncheck.yaml` | `govulncheck` with a step summary; opens an issue on failure. |
-| `.github/workflows/build.yaml` | Gate, then 14 cross-builds, then the GitHub Release with the binaries attached. |
-| `.github/workflows/docker-hub.yaml` | Gate, then a multi-arch image pushed to Docker Hub. |
-| `.github/workflows/ghcr.yaml` | Gate, then the same image pushed to GitHub Container Registry. |
+| `.github/workflows/verify-release-tag.yaml` | The tag guard, a reusable workflow every other workflow calls first: the tag must be `vX.Y.Z` and its commit must be on `main`. No trigger of its own. |
+| `.github/scripts/verify-release-tag.sh` | The guard's checks (tag format, then the GitHub compare API). |
+| `.github/scripts/test-verify-release-tag.sh` | Offline tests for the guard, with a fake `gh`: `bash .github/scripts/test-verify-release-tag.sh`. |
+| `.github/workflows/lint.yaml` | Guard, then `golangci-lint`; opens an issue on failure. |
+| `.github/workflows/vulncheck.yaml` | Guard, then `govulncheck` with a step summary; opens an issue on failure. |
+| `.github/workflows/build.yaml` | Guard, gate, then 14 cross-builds, then the GitHub Release with the binaries attached. |
+| `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
+| `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
 | `.github/ISSUE_TEMPLATE/ci_failure.md` | The body of the issue a failed lint or vulnerability run files. |
 
 Each workflow is explained in [CI/CD workflows](tech-ci.md).

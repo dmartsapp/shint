@@ -3,9 +3,17 @@ name: Binary Build & Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
+  # Refuses anything that is not a vX.Y.Z tag on a commit that is on main; every
+  # other job in this workflow waits for it.
+  verify-tag:
+    name: Verify release tag
+    permissions:
+      contents: read
+    uses: ./.github/workflows/verify-release-tag.yaml
+
   # A quiet, non-reporting gate: the standalone Lint and Vulnerability Check
   # workflows are what surface failures (their own badges, their own
   # "file an issue" step) - this just makes sure this workflow doesn't ship
@@ -14,6 +22,7 @@ jobs:
   gate:
     name: Lint & vulnerability gate
     runs-on: ubuntu-latest
+    needs: verify-tag
     permissions:
       contents: read
     steps:

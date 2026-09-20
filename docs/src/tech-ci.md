@@ -9,7 +9,9 @@ nav: CI/CD workflows
 
 ## Overview
 
-All five workflows are triggered by **the same event: pushing a tag that matches `v*.*.*`**. Nothing runs on a push to `main` or on a pull request. That is a deliberate choice - a release is the unit of quality here - and it has consequences covered under [What CI does not do](#what-ci-does-not-do).
+All five workflows are triggered by **the same event: pushing a tag of the form `vX.Y.Z` (digits only) that points at a commit on `main`**. Nothing else starts them: not a push to a branch (whatever its name), not a push to `main`, not a pull request, not a manual run. That is a deliberate choice - a release is the unit of quality here - and it has consequences covered under [What CI does not do](#what-ci-does-not-do).
+
+The "on `main`" half is enforced by a [guard](#the-release-tag-guard) that every workflow runs first.
 
 They are separate files so that each has its own status and its own failure mode: a Docker Hub credential problem shows up as *that* workflow failing, not as a vague failure of "the release".
 
@@ -41,30 +43,50 @@ They are separate files so that each has its own status and its own failure mode
 
 ## Common ground
 
-- **Trigger:** `on: push: tags: ['v*.*.*']`.
+- **Trigger:** `on: push: tags: ['v[0-9]+.[0-9]+.[0-9]+']`, and no `branches`, `pull_request`, `schedule` or `workflow_dispatch` trigger anywhere. In GitHub's filter syntax `+` means "one or more of the previous item" and `.` is an ordinary dot, so this is `v`, digits, dot, digits, dot, digits - and nothing after. (The pattern must be quoted in YAML.)
+- **The guard:** the first job of every workflow is `verify-tag`, which calls the reusable workflow `verify-release-tag.yaml`; every other job waits for it. See [The release-tag guard](#the-release-tag-guard).
 - **Go toolchain:** `actions/setup-go@v5` with `go-version-file: go.mod` and `check-latest: true`, so CI builds with the version the module declares (or the newest patch of it).
 - **Checkout:** `actions/checkout@v5`.
 - **Linter:** `golangci-lint` **pinned to `v2.13.2`** through `golangci/golangci-lint-action@v7`. It is pinned because `latest` once resolved to a build made with an older Go than the module targets and failed for that reason alone; and action v6 does not support golangci-lint v2.
 - **Vulnerabilities:** `golang/govulncheck-action@v1`.
 - **Least privilege:** every job declares `permissions` explicitly (`contents: read` by default; `contents: write` only to create the release; `issues: write` only to file failure issues; `packages: write` only to push to GHCR).
 
+## The release-tag guard
+
+`.github/workflows/verify-release-tag.yaml` (a reusable workflow: it has no trigger of its own, so nothing can start it directly) and `.github/scripts/verify-release-tag.sh`.
+
+A trigger filter looks only at the tag's *name*. It cannot ask "is the tagged commit on `main`?", and a tag pushed from a release branch by mistake would otherwise build and publish an unreleased state under a release number. So each workflow's first job, `verify-tag`, checks both things, and a failure skips every other job in that workflow:
+
+| Check | How | Refused when |
+|---|---|---|
+| The name is `vX.Y.Z` | A regular expression, `^v[0-9]+\.[0-9]+\.[0-9]+$`, independent of the trigger filter | `v4.0.4-rc1`, `v1.2.3.4`, `v4.0`, `vx.y.z`, `v2.2.4ae` and so on. GitHub is not asked anything. |
+| The commit is on `main` | `gh api repos/<repo>/compare/main...<sha>` and its `status` | `ahead` (the commit is newer than `main`, e.g. a release branch tip) or `diverged`. `identical` (the tag is on `main`'s tip) and `behind` (an older commit of `main`) pass. |
+
+- **It fails closed.** If GitHub cannot answer the comparison, the release is refused rather than assumed fine.
+- **Order matters.** Push `main` first, then the tag - the checklist already says so. A tag pushed before `main` has the commit is refused with a message saying to merge first; pushing `main` and re-running the failed workflows (`gh run rerun <run-id> --failed`) then passes, because the comparison is made live.
+- **A refused tag builds and publishes nothing** and opens no "CI Failure" issue: the failure reports in each workflow's `report-failure` job are conditioned on the *check* failing (`always() && needs.<job>.result == 'failure'`), and a skipped job is not a failed one. (Plain `failure()` would not do: it is true when *any* ancestor job failed, which includes `verify-tag`. `always()` is there because an `if:` without a status function gets an implicit `success()`, which is false exactly when the check failed.) The refusal is one red `verify-tag` job with a plain-English annotation on the run.
+- **What it is not.** It protects against mistakes, not against someone who can push tags *and* edit workflow files - they could change the guard too. Who may create tags is a repository-settings matter.
+- **Testing it.** Workflows only run on tags, so the script has its own offline test, with a fake `gh`: `bash .github/scripts/test-verify-release-tag.sh`. It covers accepted and refused names (a bad name must not reach GitHub at all), both compare outcomes, an API error, and missing inputs.
+
 ## Lint
 
 `.github/workflows/lint.yaml`
 
-| Job | What it does |
-|---|---|
-| `lint` | Runs `golangci-lint` with the default linter set. |
-| `report-failure` | Runs only if `lint` failed: files an issue titled "CI Failure: Lint" (labels `bug`, `ci-failure`, assigned to the person who pushed the tag) from `.github/ISSUE_TEMPLATE/ci_failure.md`, using `peter-evans/create-issue-from-file@v5`. The file is static text: GitHub expands `${{ }}` expressions only inside workflow files, so the issue points at the Actions tab rather than at one specific run. |
+| Job | Needs | What it does |
+|---|---|---|
+| `verify-tag` | - | The [guard](#the-release-tag-guard). |
+| `lint` | `verify-tag` | Runs `golangci-lint` with the default linter set. |
+| `report-failure` | `lint` | Runs only if `lint` itself failed (not if the tag was refused and `lint` never ran): files an issue titled "CI Failure: Lint" (labels `bug`, `ci-failure`, assigned to the person who pushed the tag) from `.github/ISSUE_TEMPLATE/ci_failure.md`, using `peter-evans/create-issue-from-file@v5`. The file is static text: GitHub expands `${{ }}` expressions only inside workflow files, so the issue points at the Actions tab rather than at one specific run. |
 
 ## Vulnerability check
 
 `.github/workflows/vulncheck.yaml`
 
-| Job | What it does |
-|---|---|
-| `govulncheck` | Runs `govulncheck`, writes its report to a file, and turns it into a step summary table (status, vulnerability count, checked modules, details). |
-| `report-failure` | On failure, files an issue "CI Failure: Vulnerability Check" like the lint workflow does. |
+| Job | Needs | What it does |
+|---|---|---|
+| `verify-tag` | - | The [guard](#the-release-tag-guard). |
+| `govulncheck` | `verify-tag` | Runs `govulncheck`, writes its report to a file, and turns it into a step summary table (status, vulnerability count, checked modules, details). |
+| `report-failure` | `govulncheck` | If the check itself failed, files an issue "CI Failure: Vulnerability Check" like the lint workflow does. |
 
 ## Binary build and release
 
@@ -72,7 +94,8 @@ They are separate files so that each has its own status and its own failure mode
 
 | Job | Needs | What it does |
 |---|---|---|
-| `gate` | - | Re-runs `golangci-lint` and `govulncheck` **quietly**. It does not report (the standalone workflows do); it exists so a failing check stops this workflow from shipping binaries. |
+| `verify-tag` | - | The [guard](#the-release-tag-guard). |
+| `gate` | `verify-tag` | Re-runs `golangci-lint` and `govulncheck` **quietly**. It does not report (the standalone workflows do); it exists so a failing check stops this workflow from shipping binaries. |
 | `build` | `gate` | A matrix of 8 operating systems x 2 architectures, minus two exclusions (Solaris has no arm64 port; Android/amd64 needs cgo), giving **14 binaries**. Each builds with `CGO_ENABLED=0 -buildvcs=true -trimpath -ldflags "-s -w -X main.Version=<tag>/<sha>/<time>"` and uploads a `binary-for-<os>-<arch>` artifact. `fail-fast` is off so one bad platform does not hide the others. |
 | `create-release` | `build` | Downloads every artifact, writes the release notes, and creates the GitHub Release (`softprops/action-gh-release@v1`) with all binaries attached. It needs `contents: write`. |
 
@@ -94,6 +117,7 @@ The commit message is free text written by a person, so it is passed to the shel
 
 | Step | Detail |
 |---|---|
+| `verify-tag` | The [guard](#the-release-tag-guard); the `gate` job waits for it. |
 | `gate` | The same quiet lint + vulnerability gate. |
 | QEMU and Buildx | `docker/setup-qemu-action@v3`, `docker/setup-buildx-action@v3`, so one job builds for two architectures. |
 | Login | Docker Hub uses the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. GHCR uses the workflow's own `GITHUB_TOKEN` (needs `packages: write`). |
@@ -104,12 +128,13 @@ Image names: `docker.io/<DOCKERHUB_USERNAME>/shint` and `ghcr.io/dmartsapp/shint
 
 ## Automation GitHub manages
 
-Three more things run that are **not defined by files in this repository**; they are switched on in the repository settings:
+A few more things run that are **not defined by files in this repository**; they are switched on in the repository settings. None of them builds or publishes a release, and none is started by a `release/**` branch:
 
 | Name | What it is |
 |---|---|
-| CodeQL | GitHub's "default setup" code scanning; it appears in the Actions list as a dynamic workflow on pushes to `main`. |
+| CodeQL | GitHub's "default setup" code scanning (it currently scans the workflow files themselves); it appears in the Actions list as a dynamic workflow on pushes to `main` and on a weekly schedule. |
 | pages-build-deployment | Publishes the [documentation site](tech-docs.md) from `main` after a push. |
+| Graph update | Keeps GitHub's dependency graph current after a push to `main`. |
 | Dependabot | Opens pull requests to update Go module dependencies (branches named `dependabot/go_modules/...`). |
 
 ## Watching a release
@@ -138,5 +163,6 @@ govulncheck ./...
 ## What CI does not do
 
 - **It does not run the test suite.** The workflows lint, check vulnerabilities and build; none runs `go test`. Tests are the release checklist's job ([Releases and tagging](tech-release.md#release-checklist)) and must pass locally before a tag is pushed.
-- **It does not run on branches or pull requests**, so problems surface at tag time. Run the local checks above first.
+- **It does not run on branches or pull requests**, so problems surface at tag time. Run the local checks above first. (`main` does not pick up workflow runs from other branches either: a workflow file on a branch does nothing until it is merged, and even then only a `vX.Y.Z` tag on `main` can start it.)
+- **It does not accept just any tag.** A tag that is not `vX.Y.Z`, or is on a commit that is not on `main`, is refused by the [guard](#the-release-tag-guard) before anything is built.
 - **It cannot un-publish.** A tag push that fails halfway can leave a partial release or images; see the recovery notes in [Releases and tagging](tech-release.md#when-a-release-goes-wrong).

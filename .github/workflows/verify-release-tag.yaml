@@ -1,0 +1,32 @@
+name: Verify release tag
+
+# Not a workflow you run: the five release workflows call it first, and none of
+# their jobs start unless it passes. It has no trigger of its own, so pushing a
+# branch, a tag or anything else never starts it directly.
+#
+# A release tag must be strictly vX.Y.Z and must point at a commit on main. The
+# `on: push: tags` filter in each workflow covers the first half; this repeats
+# it and adds the second, which a filter cannot express. See
+# .github/scripts/verify-release-tag.sh for the checks themselves.
+
+on:
+  workflow_call:
+
+jobs:
+  verify:
+    name: Tag is vX.Y.Z on main
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Check the tag and the commit it points at
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: bash .github/scripts/verify-release-tag.sh

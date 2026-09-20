@@ -9,7 +9,7 @@ nav: Releases and tagging
 
 ## Philosophy
 
-**A tag is a release, and a release is forever.** Pushing a tag matching `v*.*.*` starts the entire release pipeline ([CI/CD workflows](tech-ci.md)): binaries are built and attached to a GitHub Release, and container images are pushed under that version. People download those files and pull those images, so a published tag is treated as **immutable**. It is never moved, deleted or re-pushed. If something is wrong, the answer is a new, higher version.
+**A tag is a release, and a release is forever.** Pushing a tag of the form `vX.Y.Z`, on a commit that is on `main`, starts the entire release pipeline ([CI/CD workflows](tech-ci.md)): binaries are built and attached to a GitHub Release, and container images are pushed under that version. People download those files and pull those images, so a published tag is treated as **immutable**. It is never moved, deleted or re-pushed. If something is wrong, the answer is a new, higher version.
 
 **Versions describe what users experience**, following [semantic versioning](https://semver.org):
 
@@ -25,12 +25,13 @@ When a patch changes something a script could observe (v4.0.3's exit status is t
 
 ## Tag format
 
-- `v` + `MAJOR.MINOR.PATCH`: `v4.0.3`. The workflows match `v*.*.*`.
+- `v` + `MAJOR.MINOR.PATCH`, **digits only**: `v4.0.3`. The workflows match `v[0-9]+.[0-9]+.[0-9]+` and nothing else - no `-rc1`, no `+build`, no letter suffixes.
 - **Annotated** (`git tag -a`), never lightweight, so a tag has an author, a date and a message.
-- The tag points at the commit that contains the version bump and the changelog - normally the tip of `main`.
+- The tag points at the commit that contains the version bump and the changelog - the tip of `main` at release time.
+- **The commit must be on `main`** when the tag is pushed, so `main` is pushed first. The pipeline's [tag guard](tech-ci.md#the-release-tag-guard) refuses a tag whose commit is on a branch only.
 
 :::note History you will see in the tag list
-Tags up to `v2.2.6` predate the current process, and the list contains a run of letter-suffixed tags (`v2.2.2a`, `v2.2.4ae`, ...) that appear to have been created while the CI pipeline was being developed. They are historical; the current rule is one tag per real release.
+Tags up to `v2.2.6` predate the current process, and the list contains a run of letter-suffixed tags (`v2.2.2a`, `v2.2.4ae`, ...) that appear to have been created while the CI pipeline was being developed. They are historical; the current rule is one tag per real release. Since v4.0.4 a tag like those - or `v3.0.0-dryrun-test`, which once started a build - would start nothing: the pattern no longer matches it. The tags that are real releases (`v3.0.0`, `v3.1.0`, `v4.0.0` ... `v4.0.3`) all match.
 :::
 
 ## Branches and cadence
@@ -51,7 +52,8 @@ What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 |---|---|
 | a `release/**` branch | nothing |
 | `main` | the documentation site deploy and CodeQL - but no release workflow |
-| a `v*.*.*` tag | the whole release pipeline: lint, vulnerability check, binaries, GitHub Release, both Docker images |
+| a `vX.Y.Z` tag on a commit on `main` | the whole release pipeline: lint, vulnerability check, binaries, GitHub Release, both Docker images |
+| a tag of any other form, or a `vX.Y.Z` tag on a commit that is not on `main` | the workflows start, the [guard](tech-ci.md#the-release-tag-guard) refuses, and nothing is built or published |
 
 ## Commit messages
 
@@ -130,6 +132,7 @@ git push origin refs/tags/vX.Y.Z
 - **Never move or delete a published tag.** Binaries and images built from it are already out there; a moved tag makes the source disagree with what people have.
 - **A bug in a published release:** fix it, and publish the next patch version.
 - **A workflow failed partway** (a flaky registry login, say): re-run the failed jobs (`gh run rerun <run-id> --failed`). Only if the *content* was wrong does it need a new version.
+- **The guard refused a tag** (`verify-tag` is red): nothing was built or published. If the tag was pushed before `main`, push `main` and re-run the failed workflows (`gh run rerun <run-id> --failed`) - the check is made live. If the tag has the wrong name or is on the wrong commit, that is the next case.
 - **A tag pushed by mistake before it was ready:** if nothing has been downloaded, remove the release and images first, then the tag, and say so. This is the one case for deleting a tag, and it should be a deliberate, announced act.
 
 ## The module path
