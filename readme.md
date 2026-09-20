@@ -19,7 +19,7 @@ Every check below runs independently on each tagged release (`.github/workflows/
 
 "Binary build" and "Docker Hub"/"GHCR" each re-run the lint/vulnerability gate internally before building anything (so none of them ship a binary or image if either would fail), rather than depending on the separate Lint/Vulnerability Check workflows above finishing first - see [Development](#development) for why.
 
-**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 added `listen http`; v4.0.0 added full dual-stack IPv6 support across every command; v4.0.1 added per-request timing/byte metrics to `listen tcp`/`listen http` and fixed the `web` bandwidth calculation; v4.0.2 makes `web` and `listen http` measure bytes identically (everything on the wire, headers included). See [Changelog](#changelog) for the full list.
+**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 added `listen http`; v4.0.0 added full dual-stack IPv6 support across every command; v4.0.1 added per-request timing/byte metrics to `listen tcp`/`listen http` and fixed the `web` bandwidth calculation; v4.0.2 makes `web` and `listen http` measure bytes identically (everything on the wire, headers included); v4.0.3 fixes `nmap` stopping partway through large `--from`..`--to` ranges and adds scan progress output. See [Changelog](#changelog) for the full list.
 
 ## Features
 
@@ -301,6 +301,8 @@ If `--cacert` is omitted and the server's certificate isn't already trusted by t
 
 Scans for open TCP ports on a host within a given range. Concurrency is capped internally (500 simultaneous dial attempts) so scanning a wide range like `1-65535` won't exhaust local file descriptors.
 
+`--timeout` (default 5s) is how long *each port* gets to answer - it is not a limit on the whole scan. The scan runs until the entire `--from`..`--to` range has been tried, so how long it takes depends mostly on how many ports never answer: a closed port that refuses the connection costs almost nothing, but a firewall that silently drops packets makes every filtered port run out its full timeout, roughly `ports / 500 x timeout` seconds in total (`--from 20 --to 9000` against a host that drops everything: about 90s at the default, about 18s with `--timeout 1`). Lower `--timeout` to speed up scans of hosts on a fast network. In text mode the scan prints a `scan started` line with its size and then, every 3 seconds, a `progress` line (ports finished out of the total, percentage, open ports so far, and how many probes are still waiting on an answer), so a long scan against unresponsive ports doesn't look hung; scans that finish sooner print none, and `--json` output is unaffected. Ctrl+C stops a scan early and reports how far it got (`scan interrupted ports_scanned=... ports_total=...`, or an `error` field with `--json`) instead of presenting a partial range as a finished scan.
+
 **Syntax:**
 
 ```bash
@@ -317,9 +319,21 @@ Scans for open TCP ports on a host within a given range. Concurrency is capped i
 
 ```
 Mon Jun 30 13:23:42 EDT 2025: [nmap] OK dns resolved host=google.com addresses=1 ips=[142.251.41.46] time=1.585083ms
+Mon Jun 30 13:23:42 EDT 2025: [nmap] OK scan started ports_total=21 timeout=5s max_in_flight=500
 Mon Jun 30 13:23:42 EDT 2025: [nmap] OK port open host=142.251.41.46 port=80
 Mon Jun 30 13:23:47 EDT 2025: [nmap] OK scan complete ports_scanned=21 open=1 time=5.001s
 Mon Jun 30 13:23:47 EDT 2025: [nmap] OK done total_time=5.002086541s
+```
+
+A scan against a host that drops packets (`./shint nmap 192.0.2.1 --from 1 --to 2000 --timeout 2`) - each batch of 500 probes waits out its 2s timeout together, which is what the `in_flight` figure shows:
+
+```
+Sun Sep 20 01:12:29 MDT 2026: [nmap] OK dns resolved host=192.0.2.1 addresses=1 ips=[192.0.2.1] time=558.292µs
+Sun Sep 20 01:12:29 MDT 2026: [nmap] OK scan started ports_total=2000 timeout=2s max_in_flight=500
+Sun Sep 20 01:12:32 MDT 2026: [nmap] OK progress ports_scanned=550/2000 percent=27.5% open=0 in_flight=500 elapsed=3.003s
+Sun Sep 20 01:12:35 MDT 2026: [nmap] OK progress ports_scanned=1065/2000 percent=53.2% open=0 in_flight=500 elapsed=6.004s
+Sun Sep 20 01:12:37 MDT 2026: [nmap] OK scan complete ports_scanned=2000 open=0 time=8.036235708s
+Sun Sep 20 01:12:37 MDT 2026: [nmap] OK done total_time=8.036293125s
 ```
 
 **JSON Output:**
@@ -500,11 +514,11 @@ Android's `amd64` target is skipped: it's the emulator-only architecture and req
 
 ## Docker image
 
-Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v4.0.2` publishes:
+Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v4.0.3` publishes:
 
 ```
-ghcr.io/dmartsapp/shint:v4.0.2        docker.io/farhansabbir/shint:v4.0.2
-ghcr.io/dmartsapp/shint:4.0.2         docker.io/farhansabbir/shint:4.0.2
+ghcr.io/dmartsapp/shint:v4.0.3        docker.io/farhansabbir/shint:v4.0.3
+ghcr.io/dmartsapp/shint:4.0.3         docker.io/farhansabbir/shint:4.0.3
 ghcr.io/dmartsapp/shint:4.0           docker.io/farhansabbir/shint:4.0
 ghcr.io/dmartsapp/shint:4             docker.io/farhansabbir/shint:4
 ghcr.io/dmartsapp/shint:latest        docker.io/farhansabbir/shint:latest
@@ -548,6 +562,12 @@ CI is five independent workflow files (`.github/workflows/*.yaml`), all triggere
 They're separate files specifically so a registry outage or a Docker Hub credential problem, say, shows up as *that* row failing rather than obscuring whether the binaries themselves were fine.
 
 ## Changelog
+
+### v4.0.3
+
+- Fixed `nmap` not scanning the whole `--from`..`--to` range: `--timeout` was also being used as a deadline for the *entire* scan, so any scan that took longer than `--timeout` seconds (a wide range against a host that drops packets, where every filtered port runs out its own timeout) silently stopped partway - e.g. `--from 20 --to 9000` against such a host attempted about 2,000 of 8,981 ports and never reached port 5000. `--timeout` is now only the per-port connect timeout (as it is for every other command), and the scan runs to the end of the range. Trade-off: scans of hosts with many unresponsive ports take as long as they actually need - see [Nmap](#nmap) for how to estimate and speed that up.
+- `nmap` now reports what it actually did: `ports_scanned` counts ports whose probe finished (it used to count ports started), a dial aborted by cancellation is no longer recorded as a closed port, and a scan stopped by Ctrl+C says `scan interrupted ports_scanned=X ports_total=Y` (an `error` field in `--json`) rather than looking finished. `--throttle`'s random per-port delay can now be interrupted with Ctrl+C.
+- `nmap` text output now shows how far a scan has got: a `scan started` line (`ports_total`, `timeout`, `max_in_flight`) and a `progress` line every 3 seconds (`ports_scanned=X/Y percent open in_flight elapsed`), so a long scan of unresponsive ports no longer looks hung. Quick scans print no progress lines and `--json` output is unchanged.
 
 ### v4.0.2
 

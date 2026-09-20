@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/dmartsapp/shint/lib"
@@ -15,7 +17,7 @@ import (
 
 var (
 	// Version is overridden at build time via -ldflags "-X main.Version=...".
-	Version string = "4.0.2"
+	Version string = "4.0.3"
 )
 
 var (
@@ -132,7 +134,7 @@ var webCmd = &cobra.Command{
 var nmapCmd = &cobra.Command{
 	Use:   "nmap [host]",
 	Short: "Scan for open TCP ports on a host",
-	Long:  `This command scans for open TCP ports on a host within a given range.`,
+	Long:  `This command scans for open TCP ports on a host within a given range. --timeout is how long each individual port is given to answer; the scan itself runs until the whole range has been covered (Ctrl+C stops it early and reports how far it got).`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := lib.RequirePositive("count", iterations); err != nil {
@@ -152,11 +154,21 @@ var nmapCmd = &cobra.Command{
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-		defer cancel()
+		ctx, stop := scanContext()
+		defer stop()
 
 		handlers.NmapHandler(ctx, args[0], fromport, endport, iterations, timeout, throttle, &jsonoutput)
 	},
+}
+
+// scanContext is the context a port scan runs under: cancelled by Ctrl+C or
+// SIGTERM, and deliberately nothing else. It must not carry a deadline
+// derived from --timeout - that flag is the per-port connect timeout, and
+// bounding the whole scan by it silently cut every scan that outlasted it
+// (a wide range against a host that drops packets, say) short after
+// --timeout seconds, leaving the rest of --from..--to never attempted.
+func scanContext() (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 }
 
 var udpCmd = &cobra.Command{
