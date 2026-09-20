@@ -19,7 +19,7 @@ Every check below runs independently on each tagged release (`.github/workflows/
 
 "Binary build" and "Docker Hub"/"GHCR" each re-run the lint/vulnerability gate internally before building anything (so none of them ship a binary or image if either would fail), rather than depending on the separate Lint/Vulnerability Check workflows above finishing first - see [Development](#development) for why.
 
-**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 added `listen http`; v4.0.0 added full dual-stack IPv6 support across every command; v4.0.1 adds per-request timing/byte metrics to `listen tcp`/`listen http` and fixes the `web` bandwidth calculation. See [Changelog](#changelog) for the full list.
+**Note:** Version 3.0.0 added `udp`, `listen tcp`/`listen udp`, and authenticated-TLS options on `web` (`--cacert`/`--cert`/`--key`/`--insecure`), fixed several correctness/race bugs from v2, and unified the text-mode log output across every command; v3.1.0 added `listen http`; v4.0.0 added full dual-stack IPv6 support across every command; v4.0.1 added per-request timing/byte metrics to `listen tcp`/`listen http` and fixed the `web` bandwidth calculation; v4.0.2 makes `web` and `listen http` measure bytes identically (everything on the wire, headers included). See [Changelog](#changelog) for the full list.
 
 ## Features
 
@@ -253,14 +253,20 @@ Makes an HTTP(S) request to a URL and displays the response. Does not follow red
 **Output:**
 
 ```
-Mon Jun 30 13:23:36 EDT 2025: [web] OK dns resolved host=google.com addresses=1 ips=[142.251.41.46] time=1.377ms
-Mon Jun 30 13:23:36 EDT 2025: [web] OK response ok url=https://google.com status="200 OK" bytes=17722 speed=73.97KB/s attempt=1/1 time=233.967416ms
+Sat Sep 19 23:31:30 MDT 2026: [web] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=3.298084ms
+Sat Sep 19 23:31:31 MDT 2026: [web] OK response url=https://google.com status=200 bytes_sent=219 bytes_received=31326 speed=87.31KB/s attempt=1/1 time=350.379125ms
 
 ========================================== web STATISTICS ==========================================
 Requests sent: 1, Response received: 1, Success: 100%
-Latency: minimum: 233.967416ms, average: 233.967416ms, maximum: 233.967416ms
-Mon Jun 30 13:23:36 EDT 2025: [web] OK done total_time=235.525041ms
+Latency: minimum: 350.379125ms, average: 350.379125ms, maximum: 350.379125ms
+Sat Sep 19 23:31:31 MDT 2026: [web] OK done total_time=1.355749917s
 ```
+
+#### Bytes sent and received
+
+`bytes_sent` and `bytes_received` (the same names in the log line and in `--json`) are everything that actually crossed the connection for that request, headers included - not just the bodies: the request line, headers and body going out, and the status line, headers and body coming back (chunked-encoding framing included), summed over every hop if a redirect is followed (which is why the `https://google.com` example above sent 219 bytes: two requests). Over HTTPS they are counted on the decrypted side, i.e. the HTTP bytes, not the TLS records. Since that includes headers `web` adds on its own (`Host`, `User-Agent`, `Accept-Encoding`, `Content-Length`), the figure is larger than the headers and body visible in the JSON output, which lists them separately.
+
+`listen http` counts its own traffic the same way, so `web`'s `bytes_sent` equals the listener's `bytes_received` and `web`'s `bytes_received` equals the listener's `bytes_sent` for the same request.
 
 #### REST client flags
 
@@ -461,17 +467,19 @@ curl -s http://127.0.0.1:8080/anything/else    # {"status":"not found"}, 404
 
 ```
 Sat Sep 19 03:02:50 MDT 2026: [listen-http] OK listening address=0.0.0.0:8080 max_requests=unlimited
-Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:54598 bytes_received=0 bytes_sent=15 time_taken=47.312µs
-Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/anything/else status=404 remote=127.0.0.1:54601 bytes_received=0 bytes_sent=22 time_taken=39.845µs
+Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:54598 bytes_received=98 bytes_sent=160 time_taken=285.5µs
+Sat Sep 19 03:02:51 MDT 2026: [listen-http] OK request method=GET path=/anything/else status=404 remote=127.0.0.1:54601 bytes_received=111 bytes_sent=175 time_taken=375.125µs
 ```
 
-`bytes_received` is the request body's length (drained but otherwise ignored), `bytes_sent` is the response body's length, and `time_taken`/`processing_time_µs` covers handling that one request, from entering the handler to the response being flushed.
-
-With `--json`, each request is printed as one JSON line as it arrives:
+With `--json`, each request is printed as one JSON line, once the request is complete:
 
 ```json
-{"method":"GET","path":"/","status_code":200,"remote_address":"127.0.0.1:54598","bytes_received":0,"bytes_sent":15,"processing_time_µs":51,"unixtime_µs":1789808580361517}
+{"method":"GET","path":"/","status_code":200,"remote_address":"127.0.0.1:54598","bytes_received":98,"bytes_sent":160,"processing_time_µs":202,"unixtime_µs":1789808580361517}
 ```
+
+`bytes_received` and `bytes_sent` are the raw bytes that crossed the connection - request line, headers and body in; status line, headers and body out - counted the same way `web` counts its own, so the two sides' figures match (see [Bytes sent and received](#bytes-sent-and-received)). `time_taken` / `processing_time_µs` covers handling that one request, from entering the handler to the response being flushed. The exit summary carries the byte totals.
+
+The listener never parses or acts on request headers: only the request line's method and path are used (to route `/` vs. everything else, and to log). Conditional, range, and content-negotiation headers change nothing, and responses carry no `ETag` or `Last-Modified`, since a validator is only useful if `If-None-Match`/`If-Modified-Since` were honored. The request body is read and discarded unseen, so a large upload finishes before it is answered and the byte count is complete.
 
 ## Supported platforms
 
@@ -492,11 +500,11 @@ Android's `amd64` target is skipped: it's the emulator-only architecture and req
 
 ## Docker image
 
-Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v4.0.1` publishes:
+Every tagged release is also published as a multi-arch (`linux/amd64`, `linux/arm64`) image to both the GitHub Container Registry and Docker Hub, built from the `Dockerfile` at the repo root: a `golang:1.27.1-alpine` build stage compiling the same static (`CGO_ENABLED=0`) binary as the release binaries, copied into a `gcr.io/distroless/static-debian12:nonroot` final image (no shell, no package manager, CA certificates included so `web`'s HTTPS requests verify normally). A tag push of `v4.0.2` publishes:
 
 ```
-ghcr.io/dmartsapp/shint:v4.0.1        docker.io/farhansabbir/shint:v4.0.1
-ghcr.io/dmartsapp/shint:4.0.1         docker.io/farhansabbir/shint:4.0.1
+ghcr.io/dmartsapp/shint:v4.0.2        docker.io/farhansabbir/shint:v4.0.2
+ghcr.io/dmartsapp/shint:4.0.2         docker.io/farhansabbir/shint:4.0.2
 ghcr.io/dmartsapp/shint:4.0           docker.io/farhansabbir/shint:4.0
 ghcr.io/dmartsapp/shint:4             docker.io/farhansabbir/shint:4
 ghcr.io/dmartsapp/shint:latest        docker.io/farhansabbir/shint:latest
@@ -540,6 +548,14 @@ CI is five independent workflow files (`.github/workflows/*.yaml`), all triggere
 They're separate files specifically so a registry outage or a Docker Hub credential problem, say, shows up as *that* row failing rather than obscuring whether the binaries themselves were fine.
 
 ## Changelog
+
+### v4.0.2
+
+- `web` and `listen http` now measure bytes the same way: everything on the wire, headers included, counted at the connection instead of estimated from the parsed message. v4.0.1's `web` figure estimated response-header size and never measured what was sent, while `listen http` reported body bytes only, so the two never agreed. `web` now reports `bytes_sent` and `bytes_received` (`--json` and text), summed over every hop if a redirect is followed - `bytes_received` replaces `bytes_downloaded`, and `bandwidth_kbs` is derived from it - and `listen http`'s `bytes_received` / `bytes_sent` are the full request and response, so `web`'s `bytes_sent` equals the listener's `bytes_received` and vice versa. The listener also totals both in its exit summary.
+- `web --json`: `input_params.payload_bytes` is now the request body size; it used to add the number of `-H` flags to it.
+- `web` text output: the response line no longer repeats the status three times over (`response ok ... status="200 OK"` is now `response ... status=200`).
+- `listen http` reads the request body before answering (it already discarded it in v4.0.1, but only after the response went out): Go's HTTP client abandons an upload that is still in progress once a complete `Connection: close` response comes back, so a large POST/PUT (past roughly the socket buffer - about 170KB on loopback) could be cut off partway.
+- `listen http` responses carry no validators (`ETag`/`Last-Modified`) and request headers are never acted on - see [HTTP listener](#http-listener).
 
 ### v4.0.1
 

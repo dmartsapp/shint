@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"strings"
@@ -60,7 +61,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			Timeout:  timeout,
 			Count:    iterations,
 			Delay:    delay,
-			Payload:  len(data) + len(headers),
+			Payload:  len(data),
 			Throttle: *throttle,
 			Method:   method,
 			Data:     data,
@@ -95,7 +96,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 
 	client := &http.Client{
 		Timeout:   time.Duration(timeout) * time.Second,
-		Transport: &http.Transport{TLSClientConfig: tlsConfig},
+		Transport: newCountingTransport(tlsConfig),
 	}
 
 	var WG sync.WaitGroup
@@ -133,6 +134,13 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				}
 			}
 
+			// Bytes are counted on the connection itself, so they cover
+			// everything that actually travelled (request line, headers and
+			// body out; status line, headers and body in), the same way
+			// listen http counts them - and every hop, if a redirect is followed.
+			var meter wireMeter
+			request = request.WithContext(httptrace.WithClientTrace(request.Context(), meter.clientTrace()))
+
 			start := time.Now()
 			response, err := client.Do(request)
 			if err != nil {
@@ -143,12 +151,8 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			body, _ := io.ReadAll(response.Body)
 			header := response.Header
 			timeTaken := time.Since(start)
-			// len(header) is the number of header entries, not their byte
-			// size - headerByteSize approximates the actual wire size
-			// (": " and CRLF included) so the bandwidth figure below
-			// reflects bytes actually transferred, not a map length.
-			totalBytes := len(body) + headerByteSize(header)
-			bandwidthKBs := float64(totalBytes) / timeTaken.Seconds() / 1024
+			bytesSent, bytesReceived := meter.totals()
+			bandwidthKBs := float64(bytesReceived) / timeTaken.Seconds() / 1024
 
 			statsMutex.Lock()
 			stats = append(stats, timeTaken)
@@ -169,7 +173,8 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				stat.Request = map[string]any{"method": method, "body": data, "headers": request.Header}
 				stat.Success = true
 				stat.StatusCode = response.StatusCode
-				stat.BytesDownloaded = totalBytes
+				stat.BytesSent = bytesSent
+				stat.BytesReceived = bytesReceived
 				stat.BandwidthKBs = bandwidthKBs
 				stat.SentTime = start.UnixMicro()
 				stat.RecvTime = time.Now().UnixMicro()
@@ -180,7 +185,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			statsMutex.Unlock()
 
 			if !*jsonoutput {
-				fmt.Println(lib.LogWithTimestamp(webModule, "response ok "+lib.Fields("url", URL.String(), "status", response.Status, "bytes", totalBytes, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken), false))
+				fmt.Println(lib.LogWithTimestamp(webModule, "response "+lib.Fields("url", URL.String(), "status", response.StatusCode, "bytes_sent", bytesSent, "bytes_received", bytesReceived, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken), false))
 			}
 		}(URL, attempt)
 	}
@@ -209,19 +214,4 @@ func parsePort(raw string) (int, error) {
 		return 0, nil
 	}
 	return lib.ValidatePort(raw)
-}
-
-// headerByteSize approximates the wire size of an HTTP header block: each
-// "Key: Value\r\n" line, one per value (a header can repeat a key). This is
-// an estimate (real framing, e.g. HTTP/2's HPACK, differs) but is far closer
-// to actual bytes transferred than len(header), which is just the number of
-// distinct header keys.
-func headerByteSize(header http.Header) int {
-	total := 0
-	for key, values := range header {
-		for _, value := range values {
-			total += len(key) + len(": \r\n") + len(value)
-		}
-	}
-	return total
 }

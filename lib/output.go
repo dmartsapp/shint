@@ -42,17 +42,22 @@ type TelnetStats struct {
 }
 
 type WebStats struct {
-	URL             string         `json:"url"`
-	Errors          []string       `json:"errors"`
-	Request         map[string]any `json:"request"`
-	Response        map[string]any `json:"response"`
-	Success         bool           `json:"success"`
-	RecvTime        int64          `json:"recv_unixtime_µs"`
-	SentTime        int64          `json:"sent_unixtime_µs"`
-	TimeTaken       int64          `json:"time_taken_µs"`
-	BytesDownloaded int            `json:"bytes_downloaded"` // added field to store the number of bytes downloaded
-	StatusCode      int            `json:"status_code"`      // added field to store the HTTP status code
-	BandwidthKBs    float64        `json:"bandwidth_kbs"`    // BytesDownloaded / TimeTaken, in KB/s
+	URL       string         `json:"url"`
+	Errors    []string       `json:"errors"`
+	Request   map[string]any `json:"request"`
+	Response  map[string]any `json:"response"`
+	Success   bool           `json:"success"`
+	RecvTime  int64          `json:"recv_unixtime_µs"`
+	SentTime  int64          `json:"sent_unixtime_µs"`
+	TimeTaken int64          `json:"time_taken_µs"`
+	// BytesSent/BytesReceived are everything that crossed the connection for
+	// this request - request line + headers + body out, status line +
+	// headers + body in - measured the same way "listen http" measures its
+	// own bytes_received/bytes_sent, so the two sides can be compared directly.
+	BytesSent     int64   `json:"bytes_sent"`
+	BytesReceived int64   `json:"bytes_received"`
+	StatusCode    int     `json:"status_code"`   // added field to store the HTTP status code
+	BandwidthKBs  float64 `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
 }
 
 type NmapStats struct {
@@ -110,7 +115,11 @@ type ListenEvent struct {
 }
 
 // HTTPListenEvent describes a single request observed by "listen http",
-// emitted as one JSON line per request when --json is set.
+// emitted as one JSON line per request when --json is set. BytesReceived and
+// BytesSent are the raw bytes that crossed the connection (request line +
+// headers + body in, status line + headers + body out), counted without
+// parsing them, and match what "web" reports as its own bytes_sent and
+// bytes_received for the same exchange.
 type HTTPListenEvent struct {
 	Method           string `json:"method"`
 	Path             string `json:"path"`

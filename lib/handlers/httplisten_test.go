@@ -189,11 +189,14 @@ func TestHTTPListenHandlerJSONEventMeasurements(t *testing.T) {
 		if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &event); err != nil {
 			t.Fatalf("failed to unmarshal event: %v\noutput:\n%s", err, out)
 		}
-		if event.BytesReceived != int64(len(reqBody)) {
-			t.Errorf("BytesReceived = %d, want %d", event.BytesReceived, len(reqBody))
+		// Both figures are wire bytes - headers included - so each is
+		// strictly more than the body alone (exact figures are checked
+		// against a raw client in TestHTTPListenHandlerCountsRawBytes).
+		if event.BytesReceived <= int64(len(reqBody)) {
+			t.Errorf("BytesReceived = %d, want more than the %d-byte body (headers count too)", event.BytesReceived, len(reqBody))
 		}
-		if event.BytesSent != int64(len(respBody)) {
-			t.Errorf("BytesSent = %d, want %d", event.BytesSent, len(respBody))
+		if event.BytesSent <= int64(len(respBody)) {
+			t.Errorf("BytesSent = %d, want more than the %d-byte body (headers count too)", event.BytesSent, len(respBody))
 		}
 		if event.ProcessingTimeUs <= 0 {
 			t.Errorf("ProcessingTimeUs = %d, want > 0", event.ProcessingTimeUs)

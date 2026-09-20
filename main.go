@@ -15,7 +15,7 @@ import (
 
 var (
 	// Version is overridden at build time via -ldflags "-X main.Version=...".
-	Version string = "4.0.1"
+	Version string = "4.0.2"
 )
 
 var (
