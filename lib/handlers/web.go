@@ -206,8 +206,15 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			}
 			defer func() { _ = response.Body.Close() }()
 			body, readErr := io.ReadAll(response.Body)
-			if readErr != nil && ctx.Err() != nil {
-				return // cut off by Ctrl+C while the body was arriving
+			if readErr != nil {
+				if ctx.Err() != nil {
+					return // cut off by Ctrl+C while the body was arriving
+				}
+				// A body that ends early (the server closed the connection short of its
+				// Content-Length, reset it, or stalled until --timeout) is a response that
+				// did not arrive: a failed attempt, not a success with fewer bytes.
+				fail("response incomplete", request, start, readErr)
+				return
 			}
 			atomic.AddInt32(&completed, 1)
 			header := response.Header
