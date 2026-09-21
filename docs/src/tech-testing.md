@@ -97,7 +97,7 @@ Two package-level variables exist only so tests can control time and slowness de
 
 ## The black-box battery
 
-`go test` calls the code; the battery runs **the shipped binary** the way a user does and attacks it from the outside. It is 418 cases in `test/battery`, started by `make test-battery` (part of `make test` and `make check`, about a minute) and needing only `python3` and `go`. Everything stays on the machine: the cases talk to servers the battery starts on loopback, and each server misbehaves in one particular way - an HTTP server with a path for a truncated body, a reset mid-body, a stall, a redirect loop, a 2 MB header, a 300 MB download, chunked and gzip and HTTP/1.0 replies, garbage instead of HTTP; TLS servers with a good and a wrong certificate; TCP servers that echo, close at once or say nothing; UDP servers that echo, stay silent or answer with more than a packet's worth; a closed TCP and UDP port.
+`go test` calls the code; the battery runs **the shipped binary** the way a user does and attacks it from the outside. It is 420 cases in `test/battery`, started by `make test-battery` (part of `make test` and `make check`, about a minute) and needing only `python3` and `go`. Everything stays on the machine: the cases talk to servers the battery starts on loopback, and each server misbehaves in one particular way - an HTTP server with a path for a truncated body, a reset mid-body, a stall, a redirect loop, a 2 MB header, a 300 MB download, chunked and gzip and HTTP/1.0 replies, garbage instead of HTTP; TLS servers with a good and a wrong certificate; TCP servers that echo, close at once or say nothing; UDP servers that echo, stay silent or answer with more than a packet's worth; a closed TCP and UDP port.
 
 | Group | What it throws at the tool |
 |---|---|
@@ -106,7 +106,7 @@ Two package-level variables exist only so tests can control time and slowness de
 | E | `telnet`: refused, silent and closing servers, a black-hole address, DNS failure, 100 fast attempts, file-descriptor pressure |
 | F | `web`: URL forms, every method, header edge cases including CR/LF injection and 200 headers, hostile servers, TLS and mutual-TLS options, proxy variables |
 | G, H, I | `nmap` (single ports, ranges, the whole port range, filtered targets), `udp` (payload sizes, closed and silent ports, big replies), `ping` (payload limits, unreachable, multicast, and a reply that belongs to another ping) |
-| J | `listen`: 20 MB uploads, resets, binary data, idle timeouts, 150 concurrent connections, malformed and half-finished HTTP requests |
+| J | `listen http` and `listen udp`: 20 MB uploads, 100 KB headers, chunked bodies, bare connections that are not requests, 150 concurrent requests, malformed and half-finished HTTP requests |
 | K, L | signals and closed pipes (SIGINT, SIGTERM, `| head -1`), and memory use on a 300 MB response |
 
 Each invocation is judged against rules that hold for every command - no panic, exit status 0, 1 or 2, `--json` prints one valid document, a usage error goes to stderr, exit 1 comes with an `ERROR` line and exit 0 without one, nothing hangs - plus what the case itself expects. Cases that open hundreds of connections run one at a time, after the parallel ones.

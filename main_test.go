@@ -327,7 +327,9 @@ func TestExitStatus(t *testing.T) {
 		{"udp zero payload is valid", []string{"udp", "127.0.0.1", udpEcho, "--payload", "0"}, 0},
 		{"listen unknown subcommand", []string{"listen", "bogus"}, 2},
 		{"completion unknown subcommand", []string{"completion", "bogus"}, 2},
-		{"listen negative count", []string{"listen", "tcp", closed, "--count", "-1"}, 2},
+		{"listen negative count", []string{"listen", "http", closed, "--count", "-1"}, 2},
+		{"listen tcp was removed", []string{"listen", "tcp", closed}, 2},
+		{"listen http has no --echo", []string{"listen", "http", closed, "--echo"}, 2},
 		{"listen negative timeout", []string{"listen", "udp", closed, "--timeout", "-1"}, 2},
 		{"listen timeout beyond a day", []string{"listen", "http", closed, "--timeout", "86401"}, 2},
 
@@ -361,8 +363,9 @@ func TestExitStatus(t *testing.T) {
 		{"ping payload negative", []string{"ping", "127.0.0.1", "--payload", "-1"}, 2},
 
 		// listen
-		{"listen bad port", []string{"listen", "tcp", "99999"}, 2},
-		{"listen port already in use", []string{"listen", "tcp", open, "--bind", "127.0.0.1"}, 1},
+		{"listen bad port", []string{"listen", "http", "99999"}, 2},
+		{"listen udp bad port", []string{"listen", "udp", "0"}, 2},
+		{"listen port already in use", []string{"listen", "http", open, "--bind", "127.0.0.1"}, 1},
 
 		// generic
 		{"unknown command", []string{"bogus"}, 2},
@@ -481,21 +484,21 @@ func TestListenExitsZeroWhenDone(t *testing.T) {
 	port := closedTCPPort(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, os.Args[0], "listen", "tcp", strconv.Itoa(port), "--bind", "127.0.0.1", "--count", "2", "--timeout", "5")
+	cmd := exec.CommandContext(ctx, os.Args[0], "listen", "http", strconv.Itoa(port), "--bind", "127.0.0.1", "--count", "2", "--timeout", "5")
 	cmd.Env = append(os.Environ(), "SHINT_TEST_RUN_MAIN=1")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	dial := func() bool {
-		c, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(port))
+	get := func() bool {
+		resp, err := http.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/")
 		if err != nil {
 			return false
 		}
-		_ = c.Close()
+		_ = resp.Body.Close()
 		return true
 	}
-	for i := 0; i < 2; { // two connections use up --count 2
-		if dial() {
+	for i := 0; i < 2; { // two requests use up --count 2
+		if get() {
 			i++
 		} else {
 			time.Sleep(50 * time.Millisecond)
@@ -503,6 +506,29 @@ func TestListenExitsZeroWhenDone(t *testing.T) {
 	}
 	if err := cmd.Wait(); err != nil {
 		t.Fatalf("listener that reached its --count should exit 0, got: %v", err)
+	}
+}
+
+// "listen tcp" was removed in v4.2.0. A script that still calls it gets a usage error
+// that says what to use instead, not the help page or a bare "unknown command".
+func TestListenTCPWasRemovedAndSaysWhatToUse(t *testing.T) {
+	code, stdout, stderr := runShint(t, "listen", "tcp", "9000")
+	if code != 2 || stdout != "" {
+		t.Errorf("exit status %d, stdout %q: want 2 and nothing on stdout", code, stdout)
+	}
+	for _, want := range []string{`unknown command "tcp" for "`, ` listen": "listen tcp" was removed`, "removed in v4.2.0", "shint listen http <port>", "shint listen udp <port>"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr lacks %q:\n%s", want, stderr)
+		}
+	}
+	// only listen has the hint: another command's unknown subcommand is not told about tcp
+	if _, _, stderr := runShint(t, "completion", "tcp"); strings.Contains(stderr, "removed") {
+		t.Errorf("the hint belongs to listen alone:\n%s", stderr)
+	}
+	// the listen help lists the two that remain
+	_, help, _ := runShint(t, "listen", "--help")
+	if strings.Contains(help, "  tcp ") || !strings.Contains(help, "  udp ") || !strings.Contains(help, "  http ") {
+		t.Errorf("listen --help should list udp and http only:\n%s", help)
 	}
 }
 

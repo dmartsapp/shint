@@ -33,7 +33,7 @@ shint - *Simple Host INspection Toolkit* - puts the small utilities you keep rea
 - **Answers, not noise.** Every line says what was checked, whether it worked, and how long it took: `[telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=30.89725ms`.
 - **The same everywhere.** One download per platform (Linux, macOS, Windows, the BSDs, Solaris, Android) or one Docker image. The commands, flags and output are identical on all of them.
 - **Made for scripts.** Add `--json` for machine-readable output, and rely on standard exit codes: `0` everything passed, `1` something failed, `2` you used it wrongly.
-- **Practise safely.** `shint listen` starts a TCP, UDP or HTTP server on your own machine, so you can test firewalls, load balancers and other tools without touching anything real.
+- **Practise safely.** `shint listen` starts an HTTP or UDP server on your own machine, so you can test firewalls, load balancers and other tools without touching anything real.
 - **Honest numbers.** Timeouts apply to the thing they are named for, and byte counts are measured on the wire - headers included - so the client's and the server's figures match.
 - **Private by design.** No telemetry, no accounts, no configuration files. shint only talks to the addresses you give it.
 
@@ -96,7 +96,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
   <a class="card" href="dns.html"><strong><code>dns</code></strong><span>Ask a DNS server for A, MX, TXT, NS and more, and see the flags and TTLs.</span></a>
   <a class="card" href="cidr.html"><strong><code>cidr</code></strong><span>Network, mask, range and size of a subnet, offline.</span></a>
   <a class="card" href="ip.html"><strong><code>ip</code></strong><span>What does this machine have? Its interfaces and addresses.</span></a>
-  <a class="card" href="listen.html"><strong><code>listen</code></strong><span>Run a local TCP, UDP or HTTP server to test against.</span></a>
+  <a class="card" href="listen.html"><strong><code>listen</code></strong><span>Run a local HTTP or UDP server to test against.</span></a>
 </div>
 :::
 
@@ -110,7 +110,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
 | `curl -w '%{time_connect} %{time_starttransfer}' https://host/` | `shint web https://host/ --timing` |
 | `nmap -p 20-9000 host` | `shint nmap host --from 20 --to 9000` |
 | `nc -u host port` | `shint udp host port` |
-| `nc -l 9000`, `python3 -m http.server` | `shint listen tcp 9000`, `shint listen http 8080` |
+| `python3 -m http.server`, `nc -lu 9000` | `shint listen http 8080`, `shint listen udp 9000` |
 | `sntp pool.ntp.org`, `ntpdate -q pool.ntp.org` | `shint ntp pool.ntp.org` |
 | `wakeonlan aa:bb:cc:dd:ee:ff`, `etherwake` | `shint wol aa:bb:cc:dd:ee:ff` |
 | `dig -x 8.8.8.8`, `host 8.8.8.8` | `shint rdns 8.8.8.8` |

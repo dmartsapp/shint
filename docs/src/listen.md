@@ -1,7 +1,7 @@
 ---
 title: listen
-lead: Start a TCP, UDP or HTTP server on your own machine, so you can test firewalls, load balancers, monitoring and the other shint commands without touching anything real.
-description: shint listen runs a local TCP, UDP or minimal JSON HTTP listener that reports every connection, packet or request, with byte counts.
+lead: Start an HTTP or UDP server on your own machine, so you can test firewalls, load balancers, monitoring and the other shint commands without touching anything real.
+description: shint listen runs a local UDP or minimal JSON HTTP listener that reports every packet or request, with byte counts.
 section: Commands
 order: 12
 nav: listen
@@ -11,59 +11,40 @@ nav: listen
 
 `shint listen` opens a port and reports everything that arrives. It is the counterpart of the other commands: point [`telnet`](telnet.md), [`nmap`](nmap.md), [`udp`](udp.md) or [`web`](web.md) at it (from the same machine or another one) and you get a known, controllable target to check your network, firewall rules, proxies and health checks against.
 
-There are three modes:
+There are two modes:
 
 | Command | Behaviour |
 |---|---|
-| `shint listen tcp <port>` | Accepts TCP connections, reports each chunk received, optionally echoes it back. |
+| `shint listen http <port>` | A minimal HTTP server: any method on `/` answers `{"status":"ok"}`; any other path answers 404 `{"status":"not found"}`. It accepts plain TCP connections too, so it is also the target for a `telnet` or `nmap` reachability check. |
 | `shint listen udp <port>` | Receives UDP datagrams, reports each one, optionally echoes it back. |
-| `shint listen http <port>` | A minimal HTTP server: any method on `/` answers `{"status":"ok"}`; any other path answers 404 `{"status":"not found"}`. |
 
 ## Syntax
 
 ```bash
-shint listen tcp|udp|http <port> [--bind ADDR] [--echo] [--count N] [--timeout S] [--json]
+shint listen http <port> [--bind ADDR] [--count N] [--timeout S] [--json]
+shint listen udp  <port> [--bind ADDR] [--count N] [--echo] [--json]
 ```
 
 | Flag | Default | Meaning |
 |---|---|---|
 | `--bind ADDR` | `0.0.0.0` | Address to listen on. Use `127.0.0.1` for this machine only, or `::` for IPv6. |
-| `--echo` | off | Send received data back to the sender (`tcp` and `udp`). |
-| `--count N` | `0` | Stop after N connections / packets / requests. `0` means keep going until `Ctrl+C`; a negative value is a usage error. |
-| `--timeout S` | `5` | `tcp` and `http`: close a connection that has been quiet this long (`http`: also bounds reading a request). `0` disables it; at most 86400 (a day). **No effect on `udp`**: there is no connection to close, so a UDP listener waits for the next datagram however long that takes. |
+| `--count N` | `0` | Stop after N requests (`http`) or packets (`udp`). `0` means keep going until `Ctrl+C`; a negative value is a usage error. |
+| `--echo` | off | `udp` only: send each datagram back to the sender. |
+| `--timeout S` | `5` | `http`: close a connection that has been quiet this long, which also bounds reading a request. `0` disables it; at most 86400 (a day). **No effect on `udp`**: there is no connection to close, so a UDP listener waits for the next datagram however long that takes. |
 | `--json` | off | Print one JSON line per event instead of log lines. |
 
 Unlike every other command, `listen` runs until you stop it (its `--count` defaults to `0`), because leaving a server up is usually the point. A summary is printed when it exits.
 
-## TCP
+### There is no `listen tcp`
 
-```bash
-shint listen tcp 9002 --echo --count 1
-```
-
-Send it something from another terminal:
-
-```bash
-printf 'hello shint\n' | nc 127.0.0.1 9002
-```
+Versions before 4.2.0 also had `shint listen tcp <port>`, a raw TCP listener that logged whatever arrived. It was removed to keep the listeners to the two with a job of their own. A script that still calls it gets a usage error (exit status `2`) that says what to use instead:
 
 ```text
-Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK listening address=0.0.0.0:9002 max_connections=1 echo=true
-Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK connection accepted remote=127.0.0.1:59324 local=127.0.0.1:9002
-Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK data received remote=127.0.0.1:59324 bytes_received=12 bytes_sent=12 time_taken=28.708µs preview="hello shint"
-Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK connection closed remote=127.0.0.1:59324 bytes_received=12 bytes_sent=12
-Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK done connections=1 bytes_received=12 bytes_sent=12 total_time=410.53875ms
+$ shint listen tcp 9000
+unknown command "tcp" for "shint listen": "listen tcp" was removed in v4.2.0: use "shint listen http <port>" (a TCP connection to it works too) or "shint listen udp <port>"
 ```
-`bytes_received` is what arrived, `bytes_sent` is what was echoed back (0 without `--echo`), and `time_taken` is how long handling it took.
 
-**A transfer is a few lines, not thousands.** Data that arrives as one burst - reads that follow each other closely - is logged as **one line**, printed once the connection has been quiet for a tenth of a second (or after a megabyte, so a transfer that never pauses still logs as it goes), and `reads=N` says how many reads it covered. The `preview` is that of the first read, and the totals are exact: a 20 MB upload to `listen tcp` is about twenty lines, the last of which is `connection closed ... bytes_received=20000000`; it used to be nearly five thousand, one for every 4 KB read. Data sent at different moments - typed at a prompt, say - is still one line each, and a single read is logged as shown above, without `reads=`. Echoing is not delayed: every read is echoed as it arrives.
-
-With `--json` every read is one line, unchanged, for whoever consumes them (this run listened on port 9003 and was sent `hello-json`) (this run listened on port 9003 and was sent `hello-json`):
-
-```json
-{"protocol":"tcp","remote_address":"127.0.0.1:59327","local_address":"127.0.0.1:9003","bytes_read":11,"bytes_sent":11,"processing_time_µs":25,"preview":"hello-json","unixtime_µs":1789890629205451}
-```
-A plain `shint telnet 127.0.0.1 9002` connects and closes without sending anything, so it shows up as a connection with zero bytes.
+Use `shint listen http <port>` as the target of a `telnet` or `nmap` check: a connection that sends nothing is accepted and is not logged, so it is a plain "is this port open" target, and a real HTTP request is logged and counted. For a listener that shows raw bytes, `nc -l <port>` does that.
 
 ## UDP
 

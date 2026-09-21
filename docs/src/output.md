@@ -53,7 +53,6 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `dns` | `server resolved`, `dns resolution failed`, `query`, `query failed`, `answer`, `authority`, `no server to ask`, `done` |
 | `cidr` | `subnet`, `done` |
 | `ip` | `interface`, `address`, `failed`, `done` |
-| `listen-tcp` | `listening`, `connection accepted`, `data received`, `connection closed`, `done` |
 | `listen-udp` | `listening`, `packet received`, `done` |
 | `listen-http` | `listening`, `request`, `request rejected`, `request incomplete`, `done` |
 
@@ -259,15 +258,13 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 
 The listen commands print one JSON object per line as events happen (JSON Lines), suitable for piping into another tool.
 
-**listen tcp / udp**
+**listen udp**
 
 | Field | Meaning |
 |---|---|
-| `protocol` | `tcp` or `udp`. |
+| `protocol` | `udp`. |
 | `remote_address`, `local_address` | The two ends. |
-| `bytes_read` | Bytes received in this read or packet. |
-| `bytes_sent` | Bytes echoed back (`tcp` with `--echo`; omitted when zero). |
-| `processing_time_µs` | Time from the read to the echo completing (`tcp`; omitted when zero). |
+| `bytes_read` | Bytes in this datagram. |
 | `preview` | A short, single-line preview of the data. |
 | `unixtime_µs` | When it happened. |
 | `error` | Present only on failure. |

@@ -53,6 +53,13 @@ func previewBytes(b []byte) string {
 // endpoint when no real server is available. It accepts up to maxConnections
 // connections (0 = unlimited, run until Ctrl+C), logging each byte chunk
 // received and optionally echoing it back to the client.
+//
+// It is dormant: since v4.2.0 no command calls it. "shint listen tcp" was
+// removed to keep the listen commands to the two that have a job of their
+// own - http (which answers, and which a plain TCP connect check works
+// against too) and udp. The handler and its tests stay, so bringing the
+// command back is one cobra.Command in main.go; until then nothing else
+// depends on this file except the shared previewBytes above.
 func TCPListenHandler(bind string, port int, echo bool, maxConnections int, idleTimeout int, jsonoutput *bool) {
 	addr := net.JoinHostPort(bind, strconv.Itoa(port))
 	listener, err := net.Listen("tcp", addr)

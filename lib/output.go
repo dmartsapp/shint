@@ -156,12 +156,13 @@ type UDPStats struct {
 	Error           string `json:"error,omitempty"`
 }
 
-// ListenEvent describes a single inbound connection/packet observed by the
-// "listen tcp"/"listen udp" commands, emitted as one JSON line per event
-// when --json is set. BytesSent and ProcessingTimeUs are only populated by
-// "listen tcp" (its read+optional-echo cycle is treated as one "request"
-// handled); "listen udp" leaves them at zero, so omitempty keeps its event
-// shape unchanged.
+// ListenEvent describes a single inbound connection/packet observed by
+// "listen udp" (and by the dormant TCP listener handler, which no command
+// calls since v4.2.0), emitted as one JSON line per event when --json is
+// set. BytesSent and ProcessingTimeUs are only populated by the TCP handler
+// (its read+optional-echo cycle is treated as one "request" handled);
+// "listen udp" leaves them at zero, so omitempty keeps its event shape
+// unchanged.
 type ListenEvent struct {
 	Protocol         string `json:"protocol"`
 	RemoteAddr       string `json:"remote_address"`

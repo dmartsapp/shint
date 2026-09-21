@@ -25,7 +25,7 @@ shint telnet <host> <port> [--count N] [--delay MS] [--timeout S] [--throttle] [
 
 ### Check a port
 
-Start something to connect to (in another terminal, `shint listen tcp 9000`), then:
+Start something to connect to (in another terminal, `shint listen http 9000`), then:
 
 ```bash
 shint telnet 127.0.0.1 9000

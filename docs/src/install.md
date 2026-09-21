@@ -120,7 +120,7 @@ Tags: `latest`, the full version (`4.0.6` and `v4.0.6`), and rolling `4.0` and `
 The listen commands need their port published so you can reach them from outside the container:
 
 ```bash
-docker run --rm -p 9000:9000/tcp farhansabbir/shint:latest listen tcp 9000
+docker run --rm -p 9000:9000/udp farhansabbir/shint:latest listen udp 9000
 docker run --rm -p 8080:8080/tcp farhansabbir/shint:latest listen http 8080
 ```
 
