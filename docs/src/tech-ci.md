@@ -1,6 +1,6 @@
 ---
 title: CI/CD workflows
-lead: The six GitHub Actions workflows (five for releases, one that checks main) - what triggers them, what each job does, what they need, and how to watch them.
+lead: The eight GitHub Actions workflows (five for releases, a notifier, a README proposal, and one that checks main) - what triggers them, what each job does, what they need, and how to watch them.
 description: Documentation of shint's GitHub Actions - lint, vulnerability check, binary build and release, Docker Hub and GHCR publishing - plus the GitHub-managed automation around them.
 section: Technical
 order: 5
@@ -17,7 +17,7 @@ The "on `main`" half is enforced by a [guard](#the-release-tag-guard) that every
 
 They are separate files so that each has its own status and its own failure mode: a Docker Hub credential problem shows up as *that* workflow failing, not as a vague failure of "the release".
 
-A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag but builds and publishes nothing: it waits for the five and posts how each of them ended.
+A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag but builds and publishes nothing: it waits for the five and posts how each of them ended. A seventh, [README Reconcile](#readme-reconcile), starts with the tag too and waits for the release itself, then proposes `main`'s README for it.
 
 :::html
 <div class="diagram">
@@ -165,6 +165,20 @@ The commit message is free text written by a person, so it is passed to the shel
 | Build and push | `docker/build-push-action@v6`, platforms `linux/amd64,linux/arm64`, build argument `VERSION=<tag>`, and OCI labels for version, revision and source. |
 
 Image names: `docker.io/<DOCKERHUB_USERNAME>/shint` and `ghcr.io/dmartsapp/shint`. The Dockerfile is described in the [Source reference](tech-source.md#build-and-packaging).
+
+## README Reconcile
+
+`README Reconcile` (`.github/workflows/readme-reconcile.yaml`) proposes `main`'s README after a release. It starts with the tag like the others, waits (up to an hour, polling `gh release view`) for the GitHub Release the build workflow creates - so it does nothing for a release that failed - and then runs `.github/scripts/readme-release.sh`, which branches `readme/main-vX.Y.Z` off `main`, runs `readme-reconcile.py` there, commits the result with the changes and warnings as the message, pushes the branch and opens a pull request. What the reconciliation does is in [README after a release](tech-release.md#readme-after-a-release).
+
+| | |
+|---|---|
+| Permissions | `contents: write` (to push the branch, never `main`), `pull-requests: write` and `issues: write` |
+| If Actions may not open pull requests | Opening one fails with "GitHub Actions is not permitted to create pull requests" while the repository setting *Allow GitHub Actions to create and approve pull requests* is off. The script then opens an **issue** that links the branch (a compare link), so the proposal is not lost. Turn the setting on (Settings, Actions, General) to get the pull request instead |
+| Not part of the release | The notifier does not wait for it, and nothing waits for the notifier: a failure here leaves the release untouched (a test keeps the notifier's list of workflows free of it on purpose) |
+| The trigger rule | A `vX.Y.Z` tag push and nothing else, like every release workflow; there is no manual button. The same thing by hand is `make readme-reconcile TAG=vX.Y.Z` |
+| Serialised | `concurrency: readme-reconcile`, so two tags pushed together are proposed one after the other |
+
+Everything reaches the script through environment variables, never interpolated into the shell. Like the other workflows it can only be exercised for real by a tag, so what stands in for that is the tests: `test_readme_reconcile.py` (the reconciliation, on README fixtures) and `test-readme-release.sh` (the branch, the commit, the push, the pull request and the issue fallback, in throw-away repositories with a fake `gh`), both part of `make workflows`.
 
 ## Slack notification
 

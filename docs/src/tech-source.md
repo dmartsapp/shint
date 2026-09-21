@@ -121,6 +121,11 @@ nav: Source reference
 | `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
 | `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
 | `.github/workflows/check.yaml` | `make check` after a merge to `main` (never a branch, PR or tag; ignores `.github/**`); opens an issue on failure. |
+| `.github/workflows/readme-reconcile.yaml` | After a release tag, once the GitHub Release exists: proposes `main`'s README for it (a branch and a pull request, or an issue that links the branch). Never commits to `main`. |
+| `.github/scripts/readme-reconcile.py` | Brings a README in line with the release tags, the changelog, the milestones and the binary's `--help`, puts back what it must always have (expansion, badges with the donate button, support line), warns about what it cannot know; idempotent, fails closed. |
+| `.github/scripts/test_readme_reconcile.py` | Its tests, on README fixtures (35 of them). |
+| `.github/scripts/readme-release.sh` | `make readme-reconcile`: branches `readme/main-<tag>` off `main`, runs the script, commits, and with `PUSH=1` pushes and opens the pull request. |
+| `.github/scripts/test-readme-release.sh` | Tests for it, in throw-away git repositories with a fake `gh`. |
 | `.github/scripts/release-check.sh` | `make release-check`: the release-day preflight on a release branch (on top of `main`, `readme.md` equal to `main`'s, version, changelog, release commit, no attribution trailers, tag free). |
 | `.github/scripts/test-release-check.sh` | Tests for it, in throw-away git repositories. |
 | `.github/scripts/write-checksums.sh` | Writes `<binary>.sha256` next to each release binary and verifies it. |

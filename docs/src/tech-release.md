@@ -49,7 +49,7 @@ Tags up to `v2.2.6` predate the current process, and the list contains a run of 
 | a release branch (`release/vX.Y.Z`) | A working page for **that branch alone**: the release's milestone targets, the bugs it fixes, and the changes and diffs that exist only there. It is updated as the branch moves and is **never merged into `main`**. |
 | `main` | The project README: **every milestone in one place** (the roadmap), the releases, and the install and usage overview. It shows the latest release dynamically - the release badge and the download link point at "latest" - so a release does not need an edit to it. |
 
-`main`'s README is never synced from a branch: a change to it is made on `main`, as a commit of its own (a README-only commit, made before or after a release, never inside it). The consequence for a release is mechanical: the release branch's `readme.md` is put back to `main`'s before the merge, so the fast-forward changes nothing in `main`'s README, and `make release-check` refuses to pass otherwise. If `main`'s README changed while the branch was in flight, rebase the branch on `main` and, on a conflict in `readme.md`, keep the branch's own page - the release commit restores `main`'s anyway.
+`main`'s README is never synced from a branch: a change to it is made on `main`, as a commit of its own (a README-only commit, made before or after a release, never inside it). After a release it is [reconciled automatically](#readme-after-a-release). The consequence for a release is mechanical: the release branch's `readme.md` is put back to `main`'s before the merge, so the fast-forward changes nothing in `main`'s README, and `make release-check` refuses to pass otherwise. If `main`'s README changed while the branch was in flight, bring `main` into the branch (a merge, which rewrites nothing, or a rebase) and, on a conflict in `readme.md`, keep the branch's own page - the release commit restores `main`'s anyway.
 
 **Ready is not published.** Finishing early does not mean shipping early: finished work waits on its branch, and the release happens on the last day of the sprint window. That keeps the cadence predictable for users, and keeps `main` - which the documentation site deploys from, and whose `main.go` gives the site its version - in step with what is actually published. An urgent fix does not have to wait for its window; it is released as soon as it is ready.
 
@@ -105,7 +105,7 @@ git push -u origin release/vX.Y.Z
 2. **Decide the version** using the table above.
 3. **Update the version constant** in `main.go` and the Docker tag example in the docs if needed.
 4. **Update `CHANGELOG.md`**: add or finish the `## vX.Y.Z` section, newest first. Rebuild the site (`python3 docs/build.py`) so the [Changelog](changelog.md) page matches.
-5. **Leave `main`'s README alone.** Whether the roadmap now shows this release as shipped, or the later windows must shift because the sprint slipped, is a README-only commit **on `main`**, not part of the branch. Keep the branch's own README (targets, bugs, changes) up to date as you go.
+5. **Leave `main`'s README alone.** Whether the roadmap now shows this release as shipped, or the later windows must shift because the sprint slipped, is a README-only commit **on `main`**, not part of the branch - and it is proposed for you after the tag ([README after a release](#readme-after-a-release)). Keep the branch's own README (targets, bugs, changes) up to date as you go.
 6. **Run every check locally.** CI will not run the tests for you. The Makefile is the one place they are defined:
 
 ```bash
@@ -130,6 +130,30 @@ git push origin refs/tags/vX.Y.Z
 
 9. **Watch the five workflows** - the result is posted to Slack when the last one finishes ([Slack notification](tech-ci.md#slack-notification)), or follow them with the [commands here](tech-ci.md#watching-a-release) - and confirm the release has 28 assets (14 binaries and their 14 `.sha256` files). (Before tagging, let the [Check](tech-ci.md#check-after-a-merge-to-main) run for the merge to `main` finish green.)
 10. **Verify**: download a binary and its `.sha256`, check it (`shasum -a 256 -c`), run `gh attestation verify <file> --repo dmartsapp/shint`, and run `--version`; pull the image.
+
+## README after a release
+
+`main`'s README is written by hand, and a hand-kept README drifts: after v4.2.0 it still said v4.0.4 was the newest release, and a donate line that had been queued on a branch never landed. So it is reconciled by a script, `.github/scripts/readme-reconcile.py`, which reads the README as it is and changes only what the release facts say it should:
+
+| What | Where it comes from | What it does to the README |
+|---|---|---|
+| Released, and on which day | The release **tags** in git (the date in the tagger's own timezone) | A planned row becomes `Released Sep 21`; a tag with no row gets one, in version order; a wrong date is corrected |
+| The text of a new row | The **changelog** section's opening sentence (else its first bullet) | Used only for a row that does not exist yet - a hand-written row keeps its wording |
+| The sprint window of a coming release | The GitHub **milestones** (their due date, two weeks back) | `Nov 2 - Nov 15` follows the milestone |
+| A command the Commands table lacks | The binary's own `--help` | A row with the command's short description, for a human to complete |
+| What every README must have | The script | The tagline's expansion, the badge row **with the donate button**, and the support line at the bottom are put back if missing |
+
+It **warns and never guesses** about what it cannot know, and the warnings are what a person reads: a row that says Released but has no tag, a release still planned although a later one shipped, a release that came out ahead of its sprint window, and a row whose text was written as a plan (with the changelog's summary beside it, in case something planned moved to a later release). It is idempotent - a second run changes nothing - and it fails closed: a README without the Roadmap table, or with a different shape, is refused rather than guessed at.
+
+**By hand**, on any machine with the repository:
+
+```bash
+make readme-reconcile TAG=v4.2.1          # a branch readme/main-v4.2.1 off origin/main, one commit, nothing pushed
+git diff origin/main                       # read it, and the warnings the command printed
+make readme-reconcile TAG=v4.2.1 PUSH=1   # ... or in one go: push it and open the pull request
+```
+
+**Automatically**, the `README Reconcile` workflow ([CI/CD](tech-ci.md#readme-reconcile)) does this after every release tag, once the GitHub Release exists. It never commits to `main`: it pushes `readme/main-vX.Y.Z` and opens a pull request (or, where the repository does not let Actions open pull requests, an issue that links the branch). Read the diff and the warnings, fix the wording they point at, and merge. `TAG` only names the branch: every release the README does not yet show is reconciled, so if two releases come out close together the newer proposal contains the older.
 
 ## When a release goes wrong
 

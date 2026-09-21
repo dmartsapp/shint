@@ -4,6 +4,10 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.2.1 - unreleased
+
+- Release process: **main's README is now reconciled automatically after a release.** It is written by hand, and after v4.2.0 it still said v4.0.4 was the newest release, and the donate line queued on a branch never landed. `.github/scripts/readme-reconcile.py` reads the README as it is and brings it in line with the release tags (Released, on the tag's date), the changelog (the text of a new row), the GitHub milestones (a coming release's sprint window) and the binary's `--help` (a command the Commands table lacks); it puts back what every README must have (the tagline's expansion, the badge row with a donate button, the support line) and warns about what it cannot know (a row that says Released with no tag, a release still planned although a later one shipped). A new tag-triggered workflow, `README Reconcile`, runs it once the GitHub Release exists and opens a pull request for `readme/main-vX.Y.Z` - or an issue that links the branch, because this repository does not let Actions open pull requests - and never commits to `main`. By hand: `make readme-reconcile TAG=vX.Y.Z`. See [README after a release](https://dmartsapp.github.io/shint/docs/tech-release.html#readme-after-a-release).
+
 ## v4.2.0 - 2026-09-21
 
 New commands `ip` and `dns`, the authoritative name servers shown wherever shint resolves a name, `udp --hex` for binary payloads, and the fixes for what the black-box test battery found in v4.0.5 and v4.0.6: crashes and overflows on bad flag values, a `web` that held whole downloads in memory, `--count` with `--delay 0` running out of file descriptors, failures logged as `OK`, and a `listen http` that ignored broken requests.
