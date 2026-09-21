@@ -3,7 +3,7 @@ title: cidr
 lead: Subnet arithmetic without a calculator - network, mask, range, size and kind, for IPv4 and IPv6, entirely offline.
 description: shint cidr works out the network address, netmask, wildcard, first and last address, broadcast, host counts and kind of one or more IPv4 or IPv6 prefixes, without touching the network.
 section: Commands
-order: 9
+order: 10
 nav: cidr
 ---
 

@@ -292,6 +292,48 @@ type IPAddress struct {
 	Kind         string `json:"kind"`
 }
 
+// DNSStats is one question asked by "dns": Name and Type are what was asked,
+// Server and Transport who answered and how (Transport is "tcp" when the answer
+// came over TCP, which is when it was truncated over UDP or --tcp was given),
+// RCode the response code (NOERROR, NXDOMAIN, SERVFAIL, ...) and Flags the
+// header flags that were set (qr, aa, tc, rd, ra, ad, cd). Success means the
+// server answered with at least one record of the type asked. Answers and
+// Authority are the two sections that matter (the latter carries the SOA of a
+// negative answer); Additional counts the third without listing it. Skipped
+// names the servers tried first that did not answer. Error is set only when the
+// question failed - including when no server answered, in which case Server is
+// empty.
+type DNSStats struct {
+	Name           string      `json:"name"`
+	Type           string      `json:"type"`
+	Server         string      `json:"server,omitempty"`
+	Transport      string      `json:"transport,omitempty"`
+	RCode          string      `json:"rcode,omitempty"`
+	Flags          []string    `json:"flags"`
+	Success        bool        `json:"success"`
+	Answers        []DNSRecord `json:"answers"`
+	Authority      []DNSRecord `json:"authority"`
+	Additional     int         `json:"additional_count"`
+	RetriedOverTCP bool        `json:"retried_over_tcp,omitempty"`
+	Skipped        []string    `json:"skipped_servers,omitempty"`
+	SentTime       int64       `json:"sent_unixtime_µs"`
+	RecvTime       int64       `json:"recv_unixtime_µs"`
+	TimeTaken      int64       `json:"time_taken_µs"`
+	Error          string      `json:"error,omitempty"`
+}
+
+// DNSRecord is one resource record: Data is its value written the way dig
+// writes it ("10 mail.example.com." for an MX, "0 issue \"letsencrypt.org\""
+// for a CAA); a TXT record's Data is its character strings joined, and Strings
+// keeps them apart.
+type DNSRecord struct {
+	Name    string   `json:"name"`
+	Type    string   `json:"type"`
+	TTL     uint32   `json:"ttl"`
+	Data    string   `json:"data"`
+	Strings []string `json:"strings,omitempty"`
+}
+
 // LocalJSONOutput is the JSON document of a command that never looks up a
 // name ("cidr", "wol"): JSONOutput without dns_lookup, which would only ever
 // read as a failed lookup. Everything else is the same shape.

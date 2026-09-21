@@ -147,6 +147,16 @@ shint rdns 203.0.113.9
 
 Lists the names the address maps back to, or exits `1` with `no such host` when it has no PTR record. Given a host name instead, it looks up every address the name has - a quick way to see whether a service's addresses all carry a sensible reverse name. See [rdns](rdns.md).
 
+## What does DNS say - and did my change go live?
+
+```bash
+shint dns example.com MX @1.1.1.1
+shint dns example.com NS
+shint dns example.com SOA @a.iana-servers.net --no-recurse
+```
+
+The first asks a specific resolver for the mail servers. The second lists the zone's name servers. The third asks one of those name servers **directly**: `flags=[qr,aa]` means an authoritative answer, and the serial number in the SOA tells you whether the version you published is the one being served. If a resolver still shows the old value, the TTL on its line is how many seconds it may keep doing so. A name that does not exist exits `1` with `no such domain (NXDOMAIN)` and the zone's SOA. See [dns](dns.md).
+
 ## Wake a machine on your network
 
 ```bash

@@ -92,6 +92,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
   <a class="card" href="ntp.html"><strong><code>ntp</code></strong><span>How far is this machine's clock from a time server?</span></a>
   <a class="card" href="wol.html"><strong><code>wol</code></strong><span>Wake a machine on your network with a Wake-on-LAN packet.</span></a>
   <a class="card" href="rdns.html"><strong><code>rdns</code></strong><span>Which names does this IP address map back to? Reverse DNS.</span></a>
+  <a class="card" href="dns.html"><strong><code>dns</code></strong><span>Ask a DNS server for A, MX, TXT, NS and more, and see the flags and TTLs.</span></a>
   <a class="card" href="cidr.html"><strong><code>cidr</code></strong><span>Network, mask, range and size of a subnet, offline.</span></a>
   <a class="card" href="ip.html"><strong><code>ip</code></strong><span>What does this machine have? Its interfaces and addresses.</span></a>
   <a class="card" href="listen.html"><strong><code>listen</code></strong><span>Run a local TCP, UDP or HTTP server to test against.</span></a>
@@ -112,6 +113,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
 | `sntp pool.ntp.org`, `ntpdate -q pool.ntp.org` | `shint ntp pool.ntp.org` |
 | `wakeonlan aa:bb:cc:dd:ee:ff`, `etherwake` | `shint wol aa:bb:cc:dd:ee:ff` |
 | `dig -x 8.8.8.8`, `host 8.8.8.8` | `shint rdns 8.8.8.8` |
+| `dig example.com MX @1.1.1.1`, `nslookup` | `shint dns example.com MX @1.1.1.1` |
 | `ipcalc 192.168.1.0/24`, `sipcalc` | `shint cidr 192.168.1.0/24` |
 | `ip addr`, `ifconfig`, `ipconfig` | `shint ip` |
 

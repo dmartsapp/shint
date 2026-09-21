@@ -194,6 +194,154 @@ def udp_big(s):
     while True:
         d, a = s.recvfrom(65536); s.sendto(b"B" * 4000, a)
 
+# ---------------------------------------------------------------- a DNS server
+# UDP and TCP on one port. What a name does is in its first label: ok.example
+# answers properly, nx.example is NXDOMAIN, big.example is truncated over UDP and
+# complete over TCP, garbage.example answers with junk, silent.example does not
+# answer, wrongid.example answers with the wrong ID, and so on (see dns_reply).
+
+def _dns_name(name):
+    out = b""
+    for label in name.rstrip(".").split("."):
+        if label:
+            out += bytes([len(label)]) + label.encode()
+    return out + b"\0"
+
+
+def _dns_rr(name, rtype, ttl, rdata):
+    return _dns_name(name) + struct.pack(">HHIH", rtype, 1, ttl, len(rdata)) + rdata
+
+
+def _dns_question(data):
+    """(id, name, type, question bytes) of a query, or None."""
+    if len(data) < 12:
+        return None
+    ident, _flags, qd = struct.unpack(">HHH", data[:6])
+    if qd != 1:
+        return None
+    i, labels = 12, []
+    while i < len(data) and data[i]:
+        n = data[i]
+        labels.append(data[i + 1:i + 1 + n].decode("latin1"))
+        i += 1 + n
+    end = i + 1 + 4
+    qtype = struct.unpack(">H", data[i + 1:i + 3])[0]
+    return ident, ".".join(labels).lower(), qtype, data[12:end]
+
+
+def _dns_msg(ident, question, rcode=0, answers=(), authority=(), truncated=False):
+    flags = 0x8000 | 0x0100 | 0x0080 | rcode | (0x0200 if truncated else 0)
+    head = struct.pack(">HHHHHH", ident, flags, 1, len(answers), len(authority), 0)
+    return head + question + b"".join(answers) + b"".join(authority)
+
+
+def dns_reply(data, tcp):
+    """The bytes to send back for a query, or None to stay silent."""
+    q = _dns_question(data)
+    if q is None:
+        return None
+    ident, name, qtype, question = q
+    soa = _dns_rr("example", 6, 300, _dns_name("ns.example") + _dns_name("hostmaster.example") + struct.pack(">IIIII", 1, 7200, 3600, 1209600, 300))
+    if name == "silent.example":
+        return None
+    if name == "garbage.example":
+        return b"this is not a dns reply"
+    if name == "wrongid.example":
+        return _dns_msg(ident ^ 0xFFFF, question, 0, [_dns_rr(name, 1, 30, bytes([203, 0, 113, 66]))])
+    if name == "servfail.example":
+        return _dns_msg(ident, question, 2)
+    if name == "refused.example":
+        return _dns_msg(ident, question, 5)
+    if name == "nodata.example":
+        return _dns_msg(ident, question, 0, [], [soa])
+    if name == "big.example":
+        if not tcp:
+            return _dns_msg(ident, question, 0, [], [], truncated=True)
+        return _dns_msg(ident, question, 0, [_dns_rr(name, 1, 30, bytes([192, 0, 2, 7]))])
+    if name.endswith("in-addr.arpa") or name.endswith("ip6.arpa"):
+        if qtype == 12:
+            return _dns_msg(ident, question, 0, [_dns_rr(name, 12, 300, _dns_name("host.example"))])
+        return _dns_msg(ident, question, 0, [], [soa])
+    if name == "txt.example" and qtype == 16:
+        strings = [b"\x1b[31mred\x1b[0m", b"line1\nline2\x00", b"\xff\xfe"]
+        rdata = b"".join(bytes([len(x)]) + x for x in strings)
+        return _dns_msg(ident, question, 0, [_dns_rr(name, 16, 60, rdata)])
+    if name in ("ok.example", "txt.example"):
+        answers = {1: _dns_rr(name, 1, 300, bytes([192, 0, 2, 1])),
+                   28: _dns_rr(name, 28, 300, bytes.fromhex("20010db8000000000000000000000001")),
+                   15: _dns_rr(name, 15, 300, struct.pack(">H", 10) + _dns_name("mail.ok.example")),
+                   2: _dns_rr(name, 2, 300, _dns_name("ns.example")),
+                   16: _dns_rr(name, 16, 300, b"\x0bv=spf1 -all"),
+                   6: _dns_rr(name, 6, 300, _dns_name("ns.example") + _dns_name("hostmaster.example") + struct.pack(">IIIII", 1, 7200, 3600, 1209600, 300)),
+                   257: _dns_rr(name, 257, 300, b"\x00\x05issueletsencrypt.org")}
+        if qtype in answers:
+            return _dns_msg(ident, question, 0, [answers[qtype]])
+        return _dns_msg(ident, question, 0, [], [soa])
+    return _dns_msg(ident, question, 3, [], [soa])
+
+
+def start_dns():
+    """UDP and TCP on the same port; records it as PORTS['dns']. Returns True if it started."""
+    for _ in range(20):
+        u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        u.bind(("127.0.0.1", 0))
+        port = u.getsockname()[1]
+        t = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        t.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            t.bind(("127.0.0.1", port))
+        except OSError:
+            u.close()
+            t.close()
+            continue
+        t.listen(64)
+
+        def udp_loop():
+            while True:
+                try:
+                    data, addr = u.recvfrom(4096)
+                except OSError:
+                    return
+                out = dns_reply(data, False)
+                if out is not None:
+                    u.sendto(out, addr)
+
+        def tcp_conn(c):
+            try:
+                c.settimeout(10)
+                size = c.recv(2)
+                if len(size) < 2:
+                    return
+                body = b""
+                want = struct.unpack(">H", size)[0]
+                while len(body) < want:
+                    chunk = c.recv(want - len(body))
+                    if not chunk:
+                        return
+                    body += chunk
+                out = dns_reply(body, True)
+                if out is not None:
+                    c.sendall(struct.pack(">H", len(out)) + out)
+            except OSError:
+                pass
+            finally:
+                c.close()
+
+        def tcp_loop():
+            while True:
+                try:
+                    c, _ = t.accept()
+                except OSError:
+                    return
+                threading.Thread(target=tcp_conn, args=(c,), daemon=True).start()
+
+        threading.Thread(target=udp_loop, daemon=True).start()
+        threading.Thread(target=tcp_loop, daemon=True).start()
+        PORTS["dns"] = port
+        return True
+    return False
+
+
 def tlsctx(cert, key):
     c = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     c.load_cert_chain(cert, key)
@@ -234,4 +382,5 @@ def start(certdir):
         t.bind(("127.0.0.1", 0))
         PORTS[name] = t.getsockname()[1]
         t.close()
-    return {"ipv6": have_v6, "tls": "https" in PORTS}
+    have_dns = start_dns()
+    return {"ipv6": have_v6, "tls": "https" in PORTS, "dns": have_dns}

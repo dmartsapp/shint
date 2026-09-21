@@ -15,6 +15,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"golang.org/x/net/dns/dnsmessage"
 )
 
 // TestMain lets the tests below run the real CLI without a build step: when
@@ -94,6 +96,54 @@ func udpSocket(t *testing.T, echo bool) (port int) {
 	return c.LocalAddr().(*net.UDPAddr).Port
 }
 
+// dnsSocket is a minimal DNS server on loopback: it answers "nx.example." with
+// NXDOMAIN and any other name with one record of the type asked (A, AAAA, MX or PTR).
+func dnsSocket(t *testing.T) (port int) {
+	t.Helper()
+	c, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+	go func() {
+		buf := make([]byte, 512)
+		for {
+			n, from, err := c.ReadFromUDP(buf)
+			if err != nil {
+				return
+			}
+			var req dnsmessage.Message
+			if req.Unpack(buf[:n]) != nil || len(req.Questions) != 1 {
+				continue
+			}
+			q := req.Questions[0]
+			resp := dnsmessage.Message{
+				Header:    dnsmessage.Header{ID: req.ID, Response: true, RecursionDesired: true, RecursionAvailable: true},
+				Questions: req.Questions,
+			}
+			if q.Name.String() == "nx.example." {
+				resp.RCode = dnsmessage.RCodeNameError
+			} else {
+				h := dnsmessage.ResourceHeader{Name: q.Name, Class: dnsmessage.ClassINET, TTL: 60, Type: q.Type}
+				switch q.Type {
+				case dnsmessage.TypeMX:
+					resp.Answers = []dnsmessage.Resource{{Header: h, Body: &dnsmessage.MXResource{Pref: 10, MX: dnsmessage.MustNewName("mail.example.")}}}
+				case dnsmessage.TypePTR:
+					resp.Answers = []dnsmessage.Resource{{Header: h, Body: &dnsmessage.PTRResource{PTR: dnsmessage.MustNewName("host.example.")}}}
+				case dnsmessage.TypeAAAA:
+					resp.Answers = []dnsmessage.Resource{{Header: h, Body: &dnsmessage.AAAAResource{AAAA: [16]byte{0x20, 0x01, 0x0d, 0xb8, 15: 1}}}}
+				default:
+					resp.Answers = []dnsmessage.Resource{{Header: h, Body: &dnsmessage.AResource{A: [4]byte{192, 0, 2, 1}}}}
+				}
+			}
+			if packed, err := resp.Pack(); err == nil {
+				_, _ = c.WriteToUDP(packed, from)
+			}
+		}
+	}()
+	return c.LocalAddr().(*net.UDPAddr).Port
+}
+
 // ntpSocket is a minimal SNTP server on loopback: it answers every 48-byte
 // request with a well-formed reply stamped with the real time.
 func ntpSocket(t *testing.T) (port int) {
@@ -158,6 +208,8 @@ func TestExitStatus(t *testing.T) {
 	udpSilent := strconv.Itoa(udpSocket(t, false))
 	udpClosed := strconv.Itoa(closedUDPPort(t))
 	ntpUp := strconv.Itoa(ntpSocket(t))
+	dnsUp := "@127.0.0.1:" + strconv.Itoa(dnsSocket(t))
+	dnsDown := "@127.0.0.1:" + strconv.Itoa(closedUDPPort(t))
 
 	fast := []string{"--delay", "0", "--timeout", "2"}
 	cases := []struct {
@@ -237,6 +289,22 @@ func TestExitStatus(t *testing.T) {
 		{"cidr one bad among good", []string{"cidr", "10.0.0.0/8", "nope"}, 2},
 		{"cidr missing argument", []string{"cidr"}, 2},
 
+		// dns: a question that gets no record of the type asked is a failed check
+		{"dns answered", []string{"dns", "example.com", dnsUp}, 0},
+		{"dns one type", []string{"dns", "example.com", "MX", dnsUp}, 0},
+		{"dns reverse", []string{"dns", "192.0.2.1", dnsUp}, 0},
+		{"dns json", []string{"dns", "example.com", "A", dnsUp, "--json"}, 0},
+		{"dns no such domain", []string{"dns", "nx.example", "A", dnsUp}, 1},
+		{"dns no server listening", []string{"dns", "example.com", "A", dnsDown, "--timeout", "1"}, 1},
+		{"dns server name that does not resolve", []string{"dns", "example.com", "@" + dead}, 1},
+		{"dns missing argument", []string{"dns"}, 2},
+		{"dns unsupported type", []string{"dns", "example.com", "BOGUS", dnsUp}, 2},
+		{"dns type with an address", []string{"dns", "192.0.2.1", "MX", dnsUp}, 2},
+		{"dns two servers", []string{"dns", "example.com", dnsUp, dnsUp}, 2},
+		{"dns label too long", []string{"dns", strings.Repeat("a", 64) + ".com", dnsUp}, 2},
+		{"dns both families", []string{"dns", "-4", "-6", "example.com", dnsUp}, 2},
+		{"dns count zero", []string{"dns", "example.com", dnsUp, "--count", "0"}, 2},
+
 		// ip: reads the interface table; a name that does not exist is a failed check
 		{"ip all interfaces", []string{"ip"}, 0},
 		{"ip json", []string{"ip", "--json"}, 0},
@@ -282,6 +350,8 @@ func TestUsageErrorsGoToStderrOnly(t *testing.T) {
 		{"telnet", "127.0.0.1"},
 		{"cidr", "10.0.0.0/33"},
 		{"cidr"},
+		{"dns"},
+		{"dns", "example.com", "BOGUS"},
 		{"ip", "-4", "-6"},
 		{"ip", "a", "b"},
 		{"rdns"},

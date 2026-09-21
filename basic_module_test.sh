@@ -20,10 +20,12 @@ NC='\033[0m' # No Color
 #   $1: Test description
 #   $2: Command to execute
 #   $3: String to expect in the output
+#   $4: (optional) extended regex that must NOT match the output
 run_test() {
     local description="$1"
     local command="$2"
     local expect="$3"
+    local absent="${4:-}"
     
     echo -n "TEST: $description ... "
     
@@ -35,12 +37,13 @@ run_test() {
     output=$(eval $command 2>&1) || exit_code=$?
     
     # Check if the command was successful and the output contains the expected string
-    if [[ $exit_code -eq 0 && "$output" == *"$expect"* ]]; then
+    if [[ $exit_code -eq 0 && "$output" == *"$expect"* && ( -z "$absent" || ! "$output" =~ $absent ) ]]; then
         printf "${GREEN}[PASS]${NC}\n"
     else
         printf "${RED}[FAIL]${NC}\n"
         echo "  - Exit Code: $exit_code"
         echo "  - Expected to contain: '$expect'"
+        [[ -n "$absent" ]] && echo "  - Must not match: '$absent'"
         echo "  - Output:"
         echo "$output"
         failures=$((failures + 1))
@@ -76,13 +79,17 @@ run_test "Ping shows the payload size" "$BINARY ping google.com --count 1 --payl
 
 # Timing, reverse DNS, clock check, Wake-on-LAN (aimed at this machine, so
 # nothing is woken) and the subnet calculator (offline)
-run_test "Telnet, IPv4 only" "$BINARY telnet google.com 443 -4" "addresses=1"
+# -4 must leave IPv6 out: a colon inside the ips=[...] list would be an IPv6
+# address. (How many IPv4 addresses google.com has is up to its DNS.)
+run_test "Telnet, IPv4 only" "$BINARY telnet google.com 443 -4" "connect ok" 'ips=\[[^]]*:'
 run_test "Web timing" "$BINARY web https://google.com --timing --count 1" "timing url="
 run_test "Reverse DNS" "$BINARY rdns 8.8.8.8" "dns.google."
 run_test "NTP" "$BINARY ntp time.cloudflare.com" "[ntp] OK response"
 run_test "Wake-on-LAN" "$BINARY wol aa:bb:cc:dd:ee:ff --broadcast 127.0.0.1 --port 9" "magic packet sent"
 run_test "CIDR" "$BINARY cidr 192.168.1.10/24" "network=192.168.1.0/24"
 run_test "IP" "$BINARY ip" "[ip] OK done interfaces="
+run_test "DNS" "$BINARY dns google.com A @8.8.8.8" "[dns] OK done queries=1 answered=1"
+run_test "DNS reverse" "$BINARY dns 8.8.8.8 @8.8.8.8" "data=dns.google."
 
 
 # --- Summary ---

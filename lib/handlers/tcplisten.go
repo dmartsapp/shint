@@ -13,7 +13,6 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/dmartsapp/shint/v4/lib"
@@ -42,31 +41,11 @@ func previewBytes(b []byte) string {
 		}
 		trimmed, truncated = trimmed[:cut], true
 	}
-	var sb strings.Builder
-	for len(trimmed) > 0 {
-		r, size := utf8.DecodeRune(trimmed)
-		switch {
-		case r == utf8.RuneError && size == 1:
-			fmt.Fprintf(&sb, "\\x%02x", trimmed[0])
-		case r == '\n':
-			sb.WriteString(`\n`)
-		case r == '\r':
-			sb.WriteString(`\r`)
-		case r == '\t':
-			sb.WriteString(`\t`)
-		case r < 0x20 || r == 0x7f:
-			fmt.Fprintf(&sb, "\\x%02x", r)
-		case !unicode.IsPrint(r):
-			fmt.Fprintf(&sb, "\\u%04x", r)
-		default:
-			sb.WriteRune(r)
-		}
-		trimmed = trimmed[size:]
-	}
+	sb := escapeBytes(trimmed)
 	if truncated {
-		sb.WriteString("...")
+		sb += "..."
 	}
-	return sb.String()
+	return sb
 }
 
 // TCPListenHandler starts a plain TCP listener so other shint commands

@@ -1,8 +1,8 @@
 // Command shint - "Simple Host INspection Toolkit" - bundles the everyday network
 // checks (telnet-style port checks, ping, an HTTP client, a port scanner, a
 // UDP probe, a clock check against an NTP server, Wake-on-LAN, reverse DNS,
-// a subnet calculator, an interface lister and local test listeners) into one
-// static binary.
+// a subnet calculator, an interface lister, DNS lookups and local test
+// listeners) into one static binary.
 //
 // This file is only the command line: it declares the cobra commands and
 // their flags, validates arguments, and turns each handler's result into the
@@ -66,6 +66,10 @@ var (
 	// udp
 	udpData string
 
+	// dns
+	dnsTCP       bool
+	dnsNoRecurse bool
+
 	// wol
 	wolBroadcast string
 	wolPort      int
@@ -91,8 +95,9 @@ var (
 //	   a run cut short by Ctrl+C (a scan, or a repeating check stopped before
 //	   its --count was done), no usable time reply (or a clock offset beyond
 //	   --max-offset), an address with no reverse (PTR) name, or a
-//	   Wake-on-LAN packet that could not be sent, an interface that does
-//	   not exist (ip)
+//	   Wake-on-LAN packet that could not be sent, a DNS question that got no
+//	   records of the type asked (NXDOMAIN, no data, SERVFAIL, REFUSED, no
+//	   answer), an interface that does not exist (ip)
 //	2  the command was used wrongly (bad argument, flag or value); nothing ran
 //
 // Results - including "ERROR" lines about failed checks - go to stdout; usage
@@ -139,7 +144,7 @@ func finish(ok bool) {
 var rootCmd = &cobra.Command{
 	Use:     filepath.Base(os.Args[0]),
 	Short:   "shint - Simple Host INspection Toolkit",
-	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, cidr, ip and listener functionalities.`,
+	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, dns, cidr, ip and listener functionalities.`,
 	Version: Version,
 }
 
@@ -361,6 +366,44 @@ An address that has no PTR record is reported as a failed check (exit status 1);
 	},
 }
 
+var dnsCmd = &cobra.Command{
+	Use:   "dns [name] [type] [@server]",
+	Short: "Look up DNS records (A, AAAA, MX, TXT, NS, ...) like dig",
+	Long: `This command asks a DNS server a question and shows the answer: the exchange (which server answered, over UDP or TCP, the response code, the header flags, the counts and the time) and one line per record with its TTL. The types are A, AAAA, CNAME, MX, NS, TXT, SOA, SRV, PTR and CAA; without a type a name is asked for its A and AAAA records (only one of them with -4 or -6). An IP address is looked up in reverse (its PTR record), like dig -x.
+
+Without @server the servers this machine is configured with are asked, in order, and the first that answers is used (a server that does not answer is skipped, and the line says so). @server is an address or a name, with an optional port (@1.1.1.1, @dns.google, @[::1]:5353), and can be an authoritative server: the "aa" flag and the SOA in the authority section show who is speaking. --no-recurse asks a server only for what it knows itself.
+
+A question that gets no record of the type asked - the name does not exist (NXDOMAIN), it exists but has none of that type, the server fails (SERVFAIL) or refuses, or nothing answers - is a failed check (exit status 1), each with its reason. An answer counts only if it is for this question: replies with a different ID or question are ignored. --timeout is how long each server gets; --count repeats the question. Unprivileged: an ordinary UDP query, retried over TCP if the answer is truncated.`,
+	Args: cobra.RangeArgs(1, 3),
+	Example: rootCmd.Name() + ` dns example.com` + "\n" +
+		rootCmd.Name() + ` dns example.com MX @1.1.1.1` + "\n" +
+		rootCmd.Name() + ` dns 8.8.8.8` + "\n" +
+		rootCmd.Name() + ` dns example.com SOA @a.iana-servers.net --no-recurse`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := lib.SetIPFamily(ipv4Only, ipv6Only); err != nil {
+			usage(err.Error())
+			return
+		}
+		query, err := handlers.ParseDNSArgs(args)
+		if err != nil {
+			usage(err.Error())
+			return
+		}
+		if err := lib.RequirePositive("count", iterations); err != nil {
+			usage(err.Error())
+			return
+		}
+		if err := lib.RequirePositive("timeout", timeout); err != nil {
+			usage(err.Error())
+			return
+		}
+		ctx, stop := interruptContext()
+		defer stop()
+
+		finish(handlers.DNSHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, query, handlers.DNSOptions{ForceTCP: dnsTCP, NoRecurse: dnsNoRecurse}))
+	},
+}
+
 var cidrCmd = &cobra.Command{
 	Use:   "cidr [prefix]...",
 	Short: "Work out a subnet: network, mask, range and size",
@@ -556,6 +599,9 @@ func init() {
 
 	udpCmd.Flags().StringVarP(&udpData, "data", "D", "", "Explicit payload data to send instead of the generated --payload filler")
 
+	dnsCmd.Flags().BoolVar(&dnsTCP, "tcp", false, "Ask over TCP only (by default UDP, with a TCP retry when the answer is truncated)")
+	dnsCmd.Flags().BoolVar(&dnsNoRecurse, "no-recurse", false, "Clear the \"recursion desired\" bit: ask the server only for what it knows itself (use with an authoritative @server)")
+
 	wolCmd.Flags().StringVar(&wolBroadcast, "broadcast", handlers.WOLDefaultBroadcast, "IPv4 broadcast address to send the magic packet to (for one subnet, e.g. 192.168.1.255)")
 	wolCmd.Flags().IntVar(&wolPort, "port", handlers.WOLDefaultPort, "UDP port to send the magic packet to")
 
@@ -579,7 +625,7 @@ func init() {
 // variables above are fully initialised first), runs cobra, and exits with the
 // status the chosen command recorded - see the exit-status notes above.
 func main() {
-	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, cidrCmd, ipCmd, listenCmd)
+	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, dnsCmd, cidrCmd, ipCmd, listenCmd)
 	// cobra has already printed the error (and usage help) to stderr. Every
 	// error Execute returns is a usage error - the Run functions never return
 	// one; they report through usage() and finish() instead.

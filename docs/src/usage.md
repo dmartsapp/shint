@@ -16,7 +16,7 @@ shint <command> <target> [flags]
 The target comes first (a host and port, a URL, a port to listen on); flags change how the check runs. Flags can go before or after the target.
 
 ```text
-A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, cidr, ip and listener functionalities.
+A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, dns, cidr, ip and listener functionalities.
 
 Usage:
   shint [command]
@@ -24,6 +24,7 @@ Usage:
 Available Commands:
   cidr        Work out a subnet: network, mask, range and size
   completion  Generate the autocompletion script for the specified shell
+  dns         Look up DNS records (A, AAAA, MX, TXT, NS, ...) like dig
   help        Help about any command
   ip          List this machine's network interfaces and addresses
   listen      Start a local TCP, UDP, or HTTP listener for testing
@@ -130,6 +131,7 @@ The flags work on every command that resolves a name - `telnet`, `ping`, `nmap`,
 | `ping` | each echo request waits for its reply before it counts as lost (the name lookup keeps the ping library's own fixed 5-second limit) |
 | `ntp` | each server gets to answer, and the DNS lookup |
 | `rdns` | each reverse lookup gets, and the DNS lookup of a host name |
+| `dns` | each DNS server gets to answer, and the lookup of an `@server` name |
 | `wol` | each send may take (it never waits for a reply - there is none) |
 | `listen` | a connection may sit idle before it is closed |
 | `cidr` | *(not used: it never waits)* |
@@ -152,7 +154,7 @@ Requests sent: 1, Response received: 1, Success: 100%
 Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 Sun Sep 20 01:50:10 MDT 2026: [telnet] OK done total_time=1.006831458s
 ```
-- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `cidr`, `ip`, `listen-tcp`, `listen-udp`, `listen-http`).
+- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `listen-tcp`, `listen-udp`, `listen-http`).
 - **OK or ERROR** is the level of that one line.
 - The `key=value` pairs are easy to `grep` and `awk`; values with spaces are quoted.
 - Commands that repeat a check finish with a **statistics** block: requests sent, responses received, and minimum, average and maximum latency.
@@ -200,6 +202,7 @@ What counts as a failure, per command:
 | `udp` | the lookup failed, the port was reported `closed`, or the probe errored. `open|filtered` (no reply) is inconclusive, not a failure |
 | `ntp` | the lookup failed, a server did not answer, an answer could not be trusted (an unsynchronized server, a mismatched reply, a "kiss-o'-death"), or - with `--max-offset` - the clock is further out than that |
 | `rdns` | the name lookup failed, or an address has no PTR record (or its lookup failed or timed out) |
+| `dns` | a question got no record of the type asked: `NXDOMAIN`, no data for that type, `SERVFAIL`, `REFUSED`, a malformed reply, or no server answered in time |
 | `wol` | a magic packet could not be sent. A packet that was sent is a success: there is no reply to check |
 | `cidr` | never. Bad input is exit `2` and nothing is printed |
 | `ip` | the named interface does not exist, or the interface table (or one interface's addresses) could not be read |

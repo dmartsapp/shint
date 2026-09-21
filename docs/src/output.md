@@ -50,6 +50,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `ntp` | `dns resolved`, `dns resolution failed`, `response`, `query failed`, `done` |
 | `wol` | `magic packet sent`, `send failed`, `done` |
 | `rdns` | `dns resolved`, `dns resolution failed`, `reverse lookup`, `reverse lookup failed`, `done` |
+| `dns` | `server resolved`, `dns resolution failed`, `query`, `query failed`, `answer`, `authority`, `no server to ask`, `done` |
 | `cidr` | `subnet`, `done` |
 | `ip` | `interface`, `address`, `failed`, `done` |
 | `listen-tcp` | `listening`, `connection accepted`, `data received`, `connection closed`, `done` |
@@ -109,8 +110,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Field | Type | Meaning |
 |---|---|---|
 | `input_params` | object | The parameters the command ran with. |
-| `module_name` | string | `telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp` or `rdns` - and `wol`, `cidr` or `ip`, whose documents have no `dns_lookup`. |
-| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr` and `ip`**, which never look up a name (an empty lookup would only read as a failed one). |
+| `module_name` | string | `telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp`, `rdns` or `dns` - and `wol`, `cidr` or `ip`, whose documents have no `dns_lookup`. |
+| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr`, `ip` and `dns`** (`dns` is itself the lookup), which never look up a name (an empty lookup would only read as a failed one). |
 | `stats` | array | One entry per check; the shape depends on the command (below). |
 | `start_time_unixtime_µs` | integer | When the run started, in Unix microseconds. |
 | `end_time_unixtime_µs` | integer | When it ended. |
@@ -230,6 +231,20 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 |---|---|
 | `input`, `network`, `family`, `prefix_length`, `netmask`, `wildcard`, `first_address`, `last_address`, `broadcast`, `first_host`, `last_host`, `kind` | The subnet, as described on the page. `wildcard` and `broadcast` appear only where they exist. |
 | `addresses`, `usable_hosts` | **Strings**, not numbers: an IPv6 prefix can hold more addresses than a 64-bit integer, and JSON tools would silently round them. |
+
+**dns** - one entry per question (see [dns](dns.md#reading-the-output) for what each field means)
+
+| Field | Meaning |
+|---|---|
+| `name`, `type` | What was asked. |
+| `server`, `transport` | Who answered, and `udp` or `tcp`; `server` is absent when no server answered. |
+| `rcode`, `flags` | The response code (`NOERROR`, `NXDOMAIN`, `SERVFAIL`, ... - capitals here, lower case in the text log) and the header flags set (`qr`, `aa`, `tc`, `rd`, `ra`, `ad`, `cd`). |
+| `success` | Whether the server answered with at least one record of the type asked. |
+| `answers`, `authority` | Lists of `{name, type, ttl, data}` (a TXT record also has `strings`). Empty, never `null`. |
+| `additional_count` | How many records the additional section held (not listed). |
+| `retried_over_tcp`, `skipped_servers` | Present when the UDP answer was truncated, or when servers tried first did not answer. |
+| `sent_unixtime_µs`, `recv_unixtime_µs`, `time_taken_µs` | Timing. |
+| `error` | Present only on failure. |
 
 **ip** - one entry per interface, no timing (see [ip](ip.md#what-it-reports) for what each field means)
 

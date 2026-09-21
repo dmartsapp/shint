@@ -20,7 +20,7 @@ import known_issues  # noqa: E402
 import runner  # noqa: E402
 import servers  # noqa: E402
 
-MODULES = ["cases_cli", "cases_web", "cases_net", "cases_listen"]
+MODULES = ["cases_cli", "cases_web", "cases_net", "cases_dns", "cases_listen"]
 
 
 def version_of(repo):
