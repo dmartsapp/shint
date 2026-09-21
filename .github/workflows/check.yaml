@@ -1,10 +1,21 @@
 name: Check
 
-# Runs `make check` after a merge to main, so the tests, lint, vulnerability
-# check and workflow checks are not left for release day. It starts for a push
-# to main and nothing else - no pull requests, no other branch, no manual run -
-# and not when the push only changes .github/. That exact shape is enforced by
-# .github/scripts/check-workflow-triggers.py (part of make check).
+# Checks a merge to main, so the tests, lint, vulnerability check and workflow checks
+# are not left for release day. It starts for a push to main and nothing else - no pull
+# requests, no other branch, no manual run - and not when the push only changes .github/.
+# That exact shape is enforced by .github/scripts/check-workflow-triggers.py (part of
+# make check).
+#
+# What it runs depends on whether the suite already passed on the maintainer's machine:
+#
+#   * `make attest` (run locally on the pushed branch) records a commit status,
+#     local/make-check, on the commit. A fast-forward merge keeps commit ids, so it is
+#     also the status of the commit pushed to main. If .github/scripts/verify-local-check.sh
+#     finds that status - a success, from the person who pushed, for this tree - this
+#     runs `make check-quick`: about a minute (the vulnerability check fresh, the CLI
+#     tests and the fast battery groups, the docs).
+#   * Otherwise (a direct push, a merge commit, a stale or missing status) it runs the
+#     whole `make check`, as before. A missing receipt costs time, never coverage.
 #
 # It publishes nothing. Releases are a vX.Y.Z tag on main (see the other workflows).
 
@@ -21,8 +32,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      statuses: read   # the local check receipt
     steps:
       - uses: actions/checkout@v5
+
+      - name: Look for the local check receipt
+        id: receipt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        run: bash .github/scripts/verify-local-check.sh
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -30,24 +51,36 @@ jobs:
           go-version-file: go.mod
           check-latest: true
 
-      # The tools make check runs. golangci-lint is pinned to the version the
-      # release workflows use (make check refuses any other); the others are
-      # the current release.
+      # The tools the full check runs. golangci-lint is pinned to the version the
+      # release workflows use (make check refuses any other); the others are the
+      # current release. The quick path needs only govulncheck.
       - name: Install the checking tools
+        if: steps.receipt.outputs.fast != 'true'
         run: |
           go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
           go install golang.org/x/vuln/cmd/govulncheck@latest
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
+      - name: Install govulncheck
+        if: steps.receipt.outputs.fast == 'true'
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: make check-quick
+        if: steps.receipt.outputs.fast == 'true'
+        run: make check-quick
+
       - name: make check
+        if: steps.receipt.outputs.fast != 'true'
         run: make check
 
   report-failure:
     name: Report Failure as Issue
     runs-on: ubuntu-latest
     needs: check
-    # Only when make check itself failed. always() is needed: without a status
+    # Only when the check itself failed. always() is needed: without a status
     # function GitHub adds an implicit success(), which is false exactly then.
     if: always() && needs.check.result == 'failure'
     permissions:

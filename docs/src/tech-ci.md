@@ -17,7 +17,7 @@ The "on `main`" half is enforced by a [guard](#the-release-tag-guard) that every
 
 They are separate files so that each has its own status and its own failure mode: a Docker Hub credential problem shows up as *that* workflow failing, not as a vague failure of "the release".
 
-A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag but builds and publishes nothing: it waits for the five and posts how each of them ended. A seventh, [README Reconcile](#readme-reconcile), starts with the tag too and waits for the release itself, then proposes `main`'s README for it.
+A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag but builds and publishes nothing: it waits for the five and posts how each of them ended. A seventh, [README Reconcile](#readme-reconcile), starts with the tag too, publishes nothing and takes under a minute: it proposes `main`'s README for the release.
 
 :::html
 <div class="diagram">
@@ -94,10 +94,21 @@ The GitHub-managed automation listed [below](#automation-github-manages) is not 
 
 | Job | What it does |
 |---|---|
-| `check` | Checks out the code, sets up Go, installs `golangci-lint` v2.13.2 (the version `make check` insists on), `govulncheck` and `actionlint` with `go install`, and runs **`make check`**: the same command you run locally ([Testing](tech-testing.md#running-the-tests)). It does not run the live smoke test, which needs real hosts. |
+| `check` | Checks out the code, looks for the [local check receipt](#the-local-check-receipt), sets up Go, and then runs one of two things. **With a receipt**: installs `govulncheck` and runs **`make check-quick`**, about a minute. **Without one**: installs `golangci-lint` v2.13.2 (the version `make check` insists on), `govulncheck` and `actionlint` with `go install`, and runs the whole **`make check`**, the command you run locally ([Testing](tech-testing.md#running-the-tests)), about three and a half minutes. Neither runs the live smoke test, which needs real hosts. |
 | `report-failure` | If `check` itself failed, files an issue "CI Failure: make check" (see [Failure issues](#failure-issues)). |
 
 Because it runs *after* the merge, a failure does not stop the merge; it opens an issue. That fits the process: `main` is only updated on release day, and the release is tagged after Check has passed ([Releases and tagging](tech-release.md#release-checklist)).
+
+### The local check receipt
+
+The whole of `make check` takes about three and a half minutes on a runner (roughly: tools to install 1 minute, `go vet` for four operating systems 45 s, the race-detector tests 70 s, the battery 50 s). The maintainer runs it anyway, on the branch, before merging - so CI does not have to repeat all of it:
+
+1. On the pushed branch, `make attest` runs `make check` and then records **a commit status**, `local/make-check` = success, on that commit (`.github/scripts/post-check-status.sh`). The description carries the tree that was checked.
+2. A fast-forward merge keeps commit ids, so that status is also on the commit pushed to `main`.
+3. `check` verifies it (`.github/scripts/verify-local-check.sh`): the newest `local/make-check` status is a success, was created **by the person who pushed**, and names **the tree that was checked out**. Anything else - no status, a failure, someone else's, another tree, an API error - means *no receipt*, and the whole suite runs. A missing receipt costs time, never coverage.
+4. With a receipt, `make check-quick` runs what is cheap, what can differ on Linux, and what goes stale: `gofmt`, `go vet` for the runner, `go test` for the CLI tests and `lib`, the black-box battery's command-line groups (A to D), the documentation checks, and **`govulncheck` fresh** (the vulnerability database changes daily, so a receipt is no substitute). Left to the receipt: the race detector, the `lib/handlers` tests, the rest of the battery, `golangci-lint` (the release's own Lint workflow and gate run it again), the other operating systems' `go vet`, and the workflow tests. The job summary says which path ran and why.
+
+What this gives up, honestly: a receipt is the maintainer's word, not a proof - nothing stops posting one without running the tests - and Linux is then covered only by the short subset. That matters: the first runs of `make check` on a runner found two problems a Mac never shows (a battery case whose 500 KB argument Linux refuses, and shellcheck findings). So a direct push to `main`, or any commit without a receipt, still gets the full run.
 
 ## Failure issues
 
@@ -168,13 +179,13 @@ Image names: `docker.io/<DOCKERHUB_USERNAME>/shint` and `ghcr.io/dmartsapp/shint
 
 ## README Reconcile
 
-`README Reconcile` (`.github/workflows/readme-reconcile.yaml`) proposes `main`'s README after a release. It starts with the tag like the others, waits (up to an hour, polling `gh release view`) for the GitHub Release the build workflow creates - so it does nothing for a release that failed - and then runs `.github/scripts/readme-release.sh`, which branches `readme/main-vX.Y.Z` off `main`, runs `readme-reconcile.py` there, commits the result with the changes and warnings as the message, pushes the branch and opens a pull request. What the reconciliation does is in [README after a release](tech-release.md#readme-after-a-release).
+`README Reconcile` (`.github/workflows/readme-reconcile.yaml`) proposes `main`'s README after a release. It starts with the tag like the others and runs `.github/scripts/readme-release.sh` straight away - it needs only the tag, the changelog and `main`, so it does not wait for the release workflows, and a runner that only waits is billed time. The script branches `readme/main-vX.Y.Z` off `main`, runs `readme-reconcile.py` there, commits the result with the changes and warnings as the message, pushes the branch and opens a pull request. What the reconciliation does is in [README after a release](tech-release.md#readme-after-a-release).
 
 | | |
 |---|---|
 | Permissions | `contents: write` (to push the branch, never `main`), `pull-requests: write` and `issues: write` |
 | If Actions may not open pull requests | Opening one fails with "GitHub Actions is not permitted to create pull requests" while the repository setting *Allow GitHub Actions to create and approve pull requests* is off. The script then opens an **issue** that links the branch (a compare link), so the proposal is not lost. Turn the setting on (Settings, Actions, General) to get the pull request instead |
-| Not part of the release | The notifier does not wait for it, and nothing waits for the notifier: a failure here leaves the release untouched (a test keeps the notifier's list of workflows free of it on purpose) |
+| Not part of the release | The notifier does not wait for it and it does not wait for the release: a failure here leaves the release untouched (a test keeps the notifier's list of workflows free of it on purpose). Whether the release itself passed is what the Slack message says - read it before merging the proposal |
 | The trigger rule | A `vX.Y.Z` tag push and nothing else, like every release workflow; there is no manual button. The same thing by hand is `make readme-reconcile TAG=vX.Y.Z` |
 | Serialised | `concurrency: readme-reconcile`, so two tags pushed together are proposed one after the other |
 

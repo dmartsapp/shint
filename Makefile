@@ -107,10 +107,12 @@ ACTIONLINT ?= actionlint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.13.2
 
-.PHONY: help check test-full test-live tools fmt-check vet test test-go test-battery lint vuln docs-check workflows release-check readme-reconcile
+.PHONY: help check check-quick attest test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-check readme-reconcile
 
 help:
 	echo "make check       fmt, vet, race tests, black-box battery, lint, vulncheck, docs and workflow checks (no network)"
+	echo "make attest      make check, then record it as a commit status on the pushed commit, so CI on main runs a short subset instead of everything"
+	echo "make check-quick the short subset CI runs when that status exists: fmt, vet, quick tests, CLI battery groups, vulncheck, docs"
 	echo "make test-live   smoke test against real hosts (needs the internet and ICMP)"
 	echo "make test-full   check + test-live"
 	echo "make release-check   on a release branch, after the release commit: is it safe to fast-forward main and tag?"
@@ -125,6 +127,39 @@ check: tools fmt-check vet test lint vuln docs-check workflows
 
 test-full: check test-live
 	echo "==> full test run passed"
+
+# Run the whole of make check on this machine, then record that on the (pushed) commit as
+# the status local/make-check. The Check workflow, on a push to main, verifies the status
+# and - only then - runs check-quick instead of check. Push the branch first, and run this
+# on a clean tree at the commit that will be merged: a fast-forward merge keeps commit ids,
+# so the status on the branch tip is the status on main's tip.
+attest: check
+	bash .github/scripts/post-check-status.sh
+
+# What CI runs when the whole suite has already passed here (a valid local check receipt):
+# what is cheap, what can differ on Linux, and what goes stale - a vulnerability database
+# gets new entries every day, so govulncheck always runs fresh. Left to the receipt: the
+# race detector, the lib/handlers tests, the full battery, golangci-lint (also run again by
+# the release's own Lint workflow and gate), the other operating systems' vet and the
+# workflow tests. About a minute, against three and a half for make check.
+QUICK_BATTERY_ARGS = --group A --group B --group C --group D
+check-quick: tools-quick fmt-check vet-host test-quick vuln docs-check
+	$(MAKE) --no-print-directory test-battery BATTERY_ARGS="$(QUICK_BATTERY_ARGS)"
+	echo "==> quick checks passed"
+
+tools-quick:
+	missing=0; \
+	command -v $(GOVULNCHECK) >/dev/null 2>&1 || { echo "missing govulncheck: go install golang.org/x/vuln/cmd/govulncheck@latest"; missing=1; }; \
+	command -v python3 >/dev/null 2>&1 || { echo "missing python3"; missing=1; }; \
+	[ $$missing -eq 0 ] || exit 1
+
+vet-host:
+	echo "==> go vet"
+	go vet ./...
+
+test-quick:
+	echo "==> go test (the CLI tests and lib)"
+	go test -count=1 . ./lib
 
 # Fail early, with the install command, rather than half-way through a run.
 tools:
@@ -198,6 +233,7 @@ workflows:
 	python3 .github/scripts/test_notify_slack.py
 	python3 .github/scripts/test_readme_reconcile.py
 	bash .github/scripts/test-readme-release.sh
+	bash .github/scripts/test-local-check.sh
 	$(ACTIONLINT) -shellcheck= .github/workflows/*.yaml
 
 # After a release: a branch off main with its README reconciled with the release tags,

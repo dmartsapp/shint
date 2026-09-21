@@ -284,8 +284,8 @@ class RepositoryTests(unittest.TestCase):
     def workflow_files(self):
         return sorted(glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yaml")))
 
-    # Started by the tag too, but not part of the release: it waits for the release
-    # itself, so the notifier must not wait for it (and it publishes nothing).
+    # Started by the tag too, but not part of the release: it publishes nothing and
+    # needs nothing from the release workflows, so the notifier must not wait for it.
     NOT_PART_OF_THE_RELEASE = {"readme-reconcile.yaml"}
 
     def test_the_list_matches_the_release_workflows(self):

@@ -112,7 +112,7 @@ git push -u origin release/vX.Y.Z
 make test-full
 ```
 
-That is `make check` - `gofmt`, `go vet`, `go test -race`, the black-box battery, `golangci-lint` (v2.13.2, as CI uses), `govulncheck`, the documentation tests and check (the site is current; every link, anchor and site URL resolves), and the workflow checks - followed by `make test-live`, the smoke test against real hosts, which needs the internet. See [Testing](tech-testing.md#running-the-tests).
+Or `make attest` instead of `make check`, on the pushed branch: it runs `make check` and records the result as a commit status, so the Check on `main` after the merge runs a one-minute subset instead of the whole suite ([the local check receipt](tech-ci.md#the-local-check-receipt)). `make test-full` is `make check` - `gofmt`, `go vet`, `go test -race`, the black-box battery, `golangci-lint` (v2.13.2, as CI uses), `govulncheck`, the documentation tests and check (the site is current; every link, anchor and site URL resolves), and the workflow checks - followed by `make test-live`, the smoke test against real hosts, which needs the internet. See [Testing](tech-testing.md#running-the-tests).
 
 7. **Commit the release** as the last commit on the branch, with the message convention above; the body is the changelog. The same commit puts the README back to `main`'s (`git checkout origin/main -- readme.md`). Push the branch, then run **`make release-check`**: it confirms the branch is on top of `main`, `readme.md` matches `main`'s, the version, dated changelog and release-commit message agree, there are no attribution trailers, and the tag is free.
 
@@ -153,7 +153,7 @@ git diff origin/main                       # read it, and the warnings the comma
 make readme-reconcile TAG=v4.2.1 PUSH=1   # ... or in one go: push it and open the pull request
 ```
 
-**Automatically**, the `README Reconcile` workflow ([CI/CD](tech-ci.md#readme-reconcile)) does this after every release tag, once the GitHub Release exists. It never commits to `main`: it pushes `readme/main-vX.Y.Z` and opens a pull request (or, where the repository does not let Actions open pull requests, an issue that links the branch). Read the diff and the warnings, fix the wording they point at, and merge. `TAG` only names the branch: every release the README does not yet show is reconciled, so if two releases come out close together the newer proposal contains the older.
+**Automatically**, the `README Reconcile` workflow ([CI/CD](tech-ci.md#readme-reconcile)) does this after every release tag. It never commits to `main`: it pushes `readme/main-vX.Y.Z` and opens a pull request (or, where the repository does not let Actions open pull requests, an issue that links the branch). Read the diff and the warnings, fix the wording they point at, and merge. `TAG` only names the branch: every release the README does not yet show is reconciled, so if two releases come out close together the newer proposal contains the older.
 
 ## When a release goes wrong
 

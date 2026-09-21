@@ -120,7 +120,10 @@ nav: Source reference
 | `.github/workflows/build.yaml` | Guard, gate, then 14 cross-builds (each attested and given a `.sha256` file), then the GitHub Release with the binaries and checksum files attached. |
 | `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
 | `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
-| `.github/workflows/check.yaml` | `make check` after a merge to `main` (never a branch, PR or tag; ignores `.github/**`); opens an issue on failure. |
+| `.github/workflows/check.yaml` | After a merge to `main` (never a branch, PR or tag; ignores `.github/**`): `make check-quick` when the local check receipt is there, the whole `make check` when it is not; opens an issue on failure. |
+| `.github/scripts/post-check-status.sh` | `make attest`: records that `make check` passed locally, as the commit status `local/make-check` on the pushed commit. |
+| `.github/scripts/verify-local-check.sh` | The Check workflow's side: is there a valid receipt (success, from whoever pushed, for this tree)? Writes `fast=true/false`; never fails. |
+| `.github/scripts/test-local-check.sh` | Tests for both, in throw-away repositories with a fake `gh`. |
 | `.github/workflows/readme-reconcile.yaml` | After a release tag, once the GitHub Release exists: proposes `main`'s README for it (a branch and a pull request, or an issue that links the branch). Never commits to `main`. |
 | `.github/scripts/readme-reconcile.py` | Brings a README in line with the release tags, the changelog, the milestones and the binary's `--help`, puts back what it must always have (expansion, badges with the donate button, support line), warns about what it cannot know; idempotent, fails closed. |
 | `.github/scripts/test_readme_reconcile.py` | Its tests, on README fixtures (35 of them). |
