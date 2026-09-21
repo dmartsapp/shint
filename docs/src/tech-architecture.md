@@ -109,6 +109,7 @@ Everything else - DNS, TCP, UDP, HTTP, TLS, JSON, signal handling - is the stand
 | `telnet`, `web`, `udp` | Attempts are launched one at a time, `--delay` apart, each in its own goroutine - at most 500 running at once (`attemptSlots`; fewer under a low descriptor limit), so `--count 3000 --delay 0` waits its turn instead of opening 3000 sockets. Results are collected under a mutex and a `WaitGroup` waits for all of them. |
 | `ping` | go-ping runs the echo requests in parallel; shint streams its log lines from a channel. |
 | `nmap` | A launcher loop starts one goroutine per port, but a channel used as a semaphore keeps at most **500** in flight (fewer where the process may open fewer files: half of its descriptor limit, `lib.InFlightLimit`). A separate goroutine prints progress from a ticker. |
+| `listen tcp` | An accept loop starts one goroutine per connection. |
 | `listen udp` | A single read loop. |
 | `listen http` | Go's `net/http` server; each connection is wrapped so its bytes can be counted and reported when it closes. |
 

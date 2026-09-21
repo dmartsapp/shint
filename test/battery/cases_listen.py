@@ -85,6 +85,32 @@ def listen_case(cid, proto, client, expect_in, expect_absent=(), extra=(), count
     add_func(cid, run, group="J listen", note=note)
 
 
+def tcp_client(payload, read_back=False, linger_rst=False, wait=0.0, before=0.0):
+    def go(port):
+        s = socket.create_connection(("127.0.0.1", port))
+        s.settimeout(20)
+        time.sleep(before)
+        if read_back:
+            t = threading.Thread(target=lambda: (s.sendall(payload), s.shutdown(socket.SHUT_WR)), daemon=True)
+            t.start()
+            got = 0
+            while True:
+                d = s.recv(65536)
+                if not d:
+                    break
+                got += len(d)
+            if got != len(payload):
+                raise AssertionError("echo returned %d bytes, sent %d" % (got, len(payload)))
+        else:
+            if payload:
+                s.sendall(payload)
+            time.sleep(wait)
+        if linger_rst:  # close with a reset, after the server has had time to read what was sent
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+        s.close()
+    return go
+
+
 def raw_http(payload, wait_reply=True):
     def go(port):
         s = socket.create_connection(("127.0.0.1", port))
@@ -101,6 +127,31 @@ def raw_http(payload, wait_reply=True):
                 pass
         s.close()
     return go
+
+
+# ---------------- J: listen tcp
+listen_case("J.tcp-20MB-inbound-exact-count", "tcp", tcp_client(b"z" * 20_000_000),
+            ["bytes_received=20000000", "connections=1"])
+listen_case("J.tcp-20MB-inbound-is-a-handful-of-lines", "tcp", tcp_client(b"z" * 20_000_000),
+            ["bytes_received=20000000", "reads="], max_lines=80)
+listen_case("J.tcp-empty-connection", "tcp", tcp_client(b""), ["connection closed", "bytes_received=0"])
+listen_case("J.tcp-client-reset-after-data", "tcp", tcp_client(b"abc", linger_rst=True, wait=0.3), ["bytes_received=3"])
+listen_case("J.tcp-binary-payload-preview-escaped", "tcp", tcp_client(bytes(range(256))), ["bytes_received=256", "\\x00"])
+listen_case("J.tcp-idle-timeout-closes-connection", "tcp", tcp_client(b"", wait=3), ["connection closed"], extra=["--timeout", "1"])
+listen_case("J.tcp-timeout-0-waits-forever", "tcp", tcp_client(b"late", before=2), ["bytes_received=4"], extra=["--timeout", "0"])
+listen_case("J.tcp-echo-5MB-round-trip", "tcp", tcp_client(b"e" * 5_000_000, read_back=True),
+            ["bytes_received=5000000", "bytes_sent=5000000"], extra=["--echo"])
+
+
+def many_clients(port):
+    ss = [socket.create_connection(("127.0.0.1", port)) for _ in range(150)]
+    for i, s in enumerate(ss):
+        s.sendall(b"n%d" % i)
+    for s in ss:
+        s.close()
+
+
+listen_case("J.tcp-150-concurrent-connections", "tcp", many_clients, ["connections=150", "bytes_received=490"], count=150)
 
 
 # ---------------- J: listen udp
@@ -197,7 +248,8 @@ def signal_case(cid, args, sig, after, expect_rc, expect_text):
 
 signal_case("K.sigterm-ends-with-summary", ["telnet", "127.0.0.1", "{tcp_echo}", "--count", "20", "--delay", "500"], signal.SIGTERM, 1.8, 1, ["interrupted", "done"])
 signal_case("K.sigint-ends-with-summary", ["telnet", "127.0.0.1", "{tcp_echo}", "--count", "20", "--delay", "500"], signal.SIGINT, 1.8, 1, ["interrupted", "done"])
-signal_case("K.listen-sigterm-ends-with-summary", ["listen", "http", "{freeport}"], signal.SIGTERM, 1.0, 0, ["done requests=0"])
+signal_case("K.listen-sigterm-ends-with-summary", ["listen", "tcp", "{freeport}"], signal.SIGTERM, 1.0, 0, ["done connections=0"])
+signal_case("K.listen-http-sigterm-ends-with-summary", ["listen", "http", "{freeport}"], signal.SIGTERM, 1.0, 0, ["done requests=0"])
 signal_case("K.listen-udp-sigterm-ends-with-summary", ["listen", "udp", "{freeport}"], signal.SIGTERM, 1.0, 0, ["done packets=0"])
 
 
@@ -268,7 +320,7 @@ def fd_pressure():
     """--count 1500 --delay 0 under ulimit -n 96 must take turns, not run out of descriptors.
     The target is shint's own listener: the Python servers cannot accept thousands a second."""
     port = free_port()
-    proc, _read = start_listener(["listen", "http", str(port)])
+    proc, _read = start_listener(["listen", "tcp", str(port)])
     try:
         rc, out, err, dur = spawn(["telnet", "127.0.0.1", str(port), "--count", "1500", "--delay", "0", "--timeout", "10"],
                                   timeout=90, wrap="ulimit -n 96;")

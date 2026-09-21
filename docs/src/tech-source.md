@@ -11,7 +11,7 @@ nav: Source reference
 
 | File | Purpose |
 |---|---|
-| `main.go` | The command line. Defines the cobra commands (`telnet`, `ping`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `listen udp|http`), every flag, argument validation, the exit-status scheme, and `scanContext`. Holds the `Version` constant. |
+| `main.go` | The command line. Defines the cobra commands (`telnet`, `ping`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `listen tcp|udp|http`), every flag, argument validation, the exit-status scheme, and `scanContext`. Holds the `Version` constant. |
 | `main_test.go` | End-to-end tests of the CLI. `TestMain` makes the test binary behave as `shint` when `SHINT_TEST_RUN_MAIN=1`, so tests run it as a subprocess and assert real exit statuses and stdout/stderr. |
 | `go.mod`, `go.sum` | The module (`github.com/dmartsapp/shint/v4`), the Go version, and pinned dependencies. |
 | `Makefile` | The one place to build and test from: cross-compilation targets for every release platform, the version-string logic for local builds, and the checks (`make check`, `make test-live`, `make test-full`). |
@@ -33,8 +33,8 @@ nav: Source reference
 | `usage(msg)` | Prints a usage error to stderr and records status 2. |
 | `finish(ok)` | Records status 1 when a handler reports failure. |
 | `checkRunFlags(usesDelay)`, `checkListenFlags()` | The shared flag ranges, checked once for every command: `--count` at least 1, `--timeout` 1 to a day, `--delay` 0 to a day (`lib.RequireTimeout`, `RequireDelay`, ...); for `listen`, `--count` at least 0 and `--timeout` 0 to a day. |
-| `unknownSubcommand`, `removedListeners` | The Run of `listen` and `completion`, which only group other commands: an argument they do not know is a usage error (exit 2), not the help page with exit 0. `removedListeners` gives `listen tcp` - removed in v4.2.0 - a message that says what to use instead. |
-| `rootCmd`, `telnetCmd`, `pingCmd`, `webCmd`, `nmapCmd`, `udpCmd`, `ntpCmd`, `wolCmd`, `rdnsCmd`, `dnsCmd`, `cidrCmd`, `ipCmd`, `listenCmd` (+ `listenUDPCmd`, `listenHTTPCmd`) | The commands. Each `Run` validates, calls one handler, and passes its result to `finish`. |
+| `unknownSubcommand` | The Run of `listen` and `completion`, which only group other commands: an argument they do not know is a usage error (exit 2), not the help page with exit 0. |
+| `rootCmd`, `telnetCmd`, `pingCmd`, `webCmd`, `nmapCmd`, `udpCmd`, `ntpCmd`, `wolCmd`, `rdnsCmd`, `dnsCmd`, `cidrCmd`, `ipCmd`, `listenCmd` (+ `listenTCPCmd`, `listenUDPCmd`, `listenHTTPCmd`) | The commands. Each `Run` validates, calls one handler, and passes its result to `finish`. |
 | `interruptContext()` | The context `nmap`, `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol` run under: cancelled by `Ctrl+C`/`SIGTERM`, deliberately without any deadline, and un-registered after the first signal so a second `Ctrl+C` ends the process. |
 | `init()` | Registers all flags. Note `listenCmd` re-declares `--count` (default `0`) and `webCmd` re-declares `--payload` (`-P`, the body), shadowing the root flags. |
 | `main()` | Adds the commands, runs cobra, exits with `exitUsage` if cobra returned an error, otherwise with `exitCode`. |
@@ -72,7 +72,7 @@ nav: Source reference
 | `cidr.go` | `ParseSubnets`, `subnetStats` and `CIDRHandler`: subnet arithmetic with `net/netip` and `math/big` (IPv6 counts overflow 64 bits). |
 | `pacing.go` (`attemptSlots`) | `attemptDelay`: the `--delay` / `--throttle` pause before an attempt, shared by `ntp`, `wol` and `rdns`. |
 | `interrupt.go` | How a repeating check ends on `Ctrl+C`: `pause` (a `--delay` that a cancellation cuts short), `watchCancel` (expires a connection's deadline so a blocked read returns), and `interruptedLine` / `interruptedNote` (the `ERROR interrupted ...` line and the JSON run-level error). |
-| `tcplisten.go` | `TCPListenHandler` and `handleTCPConnection` - **dormant**: no command calls them since v4.2.0 removed `listen tcp` (the code and its tests stay, so bringing the command back is one `cobra.Command` in `main.go`); and `previewBytes`, the short single-line preview used by `listen udp` and `udp`: printable text as is, everything else escaped (`\xNN`, `\n`, ...). |
+| `tcplisten.go` | `TCPListenHandler` and `handleTCPConnection`; also `previewBytes`, the short single-line preview used by all listeners and `udp`: printable text as is, everything else escaped (`\xNN`, `\n`, ...). |
 | `udplisten.go` | `UDPListenHandler`. |
 | `httplisten.go` | `HTTPListenHandler`: the minimal HTTP server. `httpExchange` records the one request each connection served, reported when the connection closes so byte counts are final. |
 
@@ -90,7 +90,7 @@ nav: Source reference
 | `nmap_test.go` | Finding open ports (IPv4 and IPv6), the concurrency cap, whole-range coverage, interruption reporting, progress lines, `--json` cleanliness. Uses the `probePort` hook. |
 | `udp_test.go` | `probeUDP` for each state, generated payloads, multiple attempts. |
 | `cancel_test.go` | `Ctrl+C` on `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol`: how far the run got, the statistics for what completed, an attempt in flight dropped rather than counted as a failure, a long `--delay` cut short, a complete JSON document, and the `pause` / `watchCancel` helpers. |
-| `tcplisten_test.go`, `udplisten_test.go`, `httplisten_test.go` | Accept and echo, IPv6 binding, JSON events and their measurements, requests that are rejected or never finish, and "runs until interrupted" with `--count 0`. (`tcplisten_test.go` tests the dormant TCP handler.) |
+| `tcplisten_test.go`, `udplisten_test.go`, `httplisten_test.go` | Accept and echo, IPv6 binding, JSON events and their measurements, and "runs until interrupted" with `--count 0`. |
 | `authoritative_test.go` | The lookup against a fake DNS server: the closest zone, a delegated subzone, only the TLD, an alias that must not become its own zone, names with no zone, a slow parent that must not delay the answer, unreachable servers and Ctrl+C. |
 | `dns_test.go` | A fake DNS server on loopback (UDP and TCP on one port): every record type's format, negative answers with their reasons, truncation and the TCP retry, `--tcp`, the EDNS option and its fallback, replies with a wrong ID or question, a forged reply from another source, timeouts, skipped servers, escaping of hostile TXT data, Ctrl+C, and argument parsing. |
 | `ip_test.go` | Fake interface tables: every field, one interface by name, `-4`/`-6`, JSON shape (and the empty list, not `null`), an unknown name, unreadable addresses, and the real table once. |

@@ -12,8 +12,9 @@ for g, (cid, args, rc, cont) in enumerate([
     ("help", ["--help"], 0, ["Usage"]), ("help-short", ["-h"], 0, ["Usage"]),
     ("no-args", [], 0, ["Usage"]), ("unknown-cmd", ["bogus"], 2, []),
     ("help-telnet", ["help", "telnet"], 0, ["telnet"]), ("telnet-help", ["telnet", "--help"], 0, ["Usage"]),
+    ("help-listen-tcp", ["listen", "tcp", "--help"], 0, ["Usage"]),
     ("help-listen-http", ["listen", "http", "--help"], 0, ["Usage"]), ("help-listen-udp", ["listen", "udp", "--help"], 0, ["--echo"]),
-    ("help-listen-lists-udp-and-http-only", ["listen", "--help"], 0, ["  udp ", "  http "]),
+    ("help-listen-lists-tcp-udp-http", ["listen", "--help"], 0, ["  tcp ", "  udp ", "  http "]),
     ("completion-bash", ["completion", "bash"], 0, []), ("completion-zsh", ["completion", "zsh"], 0, []),
     ("completion-fish", ["completion", "fish"], 0, []), ("completion-powershell", ["completion", "powershell"], 0, []),
     ("completion-none", ["completion"], None, []), ("completion-bogus", ["completion", "bogus"], 2, []),
@@ -83,13 +84,9 @@ add("E.count-100-json", ["telnet", "127.0.0.1", E, "--count", "100", "--delay", 
     check=lambda r: None if sum(s["success"] for s in json.loads(r["out"])["stats"]) == 100 else "expected 100 successful attempts in the JSON")
 
 # listen takes --count too, and -1 is not a valid value for it (0 means "until Ctrl+C")
-add("B.listen-count-negative", ["listen", "http", "{tcp_closed}", "--count", "-1"], rc=2, group="B flags", max=8, timeout=4)
+add("B.listen-count-negative", ["listen", "tcp", "{tcp_closed}", "--count", "-1"], rc=2, group="B flags", max=8, timeout=4)
+add("B.listen-http-count-negative", ["listen", "http", "{tcp_closed}", "--count", "-1"], rc=2, group="B flags", max=8, timeout=4)
 add("B.listen-udp-count-negative", ["listen", "udp", "{tcp_closed}", "--count", "-1"], rc=2, group="B flags", max=8, timeout=4)
-# "listen tcp" was removed in v4.2.0: a script that calls it is told what to use, and nothing listens
-add("B.listen-tcp-was-removed", ["listen", "tcp", "{tcp_closed}"], rc=2, group="B flags", max=8, timeout=4,
-    contains=['unknown command "tcp"', "removed in v4.2.0", "shint listen http <port>"], absent=["[listen-tcp]"])
-# --echo is a listen udp flag: listen http has nothing to echo
-add("B.listen-http-has-no-echo-flag", ["listen", "http", "{tcp_closed}", "--echo"], rc=2, contains=["unknown flag: --echo"], group="B flags", max=8, timeout=4)
 
 # the dns authoritative line is for host names that have a zone: never an address or a single label
 add("E.no-authoritative-line-for-an-address", ["telnet", "127.0.0.1", E, "--delay", "0"], rc=0, absent=["dns authoritative"], group="E telnet")

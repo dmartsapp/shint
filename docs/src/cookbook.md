@@ -62,7 +62,7 @@ shint web http://127.0.0.1:8080/      # terminal 2
 On the machine that should accept traffic:
 
 ```bash
-shint listen http 9000
+shint listen tcp 9000
 ```
 
 From another machine:

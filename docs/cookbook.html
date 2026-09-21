@@ -57,7 +57,7 @@
 <p><code>web</code> reports <code>bytes_sent=97 bytes_received=160</code>; the listener reports <code>bytes_received=97 bytes_sent=160</code>. Point <code>web</code> at a real service instead and compare its numbers with that service's own access logs.</p>
 <h2 id="test-a-firewall-rule">Test a firewall rule<a class="anchor" href="#test-a-firewall-rule" aria-label="Link to this section">#</a></h2>
 <p>On the machine that should accept traffic:</p>
-<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> listen http 9000</code></pre></div>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> listen tcp 9000</code></pre></div>
 <p>From another machine:</p>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet server.example.com 9000 <span class="tok-flag">--timeout</span> 2</code></pre></div>
 <p><code>connect ok</code> means the rule allows it. A timeout means something is dropping the packets; a refusal means the packets got through but nothing was listening (start the listener and retry).</p>

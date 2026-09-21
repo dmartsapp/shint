@@ -76,7 +76,7 @@
 <div class="tablewrap"><table><thead><tr><th>Registry</th><th>Image</th></tr></thead><tbody><tr><td>Docker Hub</td><td><code>docker.io/farhansabbir/shint</code></td></tr><tr><td>GitHub Container Registry</td><td><code>ghcr.io/dmartsapp/shint</code></td></tr></tbody></table></div>
 <p>Tags: <code>latest</code>, the full version (<code>4.0.6</code> and <code>v4.0.6</code>), and rolling <code>4.0</code> and <code>4</code>. Pin a full version in anything you care about.</p>
 <p>The listen commands need their port published so you can reach them from outside the container:</p>
-<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> <span class="tok-flag">-p</span> 9000:9000/udp farhansabbir/shint:latest listen udp 9000
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> <span class="tok-flag">-p</span> 9000:9000/tcp farhansabbir/shint:latest listen tcp 9000
 <span class="tok-cmd">docker</span> run <span class="tok-flag">--rm</span> <span class="tok-flag">-p</span> 8080:8080/tcp farhansabbir/shint:latest listen http 8080</code></pre></div>
 <h2 id="build-from-source">Build from source<a class="anchor" href="#build-from-source" aria-label="Link to this section">#</a></h2>
 <p>You need <a href="https://go.dev/dl/">Go</a> (the version in <a href="https://github.com/dmartsapp/shint/blob/main/go.mod">go.mod</a> or newer) and, optionally, <code>make</code>.</p>

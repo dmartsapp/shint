@@ -517,14 +517,8 @@ A reply that cannot be trusted - it answers a different request, the server says
 var listenCmd = &cobra.Command{
 	Use:   "listen",
 	Run:   unknownSubcommand,
-	Short: "Start a local HTTP or UDP listener for testing",
-	Long:  `The listen command starts a simple HTTP or UDP listener on this machine so that web, udp, telnet, and nmap can be exercised end-to-end without needing an external server. Use --count to bound how many requests/packets are accepted (0 = run until Ctrl+C).`,
-}
-
-// removedListeners are the listen subcommands that no longer exist, with what to use
-// instead, so a script that still calls one is told rather than only "unknown command".
-var removedListeners = map[string]string{
-	"tcp": `"listen tcp" was removed in v4.2.0: use "shint listen http <port>" (a TCP connection to it works too) or "shint listen udp <port>"`,
+	Short: "Start a local TCP, UDP, or HTTP listener for testing",
+	Long:  `The listen command starts a simple TCP, UDP, or HTTP listener on this machine so that telnet, udp, web, and nmap can be exercised end-to-end without needing an external server. Use --count to bound how many connections/packets/requests are accepted (0 = run until Ctrl+C).`,
 }
 
 // unknownSubcommand is the Run of a command that only groups others (listen,
@@ -533,11 +527,7 @@ var removedListeners = map[string]string{
 // reason on stderr; asking for the group itself just shows its help.
 func unknownSubcommand(cmd *cobra.Command, args []string) {
 	if len(args) > 0 {
-		msg := fmt.Sprintf("unknown command %q for %q", args[0], cmd.CommandPath())
-		if hint, ok := removedListeners[args[0]]; ok && cmd.Name() == "listen" {
-			msg += ": " + hint
-		}
-		usage(msg)
+		usage(fmt.Sprintf("unknown command %q for %q", args[0], cmd.CommandPath()))
 		return
 	}
 	_ = cmd.Help()
@@ -553,6 +543,23 @@ func checkListenFlags() bool {
 		}
 	}
 	return true
+}
+
+var listenTCPCmd = &cobra.Command{
+	Use:   "tcp [port]",
+	Short: "Start a TCP listener on the given port",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		port, err := lib.ValidatePort(args[0])
+		if err != nil {
+			usage(err.Error())
+			return
+		}
+		if !checkListenFlags() {
+			return
+		}
+		handlers.TCPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
+	},
 }
 
 var listenUDPCmd = &cobra.Command{
@@ -591,8 +598,8 @@ var listenHTTPCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().IntVar(&iterations, "count", 1, "Number of times to check connectivity (listen commands: max requests/packets to accept, 0 = unlimited)")
-	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect (listen http: idle timeout on a connection, 0 = no timeout; no effect on listen udp)")
+	rootCmd.PersistentFlags().IntVar(&iterations, "count", 1, "Number of times to check connectivity (listen commands: max connections/packets to accept, 0 = unlimited)")
+	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect (listen tcp/http: idle read timeout, 0 = no timeout; no effect on listen udp)")
 	rootCmd.PersistentFlags().IntVar(&delay, "delay", 1000, "Milliseconds delay between each iteration given in count")
 	rootCmd.PersistentFlags().IntVar(&payload_size, "payload", 4, "Ping/UDP payload size in bytes (filler content, ignored if --data or --hex is set on udp)")
 	rootCmd.PersistentFlags().BoolVar(&throttle, "throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
@@ -626,13 +633,13 @@ func init() {
 	ntpCmd.Flags().IntVar(&ntpMaxOffset, "max-offset", 0, "Exit 1 if the clock offset is larger than this many milliseconds (0 = only report it)")
 
 	listenCmd.PersistentFlags().StringVar(&listenBind, "bind", "0.0.0.0", "Local address to bind the listener to")
-	listenUDPCmd.Flags().BoolVar(&listenEcho, "echo", false, "Echo received datagrams back to the sender")
+	listenCmd.PersistentFlags().BoolVar(&listenEcho, "echo", false, "Echo received data back to the sender")
 	// Shadows the root --count flag (default 1) for every listen subcommand:
 	// a listener's whole point is usually to stay up until the user is done
 	// with it, so "keep listening until Ctrl+C" is the sensible default here,
 	// unlike the "one check and done" default that fits telnet/ping/web/nmap/udp.
-	listenCmd.PersistentFlags().IntVar(&listenMaxCount, "count", 0, "Max requests (http) or packets (udp) to accept, 0 = unlimited (run until Ctrl+C)")
-	listenCmd.AddCommand(listenUDPCmd, listenHTTPCmd)
+	listenCmd.PersistentFlags().IntVar(&listenMaxCount, "count", 0, "Max connections/packets/requests to accept, 0 = unlimited (run until Ctrl+C)")
+	listenCmd.AddCommand(listenTCPCmd, listenUDPCmd, listenHTTPCmd)
 
 	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
 	rootCmd.Version = Version
