@@ -108,11 +108,81 @@ func TCPListenHandler(bind string, port int, echo bool, maxConnections int, idle
 	}
 }
 
+const (
+	// burstGap is how long the reads of a connection must stay quiet for what
+	// arrived so far to be logged as one line; burstMax caps a burst so a
+	// transfer that never pauses still logs as it goes.
+	burstGap = 100 * time.Millisecond
+	burstMax = 1 << 20
+)
+
+// readBurst gathers the reads of one connection that follow each other closely
+// into a single log line. A transfer arrives in as many reads as the network
+// hands over - a 20 MB upload is thousands of them - and a line for each buried
+// the one that matters. Interactive use is unchanged: data typed or sent in
+// separate moments is still one line each, and a single read is logged exactly
+// as before, only up to burstGap later. Echoing, and the --json events, stay per
+// read.
+type readBurst struct {
+	mu         sync.Mutex
+	remote     string
+	bytes      int
+	sent       int
+	reads      int
+	processing time.Duration
+	preview    string // of the first read, which is what the sender opened with
+	timer      *time.Timer
+}
+
+func (b *readBurst) add(n, written int, processing time.Duration, preview string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.reads == 0 {
+		b.preview = preview
+	}
+	b.bytes += n
+	b.sent += written
+	b.processing += processing
+	b.reads++
+	if b.bytes >= burstMax {
+		b.flushLocked()
+		return
+	}
+	if b.timer == nil {
+		b.timer = time.AfterFunc(burstGap, b.flush)
+	} else {
+		b.timer.Reset(burstGap)
+	}
+}
+
+func (b *readBurst) flush() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.flushLocked()
+}
+
+func (b *readBurst) flushLocked() {
+	if b.reads == 0 {
+		return
+	}
+	if b.timer != nil {
+		b.timer.Stop()
+	}
+	fields := []any{"remote", b.remote, "bytes_received", b.bytes, "bytes_sent", b.sent}
+	if b.reads > 1 {
+		fields = append(fields, "reads", b.reads)
+	}
+	fields = append(fields, "time_taken", b.processing, "preview", b.preview)
+	fmt.Println(lib.LogWithTimestamp(listenTCPModule, "data received "+lib.Fields(fields...), false))
+	b.bytes, b.sent, b.reads, b.processing, b.preview = 0, 0, 0, 0, ""
+}
+
 // handleTCPConnection services one connection and returns the total bytes
 // read from and written to it. Each read (and its optional echo write) is
 // treated as one "request" for measurement purposes: the time between the
 // read returning and the echo write completing is reported as that
-// request's processing time.
+// request's processing time. In text mode the reads that arrive together are
+// logged as one line (see readBurst); with --json every read is an event.
 func handleTCPConnection(conn net.Conn, echo bool, idleTimeout int, jsonoutput *bool) (received int, sent int) {
 	defer func() { _ = conn.Close() }()
 	remote := conn.RemoteAddr().String()
@@ -120,6 +190,7 @@ func handleTCPConnection(conn net.Conn, echo bool, idleTimeout int, jsonoutput *
 	if !*jsonoutput {
 		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "connection accepted "+lib.Fields("remote", remote, "local", local), false))
 	}
+	burst := &readBurst{remote: remote}
 	buf := make([]byte, 4096)
 	for {
 		if idleTimeout > 0 {
@@ -156,13 +227,14 @@ func handleTCPConnection(conn net.Conn, echo bool, idleTimeout int, jsonoutput *
 				js, _ := json.Marshal(event)
 				fmt.Println(string(js))
 			} else {
-				fmt.Println(lib.LogWithTimestamp(listenTCPModule, "data received "+lib.Fields("remote", remote, "bytes_received", n, "bytes_sent", written, "time_taken", processingTime, "preview", preview), false))
+				burst.add(n, written, processingTime, preview)
 			}
 		}
 		if err != nil {
 			break
 		}
 	}
+	burst.flush() // what is still waiting to be logged comes before "connection closed"
 	if !*jsonoutput {
 		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "connection closed "+lib.Fields("remote", remote, "bytes_received", received, "bytes_sent", sent), false))
 	}

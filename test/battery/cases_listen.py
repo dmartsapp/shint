@@ -57,7 +57,7 @@ def finish(p, read, wait=5):
 
 
 def listen_case(cid, proto, client, expect_in, expect_absent=(), extra=(), count=1,
-                must_end=True, note=""):
+                must_end=True, note="", max_lines=None):
     """Start `listen <proto>` with --count, run client(port), and check the listener's log
     for expect_in (substrings) and that it ended by itself (unless must_end is False)."""
     def run():
@@ -79,6 +79,8 @@ def listen_case(cid, proto, client, expect_in, expect_absent=(), extra=(), count
         for s in expect_absent:
             if s in out:
                 problems.append("log has %r" % s)
+        if max_lines is not None and len(out.splitlines()) > max_lines:
+            problems.append("the listener logged %d lines, want at most %d" % (len(out.splitlines()), max_lines))
         return problems
     add_func(cid, run, group="J listen", note=note)
 
@@ -130,6 +132,8 @@ def raw_http(payload, wait_reply=True):
 # ---------------- J: listen tcp
 listen_case("J.tcp-20MB-inbound-exact-count", "tcp", tcp_client(b"z" * 20_000_000),
             ["bytes_received=20000000", "connections=1"])
+listen_case("J.tcp-20MB-inbound-is-a-handful-of-lines", "tcp", tcp_client(b"z" * 20_000_000),
+            ["bytes_received=20000000", "reads="], max_lines=80)
 listen_case("J.tcp-empty-connection", "tcp", tcp_client(b""), ["connection closed", "bytes_received=0"])
 listen_case("J.tcp-client-reset-after-data", "tcp", tcp_client(b"abc", linger_rst=True, wait=0.3), ["bytes_received=3"])
 listen_case("J.tcp-binary-payload-preview-escaped", "tcp", tcp_client(bytes(range(256))), ["bytes_received=256", "\\x00"])
@@ -245,3 +249,26 @@ def big_body_memory():
 
 
 add_func("L.web-300MB-body-memory", big_body_memory, group="L resources", needs=("unix",))
+
+
+# ---------------- F (web): a URL without a scheme is https://, and a plain-HTTP server says so
+def no_scheme_plain_server():
+    port = free_port()
+    proc, read = start_listener(["listen", "http", str(port)])
+    try:
+        rc, out, err, dur = spawn(["web", "127.0.0.1:%d" % port, "--delay", "0", "--timeout", "3"], timeout=20)
+    finally:
+        proc.send_signal(signal.SIGINT)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    problems = []
+    if rc != 1:
+        problems.append("exit status %r, want 1 (a failed check)" % rc)
+    if "use http:// in the URL" not in out:
+        problems.append("the failure does not say the server speaks plain HTTP: %s" % out.strip()[-160:])
+    return problems
+
+
+add_func("F.url-no-scheme-plain-http-server-is-explained", no_scheme_plain_server, group="F web")

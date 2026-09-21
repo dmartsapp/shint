@@ -30,7 +30,7 @@ shint listen tcp|udp|http <port> [--bind ADDR] [--echo] [--count N] [--timeout S
 | `--bind ADDR` | `0.0.0.0` | Address to listen on. Use `127.0.0.1` for this machine only, or `::` for IPv6. |
 | `--echo` | off | Send received data back to the sender (`tcp` and `udp`). |
 | `--count N` | `0` | Stop after N connections / packets / requests. `0` means keep going until `Ctrl+C`. |
-| `--timeout S` | `5` | Close a connection that has been quiet this long. `0` disables it. |
+| `--timeout S` | `5` | `tcp` and `http`: close a connection that has been quiet this long (`http`: also bounds reading a request). `0` disables it. **No effect on `udp`**: there is no connection to close, so a UDP listener waits for the next datagram however long that takes. |
 | `--json` | off | Print one JSON line per event instead of log lines. |
 
 Unlike every other command, `listen` runs until you stop it (its `--count` defaults to `0`), because leaving a server up is usually the point. A summary is printed when it exits.
@@ -54,7 +54,11 @@ Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK data received remote=127.0.0.1:593
 Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK connection closed remote=127.0.0.1:59324 bytes_received=12 bytes_sent=12
 Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK done connections=1 bytes_received=12 bytes_sent=12 total_time=410.53875ms
 ```
-For each read, `bytes_received` is what arrived, `bytes_sent` is what was echoed back (0 without `--echo`), and `time_taken` is how long handling it took. With `--json` each read is one line (this run listened on port 9003 and was sent `hello-json`):
+`bytes_received` is what arrived, `bytes_sent` is what was echoed back (0 without `--echo`), and `time_taken` is how long handling it took.
+
+**A transfer is a few lines, not thousands.** Data that arrives as one burst - reads that follow each other closely - is logged as **one line**, printed once the connection has been quiet for a tenth of a second (or after a megabyte, so a transfer that never pauses still logs as it goes), and `reads=N` says how many reads it covered. The `preview` is that of the first read, and the totals are exact: a 20 MB upload to `listen tcp` is about twenty lines, the last of which is `connection closed ... bytes_received=20000000`; it used to be nearly five thousand, one for every 4 KB read. Data sent at different moments - typed at a prompt, say - is still one line each, and a single read is logged as shown above, without `reads=`. Echoing is not delayed: every read is echoed as it arrives.
+
+With `--json` every read is one line, unchanged, for whoever consumes them (this run listened on port 9003 and was sent `hello-json`) (this run listened on port 9003 and was sent `hello-json`):
 
 ```json
 {"protocol":"tcp","remote_address":"127.0.0.1:59327","local_address":"127.0.0.1:9003","bytes_read":11,"bytes_sent":11,"processing_time_µs":25,"preview":"hello-json","unixtime_µs":1789890629205451}

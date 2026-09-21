@@ -60,6 +60,10 @@ UDP gives no acknowledgement, so silence is ambiguous: the service may simply no
 
 `web` verifies certificates by default. For a service that uses an internal CA, pass `--cacert ca.pem`. For a quick, unverified look, pass `-k` - but the answer cannot then be trusted. See [web](web.md#https-and-certificates).
 
+## It works with curl or my browser but not with shint (behind a proxy)
+
+`shint web` never uses a proxy: `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` are ignored, and the connection goes straight to the address the name resolves to. On a network where outside access is only possible through a proxy, that connection is blocked, so `curl` (which honours those variables) succeeds while `shint web` reports `connect failed` or `i/o timeout`. That is the honest answer to "can this machine reach that server directly?" - which is what shint asks - so it points at the network, not at the target. To check the target through the proxy, use `curl`; to check the proxy itself, `shint telnet <proxy-host> <proxy-port>`. Go skips proxies for loopback addresses anyway, so this cannot be seen against `localhost`.
+
 ## Why does my script think a 500 error succeeded?
 
 `web` reports the HTTP status but treats any response as a completed request (as `curl` does without `-f`), so a 404 or 500 exits `0`. Check the status yourself:

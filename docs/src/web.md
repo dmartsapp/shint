@@ -11,7 +11,7 @@ nav: web
 
 `shint web` sends an HTTP request and reports the outcome: whether a response came back, the status, how long it took, the transfer speed, and the number of bytes sent and received. Add `--json` for the full request and response headers (and, with `-W`, the body).
 
-It is a diagnostic tool, not a browser: it follows redirects (up to 10) but does not fetch a page's images, scripts or other embedded resources. If the URL has no scheme, `https://` is assumed.
+It is a diagnostic tool, not a browser: it follows redirects (up to 10) but does not fetch a page's images, scripts or other embedded resources. If the URL has no scheme, `https://` is assumed - for `example.com` and equally for `127.0.0.1:8080/status` - so **write `http://` for a plain-HTTP server**. Only `http` and `https` URLs are fetched; a URL with any other scheme, or without a host, is a usage error (exit `2`, see [exit statuses](usage.md#exit-status)).
 
 ## Syntax
 
@@ -29,6 +29,17 @@ shint web <url> [-X METHOD] [-H "Name: value"]... [-P body] [-W] [flags]
 | `--cert FILE`, `--key FILE` | Client certificate and key for mutual TLS (give both). |
 | `-k`, `--insecure` | Skip certificate verification. Diagnostics only. |
 | `--timing` | Show where each request's time went: DNS, connect, TLS, wait, download. See [Timing](#timing-where-the-time-went). |
+
+### The URL
+
+| You write | It fetches |
+|---|---|
+| `example.com`, `example.com/path` | `https://example.com`, `https://example.com/path` |
+| `127.0.0.1:8080/status`, `localhost:8080` | `https://127.0.0.1:8080/status`, `https://localhost:8080` |
+| `http://127.0.0.1:8080/status` | exactly that, over plain HTTP |
+| `ftp://...`, `file://...`, `http://` | nothing: exit `2` with the reason |
+
+A local test server is usually plain HTTP, so the first thing to try against one is `http://`. If you forget, the failure says so instead of leaving a bare TLS error: `... http: server gave HTTP response to HTTPS client (the server speaks plain HTTP: use http:// in the URL)`.
 
 ## Examples
 
@@ -380,5 +391,6 @@ With `--json`, each stat gains a `timing` object (and only with `--timing`: with
 - **Timeouts.** `--timeout` limits each request from connecting to the last byte of the response.
 - **Timing.** `--timing` changes nothing about how the request is made: the redirect limit, the byte counts and the exit status are the same with and without it.
 - **`--payload`** means the *size* of filler data for `ping` and `udp`, but on `web` the `-P` form means the request *body*.
+- **No proxy is ever used.** `web` connects directly to the address the host name resolves to; `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` are ignored. That is deliberate - it measures the path from *this* machine, and the byte counts and [timing](#timing-where-the-time-went) describe the connection to the server, not to a proxy - but it means that on a network where the internet is reachable only through a proxy, a request that works in your browser or with `curl` can time out here (see [Troubleshooting](troubleshooting.md#it-works-with-curl-or-my-browser-but-not-with-shint-behind-a-proxy)).
 - **HTTP/1.1** is used for all requests; the byte counts describe that plain byte stream.
 - The default `User-Agent` is `dmarts.app-http-v0.1`; override it with `-H "User-Agent: ..."`.

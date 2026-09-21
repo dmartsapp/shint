@@ -13,7 +13,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -207,8 +206,12 @@ var pingCmd = &cobra.Command{
 var webCmd = &cobra.Command{
 	Use:   "web [url]",
 	Short: "Make an HTTP request to a URL",
-	Long:  `This command makes an HTTP request to a URL and displays the response. Follows redirects (up to 10, and bytes are counted across every hop) but does not fetch embedded resources.`,
-	Args:  cobra.ExactArgs(1),
+	Long: `This command makes an HTTP request to a URL and displays the response. Follows redirects (up to 10, and bytes are counted across every hop) but does not fetch embedded resources.
+
+A URL without a scheme (example.com, 127.0.0.1:8080/status) is fetched over https://; write http:// for a plain-HTTP server. Only http and https URLs are fetched.
+
+It connects straight to the address the name resolves to and never uses a proxy: HTTP_PROXY, HTTPS_PROXY and NO_PROXY are ignored.`,
+	Args: cobra.ExactArgs(1),
 	Example: rootCmd.Name() + " web --json -H \"authorization:Bearer <token>\" -H \"content-type:application/json\" http://google.com --count 1" + "\n" +
 		rootCmd.Name() + " web https://example.com --timing",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -221,17 +224,10 @@ var webCmd = &cobra.Command{
 			return
 		}
 
-		URL, err := url.Parse(args[0])
+		URL, err := handlers.ParseWebURL(args[0])
 		if err != nil {
-			usage("Invalid URL")
+			usage(err.Error())
 			return
-		}
-		if URL.Scheme == "" {
-			URL, err = url.Parse("https://" + args[0])
-			if err != nil {
-				usage("Invalid URL")
-				return
-			}
 		}
 
 		if !applyFamily(URL.Hostname()) {
@@ -576,7 +572,7 @@ var listenHTTPCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().IntVar(&iterations, "count", 1, "Number of times to check connectivity (listen commands: max connections/packets to accept, 0 = unlimited)")
-	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect (listen commands: idle read timeout, 0 = no timeout)")
+	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect (listen tcp/http: idle read timeout, 0 = no timeout; no effect on listen udp)")
 	rootCmd.PersistentFlags().IntVar(&delay, "delay", 1000, "Milliseconds delay between each iteration given in count")
 	rootCmd.PersistentFlags().IntVar(&payload_size, "payload", 4, "Ping/UDP payload size in bytes (filler content, ignored if --data is set on udp)")
 	rootCmd.PersistentFlags().BoolVar(&throttle, "throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")

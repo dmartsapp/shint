@@ -53,6 +53,26 @@ func runShint(t *testing.T, args ...string) (code int, stdout, stderr string) {
 	return code, out.String(), errb.String()
 }
 
+// A URL without a scheme is fetched over https://, and when the server behind it
+// speaks plain HTTP the failure says so instead of leaving a bare TLS error.
+func TestWebWithoutASchemeExplainsAPlainHTTPServer(t *testing.T) {
+	plain := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) }))
+	defer plain.Close()
+	hostport := strings.TrimPrefix(plain.URL, "http://")
+	code, out, _ := runShint(t, "web", hostport, "--delay", "0", "--timeout", "2")
+	if code != 1 || !strings.Contains(out, "use http:// in the URL") {
+		t.Errorf("exit %d, output:\n%s", code, out)
+	}
+	code, out, _ = runShint(t, "web", "http://"+hostport, "--delay", "0", "--timeout", "2")
+	if code != 0 || !strings.Contains(out, "status=200") {
+		t.Errorf("with http:// it should work: exit %d, output:\n%s", code, out)
+	}
+	code, out, errOut := runShint(t, "web", "ftp://"+hostport)
+	if code != 2 || out != "" || !strings.Contains(errOut, `unsupported scheme "ftp"`) {
+		t.Errorf("ftp: exit %d, stdout %q, stderr %q", code, out, errOut)
+	}
+}
+
 func tcpListener(t *testing.T) (port int) {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -232,6 +252,10 @@ func TestExitStatus(t *testing.T) {
 		{"web --timing, connection refused", []string{"web", "http://127.0.0.1:" + closed + "/", "--timing"}, 1},
 		{"web connection refused", []string{"web", "http://127.0.0.1:" + closed + "/"}, 1},
 		{"web unknown flag", []string{"web", web200.URL, "--nope"}, 2},
+		{"web without a scheme is https, and a plain server is a failed check", []string{"web", strings.TrimPrefix(web200.URL, "http://")}, 1},
+		{"web unsupported scheme", []string{"web", "ftp://127.0.0.1/"}, 2},
+		{"web no host", []string{"web", "http://"}, 2},
+		{"web scheme typo", []string{"web", "http:127.0.0.1"}, 2},
 
 		// nmap
 		{"nmap finds an open port", []string{"nmap", "127.0.0.1", "--from", open, "--to", open}, 0},

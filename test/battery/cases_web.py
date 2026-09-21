@@ -10,18 +10,23 @@ def web(cid, url, *extra, **kw):
 
 # ---------------- F: web - URL forms
 for cid, url, rc in [
-    ("ok", H + "/ok", 0), ("no-scheme", "127.0.0.1:{http}/ok", 2), ("scheme-relative", "//127.0.0.1:{http}/ok", None),
+    ("ok", H + "/ok", 0), ("no-scheme", "127.0.0.1:{http}/ok", None), ("scheme-relative", "//127.0.0.1:{http}/ok", None),
     ("ipv6", "http://[::1]:{http6}/ok", 0), ("userinfo", "http://user:pass@127.0.0.1:{http}/echo", 0),
     ("port-0", "http://127.0.0.1:0/", 1), ("port-99999", "http://127.0.0.1:99999/", None),
-    ("scheme-upper", "HTTP://127.0.0.1:{http}/ok", 0), ("ftp", "ftp://127.0.0.1/", None), ("file", "file:///etc/passwd", None),
-    ("empty-host", "http://", None), ("space-in-path", H + "/a b", None), ("unicode-path", H + "/%C3%A9", None),
+    ("scheme-upper", "HTTP://127.0.0.1:{http}/ok", 0), ("ftp", "ftp://127.0.0.1/", 2), ("file", "file:///etc/passwd", 2),
+    ("empty-host", "http://", 2), ("space-in-path", H + "/a b", None), ("unicode-path", H + "/%C3%A9", None),
     ("unicode-path-raw", H + "/é", None), ("long-path", H + "/" + "a" * 20000, None),
     ("query-fragment", H + "/ok?x=1&y=2#frag", 0), ("no-path", H, None), ("trailing-dot-host", "http://127.0.0.1.:{http}/ok", None),
-    ("localhost", "http://localhost:{http}/ok", None), ("not-a-url", "not a url", None), ("empty", "", None),
-    ("just-scheme", "http:", None), ("colon-only", ":", None), ("percent-bad", H + "/%zz", None),
+    ("localhost", "http://localhost:{http}/ok", None), ("not-a-url", "not a url", 2), ("empty", "", 2),
+    ("just-scheme", "http:", 2), ("colon-only", ":", 2), ("percent-bad", H + "/%zz", None),
     ("host-percent", "http://127.0.0.1%25en0:{http}/", None),
 ]:
-    web("url-" + cid, url, rc=rc, note=repr(url[:60]), **({"contains": ["scheme"]} if cid == "no-scheme" else {}))
+    web("url-" + cid, url, rc=rc, note=repr(url[:60]), **({"timeout_flag": "1"} if cid in ("no-scheme", "scheme-relative") else {}))
+
+# a URL without a scheme is fetched over https:// - also when it is host:port (once parsed as the scheme "host")
+web("url-no-scheme-to-a-tls-server", "127.0.0.1:{https}/ok", "--cacert", "{good_pem}", rc=0, needs=("tls",))
+web("url-no-scheme-host-and-port", "localhost:{https}/ok", "--cacert", "{good_pem}", rc=0, needs=("tls",))
+web("url-scheme-typo", "http:127.0.0.1", rc=2, contains=["http:// or https://"])
 
 # ---------------- methods / headers / bodies
 for cid, extra in [

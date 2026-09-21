@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -26,6 +27,36 @@ const (
 	HTTP_CLIENT_USER_AGENT string = "dmarts.app-http-v0.1"
 	webModule              string = "web"
 )
+
+// ParseWebURL turns the argument of "web" into the URL to fetch. A URL without
+// a scheme - example.com, 127.0.0.1:8080/status - is fetched over https://, the
+// way a bare host name always was; write http:// for a plain-HTTP server. Only
+// http and https are fetched, and a URL needs a host. Everything is checked
+// before anything is sent, and each mistake says what is wrong.
+func ParseWebURL(arg string) (*url.URL, error) {
+	raw := strings.TrimSpace(arg)
+	if raw == "" {
+		return nil, errors.New("an empty URL: give a URL such as https://example.com/")
+	}
+	lower := strings.ToLower(raw)
+	if !strings.Contains(raw, "://") {
+		if strings.HasPrefix(lower, "http:") || strings.HasPrefix(lower, "https:") {
+			return nil, fmt.Errorf("invalid URL %q: write the scheme as http:// or https://", arg)
+		}
+		raw = "https://" + strings.TrimPrefix(raw, "//")
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL %q: %s", arg, reason(err))
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, fmt.Errorf("unsupported scheme %q in %q: web fetches http:// and https:// URLs", u.Scheme, arg)
+	}
+	if u.Hostname() == "" {
+		return nil, fmt.Errorf("invalid URL %q: it has no host", arg)
+	}
+	return u, nil
+}
 
 // WebHandler makes the request iterations times and reports true only if every
 // one of them got an HTTP response. The status code is data, not a verdict

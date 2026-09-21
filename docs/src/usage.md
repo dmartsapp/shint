@@ -46,7 +46,7 @@ Flags:
       --json          Flag option to output only in JSON format
       --payload int   Ping/UDP payload size in bytes (filler content, ignored if --data is set on udp) (default 4)
       --throttle      Flag option to throttle between every iteration of count to simulate non-uniform request.
-      --timeout int   Timeout in seconds to connect (listen commands: idle read timeout, 0 = no timeout) (default 5)
+      --timeout int   Timeout in seconds to connect (listen tcp/http: idle read timeout, 0 = no timeout; no effect on listen udp) (default 5)
   -v, --version       version for shint
 
 Use "shint [command] --help" for more information about a command.

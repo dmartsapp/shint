@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strings"
 	"syscall"
 )
 
@@ -123,11 +124,24 @@ func FamilyHint(err error) string {
 	return ""
 }
 
-// ExplainError is err's text, with FamilyHint's explanation in parentheses when
-// there is one.
+// SchemeHint explains the one TLS failure whose cause is the URL rather than the
+// server: an https:// request to a port that answers in plain HTTP ("server gave
+// HTTP response to HTTPS client") - what a URL without a scheme becomes when the
+// server behind it is not TLS. It returns "" for every other error.
+func SchemeHint(err error) string {
+	if err != nil && strings.Contains(err.Error(), "server gave HTTP response to HTTPS client") {
+		return "the server speaks plain HTTP: use http:// in the URL"
+	}
+	return ""
+}
+
+// ExplainError is err's text, with an explanation in parentheses when one of the
+// hints (FamilyHint, SchemeHint) knows the cause.
 func ExplainError(err error) string {
-	if hint := FamilyHint(err); hint != "" {
-		return err.Error() + " (" + hint + ")"
+	for _, hint := range []string{FamilyHint(err), SchemeHint(err)} {
+		if hint != "" {
+			return err.Error() + " (" + hint + ")"
+		}
 	}
 	return err.Error()
 }

@@ -31,6 +31,4 @@ KNOWN = {
     "F.tls-selfsigned-insecure": ("#37", None),
     "F.tls-insecure-and-cacert": ("#37", None),
     "F.tls-mismatch-server-insecure": ("#37", None),
-    # web: no help for a URL without a scheme
-    "F.url-no-scheme": ("#38", None),
 }

@@ -160,3 +160,18 @@ func TestExplainError(t *testing.T) {
 		t.Errorf("an error without a hint must be unchanged, got %q", ExplainError(plain))
 	}
 }
+
+func TestSchemeHint(t *testing.T) {
+	plain := errors.New(`Get "https://127.0.0.1:8080/": http: server gave HTTP response to HTTPS client`)
+	if got := SchemeHint(plain); got != "the server speaks plain HTTP: use http:// in the URL" {
+		t.Errorf("SchemeHint = %q", got)
+	}
+	for _, err := range []error{nil, errors.New("connection refused"), errors.New("tls: failed to verify certificate")} {
+		if got := SchemeHint(err); got != "" {
+			t.Errorf("SchemeHint(%v) = %q, want none", err, got)
+		}
+	}
+	if got := ExplainError(plain); !strings.HasSuffix(got, "HTTPS client (the server speaks plain HTTP: use http:// in the URL)") {
+		t.Errorf("ExplainError = %q", got)
+	}
+}
