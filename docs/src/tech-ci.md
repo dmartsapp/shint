@@ -15,6 +15,8 @@ The "on `main`" half is enforced by a [guard](#the-release-tag-guard) that every
 
 They are separate files so that each has its own status and its own failure mode: a Docker Hub credential problem shows up as *that* workflow failing, not as a vague failure of "the release".
 
+A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag but builds and publishes nothing: it waits for the five and posts how each of them ended.
+
 :::html
 <div class="diagram">
 <svg viewBox="0 0 700 300" role="img" aria-label="Workflow graph: one tag push starts five workflows">
@@ -140,6 +142,24 @@ The commit message is free text written by a person, so it is passed to the shel
 
 Image names: `docker.io/<DOCKERHUB_USERNAME>/shint` and `ghcr.io/dmartsapp/shint`. The Dockerfile is described in the [Source reference](tech-source.md#build-and-packaging).
 
+## Slack notification
+
+`Notify Slack` (`.github/workflows/notify-slack.yaml`) is the last word on a release. It starts with the tag like the others, waits until the five release workflows have finished, and posts **one message** to Slack:
+
+| Part | What it shows |
+|---|---|
+| Headline and colour | `shint v4.0.6 is released` on green when everything passed; `the release pipeline failed` on red; `still running` on amber if the wait ran out |
+| One line per workflow | Binary build and release (with the number of files attached to the release), Vulnerability check, Linting, Docker Hub image, GHCR image - each with its duration and a link to its run |
+| What failed | For a failed workflow, the job and step (`golangci-lint › Run golangci-lint`), up to three |
+| Footer | The tag, the commit (linked) and its subject, and who pushed the tag |
+| Buttons | The release notes (only when everything passed) and the tag's workflow runs |
+
+**It cannot start any other way and cannot hurt a release.** It obeys the [trigger rule](#the-workflow-trigger-rule) - a tag push, nothing else - so it cannot use `workflow_run` to be told when the others finish; it looks at the runs of its own tag every 20 seconds (`gh run list`, needing only `actions: read`) until all five have completed, for at most 50 minutes. It publishes nothing and changes nothing: if it fails, or Slack is down, the release is exactly as it was, and the failure shows only on this workflow's own run.
+
+**The webhook is a credential.** It is the repository secret `SLACK_WEBHOOK_URL` (Settings, Secrets and variables, Actions), read into an environment variable and used only by `.github/scripts/notify-slack.py`, which never prints it - not in the log, not in an error. Nothing in the repository contains it, and a test fails `make workflows` if a Slack webhook URL is ever committed. Without the secret (a fork, or it was removed) the job says so and succeeds. To point the messages somewhere else, create a new incoming webhook in Slack, replace the secret (`gh secret set SLACK_WEBHOOK_URL`) and revoke the old one.
+
+**Keeping it right.** The list of workflows it waits for is in the script; a test compares it with the workflow files and fails if a workflow that a tag starts is missing from it (or one that is listed no longer exists), so adding a release workflow means adding it there too. The rest of `test_notify_slack.py` covers the message (every state: passed, failed, still running), the waiting (late-starting workflows, an API hiccup, the deadline) and the posting (against a local server: success, a refusal that is not retried, a server error that is, the URL never in the output). `make workflows` runs it.
+
 ## Automation GitHub manages
 
 A few more things run that are **not defined by files in this repository**; they are switched on in the repository settings. None of them builds or publishes a release, and none is started by a `release/**` branch:
@@ -153,10 +173,10 @@ A few more things run that are **not defined by files in this repository**; they
 
 ## Watching a release
 
-Push the tag, then follow it from the terminal with the GitHub CLI:
+Push the tag and the result arrives in Slack when the last workflow finishes (see [Slack notification](#slack-notification)). To follow it from the terminal instead, use the GitHub CLI:
 
 ```bash
-gh run list --limit 8                       # the five workflows for the tag
+gh run list --limit 8                       # the five workflows for the tag, and the notifier
 gh run watch <run-id> --exit-status         # block until one finishes
 gh run view <run-id> --log-failed           # only the failing steps' logs
 gh run rerun <run-id> --failed              # retry just the failed jobs
