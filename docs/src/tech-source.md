@@ -32,6 +32,8 @@ nav: Source reference
 | `exitOK`, `exitFailure`, `exitUsage`, `exitCode` | The exit-status scheme (0 / 1 / 2) and the value `main` exits with. |
 | `usage(msg)` | Prints a usage error to stderr and records status 2. |
 | `finish(ok)` | Records status 1 when a handler reports failure. |
+| `checkRunFlags(usesDelay)`, `checkListenFlags()` | The shared flag ranges, checked once for every command: `--count` at least 1, `--timeout` 1 to a day, `--delay` 0 to a day (`lib.RequireTimeout`, `RequireDelay`, ...); for `listen`, `--count` at least 0 and `--timeout` 0 to a day. |
+| `unknownSubcommand` | The Run of `listen` and `completion`, which only group other commands: an argument they do not know is a usage error (exit 2), not the help page with exit 0. |
 | `rootCmd`, `telnetCmd`, `pingCmd`, `webCmd`, `nmapCmd`, `udpCmd`, `ntpCmd`, `wolCmd`, `rdnsCmd`, `dnsCmd`, `cidrCmd`, `ipCmd`, `listenCmd` (+ `listenTCPCmd`, `listenUDPCmd`, `listenHTTPCmd`) | The commands. Each `Run` validates, calls one handler, and passes its result to `finish`. |
 | `interruptContext()` | The context `nmap`, `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol` run under: cancelled by `Ctrl+C`/`SIGTERM`, deliberately without any deadline, and un-registered after the first signal so a second `Ctrl+C` ends the process. |
 | `init()` | Registers all flags. Note `listenCmd` re-declares `--count` (default `0`) and `webCmd` re-declares `--payload` (`-P`, the body), shadowing the root flags. |

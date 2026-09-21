@@ -269,3 +269,48 @@ func TestIsPortUpRespectsContextCancellation(t *testing.T) {
 		t.Errorf("IsPortUp took %v with a pre-canceled context; expected it to fail almost immediately instead of waiting out the 30s dial timeout", elapsed)
 	}
 }
+
+func TestRequireRanges(t *testing.T) {
+	const day, dayMs = 86400, 86400000
+	if MaxTimeoutSeconds != day || MaxDelayMilliseconds != dayMs {
+		t.Fatalf("the limits are a day: %d s, %d ms", MaxTimeoutSeconds, MaxDelayMilliseconds)
+	}
+	ok := func(err error) bool { return err == nil }
+	cases := []struct {
+		name string
+		fn   func(int) error
+		good []int
+		bad  []int
+	}{
+		{"RequireTimeout", RequireTimeout, []int{1, 5, 3600, day}, []int{0, -1, day + 1, 2147483648, 10000000000, 9223372036854775807, -9223372036854775808}},
+		{"RequireIdleTimeout", RequireIdleTimeout, []int{0, 1, day}, []int{-1, day + 1, 9223372036854775807}},
+		{"RequireDelay", RequireDelay, []int{0, 1, 1000, dayMs}, []int{-1, dayMs + 1, 9223372036854775807, -9223372036854775808}},
+		{"RequireNonNegative", func(v int) error { return RequireNonNegative("count", v) }, []int{0, 1, 9223372036854775807}, []int{-1, -9223372036854775808}},
+	}
+	for _, c := range cases {
+		for _, v := range c.good {
+			if err := c.fn(v); !ok(err) {
+				t.Errorf("%s(%d) = %v, want nil", c.name, v, err)
+			}
+		}
+		for _, v := range c.bad {
+			if err := c.fn(v); err == nil {
+				t.Errorf("%s(%d) = nil, want an error", c.name, v)
+			}
+		}
+	}
+	// what the user reads
+	if got := RequireTimeout(10000000000).Error(); got != "--timeout must be between 1 and 86400 seconds (a day), got 10000000000" {
+		t.Errorf("message: %q", got)
+	}
+	if got := RequireDelay(-1).Error(); got != "--delay must be between 0 and 86400000 milliseconds (a day), got -1" {
+		t.Errorf("message: %q", got)
+	}
+	// nothing accepted may overflow the duration it becomes
+	if d := time.Duration(MaxTimeoutSeconds) * time.Second; d <= 0 {
+		t.Errorf("the largest timeout overflows: %v", d)
+	}
+	if d := time.Duration(MaxDelayMilliseconds) * time.Millisecond; d <= 0 {
+		t.Errorf("the largest delay overflows: %v", d)
+	}
+}

@@ -29,8 +29,8 @@ shint listen tcp|udp|http <port> [--bind ADDR] [--echo] [--count N] [--timeout S
 |---|---|---|
 | `--bind ADDR` | `0.0.0.0` | Address to listen on. Use `127.0.0.1` for this machine only, or `::` for IPv6. |
 | `--echo` | off | Send received data back to the sender (`tcp` and `udp`). |
-| `--count N` | `0` | Stop after N connections / packets / requests. `0` means keep going until `Ctrl+C`. |
-| `--timeout S` | `5` | `tcp` and `http`: close a connection that has been quiet this long (`http`: also bounds reading a request). `0` disables it. **No effect on `udp`**: there is no connection to close, so a UDP listener waits for the next datagram however long that takes. |
+| `--count N` | `0` | Stop after N connections / packets / requests. `0` means keep going until `Ctrl+C`; a negative value is a usage error. |
+| `--timeout S` | `5` | `tcp` and `http`: close a connection that has been quiet this long (`http`: also bounds reading a request). `0` disables it; at most 86400 (a day). **No effect on `udp`**: there is no connection to close, so a UDP listener waits for the next datagram however long that takes. |
 | `--json` | off | Print one JSON line per event instead of log lines. |
 
 Unlike every other command, `listen` runs until you stop it (its `--count` defaults to `0`), because leaving a server up is usually the point. A summary is printed when it exits.

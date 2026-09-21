@@ -218,3 +218,66 @@ func TestUDPHandlerTextModeMultipleAttempts(t *testing.T) {
 		t.Errorf("expected done summary with probes_sent=3 open=3, got:\n%s", out)
 	}
 }
+
+// A closed port makes the run exit 1, so its line is an ERROR line - it used to be
+// logged as OK while the exit status said 1 - and open and open|filtered, which do
+// not fail the run, are OK lines.
+func TestUDPHandlerLogLevelFollowsWhetherTheProbeFailed(t *testing.T) {
+	jsonOutput, throttle := false, false
+	run := func(port int) (bool, string) {
+		var ok bool
+		out := captureStdout(t, func() {
+			ok = UDPHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 1, 4, "x", port, "127.0.0.1")
+		})
+		return ok, out
+	}
+
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	closedPort := conn.LocalAddr().(*net.UDPAddr).Port
+	_ = conn.Close()
+	ok, out := run(closedPort)
+	if ok || !strings.Contains(out, "[udp] ERROR probe closed ") || strings.Contains(out, "OK probe closed") {
+		t.Errorf("closed: ok=%v, want an ERROR line:\n%s", ok, out)
+	}
+
+	open, closeOpen := startEchoUDPServer(t)
+	defer closeOpen()
+	if ok, out := run(open); !ok || !strings.Contains(out, "[udp] OK probe open ") || strings.Contains(out, "] ERROR ") {
+		t.Errorf("open: ok=%v:\n%s", ok, out)
+	}
+
+	silent, closeSilent := startSilentUDPServer(t)
+	defer closeSilent()
+	if ok, out := run(silent); !ok || !strings.Contains(out, "[udp] OK probe open|filtered ") || strings.Contains(out, "] ERROR ") {
+		t.Errorf("open|filtered is inconclusive, not a failure: ok=%v:\n%s", ok, out)
+	}
+}
+
+// A negative --payload used to crash the handler (strings.Repeat panics on a
+// negative count) and a huge one asked it for memory it could not have.
+func TestValidateUDPPayload(t *testing.T) {
+	for _, size := range []int{0, 1, 4, 1472, 8000, MaxUDPPayload} {
+		if err := ValidateUDPPayload(size, ""); err != nil {
+			t.Errorf("--payload %d: %v", size, err)
+		}
+	}
+	for _, size := range []int{-1, MaxUDPPayload + 1, 1000000000, 9223372036854775807, -9223372036854775808} {
+		err := ValidateUDPPayload(size, "")
+		if err == nil || !strings.Contains(err.Error(), "--payload for udp must be between 0 and 65507 bytes") {
+			t.Errorf("--payload %d: error = %v", size, err)
+		}
+	}
+	// --payload is ignored when --data is given, so a bad size does not matter then
+	if err := ValidateUDPPayload(-1, "hello"); err != nil {
+		t.Errorf("--data given, --payload ignored: %v", err)
+	}
+	if err := ValidateUDPPayload(4, strings.Repeat("x", MaxUDPPayload)); err != nil {
+		t.Errorf("--data of the largest size: %v", err)
+	}
+	if err := ValidateUDPPayload(4, strings.Repeat("x", MaxUDPPayload+1)); err == nil || !strings.Contains(err.Error(), "--data is 65508 bytes") {
+		t.Errorf("--data one byte too large: %v", err)
+	}
+}

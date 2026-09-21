@@ -62,6 +62,28 @@ func probeUDP(ctx context.Context, ip string, port int, timeout int, payload []b
 	return "error", nil, rerr
 }
 
+// MaxUDPPayload is the most one UDP datagram carries: 65535 minus the 8-byte UDP
+// header and the 20-byte IPv4 header. A bigger payload cannot be sent at all.
+const MaxUDPPayload = 65507
+
+// ValidateUDPPayload rejects a --payload (the size of the generated filler) or a
+// --data that no datagram can carry, before anything is sent: a negative size used
+// to crash the handler with a panic, and a huge one asked it for memory it could
+// not have. --payload is ignored when --data is given, so only one of them is
+// checked.
+func ValidateUDPPayload(size int, data string) error {
+	if data != "" {
+		if len(data) > MaxUDPPayload {
+			return fmt.Errorf("--data is %d bytes, but one UDP datagram carries at most %d", len(data), MaxUDPPayload)
+		}
+		return nil
+	}
+	if size < 0 || size > MaxUDPPayload {
+		return fmt.Errorf("--payload for udp must be between 0 and %d bytes (the most one UDP datagram carries), got %d", MaxUDPPayload, size)
+	}
+	return nil
+}
+
 // UDPHandler sends the probe iterations times to every address host resolves
 // to. It reports false if the lookup failed or any probe found the port closed
 // (the OS surfaced an ICMP port-unreachable) or hit an error. An "open|filtered"
@@ -179,7 +201,9 @@ attempts:
 					if err != nil {
 						fmt.Println(lib.LogWithTimestamp(udpModule, "probe error "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken, "error", lib.ExplainError(err)), true))
 					} else {
-						fmt.Println(lib.LogWithTimestamp(udpModule, "probe "+state+" "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "sent", len(payload), "received", len(received), "time", timeTaken), false))
+						// A closed port makes the run exit 1, so it is logged as the failed check it is; open and
+						// open|filtered are not failures.
+						fmt.Println(lib.LogWithTimestamp(udpModule, "probe "+state+" "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "sent", len(payload), "received", len(received), "time", timeTaken), state == "closed"))
 					}
 				}
 			}(ip, attempt)

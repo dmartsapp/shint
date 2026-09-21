@@ -104,10 +104,12 @@ func TestValidatePingPayload(t *testing.T) {
 
 func TestIsLostPing(t *testing.T) {
 	for line, want := range map[string]bool{
-		"received reply for request #1 from 127.0.0.1 (ipv4) in 0ms":        false,
-		"received reply for request #2 from 2607:f8b0::200e (ipv6) in 31ms": false,
-		"no reply for request #1 from 192.0.2.1: read udp: i/o timeout":     true,
-		"no reply for request #3 from 2001:db8::1: read udp: i/o timeout":   true,
+		"received reply for request #1 from 127.0.0.1 (ipv4) in 0ms":                                           false,
+		"received reply for request #2 from 2607:f8b0::200e (ipv6) in 31ms":                                    false,
+		"no reply for request #1 from 192.0.2.1: read udp: i/o timeout":                                        true,
+		"no reply for request #3 from 2001:db8::1: read udp: i/o timeout":                                      true,
+		"error sending request #1 to 0.0.0.0: write udp 0.0.0.0:0->0.0.0.0:0: sendto: socket is not connected": true,
+		"error sending request #2 to ::: write udp6 [::]:0->[::]:0: sendto: no route to host":                  true,
 	} {
 		if got := isLostPing(line); got != want {
 			t.Errorf("isLostPing(%q) = %v, want %v", line, got, want)

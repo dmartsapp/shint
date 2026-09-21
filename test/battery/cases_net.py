@@ -44,9 +44,9 @@ def ud(cid, *a, **kw):
 ud("data", "--data", "hello", rc=0, contains=["probe open"]); ud("data-json", "--data", "hello", "--json", rc=0)
 ud("data-empty-uses-filler", "--data", "", rc=0); ud("data-unicode", "--data", "héllo ☃", rc=0); ud("data-multiline", "--data", "a\nb\nc", rc=0)
 ud("payload-0", "--payload", "0"); ud("payload-1", "--payload", "1", rc=0); ud("payload-1400", "--payload", "1400", rc=0)
-ud("payload-8000", "--payload", "8000"); ud("payload-65507", "--payload", "65507"); ud("payload-65508", "--payload", "65508")
-ud("payload-neg", "--payload", "-1"); ud("payload-huge-1e9", "--payload", "1000000000", max=60, timeout=60)
-ud("payload-int64max", "--payload", "9223372036854775807"); ud("payload-abc", "--payload", "abc", rc=2)
+ud("payload-8000", "--payload", "8000"); ud("payload-65507", "--payload", "65507"); ud("payload-65508", "--payload", "65508", rc=2)
+ud("payload-neg", "--payload", "-1", rc=2); ud("payload-huge-1e9", "--payload", "1000000000", rc=2)
+ud("payload-int64max", "--payload", "9223372036854775807", rc=2); ud("payload-abc", "--payload", "abc", rc=2)
 ud("closed-port", port="{udp_closed}", rc=1); ud("silent-port", port="{udp_silent}", rc=0, contains=["open|filtered"], max=10, **{}) if False else None
 add("H.silent-port", ["udp", "127.0.0.1", "{udp_silent}", "--timeout", "2", "--delay", "0"], group="H udp", rc=0, contains=["open|filtered"], max=10)
 add("H.silent-port-json", ["udp", "127.0.0.1", "{udp_silent}", "--timeout", "2", "--delay", "0", "--json"], group="H udp", rc=0, max=10)

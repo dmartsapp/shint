@@ -60,13 +60,17 @@ These are defined once, so they mean the same thing everywhere they apply:
 | Flag | Default | Meaning |
 |---|---|---|
 | `--count N` | `1` | How many times to repeat the check. For `listen`, the number of connections, packets or requests to accept before exiting (default `0`: keep going until Ctrl+C). |
-| `--timeout S` | `5` | Seconds to wait - see [what it limits](#what-timeout-limits) below. For `listen`, the idle time before a quiet connection is closed (`0`: never). |
-| `--delay MS` | `1000` | Milliseconds to pause before each attempt. Use `--delay 0` for back-to-back checks. |
+| `--timeout S` | `5` | Seconds to wait, from 1 to 86400 (a day) - see [what it limits](#what-timeout-limits) below. For `listen`, the idle time before a quiet connection is closed, 0 to 86400 (`0`: never). |
+| `--delay MS` | `1000` | Milliseconds to pause before each attempt, from 0 to 86400000 (a day). Use `--delay 0` for back-to-back checks. |
 | `--throttle` | off | Wait a random 0-10 seconds between attempts instead of a fixed `--delay`, to imitate uneven traffic. |
 | `--payload N` | `4` | Filler payload size in bytes for `ping` and `udp`. (On `web`, `-P` is the request *body* instead.) |
 | `--json` | off | Print one machine-readable JSON document instead of log lines. |
 | `-4`, `--ipv4` | off | Resolve and check **IPv4 addresses only**. See [IPv4 only, or IPv6 only](#ipv4-only-or-ipv6-only). |
 | `-6`, `--ipv6` | off | Resolve and check **IPv6 addresses only**. |
+
+:::note A value that is not a wait is refused
+`--timeout` and `--delay` become a duration in nanoseconds, which silently overflows above about 292 years: `--timeout 10000000000` used to turn into a check that "timed out" at once. A day is far more than any check waits, so anything outside the ranges above - and a negative `--delay` or `--count` - is a [usage error](#exit-status): exit `2`, one line on stderr saying what the range is, nothing run.
+:::
 
 :::note Every attempt waits first
 `--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr` and `ip` do no attempts, so they have no delay.)

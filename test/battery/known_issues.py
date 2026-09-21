@@ -9,21 +9,8 @@ here in the same commit; when a new bug is found, add its case and the issue num
 KNOWN = {
     # web keeps the whole body in memory
     "L.web-300MB-body-memory": ("#28", None),
-    # udp panics on an invalid --payload
-    "H.payload-neg": ("#29", None),
-    "H.payload-int64max": ("#29", None),
-    # --timeout overflows
-    "B.timeout-int64max": ("#30", None),
-    "B.timeout-10^10": ("#30", None),
     # --count with --delay 0 runs out of file descriptors
     "E.fd-pressure-count-3000": ("#31", None),
-    # failures logged at OK level
-    "H.closed-port": ("#32", None),
-    "I.unspecified": ("#32", None),
-    # unknown subcommands and negative counts are not usage errors
-    "A.completion-bogus": ("#33", None),
-    "A.listen-bogus": ("#33", None),
-    "B.listen-count-negative": ("#33", None),
     # listen http reports a stalled request as answered / ignores malformed ones
     "J.http-client-stalls-mid-body-is-not-logged-as-ok": ("#34", None),
     "J.http-malformed-request-is-logged-and-counted": ("#35", None),

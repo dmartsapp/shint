@@ -106,7 +106,7 @@ Latency: minimum: 0, average: 0, maximum: 0
 Sun Sep 20 10:27:15 MDT 2026: [icmp] OK done packets_lost=1 stddev_ms=0.000 resolve_time=92.917µs total_time=2.002622083s
 ```
 
-The lost request is logged as an `ERROR` line, like any other failed check, and the exit status is `1`. (`192.0.2.1` is a reserved documentation address that never answers.)
+The lost request is logged as an `ERROR` line, like any other failed check, and the exit status is `1`. So is a request the system refuses to send at all (`ERROR error sending request #1 to 0.0.0.0: ... socket is not connected`, for an unspecified or unreachable destination): it used to be logged as `OK` while the run exited `1`. (`192.0.2.1` is a reserved documentation address that never answers.)
 
 ## Reading the results
 

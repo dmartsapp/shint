@@ -56,13 +56,15 @@ func ValidatePingPayload(size int) error {
 }
 
 // isLostPing reports whether a line streamed by the ping library describes an
-// echo request that got no reply. The library emits exactly two kinds of line -
-// "received reply for request #N ..." and "no reply for request #N ..." - each
-// from a single place, so the prefix is a reliable signal. A lost request is a
-// failed check and is logged at ERROR level like one in every other command;
-// it used to be logged as OK while the exit status said 1.
+// echo request that got no reply. The library emits three kinds of line, each
+// from a single place, so the prefix is a reliable signal: "received reply for
+// request #N ..." (the only good one), "no reply for request #N ..." (nothing
+// came back in time) and "error sending request #N to ..." (the system refused
+// to send it: an unspecified or unreachable destination, say). The last two are
+// failed checks, logged at ERROR level like one in every other command; they used
+// to be logged as OK while the exit status said 1.
 func isLostPing(line string) bool {
-	return strings.HasPrefix(line, "no reply")
+	return strings.HasPrefix(line, "no reply") || strings.HasPrefix(line, "error sending request")
 }
 
 // withPayloadSize adds the echo payload size to a reply line, the way ping

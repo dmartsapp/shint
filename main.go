@@ -125,6 +125,25 @@ func applyFamily(host string) bool {
 	return true
 }
 
+// checkRunFlags validates the shared flags a checking command uses and reports
+// whether the run may go on: --count at least 1, --timeout 1 to a day of seconds
+// and, for a command that pauses between attempts, --delay 0 to a day of
+// milliseconds. Beyond a day a value is not a wait but an overflow of the duration
+// it becomes, and used to turn into a check that failed at once.
+func checkRunFlags(usesDelay bool) bool {
+	checks := []error{lib.RequirePositive("count", iterations), lib.RequireTimeout(timeout)}
+	if usesDelay {
+		checks = append(checks, lib.RequireDelay(delay))
+	}
+	for _, err := range checks {
+		if err != nil {
+			usage(err.Error())
+			return false
+		}
+	}
+	return true
+}
+
 // usage reports a bad argument or flag value on stderr and marks the run as a
 // usage error. Callers return right after it; nothing is checked.
 func usage(msg string) {
@@ -162,12 +181,7 @@ var telnetCmd = &cobra.Command{
 			usage(err.Error())
 			return
 		}
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
-			return
-		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(true) {
 			return
 		}
 
@@ -187,12 +201,7 @@ var pingCmd = &cobra.Command{
 		if !applyFamily(args[0]) {
 			return
 		}
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
-			return
-		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(true) {
 			return
 		}
 		if err := handlers.ValidatePingPayload(payload_size); err != nil {
@@ -215,12 +224,7 @@ It connects straight to the address the name resolves to and never uses a proxy:
 	Example: rootCmd.Name() + " web --json -H \"authorization:Bearer <token>\" -H \"content-type:application/json\" http://google.com --count 1" + "\n" +
 		rootCmd.Name() + " web https://example.com --timing",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
-			return
-		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(true) {
 			return
 		}
 
@@ -256,12 +260,7 @@ var nmapCmd = &cobra.Command{
 		if !applyFamily(args[0]) {
 			return
 		}
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
-			return
-		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(false) {
 			return
 		}
 		if fromport < 1 || fromport > 65535 || endport < 1 || endport > 65535 {
@@ -318,11 +317,10 @@ The payload is text, sent exactly as typed: --data sends a message, --payload se
 			usage(err.Error())
 			return
 		}
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(true) {
 			return
 		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
+		if err := handlers.ValidateUDPPayload(payload_size, udpData); err != nil {
 			usage(err.Error())
 			return
 		}
@@ -347,12 +345,7 @@ An address that has no PTR record is reported as a failed check (exit status 1);
 		if !applyFamily(args[0]) {
 			return
 		}
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
-			return
-		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(true) {
 			return
 		}
 		ctx, stop := interruptContext()
@@ -385,12 +378,7 @@ A question that gets no record of the type asked - the name does not exist (NXDO
 			usage(err.Error())
 			return
 		}
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
-			return
-		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(true) {
 			return
 		}
 		ctx, stop := interruptContext()
@@ -470,12 +458,7 @@ The machine must have Wake-on-LAN enabled in its firmware and network card, and 
 			usage("--port must be between 1 and 65535")
 			return
 		}
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
-			return
-		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(true) {
 			return
 		}
 		ctx, stop := interruptContext()
@@ -506,12 +489,7 @@ A reply that cannot be trusted - it answers a different request, the server says
 			usage("--max-offset must be 0 (only report) or a number of milliseconds")
 			return
 		}
-		if err := lib.RequirePositive("count", iterations); err != nil {
-			usage(err.Error())
-			return
-		}
-		if err := lib.RequirePositive("timeout", timeout); err != nil {
-			usage(err.Error())
+		if !checkRunFlags(true) {
 			return
 		}
 		ctx, stop := interruptContext()
@@ -523,8 +501,33 @@ A reply that cannot be trusted - it answers a different request, the server says
 
 var listenCmd = &cobra.Command{
 	Use:   "listen",
+	Run:   unknownSubcommand,
 	Short: "Start a local TCP, UDP, or HTTP listener for testing",
 	Long:  `The listen command starts a simple TCP, UDP, or HTTP listener on this machine so that telnet, udp, web, and nmap can be exercised end-to-end without needing an external server. Use --count to bound how many connections/packets/requests are accepted (0 = run until Ctrl+C).`,
+}
+
+// unknownSubcommand is the Run of a command that only groups others (listen,
+// completion): cobra shows the help for an argument it does not know, and exits 0,
+// as if nothing was wrong. Using a command wrongly is exit status 2 with the
+// reason on stderr; asking for the group itself just shows its help.
+func unknownSubcommand(cmd *cobra.Command, args []string) {
+	if len(args) > 0 {
+		usage(fmt.Sprintf("unknown command %q for %q", args[0], cmd.CommandPath()))
+		return
+	}
+	_ = cmd.Help()
+}
+
+// checkListenFlags validates what the listen commands share: --count 0 (until
+// Ctrl+C) or more, and --timeout as an idle timeout of 0 (none) to a day.
+func checkListenFlags() bool {
+	for _, err := range []error{lib.RequireNonNegative("count", listenMaxCount), lib.RequireIdleTimeout(timeout)} {
+		if err != nil {
+			usage(err.Error())
+			return false
+		}
+	}
+	return true
 }
 
 var listenTCPCmd = &cobra.Command{
@@ -535,6 +538,9 @@ var listenTCPCmd = &cobra.Command{
 		port, err := lib.ValidatePort(args[0])
 		if err != nil {
 			usage(err.Error())
+			return
+		}
+		if !checkListenFlags() {
 			return
 		}
 		handlers.TCPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
@@ -551,6 +557,9 @@ var listenUDPCmd = &cobra.Command{
 			usage(err.Error())
 			return
 		}
+		if !checkListenFlags() {
+			return
+		}
 		handlers.UDPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
 	},
 }
@@ -564,6 +573,9 @@ var listenHTTPCmd = &cobra.Command{
 		port, err := lib.ValidatePort(args[0])
 		if err != nil {
 			usage(err.Error())
+			return
+		}
+		if !checkListenFlags() {
 			return
 		}
 		handlers.HTTPListenHandler(listenBind, port, listenMaxCount, timeout, &jsonoutput)
@@ -622,6 +634,15 @@ func init() {
 // status the chosen command recorded - see the exit-status notes above.
 func main() {
 	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, dnsCmd, cidrCmd, ipCmd, listenCmd)
+	// cobra adds its completion command only when it executes. Adding it here - after
+	// the commands above, since cobra skips it while the root has none - lets it treat
+	// an argument it does not know as a mistake, like listen.
+	rootCmd.InitDefaultCompletionCmd()
+	for _, c := range rootCmd.Commands() {
+		if c.Name() == "completion" {
+			c.Run = unknownSubcommand
+		}
+	}
 	// cobra has already printed the error (and usage help) to stderr. Every
 	// error Execute returns is a usage error - the Run functions never return
 	// one; they report through usage() and finish() instead.

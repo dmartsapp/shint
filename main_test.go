@@ -313,6 +313,24 @@ func TestExitStatus(t *testing.T) {
 		{"cidr one bad among good", []string{"cidr", "10.0.0.0/8", "nope"}, 2},
 		{"cidr missing argument", []string{"cidr"}, 2},
 
+		// values that are not a wait but an overflow, and inputs that used to crash or be waved through
+		{"telnet timeout beyond a day", []string{"telnet", "127.0.0.1", open, "--timeout", "86401"}, 2},
+		{"telnet timeout that overflows a duration", []string{"telnet", "127.0.0.1", open, "--timeout", "10000000000"}, 2},
+		{"telnet timeout of a day is fine", []string{"telnet", "127.0.0.1", open, "--timeout", "86400", "--delay", "0"}, 0},
+		{"telnet delay that overflows", []string{"telnet", "127.0.0.1", open, "--delay", "9223372036854775807"}, 2},
+		{"telnet negative delay", []string{"telnet", "127.0.0.1", open, "--delay", "-1"}, 2},
+		{"ping timeout beyond a day", []string{"ping", "127.0.0.1", "--timeout", "86401"}, 2},
+		{"web delay beyond a day", []string{"web", web200.URL, "--delay", "86400001"}, 2},
+		{"udp negative payload", []string{"udp", "127.0.0.1", udpEcho, "--payload", "-1"}, 2},
+		{"udp payload larger than a datagram", []string{"udp", "127.0.0.1", udpEcho, "--payload", "65508"}, 2},
+		{"udp payload of int64 max", []string{"udp", "127.0.0.1", udpEcho, "--payload", "9223372036854775807"}, 2},
+		{"udp zero payload is valid", []string{"udp", "127.0.0.1", udpEcho, "--payload", "0"}, 0},
+		{"listen unknown subcommand", []string{"listen", "bogus"}, 2},
+		{"completion unknown subcommand", []string{"completion", "bogus"}, 2},
+		{"listen negative count", []string{"listen", "tcp", closed, "--count", "-1"}, 2},
+		{"listen negative timeout", []string{"listen", "udp", closed, "--timeout", "-1"}, 2},
+		{"listen timeout beyond a day", []string{"listen", "http", closed, "--timeout", "86401"}, 2},
+
 		// dns: a question that gets no record of the type asked is a failed check
 		{"dns answered", []string{"dns", "example.com", dnsUp}, 0},
 		{"dns one type", []string{"dns", "example.com", "MX", dnsUp}, 0},
@@ -355,7 +373,18 @@ func TestExitStatus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			args := tc.args
 			if tc.args[0] != "listen" && tc.args[0] != "ping" && !strings.HasPrefix(tc.args[0], "-") && tc.args[0] != "bogus" {
-				args = append(append([]string{}, tc.args...), fast...)
+				// the quick defaults, except for a flag the case sets itself: the last one wins,
+				// and a case about --timeout or --delay must not have its value overridden
+				args = append([]string{}, tc.args...)
+				for i := 0; i < len(fast); i += 2 {
+					set := false
+					for _, a := range tc.args {
+						set = set || a == fast[i]
+					}
+					if !set {
+						args = append(args, fast[i], fast[i+1])
+					}
+				}
 			}
 			code, stdout, stderr := runShint(t, args...)
 			if code != tc.want {
@@ -376,6 +405,9 @@ func TestUsageErrorsGoToStderrOnly(t *testing.T) {
 		{"cidr"},
 		{"dns"},
 		{"dns", "example.com", "BOGUS"},
+		{"listen", "bogus"},
+		{"telnet", "127.0.0.1", "22", "--timeout", "10000000000"},
+		{"udp", "127.0.0.1", "9", "--payload", "-1"},
 		{"ip", "-4", "-6"},
 		{"ip", "a", "b"},
 		{"rdns"},

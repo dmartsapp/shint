@@ -27,8 +27,8 @@ shint udp <host> <port> [--data TEXT | --payload BYTES] [--count N] [--timeout S
 
 | Flag | Meaning |
 |---|---|
-| `-D`, `--data TEXT` | The payload to send. Sent exactly as typed - it is text, and backslash escapes such as `\x00` are **not** interpreted. |
-| `--payload N` | If `--data` is not given, send N bytes of filler (default 4). |
+| `-D`, `--data TEXT` | The payload to send. Sent exactly as typed - it is text, and backslash escapes such as `\x00` are **not** interpreted. At most 65507 bytes. |
+| `--payload N` | If `--data` is not given, send N bytes of filler (default 4), from 0 to 65507 - the most one UDP datagram carries (65535 minus the 8-byte UDP and 20-byte IPv4 headers). A negative or larger value is a usage error (exit `2`); it used to crash. |
 
 The other [shared flags](usage.md#flags-shared-by-every-command) apply; `--timeout` is how long to wait for a reply.
 
@@ -57,7 +57,7 @@ shint udp 127.0.0.1 9998 --timeout 2
 
 ```text
 Sun Sep 20 01:50:33 MDT 2026: [udp] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=114.625µs
-Sun Sep 20 01:50:34 MDT 2026: [udp] OK probe closed host=127.0.0.1 port=9998 attempt=1/1 sent=4 received=0 time=1.312875ms
+Sun Sep 20 01:50:34 MDT 2026: [udp] ERROR probe closed host=127.0.0.1 port=9998 attempt=1/1 sent=4 received=0 time=1.312875ms
 Sun Sep 20 01:50:34 MDT 2026: [udp] OK done probes_sent=1 open=0 total_time=1.002529458s
 ```
 ### No answer

@@ -101,6 +101,50 @@ func RequirePositive(name string, value int) error {
 	return nil
 }
 
+const (
+	// MaxTimeoutSeconds and MaxDelayMilliseconds are one day. --timeout and --delay
+	// become a time.Duration of nanoseconds, which overflows above about 292 years:
+	// a huge value silently turned into a wait that has already run out. A day is
+	// far beyond any check anyone waits for, and nothing near overflow.
+	MaxTimeoutSeconds    = 24 * 60 * 60
+	MaxDelayMilliseconds = 24 * 60 * 60 * 1000
+)
+
+// RequireTimeout validates --timeout for a command that waits on the network: 1 to
+// MaxTimeoutSeconds.
+func RequireTimeout(value int) error {
+	if value < 1 || value > MaxTimeoutSeconds {
+		return fmt.Errorf("--timeout must be between 1 and %d seconds (a day), got %d", MaxTimeoutSeconds, value)
+	}
+	return nil
+}
+
+// RequireIdleTimeout validates --timeout for a listener, where it is an idle
+// timeout and 0 means none: 0 to MaxTimeoutSeconds.
+func RequireIdleTimeout(value int) error {
+	if value < 0 || value > MaxTimeoutSeconds {
+		return fmt.Errorf("--timeout must be between 0 (no timeout) and %d seconds (a day), got %d", MaxTimeoutSeconds, value)
+	}
+	return nil
+}
+
+// RequireDelay validates --delay: 0 to MaxDelayMilliseconds.
+func RequireDelay(value int) error {
+	if value < 0 || value > MaxDelayMilliseconds {
+		return fmt.Errorf("--delay must be between 0 and %d milliseconds (a day), got %d", MaxDelayMilliseconds, value)
+	}
+	return nil
+}
+
+// RequireNonNegative validates a flag whose 0 is meaningful ("no limit"), so only
+// a negative value is a mistake.
+func RequireNonNegative(name string, value int) error {
+	if value < 0 {
+		return fmt.Errorf("--%s must be 0 or a positive integer, got %d", name, value)
+	}
+	return nil
+}
+
 // ConvertIPToStringSlice returns the text form of each address; nil for an
 // empty input.
 func ConvertIPToStringSlice(ips []net.IP) []string {
