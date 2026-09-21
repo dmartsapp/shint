@@ -55,7 +55,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `ip` | `interface`, `address`, `failed`, `done` |
 | `listen-tcp` | `listening`, `connection accepted`, `data received`, `connection closed`, `done` |
 | `listen-udp` | `listening`, `packet received`, `done` |
-| `listen-http` | `listening`, `request`, `done` |
+| `listen-http` | `listening`, `request`, `request rejected`, `request incomplete`, `done` |
 
 ## JSON output
 
@@ -276,11 +276,12 @@ The listen commands print one JSON object per line as events happen (JSON Lines)
 
 | Field | Meaning |
 |---|---|
-| `method`, `path`, `status_code` | The request line's method and path, and the status answered. |
+| `method`, `path`, `status_code` | The request line's method and path, and the status answered. A request that was not answered has `status_code` 0 (`method` and `path` only if the request line arrived); one answered `400` before it could be read has that status and no method or path. |
 | `remote_address` | The client. |
 | `bytes_received`, `bytes_sent` | Raw bytes on the connection in each direction, headers and body included. |
 | `processing_time_µs` | Time the handler took. |
 | `unixtime_µs` | When the connection finished. |
+| `error` | Present only for a request that was not served: what went wrong (see [A request that was not served](listen.md#a-request-that-was-not-served)). |
 
 ## Units at a glance
 

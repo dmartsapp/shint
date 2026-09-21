@@ -189,6 +189,10 @@ type HTTPListenEvent struct {
 	BytesSent        int64  `json:"bytes_sent"`
 	ProcessingTimeUs int64  `json:"processing_time_µs"`
 	UnixTimeUs       int64  `json:"unixtime_µs"`
+	// Error is set for a request that was not served: one the client never
+	// finished sending ("incomplete", StatusCode 0: nothing was answered) or one
+	// that was answered 400 because it could not be read ("rejected").
+	Error string `json:"error,omitempty"`
 }
 
 // JSONOutput is the document every command prints with --json: a shared

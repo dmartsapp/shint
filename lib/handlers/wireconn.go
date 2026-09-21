@@ -32,7 +32,16 @@ type countingConn struct {
 	onClose   func(*countingConn)
 	closeOnce sync.Once
 	closeErr  error
+
+	// head is the first few bytes written to the connection: enough to read the
+	// status line off a response net/http wrote by itself for a request it could
+	// not parse, which never passes through a handler.
+	headMu sync.Mutex
+	head   []byte
 }
+
+// headBytes is how much of the start of a response countingConn remembers.
+const headBytes = 16
 
 func (c *countingConn) Read(p []byte) (int, error) {
 	n, err := c.Conn.Read(p)
@@ -43,7 +52,22 @@ func (c *countingConn) Read(p []byte) (int, error) {
 func (c *countingConn) Write(p []byte) (int, error) {
 	n, err := c.Conn.Write(p)
 	c.written.Add(int64(n))
+	if n > 0 {
+		c.headMu.Lock()
+		if room := headBytes - len(c.head); room > 0 {
+			c.head = append(c.head, p[:min(n, room)]...)
+		}
+		c.headMu.Unlock()
+	}
 	return n, err
+}
+
+// firstWritten is the start of what was written to the connection (at most
+// headBytes bytes).
+func (c *countingConn) firstWritten() []byte {
+	c.headMu.Lock()
+	defer c.headMu.Unlock()
+	return append([]byte(nil), c.head...)
 }
 
 func (c *countingConn) Close() error {

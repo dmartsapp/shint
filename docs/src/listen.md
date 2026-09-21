@@ -112,6 +112,23 @@ With `--json`, one line per request:
 ```json
 {"method":"GET","path":"/","status_code":200,"remote_address":"127.0.0.1:59321","bytes_received":97,"bytes_sent":160,"processing_time_µs":189,"unixtime_µs":1789890626321434}
 ```
+### A request that was not served
+
+A connection that sends bytes but does not become a request the listener answers is still a request somebody sent - a broken client, a proxy, a probe - so it is an `ERROR` line and it counts towards `--count`:
+
+```text
+[listen-http] ERROR request rejected status=400 remote=127.0.0.1:59420 bytes_received=11 bytes_sent=103 error="the request could not be read: answered 400 Bad Request"
+[listen-http] ERROR request rejected method=POST path=/c status=400 remote=127.0.0.1:59421 bytes_received=93 bytes_sent=103 error="the request body could not be read: invalid byte in chunk length"
+[listen-http] ERROR request incomplete method=POST path=/up remote=127.0.0.1:59422 bytes_received=57 bytes_sent=0 error="the client did not finish sending the request: i/o timeout"
+```
+
+| Line | It means |
+|---|---|
+| `request rejected` | What arrived could not be read as HTTP - a request line that is not one, a header that is too large, framing that cannot be parsed - and the client was answered `400` (or the `431` and the like Go's HTTP server picks). `method` and `path` are there when the request line was read. |
+| `request incomplete` | The client stopped before it finished: the header or the body was cut off (the connection closed, was reset, or went quiet for `--timeout`). Nothing was answered, so `bytes_sent` is 0 - it is never logged as an answered request. |
+
+A connection that sends nothing at all - `telnet`, `nmap`, a load balancer's TCP check - is not a request: it is not logged and does not count. With `--json` each of these is an event with `error` set (see [Output formats](output.md#listener-events)), so `--count 1` ends after the first request of any kind.
+
 ### What the HTTP listener does not do
 
 It is deliberately dumb, so it behaves the same every time:

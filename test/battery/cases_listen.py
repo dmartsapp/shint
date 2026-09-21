@@ -177,12 +177,22 @@ listen_case("J.http-unusual-method", "http", raw_http(b"FROB /x HTTP/1.1\r\nHost
 listen_case("J.http-head", "http", raw_http(b"HEAD /h HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), ["method=HEAD", "status=404"])
 listen_case("J.http-expect-100-continue", "http", raw_http(b"POST /e HTTP/1.1\r\nHost: x\r\nExpect: 100-continue\r\nContent-Length: 4\r\nConnection: close\r\n\r\nabcd"), ["method=POST"])
 listen_case("J.http-json-output", "http", raw_http(b"GET /j HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), ['"path":"/j"', '"status_code":404'], extra=["--json"])
-# a request that is not HTTP at all: answered 400 by net/http and, today, neither logged nor counted
-listen_case("J.http-malformed-request-is-logged-and-counted", "http", raw_http(b"GARBAGE\r\n\r\n"), ["done requests=1"], note="a malformed request never reaches the handler")
+# a request that is not HTTP at all: net/http answers 400 itself, and it is logged and counted
+listen_case("J.http-malformed-request-is-logged-and-counted", "http", raw_http(b"GARBAGE\r\n\r\n"),
+            ["ERROR request rejected status=400", "bytes_received=11 ", "done requests=1"],
+            expect_absent=["OK request"], note="a malformed request never reaches the handler; it is still a request somebody sent")
 listen_case("J.http-client-stalls-mid-body-is-not-logged-as-ok", "http",
-            raw_http(b"POST /up HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\nshort", wait_reply=True), [],
-            expect_absent=["bytes_sent=0 time_taken"], extra=["--timeout", "2"],
-            note="the client never got a response, yet the log says the request was answered")
+            raw_http(b"POST /up HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\nshort", wait_reply=True),
+            ["ERROR request incomplete method=POST path=/up", "bytes_sent=0 ", "did not finish sending the request", "done requests=1"],
+            expect_absent=["OK request", "status=404"], extra=["--timeout", "2"],
+            note="the client never got a response, so the log must not say the request was answered")
+listen_case("J.http-header-cut-off-is-logged-as-incomplete", "http",
+            raw_http(b"GET /partial HTTP/1.1\r\nHost: x\r\nX-Half: ab", wait_reply=True),
+            ["ERROR request incomplete", "bytes_sent=0 ", "done requests=1"], expect_absent=["OK request"], extra=["--timeout", "2"])
+listen_case("J.http-chunked-body-that-cannot-be-parsed-is-rejected", "http",
+            raw_http(b"POST /c HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\nhello\r\n0\r\n\r\n"),
+            ["ERROR request rejected method=POST path=/c status=400", "done requests=1"], expect_absent=["OK request"])
+listen_case("J.http-malformed-request-json", "http", raw_http(b"GARBAGE\r\n\r\n"), ['"status_code":400', '"error":"the request could not be read'], extra=["--json"])
 
 
 # ---------------- K: signals and closed pipes (Unix only)

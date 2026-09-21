@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -48,10 +50,15 @@ type httpExchange struct {
 
 type httpExchangeInfo struct {
 	served bool
-	method string
-	path   string
-	status int
-	remote string
+	// outcome is set for a request that was seen but not served: "incomplete"
+	// (the client never finished it and nothing was answered) or "rejected" (it
+	// was answered 400 because it could not be read). err says why.
+	outcome string
+	err     string
+	method  string
+	path    string
+	status  int
+	remote  string
 	// processing is how long the handler took, from entering it to the
 	// response being flushed.
 	processing time.Duration
@@ -61,6 +68,14 @@ func (e *httpExchange) record(method, path string, status int, remote string, pr
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.info = httpExchangeInfo{served: true, method: method, path: path, status: status, remote: remote, processing: processing}
+}
+
+// fail records that the request this connection carried was not served. The peer
+// is kept from the moment the connection was accepted.
+func (e *httpExchange) fail(outcome, method, path string, status int, err string, processing time.Duration) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.info.outcome, e.info.method, e.info.path, e.info.status, e.info.err, e.info.processing = outcome, method, path, status, err, processing
 }
 
 func (e *httpExchange) snapshot() httpExchangeInfo {
@@ -96,14 +111,47 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 	var requestCount, totalReceived, totalSent int64
 	budgetReached := make(chan struct{})
 
+	// countRequest counts one request toward --count. atomic.AddInt64 hands each
+	// concurrent caller a distinct, monotonically increasing value, so exactly one
+	// goroutine ever observes n == maxRequests - safe to close(budgetReached)
+	// unconditionally there without a sync.Once or a double-close.
+	countRequest := func() {
+		n := atomic.AddInt64(&requestCount, 1)
+		if maxRequests > 0 && n == int64(maxRequests) {
+			close(budgetReached)
+		}
+	}
+
 	// reportExchange runs when a connection closes, i.e. once net/http has
 	// finished with it and the byte counts are final: reading any request
 	// body it discards after the handler returns, writing the response's
 	// last bytes. Reporting from the handler instead would undercount both.
-	reportExchange := func(ex *httpExchange, received, sent int64) {
+	//
+	// Three things can have happened on the connection. A request was served: it
+	// is reported (the handler has already counted it). Nothing at all arrived - a
+	// bare TCP probe from telnet or nmap - and it is not a request, so nothing is
+	// said. Or bytes arrived and no request was served: the client never finished
+	// it (incomplete: nothing was answered), or net/http could not read it and
+	// answered 400 itself, or the handler could not read its body (rejected). Those
+	// were requests somebody sent, and they used to vanish: not logged, not counted,
+	// so a --count 1 listener waited forever for a "real" request. They are logged
+	// as ERROR lines, with what is known, and counted.
+	reportExchange := func(ex *httpExchange, received, sent int64, head []byte) {
 		e := ex.snapshot()
 		if !e.served {
-			return // e.g. a bare TCP probe (telnet/nmap) that never sent a request
+			if received == 0 && e.outcome == "" {
+				return // e.g. a bare TCP probe (telnet/nmap) that never sent a request
+			}
+			if e.outcome == "" { // it never reached the handler
+				if status := statusFromHead(head); status > 0 {
+					e.outcome, e.status = "rejected", status
+					e.err = "the request could not be read: answered " + strconv.Itoa(status) + " " + http.StatusText(status)
+				} else {
+					e.outcome = "incomplete"
+					e.err = "the connection ended before a complete request arrived, and nothing was answered"
+				}
+			}
+			countRequest()
 		}
 		atomic.AddInt64(&totalReceived, received)
 		atomic.AddInt64(&totalSent, sent)
@@ -118,12 +166,25 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 				BytesSent:        sent,
 				ProcessingTimeUs: e.processing.Microseconds(),
 				UnixTimeUs:       time.Now().UnixMicro(),
+				Error:            e.err,
 			}
 			eventJS, _ := json.Marshal(event)
 			fmt.Println(string(eventJS))
-		} else {
-			fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "request "+lib.Fields("method", e.method, "path", e.path, "status", e.status, "remote", e.remote, "bytes_received", received, "bytes_sent", sent, "time_taken", e.processing), false))
+			return
 		}
+		if e.served {
+			fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "request "+lib.Fields("method", e.method, "path", e.path, "status", e.status, "remote", e.remote, "bytes_received", received, "bytes_sent", sent, "time_taken", e.processing), false))
+			return
+		}
+		fields := []any{}
+		if e.method != "" {
+			fields = append(fields, "method", e.method, "path", e.path)
+		}
+		if e.status > 0 {
+			fields = append(fields, "status", e.status)
+		}
+		fields = append(fields, "remote", e.remote, "bytes_received", received, "bytes_sent", sent, "error", e.err)
+		fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "request "+e.outcome+" "+lib.Fields(fields...), true))
 	}
 
 	mux := http.NewServeMux()
@@ -137,7 +198,32 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 		// abandons a still-running upload the moment a complete
 		// "Connection: close" response arrives - so answering first would cut
 		// a large body short and both sides' counts with it.
-		_, _ = io.Copy(io.Discard, r.Body)
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			// The body could not be read to its end, so the request was not served: it
+			// was logged as "OK request ... status=404" although the client got nothing
+			// (issue #34). A client that stalled or went away is owed no answer;
+			// framing that cannot be parsed is answered 400. Either way it is reported
+			// (see reportExchange) and counted.
+			ex, _ := r.Context().Value(exchangeKey{}).(*httpExchange)
+			since := time.Since(reqStart)
+			if isClientGone(err) {
+				if ex != nil {
+					ex.fail("incomplete", r.Method, r.URL.Path, 0, "the client did not finish sending the request: "+shortErr(err), since)
+				}
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Connection", "close")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"status":"bad request"}`))
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+			if ex != nil {
+				ex.fail("rejected", r.Method, r.URL.Path, http.StatusBadRequest, "the request body could not be read: "+err.Error(), since)
+			}
+			return
+		}
 
 		status := http.StatusOK
 		body := map[string]string{"status": "ok"}
@@ -177,14 +263,7 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 			ex.record(r.Method, r.URL.Path, status, r.RemoteAddr, processingTime)
 		}
 
-		// atomic.AddInt64 hands each concurrent caller a distinct,
-		// monotonically increasing value, so exactly one goroutine ever
-		// observes n == maxRequests - safe to close(budgetReached)
-		// unconditionally there without a sync.Once or a double-close.
-		n := atomic.AddInt64(&requestCount, 1)
-		if maxRequests > 0 && n == int64(maxRequests) {
-			close(budgetReached)
-		}
+		countRequest()
 	})
 
 	server := &http.Server{
@@ -194,8 +273,9 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 		// a single byte from the connection.
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			ex := &httpExchange{}
+			ex.info.remote = c.RemoteAddr().String()
 			if cc, ok := c.(*countingConn); ok {
-				cc.onClose = func(cc *countingConn) { reportExchange(ex, cc.read.Load(), cc.written.Load()) }
+				cc.onClose = func(cc *countingConn) { reportExchange(ex, cc.read.Load(), cc.written.Load(), cc.firstWritten()) }
 			}
 			return context.WithValue(ctx, exchangeKey{}, ex)
 		},
@@ -252,4 +332,32 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 	if !*jsonoutput {
 		fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "done "+lib.Fields("requests", atomic.LoadInt64(&requestCount), "bytes_received", atomic.LoadInt64(&totalReceived), "bytes_sent", atomic.LoadInt64(&totalSent), "total_time", time.Since(istart)), false))
 	}
+}
+
+// statusFromHead reads the status code off the start of an HTTP response
+// ("HTTP/1.1 400 Bad Request"), or 0 if it does not begin like one.
+func statusFromHead(head []byte) int {
+	s := string(head)
+	if len(s) < 12 || !strings.HasPrefix(s, "HTTP/") || s[8] != ' ' {
+		return 0
+	}
+	n, err := strconv.Atoi(s[9:12])
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// isClientGone reports whether reading a request body failed because the client
+// stalled past the timeout or went away - as opposed to sending something that
+// cannot be parsed - so that no answer is owed.
+func isClientGone(err error) bool {
+	var netErr net.Error
+	switch {
+	case errors.Is(err, io.ErrUnexpectedEOF), errors.Is(err, io.EOF), errors.Is(err, net.ErrClosed), errors.Is(err, syscall.ECONNRESET), errors.Is(err, syscall.EPIPE):
+		return true
+	case errors.As(err, &netErr) && netErr.Timeout():
+		return true
+	}
+	return false
 }
