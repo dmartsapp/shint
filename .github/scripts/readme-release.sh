@@ -31,6 +31,9 @@ trap 'rm -rf "$tmp"' EXIT
 die() { echo "readme-release: $1" >&2; exit 1; }
 
 [ -z "$(git status --porcelain)" ] || die "the working tree has uncommitted changes; commit or stash them first"
+# The script is used from a copy: the branch below is main's tree, which may not have this
+# version of it (or, on a first run, any).
+cp "$here/readme-reconcile.py" "$tmp/readme-reconcile.py"
 if [ "${NO_FETCH:-0}" != 1 ] && git remote get-url origin >/dev/null 2>&1; then
   git fetch -q origin --tags || die "could not fetch origin"
 fi
@@ -77,7 +80,7 @@ elif command -v gh >/dev/null 2>&1; then
 fi
 
 # ${arr[@]+"${arr[@]}"}: an empty array is not an unbound variable, even in bash 3.2 (macOS)
-python3 "$here/readme-reconcile.py" ${help_args[@]+"${help_args[@]}"} ${ms_args[@]+"${ms_args[@]}"} --report "$tmp/report.md" > /dev/null
+python3 "$tmp/readme-reconcile.py" ${help_args[@]+"${help_args[@]}"} ${ms_args[@]+"${ms_args[@]}"} --report "$tmp/report.md" > /dev/null
 rc=$?
 if [ "$rc" != 0 ]; then
   restore; git branch -q -D "$branch"

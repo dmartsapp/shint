@@ -128,6 +128,14 @@ out="$(run)"; rc=$?
 check "from a detached HEAD, with nothing to do, HEAD is left where it was" '[ $rc = 0 ] && grep -q "already matches" <<<"$out" && [ "$(git rev-parse HEAD)" = "$before" ] && [ -z "$(git branch --show-current)" ]'
 git switch -q main
 
+# The scripts live on a branch that main does not have (as they did the first time this ran for real):
+# switching to main's tree must not take the script away from under itself.
+new_repo; git switch -q -c tooling; mkdir -p .github/scripts
+cp "$here/readme-release.sh" "$here/readme-reconcile.py" .github/scripts/; git add -A; git commit -q -m "tooling"
+out="$(TAG=v1.1.0 BASE_REF=origin/main bash .github/scripts/readme-release.sh 2>&1)"; rc=$?
+check "the script needs nothing from the branch it switches away from" '[ $rc = 0 ] && [ ! -e .github/scripts/readme-reconcile.py ] && grep -q "Released Feb 3" readme.md'
+git switch -q main
+
 new_repo; echo x > untracked-change.txt; git add untracked-change.txt; out="$(TAG=v1.1.0 run)"; rc=$?
 check "a dirty working tree is refused" '[ $rc = 1 ] && grep -q "uncommitted changes" <<<"$out"'
 new_repo; out="$(TAG=1.1.0 run)"; rc=$?
