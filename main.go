@@ -74,7 +74,8 @@ var (
 //	0  every check passed
 //	1  at least one check failed: connection refused or timed out, DNS
 //	   failure, no HTTP response, a UDP port reported closed, lost pings,
-//	   or a scan cut short
+//	   or a run cut short by Ctrl+C (a scan, or telnet, web or udp stopped
+//	   before their --count was done)
 //	2  the command was used wrongly (bad argument, flag or value); nothing ran
 //
 // Results - including "ERROR" lines about failed checks - go to stdout; usage
@@ -131,7 +132,10 @@ var telnetCmd = &cobra.Command{
 			return
 		}
 
-		finish(handlers.TelnetHandler(&jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, host))
+		ctx, stop := interruptContext()
+		defer stop()
+
+		finish(handlers.TelnetHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, host))
 	},
 }
 
@@ -192,7 +196,10 @@ var webCmd = &cobra.Command{
 			return
 		}
 
-		finish(handlers.WebHandler(&jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig))
+		ctx, stop := interruptContext()
+		defer stop()
+
+		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig))
 	},
 }
 
@@ -219,21 +226,30 @@ var nmapCmd = &cobra.Command{
 			return
 		}
 
-		ctx, stop := scanContext()
+		ctx, stop := interruptContext()
 		defer stop()
 
 		finish(handlers.NmapHandler(ctx, args[0], fromport, endport, iterations, timeout, throttle, &jsonoutput))
 	},
 }
 
-// scanContext is the context a port scan runs under: cancelled by Ctrl+C or
-// SIGTERM, and deliberately nothing else. It must not carry a deadline
-// derived from --timeout - that flag is the per-port connect timeout, and
-// bounding the whole scan by it silently cut every scan that outlasted it
-// (a wide range against a host that drops packets, say) short after
-// --timeout seconds, leaving the rest of --from..--to never attempted.
-func scanContext() (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+// interruptContext is the context a run happens under: cancelled by Ctrl+C or
+// SIGTERM, and deliberately nothing else. It must not carry a deadline derived
+// from --timeout - that flag bounds one operation (a port, a connection, a
+// request), and bounding the whole run by it silently cut every run that
+// outlasted it short after --timeout seconds: nmap stopped partway through its
+// range, telnet reported false failures.
+//
+// On the first Ctrl+C the run winds down and reports how far it got (see
+// lib/handlers/interrupt.go). The handler is then removed, so a second Ctrl+C
+// ends the process at once if something is stuck.
+func interruptContext() (context.Context, context.CancelFunc) {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-ctx.Done()
+		stop()
+	}()
+	return ctx, stop
 }
 
 var udpCmd = &cobra.Command{
@@ -261,7 +277,10 @@ The payload is text, sent exactly as typed: --data sends a message, --payload se
 			return
 		}
 
-		finish(handlers.UDPHandler(&jsonoutput, iterations, delay, &throttle, timeout, payload_size, udpData, port, host))
+		ctx, stop := interruptContext()
+		defer stop()
+
+		finish(handlers.UDPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, udpData, port, host))
 	},
 }
 

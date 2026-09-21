@@ -227,6 +227,7 @@ Sun Sep 20 01:54:18 MDT 2026: [web] OK response url=https://localhost:9444/ stat
 ```
 ## Good to know
 
+- **`Ctrl+C` shows the summary.** A run with a large `--count` stops, prints how far it got, the statistics and the `done` line, and exits `1` (cut short) - see [Stopping early](usage.md#stopping-early).
 - **Redirects** are followed (up to 10); the final response is what is reported, and the bytes of every hop are counted.
 - **Timeouts.** `--timeout` limits each request from connecting to the last byte of the response.
 - **`--payload`** means the *size* of filler data for `ping` and `udp`, but on `web` the `-P` form means the request *body*.

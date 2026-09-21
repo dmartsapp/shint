@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"io"
@@ -103,7 +104,7 @@ func TestWebHandlerBytesIncludeHeaders(t *testing.T) {
 	check := func(t *testing.T, rs *rawServer, tlsConfig *tls.Config) {
 		jsonOutput, throttle := true, false
 		out := captureStdout(t, func() {
-			WebHandler(&jsonOutput, 1, 0, &throttle, 5, rs.url, "POST", body, headers, false, tlsConfig)
+			WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, rs.url, "POST", body, headers, false, tlsConfig)
 		})
 		stats := webStatsFromJSON(t, out)
 		if len(stats) != 1 {
@@ -161,7 +162,7 @@ func TestWebHandlerLogLine(t *testing.T) {
 
 	jsonOutput, throttle := false, false
 	out := captureStdout(t, func() {
-		WebHandler(&jsonOutput, 1, 0, &throttle, 5, rs.url, "GET", "", nil, false, nil)
+		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, rs.url, "GET", "", nil, false, nil)
 	})
 
 	var line string
@@ -210,7 +211,7 @@ func TestWebHandlerReusedConnectionCountsPerRequest(t *testing.T) {
 
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		WebHandler(&jsonOutput, 2, 150, &throttle, 5, serverURL, "GET", "", nil, false, nil)
+		WebHandler(context.Background(), &jsonOutput, 2, 150, &throttle, 5, serverURL, "GET", "", nil, false, nil)
 	})
 	stats := webStatsFromJSON(t, out)
 	if len(stats) != 2 {
@@ -281,7 +282,7 @@ func TestWebAndHTTPListenAgreeOnBytes(t *testing.T) {
 					close(done)
 				}()
 				waitForListenerReady(t, port)
-				WebHandler(&webJSON, 1, 0, &throttle, 10, serverURL, tc.method, body, []string{"X-Test: 1"}, false, nil)
+				WebHandler(context.Background(), &webJSON, 1, 0, &throttle, 10, serverURL, tc.method, body, []string{"X-Test: 1"}, false, nil)
 				<-done
 			})
 
@@ -514,7 +515,7 @@ func TestWebHandlerBytesCoverEveryRedirectHop(t *testing.T) {
 
 			jsonOutput, throttle := true, false
 			out := captureStdout(t, func() {
-				WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, nil)
+				WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, nil)
 			})
 			stats := webStatsFromJSON(t, out)
 			if len(stats) != 1 || stats[0].StatusCode != http.StatusOK {

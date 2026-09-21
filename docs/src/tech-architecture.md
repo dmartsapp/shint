@@ -111,7 +111,7 @@ Everything else - DNS, TCP, UDP, HTTP, TLS, JSON, signal handling - is the stand
 | `listen udp` | A single read loop. |
 | `listen http` | Go's `net/http` server; each connection is wrapped so its bytes can be counted and reported when it closes. |
 
-Cancellation is by `context`. `nmap` and the listeners cancel on `Ctrl+C` (`SIGINT`/`SIGTERM`); no command imposes a run-wide deadline, because `--timeout` bounds single operations only.
+Cancellation is by `context`. `nmap`, `telnet`, `web`, `udp` and the listeners cancel on `Ctrl+C` (`SIGINT`/`SIGTERM`); no command imposes a run-wide deadline, because `--timeout` bounds single operations only. A cancelled repeating check stops launching attempts, interrupts its `--delay` pause and any attempt in flight (which is dropped, not counted as a failure), then ends as usual - statistics, `done` line, complete JSON - with an `interrupted` line and exit status `1` (`lib/handlers/interrupt.go`). A second `Ctrl+C` is not caught: `interruptContext` removes the handler after the first.
 
 ## Cross-cutting concerns
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"io"
@@ -56,7 +57,7 @@ func TestWebHandler(t *testing.T) {
 
 	// Run the handler, capturing its stdout output
 	outputStr := captureStdout(t, func() {
-		WebHandler(&jsonOutput, iterations, delay, &throttle, timeout, serverURL, method, data, headers, includeBody, nil)
+		WebHandler(context.Background(), &jsonOutput, iterations, delay, &throttle, timeout, serverURL, method, data, headers, includeBody, nil)
 	})
 
 	// --- Validate the output ---
@@ -150,7 +151,7 @@ func TestWebHandlerMutualTLS(t *testing.T) {
 		}
 		jsonOutput, throttle := true, false
 		out := captureStdout(t, func() {
-			WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
+			WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
 		})
 		if !strings.Contains(out, `"status_code": 200`) {
 			t.Errorf("expected a successful 200 response, got:\n%s", out)
@@ -164,7 +165,7 @@ func TestWebHandlerMutualTLS(t *testing.T) {
 		}
 		jsonOutput, throttle := false, false
 		out := captureStdout(t, func() {
-			WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
+			WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
 		})
 		if !strings.Contains(out, "ERROR") {
 			t.Errorf("expected a TLS handshake error without a client cert, got:\n%s", out)
@@ -178,7 +179,7 @@ func TestWebHandlerMutualTLS(t *testing.T) {
 		}
 		jsonOutput, throttle := false, false
 		out := captureStdout(t, func() {
-			WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
+			WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
 		})
 		if !strings.Contains(out, "ERROR") {
 			t.Errorf("expected a certificate trust error without --cacert, got:\n%s", out)
@@ -192,7 +193,7 @@ func TestWebHandlerMutualTLS(t *testing.T) {
 		}
 		jsonOutput, throttle := true, false
 		out := captureStdout(t, func() {
-			WebHandler(&jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
+			WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, serverURL, "GET", "", nil, false, tlsConfig)
 		})
 		if !strings.Contains(out, `"status_code": 200`) {
 			t.Errorf("expected a successful 200 response with --insecure, got:\n%s", out)

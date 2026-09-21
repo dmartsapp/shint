@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"strings"
@@ -74,7 +75,7 @@ func TestProbeUDPOpen(t *testing.T) {
 	port, closeFn := startEchoUDPServer(t)
 	defer closeFn()
 
-	state, received, err := probeUDP("127.0.0.1", port, 2, []byte("ping"))
+	state, received, err := probeUDP(context.Background(), "127.0.0.1", port, 2, []byte("ping"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -90,7 +91,7 @@ func TestProbeUDPOpenIPv6(t *testing.T) {
 	port, closeFn := startEchoUDPServerIPv6(t)
 	defer closeFn()
 
-	state, received, err := probeUDP("::1", port, 2, []byte("ping6"))
+	state, received, err := probeUDP(context.Background(), "::1", port, 2, []byte("ping6"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -106,7 +107,7 @@ func TestProbeUDPOpenFiltered(t *testing.T) {
 	port, closeFn := startSilentUDPServer(t)
 	defer closeFn()
 
-	state, received, err := probeUDP("127.0.0.1", port, 1, []byte("ping"))
+	state, received, err := probeUDP(context.Background(), "127.0.0.1", port, 1, []byte("ping"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -129,7 +130,7 @@ func TestProbeUDPClosed(t *testing.T) {
 	port := conn.LocalAddr().(*net.UDPAddr).Port
 	_ = conn.Close()
 
-	state, _, err := probeUDP("127.0.0.1", port, 2, []byte("ping"))
+	state, _, err := probeUDP(context.Background(), "127.0.0.1", port, 2, []byte("ping"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -144,7 +145,7 @@ func TestUDPHandlerJSONOpen(t *testing.T) {
 
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		UDPHandler(&jsonOutput, 1, 0, &throttle, 2, 4, "hello", port, "127.0.0.1")
+		UDPHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 2, 4, "hello", port, "127.0.0.1")
 	})
 
 	var result lib.JSONOutput
@@ -170,7 +171,7 @@ func TestUDPHandlerJSONOpen(t *testing.T) {
 func TestUDPHandlerDNSFailure(t *testing.T) {
 	jsonOutput, throttle := false, false
 	out := captureStdout(t, func() {
-		UDPHandler(&jsonOutput, 1, 0, &throttle, 1, 4, "", 53, "this-host-should-not-exist.invalid")
+		UDPHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 1, 4, "", 53, "this-host-should-not-exist.invalid")
 	})
 	if !strings.Contains(out, "[udp] ERROR dns resolution failed") {
 		t.Errorf("expected a dns-resolution-failed error line, got:\n%s", out)
@@ -183,7 +184,7 @@ func TestUDPHandlerUsesGeneratedPayloadWhenDataEmpty(t *testing.T) {
 
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		UDPHandler(&jsonOutput, 1, 0, &throttle, 2, 6, "", port, "127.0.0.1")
+		UDPHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 2, 6, "", port, "127.0.0.1")
 	})
 
 	var result lib.JSONOutput
@@ -206,7 +207,7 @@ func TestUDPHandlerTextModeMultipleAttempts(t *testing.T) {
 
 	jsonOutput, throttle := false, false
 	out := captureStdout(t, func() {
-		UDPHandler(&jsonOutput, 3, 0, &throttle, 2, 4, "x", port, "127.0.0.1")
+		UDPHandler(context.Background(), &jsonOutput, 3, 0, &throttle, 2, 4, "x", port, "127.0.0.1")
 	})
 
 	count := strings.Count(out, "[udp] OK probe open")

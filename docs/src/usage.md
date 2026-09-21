@@ -116,7 +116,7 @@ shint checks several things per run - every address a name resolves to, every `-
 | Status | Meaning |
 |---|---|
 | `0` | Every check passed. |
-| `1` | At least one check failed: connection refused or timed out, DNS failure, no HTTP response, a UDP port reported closed, a lost ping, or a scan cut short. |
+| `1` | At least one check failed: connection refused or timed out, DNS failure, no HTTP response, a UDP port reported closed, a lost ping, a scan cut short, or a `telnet`, `web` or `udp` run stopped by `Ctrl+C` before its `--count` was done. |
 | `2` | The command was used wrongly - a bad argument, flag or value. Nothing ran. |
 
 That makes shint usable in shell conditions and CI:
@@ -144,7 +144,36 @@ Results, including `ERROR` lines about failed checks, go to **stdout**; usage er
 
 ## Stopping early
 
-Press `Ctrl+C`. The listen commands stop and print their summary; `nmap` stops and reports how far it got. Other commands end right away.
+Press `Ctrl+C`. A run that repeats a check - `telnet`, `web`, `udp` with `--count`, and `nmap` over its port range - stops and **tells you how far it got**, instead of leaving you with a bare `^C`:
+
+```bash
+shint web http://127.0.0.1:18091/ --count 100
+```
+
+```text
+Sun Sep 20 23:14:31 MDT 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=48.791µs
+Sun Sep 20 23:14:32 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=58.33KB/s attempt=1/100 time=2.678917ms
+Sun Sep 20 23:14:33 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=83.95KB/s attempt=2/100 time=1.861292ms
+Sun Sep 20 23:14:34 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=91.62KB/s attempt=3/100 time=1.705375ms
+Sun Sep 20 23:14:35 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=92.28KB/s attempt=4/100 time=1.69325ms
+Sun Sep 20 23:14:36 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=138.13KB/s attempt=5/100 time=1.131208ms
+Sun Sep 20 23:14:36 MDT 2026: [web] ERROR interrupted attempts_completed=5 attempts_planned=100 time=5.4974175s
+
+========================================== web STATISTICS ==========================================
+Requests sent: 5, Response received: 5, Success: 100%
+Latency: minimum: 1.131208ms, average: 1.814008ms, maximum: 2.678917ms
+Sun Sep 20 23:14:36 MDT 2026: [web] OK done total_time=5.497643708s
+```
+
+The run ended after five of the hundred requests. What you get on `Ctrl+C`:
+
+- An `ERROR interrupted` line with `attempts_completed` and `attempts_planned`.
+- The usual **statistics** for the attempts that did complete, and the `done` line. With `--json` you get the one complete document, whose run-level `error` reads `interrupted: 5 of 100 attempts completed`.
+- **An attempt that was still in flight is dropped, not counted as a failure**: it never finished, so it neither passed nor failed. The `--delay` pause you may have been in is cut short too.
+- **Exit status `1`**: the run was cut short, exactly as for an interrupted `nmap` scan. (`0` means every requested check passed.)
+- **A second `Ctrl+C` ends the process at once**, for the case where something is stuck.
+
+The listen commands stop and print their summary, as before. `ping` still ends right away (the ping library it uses cannot be cancelled part-way; this is tracked and planned with its other upgrades).
 
 ## Next
 

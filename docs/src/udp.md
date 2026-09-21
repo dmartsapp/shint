@@ -112,6 +112,7 @@ shint udp 127.0.0.1 9001 --payload 16 --json
 
 ## Good to know
 
+- **`Ctrl+C` shows the summary.** A run with a large `--count` stops, prints how far it got, the statistics and the `done` line, and exits `1` (cut short) - see [Stopping early](usage.md#stopping-early).
 - On networks that drop ICMP, a genuinely closed UDP port looks like `open|filtered`.
 - `--payload` is filler; use `--data` when the service expects something specific.
 - To scan many UDP ports, run `udp` in a shell loop - `nmap` is TCP only.

@@ -24,8 +24,10 @@ const telnetModule = "telnet"
 // already passed used to fail instantly with a bogus "i/o timeout".
 //
 // It reports true only if the DNS lookup and every attempt succeeded, which
-// the caller turns into the process exit status.
-func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, host string) (ok bool) {
+// the caller turns into the process exit status. ctx is cancelled by Ctrl+C
+// and nothing else - never a deadline; see interrupt.go for how a cancelled
+// run ends.
+func TelnetHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payload_size int, port int, host string) (ok bool) {
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
@@ -42,10 +44,11 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 	}
 	output.ModuleName = telnetModule
 	istart := time.Now() // capture initial time
-	dnsCtx, cancelDNS := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	dnsCtx, cancelDNS := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	ipaddresses, err := lib.ResolveName(dnsCtx, host)
 	cancelDNS()
 	var stats = make([]time.Duration, 0)
+	var completed int // attempts that finished, whatever the outcome; guarded by statsMutex
 	ok = err == nil
 	if err != nil {
 		if *jsonoutput {
@@ -75,9 +78,13 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 			output.Stats = make([]lib.TelnetStats, 0)
 			output.StartTime = istart.UnixMicro()
 		}
+	attempts:
 		for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 			attempt := i + 1
 			for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
+				if ctx.Err() != nil {
+					break attempts
+				}
 				// Attempts are launched one at a time, --delay apart (a random
 				// delay with --throttle), each in its own goroutine so a slow
 				// attempt does not hold up the next. The delay comes before
@@ -90,13 +97,21 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 						delay = int(in.Int64())
 					}
 				}
-				time.Sleep(time.Millisecond * time.Duration(delay))
+				if !pause(ctx, time.Millisecond*time.Duration(delay)) {
+					break attempts
+				}
 				WG.Add(1)
 				go func(ip string, attempt int) {
 					defer WG.Done()
 					start := time.Now()
-					_, err := lib.IsPortUp(context.Background(), ip, port, timeout)
+					_, err := lib.IsPortUp(ctx, ip, port, timeout)
 					timeTaken := time.Since(start)
+					if err != nil && ctx.Err() != nil {
+						return // cut off by Ctrl+C: never finished, so it neither passed nor failed
+					}
+					statsMutex.Lock()
+					completed++
+					statsMutex.Unlock()
 					if err != nil {
 						if *jsonoutput {
 							stat := lib.TelnetStats{
@@ -134,12 +149,23 @@ func TelnetHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, 
 			}
 		}
 		WG.Wait()
+		planned := iterations * len(ipaddresses)
+		interrupted := completed < planned // only Ctrl+C keeps an attempt from being made
 		// stats only ever holds successful attempts, so anything short of
-		// iterations x addresses means at least one attempt failed.
-		ok = len(stats) == iterations*len(ipaddresses)
+		// iterations x addresses means at least one attempt failed - or, when the
+		// run was interrupted, never ran.
+		ok = len(stats) == planned
+		if interrupted {
+			output.Error = interruptedNote(completed, planned)
+		}
 		if !*jsonoutput {
 			statsMutex.Lock()
-			fmt.Println(lib.LogStats(telnetModule, stats, (iterations * len(ipaddresses))))
+			if interrupted {
+				fmt.Println(interruptedLine(telnetModule, completed, planned, istart))
+				fmt.Println(lib.LogStats(telnetModule, stats, completed))
+			} else {
+				fmt.Println(lib.LogStats(telnetModule, stats, planned))
+			}
 			statsMutex.Unlock()
 		}
 	}

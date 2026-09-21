@@ -140,6 +140,7 @@ Each attempt is one entry in `stats`; failed attempts have `"success": false` an
 
 ## Good to know
 
+- **`Ctrl+C` shows the summary.** A run with a large `--count` stops, prints how far it got, the statistics and the `done` line, and exits `1` (cut short) - see [Stopping early](usage.md#stopping-early).
 - `--timeout` applies to each connection attempt (and to the DNS lookup), not to the whole run.
 - With `--count N`, N attempts are made against **every** address, one after another, each preceded by `--delay`.
 - The default `--delay 1000` means a single check takes about a second; use `--delay 0` for an immediate answer.

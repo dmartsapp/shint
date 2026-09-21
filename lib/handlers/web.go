@@ -31,7 +31,9 @@ const (
 // one of them got an HTTP response. The status code is data, not a verdict
 // (as with curl without -f): a 404 or 500 is a response, and is reported as
 // such; a refused connection, a timeout, a TLS failure or DNS failure is not.
-func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config) (ok bool) {
+// ctx is cancelled by Ctrl+C and nothing else - never a deadline; see
+// interrupt.go for how a cancelled run ends.
+func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config) (ok bool) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	var stats = make([]time.Duration, 0)
@@ -52,7 +54,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			fmt.Println(lib.LogWithTimestamp(webModule, "using custom CA bundle to verify server certificate", false))
 		}
 
-		ipaddresses, err := lib.ResolveName(context.Background(), URL.Hostname())
+		ipaddresses, err := lib.ResolveName(ctx, URL.Hostname())
 		if err != nil {
 			fmt.Println(lib.LogWithTimestamp(webModule, "dns resolution failed "+lib.Fields("host", URL.Hostname(), "error", err.Error()), true))
 		} else {
@@ -75,7 +77,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			Headers:  headers,
 		}
 		output.ModuleName = webModule
-		resolvedIPs, err := lib.ResolveNameToIPs(context.Background(), URL.Hostname())
+		resolvedIPs, err := lib.ResolveNameToIPs(ctx, URL.Hostname())
 		if err != nil {
 			output.DNSLookup = lib.DNSLookup{Hostname: URL.Hostname()}
 			output.Error = err.Error()
@@ -110,9 +112,13 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 
 	var WG sync.WaitGroup
-	var failed int32 // attempts that got no HTTP response
+	var failed int32    // attempts that got no HTTP response
+	var completed int32 // attempts that finished, whatever the outcome
 	for i := 0; i < iterations; i++ {
 		attempt := i + 1
+		if ctx.Err() != nil {
+			break
+		}
 		if *throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 1000 ms
 			randDelay, err := rand.Int(rand.Reader, big.NewInt(10000))
 			if err != nil {
@@ -121,9 +127,11 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				}
 				return false
 			}
-			time.Sleep(time.Millisecond * time.Duration(randDelay.Int64()))
-		} else if delay > 0 {
-			time.Sleep(time.Millisecond * time.Duration(delay))
+			if !pause(ctx, time.Millisecond*time.Duration(randDelay.Int64())) {
+				break
+			}
+		} else if !pause(ctx, time.Millisecond*time.Duration(delay)) {
+			break
 		}
 		WG.Add(1)
 		go func(URL *url.URL, attempt int) {
@@ -136,6 +144,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			// --json mode - never a stray text line among the JSON.
 			fail := func(stage string, request *http.Request, start time.Time, err error) {
 				atomic.AddInt32(&failed, 1)
+				atomic.AddInt32(&completed, 1)
 				elapsed := time.Since(start)
 				if !*jsonoutput {
 					fmt.Println(lib.LogWithTimestamp(webModule, stage+" "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", elapsed, "error", err.Error()), true))
@@ -163,7 +172,7 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 				statsMutex.Unlock()
 			}
 
-			request, err := http.NewRequest(method, URL.String(), strings.NewReader(data))
+			request, err := http.NewRequestWithContext(ctx, method, URL.String(), strings.NewReader(data))
 			if err != nil {
 				fail("request build failed", nil, time.Now(), err)
 				return
@@ -189,11 +198,18 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			start := time.Now()
 			response, err := client.Do(request)
 			if err != nil {
+				if ctx.Err() != nil {
+					return // cut off by Ctrl+C: never finished, so it neither passed nor failed
+				}
 				fail("request failed", request, start, err)
 				return
 			}
 			defer func() { _ = response.Body.Close() }()
-			body, _ := io.ReadAll(response.Body)
+			body, readErr := io.ReadAll(response.Body)
+			if readErr != nil && ctx.Err() != nil {
+				return // cut off by Ctrl+C while the body was arriving
+			}
+			atomic.AddInt32(&completed, 1)
 			header := response.Header
 			timeTaken := time.Since(start)
 			bytesSent, bytesReceived := meter.totals()
@@ -235,11 +251,16 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		}(URL, attempt)
 	}
 	WG.Wait()
+	done := int(atomic.LoadInt32(&completed))
+	interrupted := done < iterations // only Ctrl+C keeps an attempt from being made
 	if *jsonoutput {
 		output.InputParams.Headers = headers
 		output.EndTime = time.Now().UnixMicro()
 		output.TotalTimeTaken = output.EndTime - output.StartTime
 		output.Error = ""
+		if interrupted {
+			output.Error = interruptedNote(done, iterations)
+		}
 		JS, jsonErr := json.MarshalIndent(output, "", "  ")
 		if jsonErr != nil {
 			fmt.Println(lib.LogWithTimestamp(webModule, jsonErr.Error(), true))
@@ -248,11 +269,16 @@ func WebHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		fmt.Println(string(JS))
 	} else {
 		statsMutex.Lock()
-		fmt.Println(lib.LogStats(webModule, stats, iterations))
+		if interrupted {
+			fmt.Println(interruptedLine(webModule, done, iterations, istart))
+			fmt.Println(lib.LogStats(webModule, stats, done))
+		} else {
+			fmt.Println(lib.LogStats(webModule, stats, iterations))
+		}
 		statsMutex.Unlock()
 		fmt.Println(lib.LogWithTimestamp(webModule, "done "+lib.Fields("total_time", time.Since(istart)), false))
 	}
-	return atomic.LoadInt32(&failed) == 0
+	return atomic.LoadInt32(&failed) == 0 && !interrupted
 }
 
 func parsePort(raw string) (int, error) {

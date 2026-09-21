@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"strconv"
@@ -57,7 +58,7 @@ func TestTelnetHandlerIPv6Loopback(t *testing.T) {
 
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 1, 0, &throttle, 3, 4, port, "::1")
+		TelnetHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 3, 4, port, "::1")
 	})
 
 	var result lib.JSONOutput
@@ -80,7 +81,7 @@ func TestTelnetHandlerSuccessJSON(t *testing.T) {
 
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 1, 0, &throttle, 3, 4, port, "127.0.0.1")
+		TelnetHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 3, 4, port, "127.0.0.1")
 	})
 
 	var result lib.JSONOutput
@@ -109,7 +110,7 @@ func TestTelnetHandlerFailureText(t *testing.T) {
 
 	jsonOutput, throttle := false, false
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 1, 0, &throttle, 2, 4, port, "127.0.0.1")
+		TelnetHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 2, 4, port, "127.0.0.1")
 	})
 
 	if !strings.Contains(out, "[telnet] ERROR connect failed") {
@@ -123,7 +124,7 @@ func TestTelnetHandlerFailureText(t *testing.T) {
 func TestTelnetHandlerDNSFailure(t *testing.T) {
 	jsonOutput, throttle := false, false
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 1, 0, &throttle, 2, 4, 80, "this-host-should-not-exist.invalid")
+		TelnetHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 2, 4, 80, "this-host-should-not-exist.invalid")
 	})
 
 	if !strings.Contains(out, "[telnet] ERROR dns resolution failed") {
@@ -137,7 +138,7 @@ func TestTelnetHandlerMultipleIterationsNoRace(t *testing.T) {
 
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 10, 0, &throttle, 3, 4, port, "127.0.0.1")
+		TelnetHandler(context.Background(), &jsonOutput, 10, 0, &throttle, 3, 4, port, "127.0.0.1")
 	})
 
 	var result lib.JSONOutput
@@ -168,7 +169,7 @@ func TestTelnetHandlerRunLongerThanTimeoutStillSucceeds(t *testing.T) {
 	jsonOutput, throttle := true, false
 	start := time.Now()
 	out := captureStdout(t, func() {
-		TelnetHandler(&jsonOutput, 4, 400, &throttle, 1, 4, port, "127.0.0.1")
+		TelnetHandler(context.Background(), &jsonOutput, 4, 400, &throttle, 1, 4, port, "127.0.0.1")
 	})
 	if elapsed := time.Since(start); elapsed < 1200*time.Millisecond {
 		t.Fatalf("run took only %v; the test needs to outlast the 1s --timeout to mean anything", elapsed)

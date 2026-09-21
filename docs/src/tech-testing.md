@@ -14,7 +14,7 @@ nav: Testing
 - **The race detector is on.** Handlers are concurrent; run `go test -race`.
 - **Every bug gets a test that fails without the fix.** Each regression test below was checked against the broken behaviour before the fix was kept.
 
-There are 99 top-level Go tests: 68 in `lib/handlers`, 25 in `lib` and 6 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 27 scenarios). Outside `go test`, `make check` also runs a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), Python tests for the [workflow trigger rule](tech-ci.md#the-workflow-trigger-rule) (18) and for the documentation generator (10).
+There are 111 top-level Go tests: 79 in `lib/handlers`, 25 in `lib` and 7 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 27 scenarios). Outside `go test`, `make check` also runs a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), Python tests for the [workflow trigger rule](tech-ci.md#the-workflow-trigger-rule) (18) and for the documentation generator (10).
 
 ## Running the tests
 
@@ -68,6 +68,8 @@ Two package-level variables exist only so tests can control time and slowness de
 |---|---|
 | `TestTelnetHandlerRunLongerThanTimeoutStillSucceeds` | `--timeout` used as a run-wide deadline: later attempts failed instantly with a bogus `i/o timeout`. |
 | `TestNmapHandlerCoversWholeRangeEvenWhenItOutlastsPerPortTimeout`, `TestScanContextHasNoDeadline` | The same flaw in `nmap`: scans stopping partway through the range. |
+| `TestTelnetHandlerInterrupted...`, `TestWebHandlerInterrupted...`, `TestUDPHandlerInterrupt...`, `TestPause...`, `TestWatchCancel...` | `Ctrl+C` ending a repeating check with nothing to show for it; a request in flight counted as a failure; a long `--delay` making `Ctrl+C` wait; a probe cut off mid-wait reported as `open|filtered`. |
+| `TestCtrlCShowsTheSummary` | The same, end to end: a real `SIGINT` to the real CLI - the `interrupted` line, the statistics, the `done` line, exit status `1`. |
 | `TestNmapHandlerReportsInterruptedScan` | A cut-short scan presented as complete; aborted dials recorded as "closed". |
 | `TestNmapHandlerThrottleDelayIsInterruptible` | `Ctrl+C` having to wait out a random 10-second throttle delay. |
 | `TestNmapHandlerReportsProgress`, `...FastScanPrintsNoProgress`, `...JSONHasNoProgressLines` | Progress output: present for slow scans, absent for quick ones, never in JSON. |

@@ -4,6 +4,10 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.0.5 - unreleased
+
+- **`Ctrl+C` on a repeating check now shows the summary.** `shint web http://host/ --count 100` interrupted after five requests ended with a bare `^C`: no statistics, no `done` line, nothing to say how far it got. `telnet`, `web` and `udp` now behave as `nmap` already did: the run stops, prints an `ERROR interrupted attempts_completed=5 attempts_planned=100` line, the usual statistics for the attempts that completed and the `done` line (with `--json`, the one complete document, its run-level `error` reading `interrupted: 5 of 100 attempts completed`). An attempt still in flight is dropped rather than counted as a failure, and a long `--delay` no longer makes `Ctrl+C` wait. **The exit status is `1`** - the run was cut short, as for an interrupted `nmap` scan. A second `Ctrl+C` ends the process at once. `ping` still ends right away: the ping library cannot be cancelled part-way (tracked for its next upgrade). See [Stopping early](https://dmartsapp.github.io/shint/docs/usage.html#stopping-early). (Issue #24)
+
 ## v4.0.4 - 2026-09-20
 
 A patch release. `ping` gets a `--timeout` that works, input validation, and the payload size on every reply - three of those change what a script sees, and are in bold. `udp --help` stops suggesting escapes that do not work. The release process gets tighter: releases build only from a `vX.Y.Z` tag on `main`, and the Makefile becomes the one place to build and test from.

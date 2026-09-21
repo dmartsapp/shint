@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -285,14 +286,14 @@ func TestListenExitsZeroWhenDone(t *testing.T) {
 // the scan's context may be cancelled (Ctrl+C) but must never carry a
 // deadline, in particular not one derived from --timeout, which is only the
 // per-port connect timeout.
-func TestScanContextHasNoDeadline(t *testing.T) {
-	ctx, stop := scanContext()
+func TestInterruptContextHasNoDeadline(t *testing.T) {
+	ctx, stop := interruptContext()
 	defer stop()
 	if deadline, ok := ctx.Deadline(); ok {
-		t.Fatalf("scan context has a deadline (%v); --timeout must bound each port, not the whole scan", deadline)
+		t.Fatalf("interrupt context has a deadline (%v); --timeout must bound each operation, not the whole run", deadline)
 	}
 	if ctx.Err() != nil {
-		t.Fatalf("scan context starts out cancelled: %v", ctx.Err())
+		t.Fatalf("interrupt context starts out cancelled: %v", ctx.Err())
 	}
 }
 
@@ -314,5 +315,112 @@ func TestUDPHelpDoesNotPromiseEscapes(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `--data "hello"`) {
 		t.Errorf("udp --help should show a working --data example:\n%s", stdout)
+	}
+}
+
+// startShint starts the CLI as a subprocess whose stdout can be watched while it
+// runs, which runShint (it waits for the process to end) cannot do.
+type liveShint struct {
+	cmd *exec.Cmd
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func startShint(t *testing.T, args ...string) *liveShint {
+	t.Helper()
+	l := &liveShint{cmd: exec.Command(os.Args[0], args...)}
+	l.cmd.Env = append(os.Environ(), "SHINT_TEST_RUN_MAIN=1")
+	pipe, err := l.cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		chunk := make([]byte, 4096)
+		for {
+			n, err := pipe.Read(chunk)
+			l.mu.Lock()
+			l.buf.Write(chunk[:n])
+			l.mu.Unlock()
+			if err != nil {
+				return
+			}
+		}
+	}()
+	t.Cleanup(func() { _ = l.cmd.Process.Kill() })
+	return l
+}
+
+func (l *liveShint) output() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.buf.String()
+}
+
+// waitFor blocks until the output contains want at least n times.
+func (l *liveShint) waitFor(t *testing.T, want string, n int) {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for strings.Count(l.output(), want) < n {
+		if time.Now().After(deadline) {
+			t.Fatalf("waited for %d x %q; output so far:\n%s", n, want, l.output())
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// Ctrl+C on a repeating check ends the run the way it ends when it finishes: the
+// statistics, the done line, and a line saying how far it got - and exit status
+// 1, because the run was cut short. Not a bare "^C" and nothing else.
+func TestCtrlCShowsTheSummary(t *testing.T) {
+	web200 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) }))
+	defer web200.Close()
+	open := strconv.Itoa(tcpListener(t))
+	udpEcho := strconv.Itoa(udpSocket(t, true))
+
+	for _, tc := range []struct {
+		name, module, progress string
+		summary                []string // what ends the output besides the "interrupted" line
+		args                   []string
+	}{
+		{"web", "web", "] OK response url=", []string{"web STATISTICS", "Requests sent: "}, []string{"web", web200.URL, "--count", "500", "--delay", "40"}},
+		{"telnet", "telnet", "] OK connect ok", []string{"telnet STATISTICS", "Requests sent: "}, []string{"telnet", "127.0.0.1", open, "--count", "500", "--delay", "40"}},
+		// udp has no statistics block; its summary is the done line
+		{"udp", "udp", "] OK probe open", []string{"probes_sent="}, []string{"udp", "127.0.0.1", udpEcho, "--data", "x", "--count", "500", "--delay", "40"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			l := startShint(t, tc.args...)
+			l.waitFor(t, tc.progress, 3)
+			if err := l.cmd.Process.Signal(os.Interrupt); err != nil {
+				t.Skipf("this platform cannot deliver an interrupt to a process: %v", err)
+			}
+			done := make(chan error, 1)
+			go func() { done <- l.cmd.Wait() }()
+			var err error
+			select {
+			case err = <-done:
+			case <-time.After(15 * time.Second):
+				t.Fatalf("shint did not end after Ctrl+C; output:\n%s", l.output())
+			}
+			code := 0
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				code = exitErr.ExitCode()
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			out := l.output()
+			if code != 1 {
+				t.Errorf("exit status %d after Ctrl+C, want 1 (the run was cut short)\n%s", code, out)
+			}
+			wants := append([]string{"[" + tc.module + "] ERROR interrupted attempts_completed=", "attempts_planned=500", "[" + tc.module + "] OK done"}, tc.summary...)
+			for _, want := range wants {
+				if !strings.Contains(out, want) {
+					t.Errorf("output lacks %q:\n%s", want, out)
+				}
+			}
+		})
 	}
 }

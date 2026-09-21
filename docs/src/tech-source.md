@@ -33,7 +33,7 @@ nav: Source reference
 | `usage(msg)` | Prints a usage error to stderr and records status 2. |
 | `finish(ok)` | Records status 1 when a handler reports failure. |
 | `rootCmd`, `telnetCmd`, `pingCmd`, `webCmd`, `nmapCmd`, `udpCmd`, `listenCmd` (+ `listenTCPCmd`, `listenUDPCmd`, `listenHTTPCmd`) | The commands. Each `Run` validates, calls one handler, and passes its result to `finish`. |
-| `scanContext()` | The context `nmap` runs under: cancelled by `Ctrl+C`/`SIGTERM`, deliberately without any deadline. |
+| `interruptContext()` | The context `nmap`, `telnet`, `web` and `udp` run under: cancelled by `Ctrl+C`/`SIGTERM`, deliberately without any deadline, and un-registered after the first signal so a second `Ctrl+C` ends the process. |
 | `init()` | Registers all flags. Note `listenCmd` re-declares `--count` (default `0`) and `webCmd` re-declares `--payload` (`-P`, the body), shadowing the root flags. |
 | `main()` | Adds the commands, runs cobra, exits with `exitUsage` if cobra returned an error, otherwise with `exitCode`. |
 
@@ -56,6 +56,7 @@ nav: Source reference
 | `tls.go` | `BuildTLSConfig`: turns `--cacert`, `--cert`/`--key` and `--insecure` into a `tls.Config` (minimum TLS 1.2). |
 | `nmap.go` | `NmapHandler`: the port scanner. `maxConcurrentPortScans` (500), `progressInterval` (3 s) and `probePort` (the single-port check, a variable so tests can substitute it). |
 | `udp.go` | `probeUDP` (one probe, classified as open / closed / open\|filtered / error) and `UDPHandler`. |
+| `interrupt.go` | How a repeating check ends on `Ctrl+C`: `pause` (a `--delay` that a cancellation cuts short), `watchCancel` (expires a connection's deadline so a blocked read returns), and `interruptedLine` / `interruptedNote` (the `ERROR interrupted ...` line and the JSON run-level error). |
 | `tcplisten.go` | `TCPListenHandler` and `handleTCPConnection`; also `previewBytes`, the short single-line preview used by all listeners and `udp`. |
 | `udplisten.go` | `UDPListenHandler`. |
 | `httplisten.go` | `HTTPListenHandler`: the minimal HTTP server. `httpExchange` records the one request each connection served, reported when the connection closes so byte counts are final. |
@@ -72,6 +73,7 @@ nav: Source reference
 | `tls_test.go` | Every branch of `BuildTLSConfig`. |
 | `nmap_test.go` | Finding open ports (IPv4 and IPv6), the concurrency cap, whole-range coverage, interruption reporting, progress lines, `--json` cleanliness. Uses the `probePort` hook. |
 | `udp_test.go` | `probeUDP` for each state, generated payloads, multiple attempts. |
+| `cancel_test.go` | `Ctrl+C` on `telnet`, `web` and `udp`: how far the run got, the statistics for what completed, an attempt in flight dropped rather than counted as a failure, a long `--delay` cut short, a complete JSON document, and the `pause` / `watchCancel` helpers. |
 | `tcplisten_test.go`, `udplisten_test.go`, `httplisten_test.go` | Accept and echo, IPv6 binding, JSON events and their measurements, and "runs until interrupted" with `--count 0`. |
 
 ## Build and packaging

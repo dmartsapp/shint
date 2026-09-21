@@ -26,17 +26,22 @@ const udpModule = "udp"
 //   - "open|filtered": nothing came back before the timeout. This is the
 //     common case for UDP services that don't reply to unexpected input, so
 //     it cannot be told apart from a firewall silently dropping the packet.
-func probeUDP(ip string, port int, timeout int, payload []byte) (state string, received []byte, err error) {
-	conn, dialErr := net.DialTimeout("udp", net.JoinHostPort(ip, strconv.Itoa(port)), time.Duration(timeout)*time.Second)
+func probeUDP(ctx context.Context, ip string, port int, timeout int, payload []byte) (state string, received []byte, err error) {
+	dialer := net.Dialer{Timeout: time.Duration(timeout) * time.Second}
+	conn, dialErr := dialer.DialContext(ctx, "udp", net.JoinHostPort(ip, strconv.Itoa(port)))
 	if dialErr != nil {
 		return "error", nil, dialErr
 	}
 	defer func() { _ = conn.Close() }()
+	defer watchCancel(ctx, conn)() // Ctrl+C ends a wait for a reply at once
 
 	if _, werr := conn.Write(payload); werr != nil {
 		return "error", nil, werr
 	}
 
+	if ctx.Err() != nil {
+		return "error", nil, ctx.Err()
+	}
 	buf := make([]byte, 2048)
 	if derr := conn.SetReadDeadline(time.Now().Add(time.Duration(timeout) * time.Second)); derr != nil {
 		return "error", nil, derr
@@ -44,6 +49,9 @@ func probeUDP(ip string, port int, timeout int, payload []byte) (state string, r
 	n, rerr := conn.Read(buf)
 	if rerr == nil {
 		return "open", buf[:n], nil
+	}
+	if ctx.Err() != nil { // cut off by Ctrl+C, not a timeout: say nothing about the port
+		return "error", nil, ctx.Err()
 	}
 	if netErr, ok := rerr.(net.Error); ok && netErr.Timeout() {
 		return "open|filtered", nil, nil
@@ -58,8 +66,10 @@ func probeUDP(ip string, port int, timeout int, payload []byte) (state string, r
 // to. It reports false if the lookup failed or any probe found the port closed
 // (the OS surfaced an ICMP port-unreachable) or hit an error. An "open|filtered"
 // probe - no reply, no ICMP error - is inconclusive rather than a failure: many
-// UDP services simply do not answer input they do not understand.
-func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payloadSize int, data string, port int, host string) (ok bool) {
+// UDP services simply do not answer input they do not understand. ctx is
+// cancelled by Ctrl+C and nothing else - never a deadline; see interrupt.go for
+// how a cancelled run ends.
+func UDPHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payloadSize int, data string, port int, host string) (ok bool) {
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	payload := []byte(data)
@@ -80,9 +90,9 @@ func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 	output.ModuleName = udpModule
 	istart := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-	defer cancel()
-	ipaddresses, err := lib.ResolveName(ctx, host)
+	dnsCtx, cancelDNS := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	defer cancelDNS()
+	ipaddresses, err := lib.ResolveName(dnsCtx, host)
 	if err != nil {
 		if *jsonoutput {
 			output.DNSLookup = lib.DNSLookup{Hostname: host, Success: false, Error: err.Error(), TimeTaken: time.Since(istart).Microseconds()}
@@ -105,10 +115,14 @@ func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 
 	var WG sync.WaitGroup
-	var openCount, failures int
+	var openCount, failures, completed int
+attempts:
 	for i := 0; i < iterations; i++ {
 		attempt := i + 1
 		for _, ip := range ipaddresses {
+			if ctx.Err() != nil {
+				break attempts
+			}
 			if *throttle {
 				randDelay, err := rand.Int(rand.Reader, big.NewInt(10000))
 				if err != nil {
@@ -117,15 +131,21 @@ func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 					delay = int(randDelay.Int64())
 				}
 			}
-			time.Sleep(time.Millisecond * time.Duration(delay))
+			if !pause(ctx, time.Millisecond*time.Duration(delay)) {
+				break attempts
+			}
 			WG.Add(1)
 			go func(ip string, attempt int) {
 				defer WG.Done()
 				start := time.Now()
-				state, received, err := probeUDP(ip, port, timeout, payload)
+				state, received, err := probeUDP(ctx, ip, port, timeout, payload)
 				timeTaken := time.Since(start)
+				if err != nil && ctx.Err() != nil {
+					return // cut off by Ctrl+C: never finished, so it neither passed nor failed
+				}
 
 				statsMutex.Lock()
+				completed++
 				if state == "open" {
 					openCount++
 				}
@@ -165,14 +185,24 @@ func UDPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		}
 	}
 	WG.Wait()
+	planned := iterations * len(ipaddresses)
+	interrupted := completed < planned // only Ctrl+C keeps an attempt from being made
 
 	if *jsonoutput {
 		output.EndTime = time.Now().UnixMicro()
 		output.TotalTimeTaken = output.EndTime - output.StartTime
+		if interrupted {
+			output.Error = interruptedNote(completed, planned)
+		}
 		JS, _ := json.MarshalIndent(output, "", "  ")
 		fmt.Println(string(JS))
 	} else {
-		fmt.Println(lib.LogWithTimestamp(udpModule, "done "+lib.Fields("probes_sent", iterations*len(ipaddresses), "open", openCount, "total_time", time.Since(istart)), false))
+		sent := planned
+		if interrupted {
+			fmt.Println(interruptedLine(udpModule, completed, planned, istart))
+			sent = completed
+		}
+		fmt.Println(lib.LogWithTimestamp(udpModule, "done "+lib.Fields("probes_sent", sent, "open", openCount, "total_time", time.Since(istart)), false))
 	}
-	return failures == 0
+	return failures == 0 && !interrupted
 }
