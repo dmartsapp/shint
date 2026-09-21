@@ -61,8 +61,14 @@ def listen_case(cid, proto, client, expect_in, expect_absent=(), extra=(), count
     """Start `listen <proto>` with --count, run client(port), and check the listener's log
     for expect_in (substrings) and that it ended by itself (unless must_end is False)."""
     def run():
-        port = free_port()
-        p, read = start_listener(["listen", proto, str(port), "--count", str(count)] + list(extra))
+        # free_port() picks a port and gives it back, so another case running in parallel can take it
+        # before the listener binds; that is the harness's race, not the listener's. Try another port.
+        for _ in range(4):
+            port = free_port()
+            p, read = start_listener(["listen", proto, str(port), "--count", str(count)] + list(extra))
+            if p.poll() is not None and "address already in use" in read()[0]:
+                continue
+            break
         problems = []
         try:
             client(port)
