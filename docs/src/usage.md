@@ -174,7 +174,7 @@ shint checks several things per run - every address a name resolves to, every `-
 | Status | Meaning |
 |---|---|
 | `0` | Every check passed. |
-| `1` | At least one check failed: connection refused or timed out, DNS failure, no HTTP response, a UDP port reported closed, a lost ping, a scan cut short, a `telnet`, `web` or `udp` run stopped by `Ctrl+C` before its `--count` was done, no usable time reply, an address with no reverse name, or a Wake-on-LAN packet that could not be sent. |
+| `1` | At least one check failed: connection refused or timed out, DNS failure, no HTTP response, a UDP port reported closed, a lost ping, a scan cut short, a run stopped by `Ctrl+C` before its `--count` was done, no usable time reply, an address with no reverse name, or a Wake-on-LAN packet that could not be sent. |
 | `2` | The command was used wrongly - a bad argument, flag or value. Nothing ran. |
 
 That makes shint usable in shell conditions and CI:
@@ -206,7 +206,7 @@ Results, including `ERROR` lines about failed checks, go to **stdout**; usage er
 
 ## Stopping early
 
-Press `Ctrl+C`. A run that repeats a check - `telnet`, `web`, `udp` with `--count`, and `nmap` over its port range - stops and **tells you how far it got**, instead of leaving you with a bare `^C`:
+Press `Ctrl+C`. A run that repeats a check - `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol` with `--count`, and `nmap` over its port range - stops and **tells you how far it got**, instead of leaving you with a bare `^C`:
 
 ```bash
 shint web http://127.0.0.1:18091/ --count 100
@@ -230,7 +230,7 @@ Sun Sep 20 23:14:36 MDT 2026: [web] OK done total_time=5.497643708s
 The run ended after five of the hundred requests. What you get on `Ctrl+C`:
 
 - An `ERROR interrupted` line with `attempts_completed` and `attempts_planned`.
-- The usual **statistics** for the attempts that did complete, and the `done` line. With `--json` you get the one complete document, whose run-level `error` reads `interrupted: 5 of 100 attempts completed`.
+- The usual **statistics** for the attempts that did complete (`ntp`, `rdns`, `wol` and `udp` have no statistics block: their `done` line counts what completed), and the `done` line. With `--json` you get the one complete document, whose run-level `error` reads `interrupted: 5 of 100 attempts completed`.
 - **An attempt that was still in flight is dropped, not counted as a failure**: it never finished, so it neither passed nor failed. The `--delay` pause you may have been in is cut short too.
 - **Exit status `1`**: the run was cut short, exactly as for an interrupted `nmap` scan. (`0` means every requested check passed.)
 - **A second `Ctrl+C` ends the process at once**, for the case where something is stuck.

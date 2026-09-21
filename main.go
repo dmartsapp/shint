@@ -87,10 +87,10 @@ var (
 //	0  every check passed
 //	1  at least one check failed: connection refused or timed out, DNS
 //	   failure, no HTTP response, a UDP port reported closed, lost pings,
-//	   a run cut short by Ctrl+C (a scan, or telnet, web or udp stopped
-//	   before their --count was done), no usable time reply (or a clock
-//	   offset beyond --max-offset), an address with no reverse (PTR) name,
-//	   or a Wake-on-LAN packet that could not be sent
+//	   a run cut short by Ctrl+C (a scan, or a repeating check stopped before
+//	   its --count was done), no usable time reply (or a clock offset beyond
+//	   --max-offset), an address with no reverse (PTR) name, or a
+//	   Wake-on-LAN packet that could not be sent
 //	2  the command was used wrongly (bad argument, flag or value); nothing ran
 //
 // Results - including "ERROR" lines about failed checks - go to stdout; usage
@@ -352,7 +352,10 @@ An address that has no PTR record is reported as a failed check (exit status 1);
 			usage(err.Error())
 			return
 		}
-		finish(handlers.RDNSHandler(&jsonoutput, iterations, delay, &throttle, timeout, args[0]))
+		ctx, stop := interruptContext()
+		defer stop()
+
+		finish(handlers.RDNSHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, args[0]))
 	},
 }
 
@@ -411,7 +414,10 @@ The machine must have Wake-on-LAN enabled in its firmware and network card, and 
 			usage(err.Error())
 			return
 		}
-		finish(handlers.WOLHandler(&jsonoutput, iterations, delay, &throttle, timeout, mac, broadcast, wolPort))
+		ctx, stop := interruptContext()
+		defer stop()
+
+		finish(handlers.WOLHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, mac, broadcast, wolPort))
 	},
 }
 
@@ -444,7 +450,10 @@ A reply that cannot be trusted - it answers a different request, the server says
 			usage(err.Error())
 			return
 		}
-		finish(handlers.NTPHandler(&jsonoutput, iterations, delay, &throttle, timeout, ntpPort, time.Duration(ntpMaxOffset)*time.Millisecond, args[0]))
+		ctx, stop := interruptContext()
+		defer stop()
+
+		finish(handlers.NTPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, ntpPort, time.Duration(ntpMaxOffset)*time.Millisecond, args[0]))
 	},
 }
 

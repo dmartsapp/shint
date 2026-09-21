@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -299,5 +300,139 @@ func TestWatchCancelUnblocksAPendingRead(t *testing.T) {
 	}
 	if time.Since(start) > 2*time.Second {
 		t.Error("the read outlasted the cancellation")
+	}
+}
+
+// ---- ntp, rdns, wol (new in v4.1.0; they end on Ctrl+C the same way)
+
+func TestNTPHandlerInterruptedReportsHowFarItGot(t *testing.T) {
+	f := newFake()
+	port := f.start(t, "udp4", "127.0.0.1")
+	jsonOutput, throttle := false, false
+	var ok bool
+	ctx := cancelAfter(t, 400*time.Millisecond)
+	out := runWithin(t, 3*time.Second, func() {
+		ok = NTPHandler(ctx, &jsonOutput, 200, 40, &throttle, 2, port, 0, "127.0.0.1")
+	})
+	if ok {
+		t.Error("an interrupted run must not report success")
+	}
+	completed, planned := interruptedCounts(t, out)
+	if planned != 200 || completed < 3 || completed >= 200 {
+		t.Errorf("completed %d of %d, want a few of 200", completed, planned)
+	}
+	if got := strings.Count(out, "[ntp] OK response"); got != completed {
+		t.Errorf("%d response lines for %d completed queries", got, completed)
+	}
+	if !strings.Contains(out, "[ntp] OK done queries="+strconv.Itoa(completed)+" answered="+strconv.Itoa(completed)) {
+		t.Errorf("the done line counts what completed:\n%s", out)
+	}
+}
+
+func TestNTPHandlerInterruptAbandonsAQueryWaitingForAReply(t *testing.T) {
+	f := newFake()
+	f.silent = true
+	port := f.start(t, "udp4", "127.0.0.1")
+	jsonOutput, throttle := false, false
+	ctx := cancelAfter(t, 300*time.Millisecond)
+	out := runWithin(t, 2*time.Second, func() {
+		NTPHandler(ctx, &jsonOutput, 5, 0, &throttle, 30, port, 0, "127.0.0.1")
+	})
+	completed, planned := interruptedCounts(t, out)
+	if completed != 0 || planned != 5 {
+		t.Errorf("completed %d of %d, want 0 of 5", completed, planned)
+	}
+	if strings.Contains(out, "query failed") {
+		t.Errorf("a query cut off by Ctrl+C is not a failed query:\n%s", out)
+	}
+}
+
+func TestQueryNTPStopsWhenTheContextIsCancelled(t *testing.T) {
+	f := newFake()
+	f.silent = true
+	port := f.start(t, "udp4", "127.0.0.1")
+	ctx := cancelAfter(t, 200*time.Millisecond)
+	start := time.Now()
+	_, err := queryNTP(ctx, "127.0.0.1", port, 30)
+	if err == nil || ctx.Err() == nil || time.Since(start) > 2*time.Second {
+		t.Errorf("err = %v, ctx.Err() = %v after %v", err, ctx.Err(), time.Since(start))
+	}
+}
+
+func TestRDNSHandlerInterrupted(t *testing.T) {
+	calls := 0
+	withLookup(t, func(ctx context.Context, address string) ([]string, error) {
+		calls++
+		if calls == 4 { // the fourth lookup hangs until Ctrl+C
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}
+		return []string{"host.example."}, nil
+	})
+	jsonOutput, throttle := false, false
+	var ok bool
+	ctx := cancelAfter(t, 300*time.Millisecond)
+	out := runWithin(t, 3*time.Second, func() {
+		ok = RDNSHandler(ctx, &jsonOutput, 50, 20, &throttle, 30, "192.0.2.10")
+	})
+	if ok {
+		t.Error("an interrupted run must not report success")
+	}
+	completed, planned := interruptedCounts(t, out)
+	if planned != 50 || completed != 3 {
+		t.Errorf("completed %d of %d, want the 3 lookups that finished before the hung one", completed, planned)
+	}
+	if strings.Contains(out, "reverse lookup failed") {
+		t.Errorf("the lookup cut off by Ctrl+C is not a failed lookup:\n%s", out)
+	}
+	if !strings.Contains(out, "[rdns] OK done lookups=3 resolved=3") {
+		t.Errorf("the done line counts what completed:\n%s", out)
+	}
+}
+
+func TestWOLHandlerInterruptCutsTheDelayShort(t *testing.T) {
+	port, packets := receiveUDP(t)
+	mac, _ := ParseMAC("aa:bb:cc:dd:ee:ff")
+	jsonOutput, throttle := false, false
+	var ok bool
+	ctx := cancelAfter(t, 250*time.Millisecond)
+	out := runWithin(t, 1500*time.Millisecond, func() {
+		ok = WOLHandler(ctx, &jsonOutput, 5, 30000, &throttle, 2, mac, netip.MustParseAddr("127.0.0.1"), port)
+	})
+	if ok || len(packets()) != 0 {
+		t.Errorf("ok=%v; nothing should have been sent during the first 30 s delay", ok)
+	}
+	completed, planned := interruptedCounts(t, out)
+	if completed != 0 || planned != 5 {
+		t.Errorf("completed %d of %d, want 0 of 5", completed, planned)
+	}
+	if !strings.Contains(out, "[wol] OK done packets_sent=0") {
+		t.Errorf("the done line still follows:\n%s", out)
+	}
+}
+
+func TestWOLHandlerInterruptedJSON(t *testing.T) {
+	port, packets := receiveUDP(t)
+	mac, _ := ParseMAC("aa:bb:cc:dd:ee:ff")
+	jsonOutput, throttle := true, false
+	ctx := cancelAfter(t, 400*time.Millisecond)
+	var ok bool
+	out := runWithin(t, 3*time.Second, func() {
+		ok = WOLHandler(ctx, &jsonOutput, 200, 40, &throttle, 2, mac, netip.MustParseAddr("127.0.0.1"), port)
+	})
+	got := len(packets())
+	var doc struct {
+		Error string        `json:"error"`
+		Stats []interface{} `json:"stats"`
+	}
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("not one JSON document: %v\n%s", err, out)
+	}
+	m := regexp.MustCompile(`^interrupted: (\d+) of 200 attempts completed$`).FindStringSubmatch(doc.Error)
+	if ok || m == nil {
+		t.Fatalf("ok=%v, error=%q", ok, doc.Error)
+	}
+	if n, _ := strconv.Atoi(m[1]); n != len(doc.Stats) || n != got || n == 0 {
+		t.Errorf("error says %s, stats has %d, the receiver got %d", m[1], len(doc.Stats), got)
 	}
 }

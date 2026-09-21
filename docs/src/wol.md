@@ -129,6 +129,7 @@ Standard error, exit status `2`. `--broadcast ::1` is refused the same way: Wake
 
 ## Good to know
 
+- **`Ctrl+C` shows how far it got.** With a large `--count`, the run stops, prints an `interrupted` line and its `done` line, and exits `1` (cut short); an attempt still in flight is dropped, not counted as a failure - see [Stopping early](usage.md#stopping-early).
 - **It did not wake?** Check the machine's firmware and network-card settings first; then try `--broadcast` with the subnet's own broadcast address; then check the machine is on the same segment (wired, same VLAN).
 - **A machine that is fully powered off** (not just asleep) often needs Wake-on-LAN enabled for the "S5" state, a separate setting on many boards.
 - A **directed broadcast** to another subnet (`--broadcast 10.1.2.255` while you are on `10.1.1.0/24`) is only forwarded if the routers in between are set up to forward it, which they usually are not.

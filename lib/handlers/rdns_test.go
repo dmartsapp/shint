@@ -43,7 +43,7 @@ func rdns(t *testing.T, json bool, iterations int, timeout int, host string) (st
 	t.Helper()
 	throttle := false
 	var ok bool
-	out := captureStdout(t, func() { ok = RDNSHandler(&json, iterations, 0, &throttle, timeout, host) })
+	out := captureStdout(t, func() { ok = RDNSHandler(context.Background(), &json, iterations, 0, &throttle, timeout, host) })
 	return out, ok
 }
 

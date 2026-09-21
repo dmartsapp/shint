@@ -139,6 +139,7 @@ shint ntp time.cloudflare.com --json
 
 ## Good to know
 
+- **`Ctrl+C` shows how far it got.** With a large `--count`, the run stops, prints an `interrupted` line and its `done` line, and exits `1` (cut short); an attempt still in flight is dropped, not counted as a failure - see [Stopping early](usage.md#stopping-early).
 - **An answer that cannot be trusted is a failed query, not a result.** That covers: a reply that does not echo this request's timestamp (someone else's packet, or a spoof); a "kiss-o'-death" (stratum 0 with a code such as `RATE` - the server asks you to slow down - or `DENY`); a server that reports itself unsynchronized (leap indicator `3`, or stratum 16); and a reply with no transmit time.
 - **Be gentle with public servers.** Many limit how often one address may ask; a `RATE` reply means you asked too often. The default `--delay` of a second already keeps `--count` polite; do not run it in a tight loop.
 - **Firewalls** often block outbound UDP 123. If you get timeouts everywhere, that is the first thing to check.

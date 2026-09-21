@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net"
 	"net/netip"
@@ -97,7 +98,7 @@ func TestWOLHandlerSendsTheMagicPacket(t *testing.T) {
 	jsonOutput, throttle := false, false
 	var ok bool
 	out := captureStdout(t, func() {
-		ok = WOLHandler(&jsonOutput, 3, 0, &throttle, 2, mac, netip.MustParseAddr("127.0.0.1"), port)
+		ok = WOLHandler(context.Background(), &jsonOutput, 3, 0, &throttle, 2, mac, netip.MustParseAddr("127.0.0.1"), port)
 	})
 	if !ok {
 		t.Errorf("WOLHandler reported failure:\n%s", out)
@@ -123,7 +124,7 @@ func TestWOLHandlerJSONIsOneCleanDocument(t *testing.T) {
 	mac, _ := ParseMAC("aabbccddeeff")
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		WOLHandler(&jsonOutput, 2, 0, &throttle, 2, mac, netip.MustParseAddr("127.0.0.1"), port)
+		WOLHandler(context.Background(), &jsonOutput, 2, 0, &throttle, 2, mac, netip.MustParseAddr("127.0.0.1"), port)
 	})
 	packets()
 	var doc struct {
@@ -155,7 +156,7 @@ func TestWOLHandlerReportsAFailedSend(t *testing.T) {
 	jsonOutput, throttle := false, false
 	var ok bool
 	out := captureStdout(t, func() {
-		ok = WOLHandler(&jsonOutput, 2, 0, &throttle, 2, mac, netip.MustParseAddr("127.0.0.1"), 0)
+		ok = WOLHandler(context.Background(), &jsonOutput, 2, 0, &throttle, 2, mac, netip.MustParseAddr("127.0.0.1"), 0)
 	})
 	if strings.Contains(out, "magic packet sent") {
 		t.Skip("this platform accepts a send to port 0")

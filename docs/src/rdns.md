@@ -107,6 +107,7 @@ shint rdns 8.8.8.8 --json
 
 ## Good to know
 
+- **`Ctrl+C` shows how far it got.** With a large `--count`, the run stops, prints an `interrupted` line and its `done` line, and exits `1` (cut short); an attempt still in flight is dropped, not counted as a failure - see [Stopping early](usage.md#stopping-early).
 - **A PTR record is set by whoever owns the address block** (your ISP, your cloud provider, your own DNS), not by the machine itself, so it may be missing, generic (`ec2-...compute.amazonaws.com`) or out of date. It says nothing about whether the name maps *forward* to the same address: that "forward-confirmed" check is not done here.
 - **An address can have several names** - the PTR set - and all of them are listed.
 - **IPv4-mapped IPv6 addresses** (`::ffff:192.0.2.1`) are looked up as the IPv4 address they carry.

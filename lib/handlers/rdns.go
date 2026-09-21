@@ -49,7 +49,9 @@ func ReverseName(ip netip.Addr) string {
 // It reports true only if every address had at least one name. An address with
 // no PTR record is a failed check, not an empty success: many addresses have
 // none, and knowing that is the point of asking.
-func RDNSHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, host string) (ok bool) {
+// ctx is cancelled by Ctrl+C and nothing else - never a deadline; see
+// interrupt.go for how a cancelled run ends.
+func RDNSHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, host string) (ok bool) {
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
 		Mode:     rdnsModule,
@@ -64,9 +66,9 @@ func RDNSHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, ti
 	}
 	output.ModuleName = rdnsModule
 	istart := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-	addresses, err := lib.ResolveName(ctx, host)
-	cancel()
+	dnsCtx, cancelDNS := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	addresses, err := lib.ResolveName(dnsCtx, host)
+	cancelDNS()
 	if err != nil {
 		if *jsonoutput {
 			output.DNSLookup = lib.DNSLookup{Hostname: host, Success: false, Error: err.Error(), TimeTaken: time.Since(istart).Microseconds()}
@@ -91,20 +93,27 @@ func RDNSHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, ti
 		fmt.Println(lib.LogWithTimestamp(rdnsModule, "dns resolved "+lib.Fields("host", host, "addresses", len(addresses), "ips", "["+strings.Join(addresses, ",")+"]", "time", time.Since(istart)), false))
 	}
 
-	var resolved, failures int
+	var resolved, failures, completed int
+attempts:
 	for i := 0; i < iterations; i++ {
 		attempt := i + 1
 		for _, address := range addresses {
-			time.Sleep(attemptDelay(delay, *throttle))
+			if ctx.Err() != nil || !pause(ctx, attemptDelay(delay, *throttle)) {
+				break attempts
+			}
 			query := address
 			if ip, perr := netip.ParseAddr(address); perr == nil {
 				query = ReverseName(ip)
 			}
 			begin := time.Now()
-			lctx, lcancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+			lctx, lcancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 			names, lerr := lookupAddr(lctx, address)
 			lcancel()
 			taken := time.Since(begin)
+			if len(names) == 0 && ctx.Err() != nil {
+				break attempts // cut off by Ctrl+C: never finished, so it neither resolved nor failed
+			}
+			completed++
 			if len(names) == 0 && lerr == nil {
 				lerr = fmt.Errorf("no PTR record for %s", address)
 			}
@@ -137,13 +146,23 @@ func RDNSHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, ti
 		}
 	}
 
+	planned := iterations * len(addresses)
+	interrupted := completed < planned // only Ctrl+C keeps an attempt from being made
 	if *jsonoutput {
 		output.EndTime = time.Now().UnixMicro()
 		output.TotalTimeTaken = output.EndTime - output.StartTime
+		if interrupted {
+			output.Error = interruptedNote(completed, planned)
+		}
 		JS, _ := json.MarshalIndent(output, "", "  ")
 		fmt.Println(string(JS))
 	} else {
-		fmt.Println(lib.LogWithTimestamp(rdnsModule, "done "+lib.Fields("lookups", iterations*len(addresses), "resolved", resolved, "total_time", time.Since(istart)), false))
+		lookups := planned
+		if interrupted {
+			fmt.Println(interruptedLine(rdnsModule, completed, planned, istart))
+			lookups = completed
+		}
+		fmt.Println(lib.LogWithTimestamp(rdnsModule, "done "+lib.Fields("lookups", lookups, "resolved", resolved, "total_time", time.Since(istart)), false))
 	}
-	return failures == 0
+	return failures == 0 && !interrupted
 }

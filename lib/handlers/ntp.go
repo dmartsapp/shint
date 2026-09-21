@@ -154,12 +154,14 @@ type ntpExchange struct {
 //
 // which is right even when the network delay is not symmetric, as long as it
 // is about the same in both directions.
-func queryNTP(address string, port int, timeoutSeconds int) (ntpExchange, error) {
-	conn, err := net.DialTimeout("udp", net.JoinHostPort(address, strconv.Itoa(port)), time.Duration(timeoutSeconds)*time.Second)
+func queryNTP(ctx context.Context, address string, port int, timeoutSeconds int) (ntpExchange, error) {
+	dialer := net.Dialer{Timeout: time.Duration(timeoutSeconds) * time.Second}
+	conn, err := dialer.DialContext(ctx, "udp", net.JoinHostPort(address, strconv.Itoa(port)))
 	if err != nil {
 		return ntpExchange{}, err
 	}
 	defer func() { _ = conn.Close() }()
+	defer watchCancel(ctx, conn)() // Ctrl+C ends the wait for the reply at once
 
 	t1 := time.Now()
 	request := buildNTPRequest(t1)
@@ -173,6 +175,9 @@ func queryNTP(address string, port int, timeoutSeconds int) (ntpExchange, error)
 	n, err := conn.Read(buf)
 	t4 := time.Now()
 	if err != nil {
+		if ctx.Err() != nil { // cut off by Ctrl+C, not a timeout
+			return ntpExchange{sent: t1}, ctx.Err()
+		}
 		return ntpExchange{sent: t1}, err
 	}
 	reply, err := parseNTPReply(buf[:n], ntpTimestamp(binary.BigEndian.Uint64(request[40:])))
@@ -203,7 +208,9 @@ func formatOffset(d time.Duration) string {
 //
 // A reply that arrives but cannot be trusted (wrong originate timestamp, a
 // kiss-o'-death, an unsynchronized server) is a failed query, not a result.
-func NTPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, port int, maxOffset time.Duration, host string) (ok bool) {
+// ctx is cancelled by Ctrl+C and nothing else - never a deadline; see
+// interrupt.go for how a cancelled run ends.
+func NTPHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, port int, maxOffset time.Duration, host string) (ok bool) {
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
@@ -220,9 +227,9 @@ func NTPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 	output.ModuleName = ntpModule
 	istart := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-	defer cancel()
-	ipaddresses, err := lib.ResolveName(ctx, host)
+	dnsCtx, cancelDNS := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	defer cancelDNS()
+	ipaddresses, err := lib.ResolveName(dnsCtx, host)
 	if err != nil {
 		if *jsonoutput {
 			output.DNSLookup = lib.DNSLookup{Hostname: host, Success: false, Error: err.Error(), TimeTaken: time.Since(istart).Microseconds()}
@@ -247,19 +254,26 @@ func NTPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		output.StartTime = istart.UnixMicro()
 	}
 
-	var answered, failures int
+	var answered, failures, completed int
+attempts:
 	for i := 0; i < iterations; i++ {
 		attempt := i + 1
 		for _, ip := range ipaddresses {
-			time.Sleep(attemptDelay(delay, *throttle))
+			if ctx.Err() != nil || !pause(ctx, attemptDelay(delay, *throttle)) {
+				break attempts
+			}
 			begin := time.Now()
-			ex, qerr := queryNTP(ip, port, timeout)
+			ex, qerr := queryNTP(ctx, ip, port, timeout)
 			taken := time.Since(begin)
+			if qerr != nil && ctx.Err() != nil {
+				break attempts // cut off by Ctrl+C: never finished, so it neither passed nor failed
+			}
 			if qerr == nil && maxOffset > 0 && absDuration(ex.offset) > maxOffset {
 				qerr = fmt.Errorf("offset %s is larger than --max-offset %s", formatOffset(ex.offset), maxOffset)
 			}
 
 			statsMutex.Lock()
+			completed++
 			if qerr != nil {
 				failures++
 			} else {
@@ -295,15 +309,25 @@ func NTPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		}
 	}
 
+	planned := iterations * len(ipaddresses)
+	interrupted := completed < planned // only Ctrl+C keeps an attempt from being made
 	if *jsonoutput {
 		output.EndTime = time.Now().UnixMicro()
 		output.TotalTimeTaken = output.EndTime - output.StartTime
+		if interrupted {
+			output.Error = interruptedNote(completed, planned)
+		}
 		JS, _ := json.MarshalIndent(output, "", "  ")
 		fmt.Println(string(JS))
 	} else {
-		fmt.Println(lib.LogWithTimestamp(ntpModule, "done "+lib.Fields("queries", iterations*len(ipaddresses), "answered", answered, "total_time", time.Since(istart)), false))
+		queries := planned
+		if interrupted {
+			fmt.Println(interruptedLine(ntpModule, completed, planned, istart))
+			queries = completed
+		}
+		fmt.Println(lib.LogWithTimestamp(ntpModule, "done "+lib.Fields("queries", queries, "answered", answered, "total_time", time.Since(istart)), false))
 	}
-	return failures == 0
+	return failures == 0 && !interrupted
 }
 
 func absDuration(d time.Duration) time.Duration {

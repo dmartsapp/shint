@@ -37,6 +37,7 @@ Not code, so not on this branch: [#11](https://github.com/dmartsapp/shint/issues
 
 ## Other changes on the branch
 
+- **v4.0.5 is merged in** (Ctrl+C on `telnet`, `web` and `udp` shows the summary, [#24](https://github.com/dmartsapp/shint/issues/24), released and closed); `ntp`, `rdns` and `wol` get the same behaviour on this branch, so v4.1.0 stays a descendant of `main`.
 - The tool's expansion is now "Simple Host INspection Toolkit" (`shint --help`, the documentation home page).
 - `make vet` also vets for Windows, FreeBSD and Solaris, so a test that only builds on Unix fails in `make check`.
 - `make workflows` covers the new scripts (checksums, failure-issue text, release preflight) and runs `actionlint` with no exceptions; `make release-check` is the release-day preflight.

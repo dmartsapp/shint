@@ -33,7 +33,7 @@ nav: Source reference
 | `usage(msg)` | Prints a usage error to stderr and records status 2. |
 | `finish(ok)` | Records status 1 when a handler reports failure. |
 | `rootCmd`, `telnetCmd`, `pingCmd`, `webCmd`, `nmapCmd`, `udpCmd`, `ntpCmd`, `wolCmd`, `rdnsCmd`, `cidrCmd`, `listenCmd` (+ `listenTCPCmd`, `listenUDPCmd`, `listenHTTPCmd`) | The commands. Each `Run` validates, calls one handler, and passes its result to `finish`. |
-| `interruptContext()` | The context `nmap`, `telnet`, `web` and `udp` run under: cancelled by `Ctrl+C`/`SIGTERM`, deliberately without any deadline, and un-registered after the first signal so a second `Ctrl+C` ends the process. |
+| `interruptContext()` | The context `nmap`, `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol` run under: cancelled by `Ctrl+C`/`SIGTERM`, deliberately without any deadline, and un-registered after the first signal so a second `Ctrl+C` ends the process. |
 | `init()` | Registers all flags. Note `listenCmd` re-declares `--count` (default `0`) and `webCmd` re-declares `--payload` (`-P`, the body), shadowing the root flags. |
 | `main()` | Adds the commands, runs cobra, exits with `exitUsage` if cobra returned an error, otherwise with `exitCode`. |
 
@@ -82,7 +82,7 @@ nav: Source reference
 | `tls_test.go` | Every branch of `BuildTLSConfig`. |
 | `nmap_test.go` | Finding open ports (IPv4 and IPv6), the concurrency cap, whole-range coverage, interruption reporting, progress lines, `--json` cleanliness. Uses the `probePort` hook. |
 | `udp_test.go` | `probeUDP` for each state, generated payloads, multiple attempts. |
-| `cancel_test.go` | `Ctrl+C` on `telnet`, `web` and `udp`: how far the run got, the statistics for what completed, an attempt in flight dropped rather than counted as a failure, a long `--delay` cut short, a complete JSON document, and the `pause` / `watchCancel` helpers. |
+| `cancel_test.go` | `Ctrl+C` on `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol`: how far the run got, the statistics for what completed, an attempt in flight dropped rather than counted as a failure, a long `--delay` cut short, a complete JSON document, and the `pause` / `watchCancel` helpers. |
 | `tcplisten_test.go`, `udplisten_test.go`, `httplisten_test.go` | Accept and echo, IPv6 binding, JSON events and their measurements, and "runs until interrupted" with `--count 0`. |
 | `cidr_test.go`, `wol_test.go`, `ntp_test.go`, `rdns_test.go` | Subnet values worked out by hand and checked against `net.ParseCIDR`; the magic packet received by a real UDP socket; `ntp` against a controllable fake SNTP server (offsets, server processing time, malformed replies, timeouts, IPv6); `rdns` with a substituted resolver. |
 | `webtiming_test.go` | The `--timing` recorder against a fake clock (exact figures), and against real servers: slow first byte, HTTPS handshake, a redirect, a reused connection, a refused connection, the redirect limit. |

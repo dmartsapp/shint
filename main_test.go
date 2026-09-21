@@ -407,6 +407,50 @@ func TestUDPHelpDoesNotPromiseEscapes(t *testing.T) {
 	}
 }
 
+// With -4 a name that resolves to both families is checked over IPv4 only: every
+// address in the report is an IPv4 one (and with -6, an IPv6 one, wherever the
+// machine has IPv6 loopback at all).
+func TestFamilyFlagsRestrictWhatIsChecked(t *testing.T) {
+	open := strconv.Itoa(tcpListener(t))
+	for _, tc := range []struct {
+		flag string
+		is4  bool
+	}{{"-4", true}, {"-6", false}} {
+		code, stdout, stderr := runShint(t, "telnet", "localhost", open, tc.flag, "--json", "--delay", "0", "--timeout", "2")
+		var doc struct {
+			DNS struct {
+				Success bool     `json:"success"`
+				IPs     []string `json:"resolved_addresses"`
+			} `json:"dns_lookup"`
+			Stats []struct {
+				Address string `json:"address"`
+			} `json:"stats"`
+		}
+		if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+			t.Fatalf("%s: not JSON (exit %d): %v\n%s\n%s", tc.flag, code, err, stdout, stderr)
+		}
+		if !doc.DNS.Success {
+			if tc.is4 {
+				t.Fatalf("%s: localhost did not resolve: %s", tc.flag, stdout)
+			}
+			t.Skipf("%s: this machine has no IPv6 for localhost", tc.flag)
+		}
+		for _, ip := range doc.DNS.IPs {
+			if (net.ParseIP(ip).To4() != nil) != tc.is4 {
+				t.Errorf("%s: resolved %s, the wrong family", tc.flag, ip)
+			}
+		}
+		for _, s := range doc.Stats {
+			if (net.ParseIP(s.Address).To4() != nil) != tc.is4 {
+				t.Errorf("%s: checked %s, the wrong family", tc.flag, s.Address)
+			}
+		}
+		if tc.is4 && code != 0 {
+			t.Errorf("-4 against an IPv4 listener should pass, exit %d:\n%s", code, stdout)
+		}
+	}
+}
+
 // startShint starts the CLI as a subprocess whose stdout can be watched while it
 // runs, which runShint (it waits for the process to end) cannot do.
 type liveShint struct {
@@ -463,11 +507,13 @@ func (l *liveShint) waitFor(t *testing.T, want string, n int) {
 // Ctrl+C on a repeating check ends the run the way it ends when it finishes: the
 // statistics, the done line, and a line saying how far it got - and exit status
 // 1, because the run was cut short. Not a bare "^C" and nothing else.
-func TestCtrlCShowsTheSummary(t *testing.T) {
+func TestCtrlCShowsTheSummary(t *testing.T) { // telnet, web, udp - and ntp, rdns, wol
 	web200 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) }))
 	defer web200.Close()
 	open := strconv.Itoa(tcpListener(t))
 	udpEcho := strconv.Itoa(udpSocket(t, true))
+	udpSilent := strconv.Itoa(udpSocket(t, false))
+	ntpUp := strconv.Itoa(ntpSocket(t))
 
 	for _, tc := range []struct {
 		name, module, progress string
@@ -478,6 +524,10 @@ func TestCtrlCShowsTheSummary(t *testing.T) {
 		{"telnet", "telnet", "] OK connect ok", []string{"telnet STATISTICS", "Requests sent: "}, []string{"telnet", "127.0.0.1", open, "--count", "500", "--delay", "40"}},
 		// udp has no statistics block; its summary is the done line
 		{"udp", "udp", "] OK probe open", []string{"probes_sent="}, []string{"udp", "127.0.0.1", udpEcho, "--data", "x", "--count", "500", "--delay", "40"}},
+		// the commands added in v4.1.0 end the same way
+		{"ntp", "ntp", "] OK response server=", []string{"queries="}, []string{"ntp", "127.0.0.1", "--port", ntpUp, "--count", "500", "--delay", "40"}},
+		{"rdns", "rdns", "] OK reverse lookup address=", []string{"lookups="}, []string{"rdns", "127.0.0.1", "--count", "500", "--delay", "40"}},
+		{"wol", "wol", "] OK magic packet sent", []string{"packets_sent="}, []string{"wol", "aa:bb:cc:dd:ee:ff", "--broadcast", "127.0.0.1", "--port", udpSilent, "--count", "500", "--delay", "40"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			l := startShint(t, tc.args...)
@@ -511,49 +561,5 @@ func TestCtrlCShowsTheSummary(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-// With -4 a name that resolves to both families is checked over IPv4 only: every
-// address in the report is an IPv4 one (and with -6, an IPv6 one, wherever the
-// machine has IPv6 loopback at all).
-func TestFamilyFlagsRestrictWhatIsChecked(t *testing.T) {
-	open := strconv.Itoa(tcpListener(t))
-	for _, tc := range []struct {
-		flag string
-		is4  bool
-	}{{"-4", true}, {"-6", false}} {
-		code, stdout, stderr := runShint(t, "telnet", "localhost", open, tc.flag, "--json", "--delay", "0", "--timeout", "2")
-		var doc struct {
-			DNS struct {
-				Success bool     `json:"success"`
-				IPs     []string `json:"resolved_addresses"`
-			} `json:"dns_lookup"`
-			Stats []struct {
-				Address string `json:"address"`
-			} `json:"stats"`
-		}
-		if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
-			t.Fatalf("%s: not JSON (exit %d): %v\n%s\n%s", tc.flag, code, err, stdout, stderr)
-		}
-		if !doc.DNS.Success {
-			if tc.is4 {
-				t.Fatalf("%s: localhost did not resolve: %s", tc.flag, stdout)
-			}
-			t.Skipf("%s: this machine has no IPv6 for localhost", tc.flag)
-		}
-		for _, ip := range doc.DNS.IPs {
-			if (net.ParseIP(ip).To4() != nil) != tc.is4 {
-				t.Errorf("%s: resolved %s, the wrong family", tc.flag, ip)
-			}
-		}
-		for _, s := range doc.Stats {
-			if (net.ParseIP(s.Address).To4() != nil) != tc.is4 {
-				t.Errorf("%s: checked %s, the wrong family", tc.flag, s.Address)
-			}
-		}
-		if tc.is4 && code != 0 {
-			t.Errorf("-4 against an IPv4 listener should pass, exit %d:\n%s", code, stdout)
-		}
 	}
 }

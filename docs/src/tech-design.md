@@ -20,7 +20,7 @@ These notes explain the parts of shint that look surprising until you know the h
 
 Both were false results presented as real ones, which is the worst kind of bug for a diagnostic tool.
 
-**How it is enforced.** `main.go` gives no command a deadline. The commands that repeat a check - `nmap`, `telnet`, `web`, `udp` - get `interruptContext()`, cancelled only by `Ctrl+C` (or `SIGTERM`); it has no deadline for `--timeout` to leak into. Each timeout is derived *inside* the handler, per operation: a DNS lookup gets its own `context.WithTimeout`, and so does each connection attempt.
+**How it is enforced.** `main.go` gives no command a deadline. The commands that repeat a check - `nmap`, `telnet`, `web`, `udp`, `ntp`, `rdns`, `wol` - get `interruptContext()`, cancelled only by `Ctrl+C` (or `SIGTERM`); it has no deadline for `--timeout` to leak into. Each timeout is derived *inside* the handler, per operation: a DNS lookup gets its own `context.WithTimeout`, and so does each connection attempt.
 
 **What pins it.** `TestTelnetHandlerRunLongerThanTimeoutStillSucceeds`, `TestNmapHandlerCoversWholeRangeEvenWhenItOutlastsPerPortTimeout`, `TestInterruptContextHasNoDeadline`.
 

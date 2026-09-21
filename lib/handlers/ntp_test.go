@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"net"
@@ -152,7 +153,7 @@ func TestQueryNTPMeasuresTheOffset(t *testing.T) {
 		f := newFake()
 		f.offset = offset
 		port := f.start(t, "udp4", "127.0.0.1")
-		ex, err := queryNTP("127.0.0.1", port, 2)
+		ex, err := queryNTP(context.Background(), "127.0.0.1", port, 2)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -176,7 +177,7 @@ func TestQueryNTPSubtractsTheServersProcessingTime(t *testing.T) {
 	f.offset = 3 * time.Second
 	f.hold = 250 * time.Millisecond
 	port := f.start(t, "udp4", "127.0.0.1")
-	ex, err := queryNTP("127.0.0.1", port, 3)
+	ex, err := queryNTP(context.Background(), "127.0.0.1", port, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +193,7 @@ func run(t *testing.T, json bool, port int, maxOffset time.Duration, timeout int
 	t.Helper()
 	throttle := false
 	var ok bool
-	out := captureStdout(t, func() { ok = NTPHandler(&json, 1, 0, &throttle, timeout, port, maxOffset, host) })
+	out := captureStdout(t, func() { ok = NTPHandler(context.Background(), &json, 1, 0, &throttle, timeout, port, maxOffset, host) })
 	return out, ok
 }
 

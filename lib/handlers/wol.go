@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -86,8 +87,9 @@ func sendUDP(dest netip.AddrPort, payload []byte, timeoutSeconds int) (int, erro
 // That is all it can know: Wake-on-LAN has no reply, so "sent" is not "woke".
 // The machine has to be set up to listen for the packet (its firmware and
 // network card), be on the same network segment as this one, and the
-// broadcast has to reach it.
-func WOLHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, mac net.HardwareAddr, broadcast netip.Addr, port int) (ok bool) {
+// broadcast has to reach it. ctx is cancelled by Ctrl+C and nothing else -
+// never a deadline; see interrupt.go for how a cancelled run ends.
+func WOLHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, mac net.HardwareAddr, broadcast netip.Addr, port int) (ok bool) {
 	start := time.Now()
 	dest := netip.AddrPortFrom(broadcast, uint16(port))
 	packet := MagicPacket(mac)
@@ -110,10 +112,13 @@ func WOLHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 	}
 	stats := make([]lib.WOLStats, 0, iterations)
 
-	sent := 0
+	sent, attempted := 0, 0
 	for i := 0; i < iterations; i++ {
 		attempt := i + 1
-		time.Sleep(attemptDelay(delay, *throttle))
+		if ctx.Err() != nil || !pause(ctx, attemptDelay(delay, *throttle)) {
+			break
+		}
+		attempted++
 		begin := time.Now()
 		n, err := sendUDP(dest, packet, timeout)
 		taken := time.Since(begin)
@@ -136,13 +141,20 @@ func WOLHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 		}
 	}
 
+	interrupted := attempted < iterations // only Ctrl+C keeps a packet from being sent
 	if *jsonoutput {
 		output.Stats = stats
 		output.EndTime = time.Now().UnixMicro()
 		output.TotalTimeTaken = output.EndTime - output.StartTime
+		if interrupted {
+			output.Error = interruptedNote(attempted, iterations)
+		}
 		JS, _ := json.MarshalIndent(output, "", "  ")
 		fmt.Println(string(JS))
 	} else {
+		if interrupted {
+			fmt.Println(interruptedLine(wolModule, attempted, iterations, start))
+		}
 		fmt.Println(lib.LogWithTimestamp(wolModule, "done "+lib.Fields("packets_sent", sent, "total_time", time.Since(start)), false))
 	}
 	return sent == iterations
