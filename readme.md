@@ -1,65 +1,40 @@
-# shint v4.1.0 - work in progress
+# shint v4.2.0 - work in progress
 
-> **This page describes the `release/v4.1.0` branch only**: what the release is meant to deliver, the bugs it fixes, and what has changed on the branch. It is a working page. It is **never merged into `main`**, whose README tracks every milestone and release in one place: **[README on main](https://github.com/dmartsapp/shint/blob/main/readme.md)**.
+> **This page describes the `release/v4.2.0` branch only**: what the release is meant to deliver, the bugs it fixes, and what has changed on the branch. It is a working page. It is **never merged into `main`**, whose README tracks every milestone and release in one place: **[README on main](https://github.com/dmartsapp/shint/blob/main/readme.md)**.
 
 | | |
 |---|---|
-| Milestone | [v4.1.0](https://github.com/dmartsapp/shint/milestone/1) - due Oct 18 |
-| Sprint | Oct 5 - Oct 18 (work started early, on Sep 20) |
-| Everything that differs from `main` | [main...release/v4.1.0](https://github.com/dmartsapp/shint/compare/main...release/v4.1.0) |
-| Documentation | [CHANGELOG.md](CHANGELOG.md) (the `v4.1.0 - unreleased` section) and `docs/src/` |
+| Milestone | [v4.2.0](https://github.com/dmartsapp/shint/milestone/3) - due Nov 1 |
+| Sprint | Oct 19 - Nov 1 (work started early, on Sep 21) |
+| Built on | `release/v4.1.0`, which is not on `main` yet: 4.2.0 uses its code (the `/v4` module path, `-4`/`-6`, `rdns`). When 4.1.0 is released this branch is rebased onto `main` |
+| Everything that differs from 4.1.0 | [release/v4.1.0...release/v4.2.0](https://github.com/dmartsapp/shint/compare/release/v4.1.0...release/v4.2.0) |
+| Documentation | [CHANGELOG.md](CHANGELOG.md) (the `v4.2.0 - unreleased` section) and `docs/src/` |
 
 ## Milestone targets
 
 | Target | Issue | State |
 |---|---|---|
-| Verified downloads: a SHA-256 checksum file for every binary, and a signed build attestation | [#21](https://github.com/dmartsapp/shint/issues/21) | Done on the branch. The attestation step can only run on a real release tag, so its first run is the release itself |
-| `web --timing` - DNS, connect, TLS, first byte, download, per redirect hop | [#20](https://github.com/dmartsapp/shint/issues/20) | Done: code, tests, documentation |
-| `ntp` - check the clock against a time server | [#19](https://github.com/dmartsapp/shint/issues/19) | Done: code, tests, documentation |
-| `wol` - Wake-on-LAN magic packet | [#18](https://github.com/dmartsapp/shint/issues/18) | Done: code, tests, documentation |
-| `cidr` - subnet calculator, offline | [#17](https://github.com/dmartsapp/shint/issues/17) | Done: code, tests, documentation |
-| `rdns` - reverse DNS lookup | [#16](https://github.com/dmartsapp/shint/issues/16) | Done: code, tests, documentation |
-| `-4` / `-6`: check IPv4 only or IPv6 only (a host with IPv6 disabled failed every dual-stack check) | [#23](https://github.com/dmartsapp/shint/issues/23) | Done: code, tests, documentation |
-| Module path `github.com/dmartsapp/shint/v4`, so `go install` works | [#15](https://github.com/dmartsapp/shint/issues/15) | Done on the branch; an outside module imports it at the branch commit. `go install ...@v4.1.0` can only be checked once the tag exists |
-| A `Check` workflow: `make check` after every merge to `main` | - | Done on the branch; first run when the branch is merged |
-| CI failure issues that carry the real run URL | - | Done on the branch |
-| README changes for `main`: new expansion, badge row, support line | - | Done, but queued for `main` as a README-only commit on the branch `readme/main-4.1.0` - not carried by this branch |
+| `ip` - this machine's interfaces and addresses | [#42](https://github.com/dmartsapp/shint/issues/42) | Planned first: new code only, no conflict with the open 4.1.0 fixes |
+| `dns` - dig-style lookups: A, AAAA, MX, TXT, NS, CNAME, SRV, SOA, PTR, `@server`, TTLs, timing | [#43](https://github.com/dmartsapp/shint/issues/43) | Planned second: new code only |
+| Authoritative name servers shown whenever shint resolves a name | [#44](https://github.com/dmartsapp/shint/issues/44) | Planned, after the open 4.1.0 fixes (it touches every handler's resolve step) |
+| `telnet` banner grabbing, `--send` / `--expect` | [#45](https://github.com/dmartsapp/shint/issues/45) | Planned, after 4.1.0's #31 (the telnet attempt loop) |
+| `udp --hex` - send a binary payload | [#46](https://github.com/dmartsapp/shint/issues/46) | Planned, after 4.1.0's #29 and #32 (the udp handler) |
 
 ## Bugs
 
-| Issue | State |
-|---|---|
-| [#13](https://github.com/dmartsapp/shint/issues/13) The tests do not compile on Windows | Fixed on the branch |
-| [#12](https://github.com/dmartsapp/shint/issues/12) The release workflow uses an outdated release action | Fixed on the branch; first run on the release tag |
-| [#22](https://github.com/dmartsapp/shint/issues/22) Listeners print received bytes raw (binary garbles the terminal, escape sequences are interpreted) | Fixed on the branch |
-
-Not code, so not on this branch: [#11](https://github.com/dmartsapp/shint/issues/11) (the GHCR package is private - a settings change).
-
-## Bugs found by the black-box battery, planned for this release
-
-Each is `fix-next-release`; a fix removes its case from `test/battery/known_issues.py` in the same commit.
+Found by the black-box battery and planned for this release (all `fix-future-release`):
 
 | Issue | State |
 |---|---|
-| [#28](https://github.com/dmartsapp/shint/issues/28) `web` holds the whole response body in memory (662 MB peak for a 300 MB download) | To do |
-| [#29](https://github.com/dmartsapp/shint/issues/29) `udp --payload -1` (or a huge value) crashes with a panic | To do |
-| [#30](https://github.com/dmartsapp/shint/issues/30) `--timeout` above ~9.2 billion seconds overflows into an instant failure; `--delay` overflow is silently ignored | To do |
-| [#31](https://github.com/dmartsapp/shint/issues/31) `--count` with `--delay 0` starts every attempt at once: "too many open files" at the default macOS limit (`telnet`, `web`, `udp`) | To do |
-| [#32](https://github.com/dmartsapp/shint/issues/32) Failures logged at `OK` level: `udp` "probe closed", `ping` "error sending request" (exit 1 with no `ERROR` line) | To do |
-| [#33](https://github.com/dmartsapp/shint/issues/33) An unknown `listen` or `completion` subcommand prints help and exits 0; `listen --count -1` is accepted | To do |
-| [#34](https://github.com/dmartsapp/shint/issues/34) `listen http` logs a request whose body never completed as `status=404` although the client got no response | To do |
-| [#41](https://github.com/dmartsapp/shint/issues/41) The Slack notifier's log lines appear all at once at the end of the step | Fixed on the branch ([`6bb5175`](https://github.com/dmartsapp/shint/commit/6bb5175)) |
-
-Planned for later releases, from the same battery: [#35](https://github.com/dmartsapp/shint/issues/35), [#36](https://github.com/dmartsapp/shint/issues/36), [#38](https://github.com/dmartsapp/shint/issues/38), [#39](https://github.com/dmartsapp/shint/issues/39), [#40](https://github.com/dmartsapp/shint/issues/40) (v4.2.0) and [#37](https://github.com/dmartsapp/shint/issues/37) (v4.3.0).
+| [#35](https://github.com/dmartsapp/shint/issues/35) `listen http`: malformed or timed-out requests are neither logged nor counted | Planned, after 4.1.0's #34 (same code) |
+| [#36](https://github.com/dmartsapp/shint/issues/36) `web` ignores `HTTP_PROXY` / `HTTPS_PROXY`, and the documentation does not say so | Planned (documentation) |
+| [#38](https://github.com/dmartsapp/shint/issues/38) `web`: a URL without a scheme (`host:port/path`) fails with only "Invalid URL" | Planned |
+| [#39](https://github.com/dmartsapp/shint/issues/39) `listen tcp`: one log line per 4 KB read makes a large transfer unreadable | Planned |
+| [#40](https://github.com/dmartsapp/shint/issues/40) `listen udp`: `--timeout` is accepted and does nothing | Planned (documentation) |
 
 ## Other changes on the branch
 
-- **v4.0.5 and v4.0.6 are merged in** (the branch is rebased onto `main` at v4.0.6): the `Ctrl+C` summary ([#24](https://github.com/dmartsapp/shint/issues/24)), the two wrong-answer fixes ([#26](https://github.com/dmartsapp/shint/issues/26): a cut-short `web` response is a failure; [#27](https://github.com/dmartsapp/shint/issues/27): `ping` no longer takes another ping's reply), the black-box test battery in `make test` and the Slack release notification - all released and closed, and none of them part of this milestone's own work. `ntp`, `rdns` and `wol` get the same `Ctrl+C` behaviour on this branch, so v4.1.0 stays a descendant of `main`.
-- The tool's expansion is now "Simple Host INspection Toolkit" (`shint --help`, the documentation home page).
-- `make vet` also vets for Windows, FreeBSD and Solaris, so a test that only builds on Unix fails in `make check`.
-- `make workflows` covers the new scripts (checksums, failure-issue text, release preflight) and runs `actionlint` with no exceptions; `make release-check` is the release-day preflight.
-- The live smoke test (`make test-live`) covers `web --timing`, `rdns`, `ntp`, `wol` and `cidr`.
-- Documentation: a page for each new command, the `web` timing section, Install ("Verify your download", `go install`), CI/CD workflows, Testing, Releases and tagging.
+None yet.
 
 ## How README files work in this project
 
