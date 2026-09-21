@@ -107,13 +107,14 @@ ACTIONLINT ?= actionlint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.13.2
 
-.PHONY: help check test-full test-live tools fmt-check vet test test-go test-battery lint vuln docs-check workflows release-check
+.PHONY: help check test-full test-live tools fmt-check vet test test-go test-battery lint vuln docs-check workflows release-check readme-reconcile
 
 help:
 	echo "make check       fmt, vet, race tests, black-box battery, lint, vulncheck, docs and workflow checks (no network)"
 	echo "make test-live   smoke test against real hosts (needs the internet and ICMP)"
 	echo "make test-full   check + test-live"
 	echo "make release-check   on a release branch, after the release commit: is it safe to fast-forward main and tag?"
+	echo "make readme-reconcile   after a release: a branch readme/main-<tag> with main's README brought up to date (TAG=vX.Y.Z, PUSH=1 to push and open the pull request)"
 	echo "make test        the Go tests (race detector), then the black-box battery in test/battery"
 	echo "make test-go     just the Go tests, with the race detector"
 	echo "make test-battery  just the black-box battery (BATTERY_ARGS=\"--group F\" to pick, --list to see the cases)"
@@ -195,7 +196,17 @@ workflows:
 	bash .github/scripts/test-write-checksums.sh
 	bash .github/scripts/test-release-check.sh
 	python3 .github/scripts/test_notify_slack.py
+	python3 .github/scripts/test_readme_reconcile.py
+	bash .github/scripts/test-readme-release.sh
 	$(ACTIONLINT) -shellcheck= .github/workflows/*.yaml
+
+# After a release: a branch off main with its README reconciled with the release tags,
+# the changelog, the milestones and the binary's --help (see docs: Releases and tagging).
+# Nothing is merged. The release workflow "README Reconcile" does the same after every tag.
+#   make readme-reconcile TAG=v4.2.0            branch + commit, for you to read and push
+#   make readme-reconcile TAG=v4.2.0 PUSH=1     ... and push it and open the pull request
+readme-reconcile:
+	TAG="$(TAG)" PUSH="$(PUSH)" bash .github/scripts/readme-release.sh
 
 # Needs the internet and unprivileged ICMP; builds ./shint, runs one check per
 # command against real hosts, and removes the binary again.

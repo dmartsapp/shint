@@ -284,13 +284,17 @@ class RepositoryTests(unittest.TestCase):
     def workflow_files(self):
         return sorted(glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yaml")))
 
+    # Started by the tag too, but not part of the release: it waits for the release
+    # itself, so the notifier must not wait for it (and it publishes nothing).
+    NOT_PART_OF_THE_RELEASE = {"readme-reconcile.yaml"}
+
     def test_the_list_matches_the_release_workflows(self):
-        """Every workflow a tag starts (except this notifier) is waited for, and nothing else is."""
+        """Every workflow a tag starts (except this notifier and the README proposal) is waited for, and nothing else is."""
         tagged = set()
         for path in self.workflow_files():
             with open(path, encoding="utf-8") as f:
                 source = f.read()
-            if os.path.basename(path) == "notify-slack.yaml" or "tags:" not in source:
+            if os.path.basename(path) in ({"notify-slack.yaml"} | self.NOT_PART_OF_THE_RELEASE) or "tags:" not in source:
                 continue
             first = next(l for l in source.splitlines() if l.startswith("name:"))
             tagged.add(first.split(":", 1)[1].strip())

@@ -1,0 +1,77 @@
+name: README Reconcile
+
+# After a release, proposes main's README for it: a branch readme/main-vX.Y.Z off
+# main with the README reconciled by .github/scripts/readme-reconcile.py (release
+# rows and dates from the tags, the summary from the changelog, sprint windows from
+# the milestones, new commands from --help, and the tagline, badges, donate button
+# and support line every README must have), and a pull request for it - or, when
+# this repository does not let Actions open pull requests, an issue that links the
+# branch. It never commits to main and never publishes anything: a person reads the
+# diff and the warnings and merges. If it fails, the release is unaffected.
+#
+# Started by the tag like the release workflows, never by anything else (the trigger
+# rule allows nothing else). It waits for the GitHub Release the tag's build creates,
+# so it does not run ahead of a release that failed.
+#
+# The same thing by hand: make readme-reconcile TAG=vX.Y.Z
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+concurrency:
+  group: readme-reconcile
+  cancel-in-progress: false
+
+jobs:
+  readme:
+    name: Propose the README for the release
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: write        # push readme/main-vX.Y.Z (never main)
+      pull-requests: write   # open the pull request, where the repository allows it
+      issues: write          # ... or the issue that links the branch, where it does not
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0     # every tag and origin/main
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      # The release exists once the build workflow has published it. Nothing to
+      # reconcile before that, and nothing at all if the release never comes.
+      - name: Wait for the GitHub Release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          for _ in $(seq 1 120); do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              echo "found=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::notice title=README not reconciled::no GitHub Release for $TAG appeared within an hour, so the README was left alone."
+          echo "found=false" >> "$GITHUB_OUTPUT"
+
+      - name: Propose the README
+        if: steps.release.outputs.found == 'true'
+        # Everything reaches the script through env, never interpolated into the shell.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          PUSH: '1'
+          NO_FETCH: '1'      # checkout fetched everything
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bash .github/scripts/readme-release.sh
