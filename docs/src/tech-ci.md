@@ -21,7 +21,7 @@ They are separate files so that each has its own status and its own failure mode
   <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>
   <rect class="box accent" x="10" y="122" width="130" height="56" rx="10"/>
   <text class="h" x="75" y="146" text-anchor="middle">git push tag</text>
-  <text class="sub" x="75" y="164" text-anchor="middle">v4.0.5</text>
+  <text class="sub" x="75" y="164" text-anchor="middle">v4.0.6</text>
   <path class="arrow" d="M140 150C170 150 170 30 200 30"/>
   <path class="arrow" d="M140 150C170 150 170 90 200 90"/>
   <path class="arrow" d="M140 150H200"/>
@@ -135,7 +135,7 @@ The commit message is free text written by a person, so it is passed to the shel
 | `gate` | The same quiet lint + vulnerability gate. |
 | QEMU and Buildx | `docker/setup-qemu-action@v3`, `docker/setup-buildx-action@v3`, so one job builds for two architectures. |
 | Login | Docker Hub uses the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. GHCR uses the workflow's own `GITHUB_TOKEN` (needs `packages: write`). |
-| Compute tags | From the tag `v4.0.5`: `v4.0.5`, `4.0.5`, `4.0`, `4`, and `latest`. |
+| Compute tags | From the tag `v4.0.6`: `v4.0.6`, `4.0.6`, `4.0`, `4`, and `latest`. |
 | Build and push | `docker/build-push-action@v6`, platforms `linux/amd64,linux/arm64`, build argument `VERSION=<tag>`, and OCI labels for version, revision and source. |
 
 Image names: `docker.io/<DOCKERHUB_USERNAME>/shint` and `ghcr.io/dmartsapp/shint`. The Dockerfile is described in the [Source reference](tech-source.md#build-and-packaging).
@@ -160,7 +160,7 @@ gh run list --limit 8                       # the five workflows for the tag
 gh run watch <run-id> --exit-status         # block until one finishes
 gh run view <run-id> --log-failed           # only the failing steps' logs
 gh run rerun <run-id> --failed              # retry just the failed jobs
-gh release view v4.0.5                      # the release and its assets
+gh release view v4.0.6                      # the release and its assets
 ```
 
 Typical durations: lint and vulnerability check under a minute, the binary release about two minutes, the two image builds four to six.

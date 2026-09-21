@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.0.5</span>
+  <span class="version">v4.0.6</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -64,7 +64,7 @@
 <p><code>ping</code> applies <code>--timeout</code> to each echo reply (<code>configurePinger</code> calls go-ping's <code>SetReplyTimeoutInMS</code>), but not to the name lookup: go-ping's <code>NewPinger</code> resolves inside its constructor with a fixed 5-second limit, so nothing is left to configure by the time a pinger exists. A <code>--payload</code> the library would silently shrink is rejected up front (<code>ValidatePingPayload</code>), with the limit read from the library itself (<code>MaxPingPayload</code>) so it cannot drift.</p>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="tech-cli.html"><span>Previous</span>Command-line design</a><a class="next" href="tech-ci.html"><span>Next</span>CI/CD workflows</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-design.md">Edit this page on GitHub</a><span>shint v4.0.5 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-design.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#timeouts-bound-one-operation-never-the-whole-run">Timeouts bound one operation, never the whole run</a></li><li class="toc2"><a href="#bytes-are-counted-on-the-wire">Bytes are counted on the wire</a></li><li class="toc2"><a href="#the-port-scanner">The port scanner</a></li><li class="toc2"><a href="#udp-classification">UDP classification</a></li><li class="toc2"><a href="#dual-stack-by-default">Dual-stack by default</a></li><li class="toc2"><a href="#the-http-listener-is-deliberately-minimal">The HTTP listener is deliberately minimal</a></li><li class="toc2"><a href="#output-stability-and-known-quirks">Output stability and known quirks</a></li></ul></aside>
 </div>

@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.0.5</span>
+  <span class="version">v4.0.6</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -96,7 +96,7 @@
 <div class="tablewrap"><table><thead><tr><th>To change...</th><th>Look in</th></tr></thead><tbody><tr><td>A flag, a default, a help text</td><td><code>main.go</code></td></tr><tr><td>What a command does</td><td>its file in <code>lib/handlers/</code></td></tr><tr><td>A log line's wording</td><td>the handler that prints it (and its test)</td></tr><tr><td>A JSON field</td><td><code>lib/output.go</code> (and update <a href="output.html">Output formats</a>)</td></tr><tr><td>How addresses are resolved or dialed</td><td><code>lib/lib.go</code></td></tr><tr><td>The release build</td><td><code>.github/workflows/build.yaml</code>, <code>Makefile</code>, <code>Dockerfile</code></td></tr></tbody></table></div>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="changelog.html"><span>Previous</span>Changelog</a><a class="next" href="tech-source.html"><span>Next</span>Source reference</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-architecture.md">Edit this page on GitHub</a><span>shint v4.0.5 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-architecture.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#goals">Goals</a></li><li class="toc2"><a href="#repository-layout">Repository layout</a></li><li class="toc2"><a href="#layers">Layers</a></li><li class="toc2"><a href="#life-of-a-command">Life of a command</a></li><li class="toc2"><a href="#dependencies">Dependencies</a></li><li class="toc2"><a href="#concurrency-model">Concurrency model</a></li><li class="toc2"><a href="#cross-cutting-concerns">Cross-cutting concerns</a></li><li class="toc2"><a href="#where-to-change-what">Where to change what</a></li></ul></aside>
 </div>
