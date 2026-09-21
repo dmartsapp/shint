@@ -78,7 +78,7 @@ docker run --rm farhansabbir/shint:latest nmap example.com --from 1 --to 1024 --
 | Docker Hub | `docker.io/farhansabbir/shint` |
 | GitHub Container Registry | `ghcr.io/dmartsapp/shint` |
 
-Tags: `latest`, the full version (`4.0.4` and `v4.0.4`), and rolling `4.0` and `4`. Pin a full version in anything you care about.
+Tags: `latest`, the full version (`4.0.5` and `v4.0.5`), and rolling `4.0` and `4`. Pin a full version in anything you care about.
 
 The listen commands need their port published so you can reach them from outside the container:
 

@@ -27,7 +27,7 @@ nav: Source reference
 
 | Symbol | What it is |
 |---|---|
-| `Version` | The version string. `"4.0.4"` for a source build; overridden with `-ldflags "-X main.Version=..."` by the Makefile, the release workflow and the Dockerfile (see [Releases and tagging](tech-release.md#how-the-version-string-gets-into-the-binary)). |
+| `Version` | The version string. `"4.0.5"` for a source build; overridden with `-ldflags "-X main.Version=..."` by the Makefile, the release workflow and the Dockerfile (see [Releases and tagging](tech-release.md#how-the-version-string-gets-into-the-binary)). |
 | flag variables (`iterations`, `timeout`, ...) | Package-level variables bound to flags in `init()`. Shared flags live on the root command as *persistent* flags. |
 | `exitOK`, `exitFailure`, `exitUsage`, `exitCode` | The exit-status scheme (0 / 1 / 2) and the value `main` exits with. |
 | `usage(msg)` | Prints a usage error to stderr and records status 2. |
