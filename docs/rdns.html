@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.0.6</span>
+  <span class="version">v4.1.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -92,7 +92,7 @@
 <ul><li><strong><code>Ctrl+C</code> shows how far it got.</strong> With a large <code>--count</code>, the run stops, prints an <code>interrupted</code> line and its <code>done</code> line, and exits <code>1</code> (cut short); an attempt still in flight is dropped, not counted as a failure - see <a href="usage.html#stopping-early">Stopping early</a>.</li><li><strong>A PTR record is set by whoever owns the address block</strong> (your ISP, your cloud provider, your own DNS), not by the machine itself, so it may be missing, generic (<code>ec2-...compute.amazonaws.com</code>) or out of date. It says nothing about whether the name maps <em>forward</em> to the same address: that "forward-confirmed" check is not done here.</li><li><strong>An address can have several names</strong> - the PTR set - and all of them are listed.</li><li><strong>IPv4-mapped IPv6 addresses</strong> (<code>::ffff:192.0.2.1</code>) are looked up as the IPv4 address they carry.</li><li>It uses the <strong>system's DNS servers</strong>, like the other commands, so a private address may have a name in your organization's DNS that public resolvers do not know.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="wol.html"><span>Previous</span>wol</a><a class="next" href="dns.html"><span>Next</span>dns</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/rdns.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/rdns.md">Edit this page on GitHub</a><span>shint v4.1.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#an-address-with-a-name">An address with a name</a></li><li class="toc3"><a href="#an-address-with-no-name">An address with no name</a></li><li class="toc3"><a href="#a-host-name-every-address-is-looked-up">A host name: every address is looked up</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
 </div>

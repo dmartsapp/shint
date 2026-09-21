@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.0.6</span>
+  <span class="version">v4.1.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -92,7 +92,7 @@
 <ul><li><strong><code>Ctrl+C</code> shows how far it got.</strong> With a large <code>--count</code>, the run stops, prints an <code>interrupted</code> line and its <code>done</code> line, and exits <code>1</code> (cut short); an attempt still in flight is dropped, not counted as a failure - see <a href="usage.html#stopping-early">Stopping early</a>.</li><li><strong>It did not wake?</strong> Check the machine's firmware and network-card settings first; then try <code>--broadcast</code> with the subnet's own broadcast address; then check the machine is on the same segment (wired, same VLAN).</li><li><strong>A machine that is fully powered off</strong> (not just asleep) often needs Wake-on-LAN enabled for the "S5" state, a separate setting on many boards.</li><li>A <strong>directed broadcast</strong> to another subnet (<code>--broadcast 10.1.2.255</code> while you are on <code>10.1.1.0/24</code>) is only forwarded if the routers in between are set up to forward it, which they usually are not.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="ntp.html"><span>Previous</span>ntp</a><a class="next" href="rdns.html"><span>Next</span>rdns</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/wol.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/wol.md">Edit this page on GitHub</a><span>shint v4.1.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#before-you-use-it">Before you use it</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#wake-a-machine">Wake a machine</a></li><li class="toc3"><a href="#see-exactly-what-is-sent">See exactly what is sent</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc3"><a href="#a-mistake">A mistake</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
 </div>

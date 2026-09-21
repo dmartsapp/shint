@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.0.6</span>
+  <span class="version">v4.1.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -100,7 +100,7 @@
 <ul><li><code>kind</code> describes the network address only. A prefix that spans several kinds (<code>0.0.0.0/0</code> covers everything) reports the kind of its first address.</li><li><code>global</code> means "none of the special kinds above" - it is not a promise that the range is routable on the internet.</li><li>An IPv6 address with a zone (<code>fe80::1%eth0</code>) is refused: a zone names an interface on one machine, not a range of addresses.</li><li>Prefixes are read strictly: <code>10.0.0/24</code> (three octets) or <code>10.0.0.0/24/8</code> are errors, not guesses.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="dns.html"><span>Previous</span>dns</a><a class="next" href="ip.html"><span>Next</span>ip</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/cidr.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/cidr.md">Edit this page on GitHub</a><span>shint v4.1.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#what-it-reports">What it reports</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-typical-subnet">A typical subnet</a></li><li class="toc3"><a href="#several-prefixes-both-families">Several prefixes, both families</a></li><li class="toc3"><a href="#small-prefixes">Small prefixes</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc3"><a href="#bad-input">Bad input</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
 </div>

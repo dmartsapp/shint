@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.0.6</span>
+  <span class="version">v4.1.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -93,7 +93,7 @@
 <ul><li><strong>The <code>preview</code> is always one safe line.</strong> Plain text is shown as it is; anything else is shown escaped - <code>\n</code>, <code>\r</code>, <code>\t</code>, <code>\xNN</code> for other control characters and for bytes that are not valid text, <code>\uNNNN</code> for other non-printable characters - and long payloads are cut at 120 bytes with <code>...</code>. A binary packet (see <a href="wol.html"><code>wol</code></a> for a real one) cannot garble your terminal, and a payload cannot pass off a line break or an escape sequence as your terminal's or the log's own.</li><li><strong>Ports below 1024</strong> normally need administrator rights (or a capability) on Linux; other systems vary. Use a high port such as 8080 or 9000 to avoid the question.</li><li><strong>Firewalls.</strong> macOS and Windows may ask whether to allow incoming connections the first time; choose the network scope you intend. Bind to <code>127.0.0.1</code> when you only want to test locally.</li><li><strong>IPv6.</strong> <code>--bind ::</code> listens on IPv6 (and, on macOS and Linux, IPv4 as well).</li><li><strong>Docker.</strong> Publish the port so it is reachable from outside: <code>docker run --rm -p 8080:8080 farhansabbir/shint listen http 8080</code>.</li><li><strong>Exit status</strong> is <code>0</code> when the listener finishes normally (its <code>--count</code> reached, or <code>Ctrl+C</code>) and <code>1</code> if the port cannot be bound, for example because it is already in use.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="ip.html"><span>Previous</span>ip</a><a class="next" href="cookbook.html"><span>Next</span>Cookbook</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/listen.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/listen.md">Edit this page on GitHub</a><span>shint v4.1.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#tcp">TCP</a></li><li class="toc2"><a href="#udp">UDP</a></li><li class="toc2"><a href="#http">HTTP</a></li><li class="toc3"><a href="#a-request-that-was-not-served">A request that was not served</a></li><li class="toc3"><a href="#what-the-http-listener-does-not-do">What the HTTP listener does not do</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
 </div>
