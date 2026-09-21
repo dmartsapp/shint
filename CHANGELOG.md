@@ -4,7 +4,9 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
-## v4.1.0 - unreleased
+## v4.1.0 - 2026-09-21
+
+New commands `ntp`, `wol`, `rdns` and `cidr`, `web --timing`, IPv4-only and IPv6-only checks, safer listener previews, a Go module path that `go install` accepts, and verified downloads: a SHA-256 file and a signed build attestation for every binary.
 
 - **New flags `-4`/`--ipv4` and `-6`/`--ipv6`: check IPv4 addresses only, or IPv6 addresses only.** A name with both kinds of address is still checked over both by default, but on a machine with no IPv6 that made every dual-stack check fail (the reported case: a Linux host with IPv6 disabled, `socket: address family not supported by protocol`, exit `1` for a service that works over IPv4) and the only workaround was to look up and pass the IPv4 address. The flags work on `telnet`, `ping`, `nmap`, `udp`, `web` (they bind the HTTP client's own connection too), `ntp` and `rdns`; both together, or an address of the other family, is a usage error (exit `2`). A failed IPv6 connect that is really this machine's lack of IPv6 now carries a hint pointing at `-4`. See [IPv4 only, or IPv6 only](https://dmartsapp.github.io/shint/docs/usage.html#ipv4-only-or-ipv6-only). (Issue #23)
 - **`Ctrl+C` shows the summary on the new commands too**: `ntp`, `rdns` and `wol` stop, print the `interrupted` line and their `done` line (or the complete JSON document), drop an attempt still in flight, and exit `1`, exactly as `telnet`, `web` and `udp` do since v4.0.5. See [Stopping early](https://dmartsapp.github.io/shint/docs/usage.html#stopping-early). (Issue #24)

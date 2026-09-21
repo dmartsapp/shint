@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.0.6</span>
+  <span class="version">v4.1.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -68,7 +68,7 @@
 <ul><li>Start a real listener, and use port <code>0</code>.</li><li>Keep durations short but assert on <em>behaviour</em>, not timing, where you can; where timing is the point (a run outlasting a timeout), make the margin generous.</li><li>Never call <code>t.Fatal</code> from inside a <code>captureStdout</code> callback - it would leave stdout redirected.</li><li>Add a test that fails without your fix, and confirm it does.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="tech-release.html"><span>Previous</span>Releases and tagging</a><a class="next" href="tech-docs.html"><span>Next</span>This documentation</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-testing.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-testing.md">Edit this page on GitHub</a><span>shint v4.1.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#approach">Approach</a></li><li class="toc2"><a href="#running-the-tests">Running the tests</a></li><li class="toc2"><a href="#building-blocks">Building blocks</a></li><li class="toc3"><a href="#hooks-for-testing">Hooks for testing</a></li><li class="toc3"><a href="#the-cli-as-a-subprocess">The CLI as a subprocess</a></li><li class="toc2"><a href="#what-guards-what">What guards what</a></li><li class="toc2"><a href="#the-black-box-battery">The black-box battery</a></li><li class="toc2"><a href="#the-live-smoke-test">The live smoke test</a></li><li class="toc2"><a href="#the-release-tag-guard">The release-tag guard</a></li><li class="toc2"><a href="#lint-and-vulnerability-checks">Lint and vulnerability checks</a></li><li class="toc2"><a href="#writing-a-good-test-here">Writing a good test here</a></li></ul></aside>
 </div>
