@@ -51,7 +51,7 @@ The full, file-by-file description is in the [Source reference](tech-source.md).
   <path class="arrow" d="M330 76V108"/>
   <rect class="box" x="110" y="108" width="300" height="70" rx="10"/>
   <text class="h" x="260" y="135" text-anchor="middle">lib/handlers - one per command</text>
-  <text class="sub" x="260" y="155" text-anchor="middle">telnet · icmp · web · nmap · udp · ntp · wol · rdns · cidr · listen</text>
+  <text class="sub" x="260" y="155" text-anchor="middle">telnet · icmp · web · nmap · udp · ntp · wol · rdns · cidr · ip · listen</text>
   <text class="sub" x="260" y="170" text-anchor="middle">concurrency, output (text or JSON), result</text>
   <rect class="box" x="440" y="108" width="110" height="70" rx="10"/>
   <text class="h" x="495" y="135" text-anchor="middle">go-ping/v2</text>
@@ -105,7 +105,7 @@ Everything else - DNS, TCP, UDP, HTTP, TLS, JSON, signal handling - is the stand
 | Command | How the work is spread |
 |---|---|
 | `ntp`, `rdns`, `wol` | Attempts run one after another, `--delay` before each: they are quick request/response (or send-only) exchanges, and measuring a clock offset is best done without other traffic of our own in the way. |
-| `cidr` | Nothing to spread: pure computation. |
+| `cidr`, `ip` | Nothing to spread: pure computation, or one read of the interface table. |
 | `telnet`, `web`, `udp` | Attempts are launched one at a time, `--delay` apart, each in its own goroutine. Results are collected under a mutex and a `WaitGroup` waits for all of them. |
 | `ping` | go-ping runs the echo requests in parallel; shint streams its log lines from a channel. |
 | `nmap` | A launcher loop starts one goroutine per port, but a channel used as a semaphore keeps at most **500** in flight. A separate goroutine prints progress from a ticker. |

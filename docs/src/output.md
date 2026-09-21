@@ -51,6 +51,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `wol` | `magic packet sent`, `send failed`, `done` |
 | `rdns` | `dns resolved`, `dns resolution failed`, `reverse lookup`, `reverse lookup failed`, `done` |
 | `cidr` | `subnet`, `done` |
+| `ip` | `interface`, `address`, `failed`, `done` |
 | `listen-tcp` | `listening`, `connection accepted`, `data received`, `connection closed`, `done` |
 | `listen-udp` | `listening`, `packet received`, `done` |
 | `listen-http` | `listening`, `request`, `done` |
@@ -108,8 +109,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Field | Type | Meaning |
 |---|---|---|
 | `input_params` | object | The parameters the command ran with. |
-| `module_name` | string | `telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp` or `rdns` - and `wol` or `cidr`, whose documents have no `dns_lookup`. |
-| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol` and `cidr`**, which never look up a name (an empty lookup would only read as a failed one). |
+| `module_name` | string | `telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp` or `rdns` - and `wol`, `cidr` or `ip`, whose documents have no `dns_lookup`. |
+| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr` and `ip`**, which never look up a name (an empty lookup would only read as a failed one). |
 | `stats` | array | One entry per check; the shape depends on the command (below). |
 | `start_time_unixtime_µs` | integer | When the run started, in Unix microseconds. |
 | `end_time_unixtime_µs` | integer | When it ended. |
@@ -127,7 +128,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `timeout_ms` | The `--timeout` value. **Despite the name, it is in seconds.** |
 | `count`, `delay_ms`, `throttle` | `--count`, `--delay` (milliseconds) and `--throttle`. |
 | `payload_bytes` | Payload size: filler size for `ping`/`udp`, request body size for `web`. |
-| `method`, `data`, `headers` | HTTP method, body and headers (`web` only). `data` is also where `wol` puts the MAC address and `cidr` its comma-separated prefixes. |
+| `method`, `data`, `headers` | HTTP method, body and headers (`web` only). `data` is also where `wol` puts the MAC address, `cidr` its comma-separated prefixes and `ip` the interface name asked for. |
 | `sequential` | Always `false`; reserved. |
 
 ### dns_lookup
@@ -229,6 +230,14 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 |---|---|
 | `input`, `network`, `family`, `prefix_length`, `netmask`, `wildcard`, `first_address`, `last_address`, `broadcast`, `first_host`, `last_host`, `kind` | The subnet, as described on the page. `wildcard` and `broadcast` appear only where they exist. |
 | `addresses`, `usable_hosts` | **Strings**, not numbers: an IPv6 prefix can hold more addresses than a 64-bit integer, and JSON tools would silently round them. |
+
+**ip** - one entry per interface, no timing (see [ip](ip.md#what-it-reports) for what each field means)
+
+| Field | Meaning |
+|---|---|
+| `name`, `index`, `state`, `flags`, `mtu`, `mac` | The interface. `state` is `up` or `down`; `flags` a list of words; `mac` is left out when the interface has none. |
+| `addresses` | A list - empty, never `null` - of `{address, prefix, prefix_length, family, kind}`, one per address (after `-4`/`-6`). |
+| `error` | Present only when the addresses of this interface could not be read. |
 
 ## Listener events
 

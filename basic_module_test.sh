@@ -82,6 +82,7 @@ run_test "Reverse DNS" "$BINARY rdns 8.8.8.8" "dns.google."
 run_test "NTP" "$BINARY ntp time.cloudflare.com" "[ntp] OK response"
 run_test "Wake-on-LAN" "$BINARY wol aa:bb:cc:dd:ee:ff --broadcast 127.0.0.1 --port 9" "magic packet sent"
 run_test "CIDR" "$BINARY cidr 192.168.1.10/24" "network=192.168.1.0/24"
+run_test "IP" "$BINARY ip" "[ip] OK done interfaces="
 
 
 # --- Summary ---

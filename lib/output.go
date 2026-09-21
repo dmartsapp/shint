@@ -264,6 +264,34 @@ type RDNSStats struct {
 	Error     string   `json:"error,omitempty"`
 }
 
+// IPStats is one network interface listed by "ip". State is "up" or "down"
+// (the interface's own administrative flag, not whether it has a carrier);
+// Flags are the operating system's flag names (broadcast, multicast, loopback,
+// point-to-point, running); MAC is empty for interfaces that have none
+// (loopback, tunnels). Error is set only when the addresses of an interface
+// could not be read.
+type IPStats struct {
+	Name      string      `json:"name"`
+	Index     int         `json:"index"`
+	State     string      `json:"state"`
+	Flags     []string    `json:"flags"`
+	MTU       int         `json:"mtu"`
+	MAC       string      `json:"mac,omitempty"`
+	Addresses []IPAddress `json:"addresses"`
+	Error     string      `json:"error,omitempty"`
+}
+
+// IPAddress is one address on an interface: Prefix is the address with its
+// prefix length as configured ("192.168.1.20/24"), Kind what the address is
+// for (loopback, private, link-local, global, ...; see "cidr").
+type IPAddress struct {
+	Address      string `json:"address"`
+	Prefix       string `json:"prefix"`
+	PrefixLength int    `json:"prefix_length"`
+	Family       string `json:"family"`
+	Kind         string `json:"kind"`
+}
+
 // LocalJSONOutput is the JSON document of a command that never looks up a
 // name ("cidr", "wol"): JSONOutput without dns_lookup, which would only ever
 // read as a failed lookup. Everything else is the same shape.

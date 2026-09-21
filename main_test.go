@@ -237,6 +237,13 @@ func TestExitStatus(t *testing.T) {
 		{"cidr one bad among good", []string{"cidr", "10.0.0.0/8", "nope"}, 2},
 		{"cidr missing argument", []string{"cidr"}, 2},
 
+		// ip: reads the interface table; a name that does not exist is a failed check
+		{"ip all interfaces", []string{"ip"}, 0},
+		{"ip json", []string{"ip", "--json"}, 0},
+		{"ip unknown interface", []string{"ip", "no-such-interface0"}, 1},
+		{"ip both families", []string{"ip", "-4", "-6"}, 2},
+		{"ip too many arguments", []string{"ip", "en0", "lo0"}, 2},
+
 		// ping (no ICMP privileges needed for these)
 		{"ping dns failure", []string{"ping", dead}, 1},
 		{"ping timeout zero", []string{"ping", "127.0.0.1", "--timeout", "0"}, 2},
@@ -275,6 +282,8 @@ func TestUsageErrorsGoToStderrOnly(t *testing.T) {
 		{"telnet", "127.0.0.1"},
 		{"cidr", "10.0.0.0/33"},
 		{"cidr"},
+		{"ip", "-4", "-6"},
+		{"ip", "a", "b"},
 		{"rdns"},
 		{"wol", "not-a-mac"},
 		{"ntp", "127.0.0.1", "--port", "0"},

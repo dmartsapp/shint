@@ -11,7 +11,7 @@ nav: Source reference
 
 | File | Purpose |
 |---|---|
-| `main.go` | The command line. Defines the cobra commands (`telnet`, `ping`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `cidr`, `listen tcp|udp|http`), every flag, argument validation, the exit-status scheme, and `scanContext`. Holds the `Version` constant. |
+| `main.go` | The command line. Defines the cobra commands (`telnet`, `ping`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `cidr`, `ip`, `listen tcp|udp|http`), every flag, argument validation, the exit-status scheme, and `scanContext`. Holds the `Version` constant. |
 | `main_test.go` | End-to-end tests of the CLI. `TestMain` makes the test binary behave as `shint` when `SHINT_TEST_RUN_MAIN=1`, so tests run it as a subprocess and assert real exit statuses and stdout/stderr. |
 | `go.mod`, `go.sum` | The module (`github.com/dmartsapp/shint/v4`), the Go version, and pinned dependencies. |
 | `Makefile` | The one place to build and test from: cross-compilation targets for every release platform, the version-string logic for local builds, and the checks (`make check`, `make test-live`, `make test-full`). |
@@ -32,7 +32,7 @@ nav: Source reference
 | `exitOK`, `exitFailure`, `exitUsage`, `exitCode` | The exit-status scheme (0 / 1 / 2) and the value `main` exits with. |
 | `usage(msg)` | Prints a usage error to stderr and records status 2. |
 | `finish(ok)` | Records status 1 when a handler reports failure. |
-| `rootCmd`, `telnetCmd`, `pingCmd`, `webCmd`, `nmapCmd`, `udpCmd`, `ntpCmd`, `wolCmd`, `rdnsCmd`, `cidrCmd`, `listenCmd` (+ `listenTCPCmd`, `listenUDPCmd`, `listenHTTPCmd`) | The commands. Each `Run` validates, calls one handler, and passes its result to `finish`. |
+| `rootCmd`, `telnetCmd`, `pingCmd`, `webCmd`, `nmapCmd`, `udpCmd`, `ntpCmd`, `wolCmd`, `rdnsCmd`, `cidrCmd`, `ipCmd`, `listenCmd` (+ `listenTCPCmd`, `listenUDPCmd`, `listenHTTPCmd`) | The commands. Each `Run` validates, calls one handler, and passes its result to `finish`. |
 | `interruptContext()` | The context `nmap`, `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol` run under: cancelled by `Ctrl+C`/`SIGTERM`, deliberately without any deadline, and un-registered after the first signal so a second `Ctrl+C` ends the process. |
 | `init()` | Registers all flags. Note `listenCmd` re-declares `--count` (default `0`) and `webCmd` re-declares `--payload` (`-P`, the body), shadowing the root flags. |
 | `main()` | Adds the commands, runs cobra, exits with `exitUsage` if cobra returned an error, otherwise with `exitCode`. |
@@ -43,7 +43,7 @@ nav: Source reference
 |---|---|
 | `lib/lib.go` | Constants `DATETIMEFORMAT` (`time.UnixDate`), `NetworkType` (`"ip"`: A and AAAA) and `Protocol` (`"tcp"`). `ResolveName` and `ResolveNameToIPs` (DNS), `IsPortUp` (one TCP dial bounded by a per-attempt timeout *and* a context), `ValidatePort`, `RequirePositive`, `GetMinAvgMax` (latency statistics), `ConvertIPToStringSlice`, and `SortTimeDurationSlice` (currently exercised only by tests). |
 | `lib/family.go` | The address family a run uses: `NetworkType` (`"ip"`, `"ip4"`, `"ip6"`), `SetIPFamily` (the `-4`/`-6` flags), `FamilyAllows`, `DialNetwork` (`tcp` to `tcp4`/`tcp6` for the HTTP client), `HostFamilyConflict` (an address of the other family), and `FamilyHint`/`ExplainError` (the hint on an IPv6 failure that is really this machine's lack of IPv6). |
-| `lib/output.go` | The JSON contract: `JSONOutput`, `InputParams`, `DNSLookup`, and the per-command stats types `TelnetStats`, `WebStats`, `NmapStats`, `ICMPStats`, `UDPStats`, `NTPStats`, `WOLStats`, `RDNSStats`, `CIDRStats`, the `--timing` types `WebTiming` and `WebHopTiming`, `LocalJSONOutput` (the document of `wol` and `cidr`, which have no `dns_lookup`), plus the listener events `ListenEvent` and `HTTPListenEvent`. Also the text log: `LogWithTimestamp` (the `time: [module] OK|ERROR message` prefix), `Fields` (the `key=value` suffix, quoting values with spaces) and `LogStats` (the statistics banner). |
+| `lib/output.go` | The JSON contract: `JSONOutput`, `InputParams`, `DNSLookup`, and the per-command stats types `TelnetStats`, `WebStats`, `NmapStats`, `ICMPStats`, `UDPStats`, `NTPStats`, `WOLStats`, `RDNSStats`, `CIDRStats`, `IPStats` and `IPAddress`, the `--timing` types `WebTiming` and `WebHopTiming`, `LocalJSONOutput` (the document of `wol` and `cidr`, which have no `dns_lookup`), plus the listener events `ListenEvent` and `HTTPListenEvent`. Also the text log: `LogWithTimestamp` (the `time: [module] OK|ERROR message` prefix), `Fields` (the `key=value` suffix, quoting values with spaces) and `LogStats` (the statistics banner). |
 | `lib/family_test.go` | The family logic and the hint, built from the exact error a host with IPv6 disabled reported. |
 | `lib/lib_test.go`, `lib/output_test.go` | Unit tests for the above: validators, statistics maths, DNS (loopback, IPv6 literal, dual-stack, invalid host), `IsPortUp` (open, closed, IPv6, context cancellation), log formatting. |
 
@@ -62,6 +62,7 @@ nav: Source reference
 | `ntp.go` | `NTPHandler` and `queryNTP`: one SNTP v4 query per resolved address. `toNTP`/`fromNTP` convert NTP's 64-bit timestamps (with the 2036 wrap), `buildNTPRequest` and `parseNTPReply` build the 48-byte request and refuse a reply that is not an answer (wrong mode, mismatched originate timestamp, kiss-o'-death, unsynchronized, stratum 16, no transmit time). |
 | `wol.go` | `WOLHandler`, `MagicPacket` (6 x 0xFF + the MAC 16 times), `ParseMAC` (four spellings, exactly six bytes) and `ParseBroadcast` (IPv4 only). |
 | `rdns.go` | `RDNSHandler` and `ReverseName` (the `in-addr.arpa.` / `ip6.arpa.` name). `lookupAddr` is the resolver call, a variable so tests can substitute it. |
+| `ip.go` | `IPHandler`: the interface table (`net.Interfaces`, behind the `systemInterfaces` hook so tests can describe interfaces), the per-interface report and the `-4`/`-6` filter. Uses `addressKind` from `cidr.go`. |
 | `cidr.go` | `ParseSubnets`, `subnetStats` and `CIDRHandler`: subnet arithmetic with `net/netip` and `math/big` (IPv6 counts overflow 64 bits). |
 | `pacing.go` | `attemptDelay`: the `--delay` / `--throttle` pause before an attempt, shared by `ntp`, `wol` and `rdns`. |
 | `interrupt.go` | How a repeating check ends on `Ctrl+C`: `pause` (a `--delay` that a cancellation cuts short), `watchCancel` (expires a connection's deadline so a blocked read returns), and `interruptedLine` / `interruptedNote` (the `ERROR interrupted ...` line and the JSON run-level error). |
@@ -84,6 +85,7 @@ nav: Source reference
 | `udp_test.go` | `probeUDP` for each state, generated payloads, multiple attempts. |
 | `cancel_test.go` | `Ctrl+C` on `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol`: how far the run got, the statistics for what completed, an attempt in flight dropped rather than counted as a failure, a long `--delay` cut short, a complete JSON document, and the `pause` / `watchCancel` helpers. |
 | `tcplisten_test.go`, `udplisten_test.go`, `httplisten_test.go` | Accept and echo, IPv6 binding, JSON events and their measurements, and "runs until interrupted" with `--count 0`. |
+| `ip_test.go` | Fake interface tables: every field, one interface by name, `-4`/`-6`, JSON shape (and the empty list, not `null`), an unknown name, unreadable addresses, and the real table once. |
 | `cidr_test.go`, `wol_test.go`, `ntp_test.go`, `rdns_test.go` | Subnet values worked out by hand and checked against `net.ParseCIDR`; the magic packet received by a real UDP socket; `ntp` against a controllable fake SNTP server (offsets, server processing time, malformed replies, timeouts, IPv6); `rdns` with a substituted resolver. |
 | `webtiming_test.go` | The `--timing` recorder against a fake clock (exact figures), and against real servers: slow first byte, HTTPS handshake, a redirect, a reused connection, a refused connection, the redirect limit. |
 | `preview_test.go` | `previewBytes`: printable text unchanged, everything else escaped, cut on a character boundary, always one safe line. |

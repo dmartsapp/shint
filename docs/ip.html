@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ip · shint</title>
+<meta name="description" content="shint ip lists this machine&#x27;s network interfaces with their state, flags, MTU, hardware address and every IPv4 and IPv6 address, offline and without privileges.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.0.6</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="ntp.html">ntp</a></li><li><a href="wol.html">wol</a></li><li><a href="rdns.html">rdns</a></li><li><a href="cidr.html">cidr</a></li><li><a href="ip.html" class="active" aria-current="page">ip</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>ip</h1>
+<p class="lead">What does this machine have? Every network interface and address, with its state, MTU, hardware address and what each address is for - offline, no privileges.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p>When a check behaves strangely the first question is often about <em>this</em> machine: which addresses does it have, on which interface, is that interface up, what is its MTU? <code>shint ip</code> answers that in shint's usual format, on Linux, macOS and Windows alike, where the tool that does it otherwise differs on each (<code>ip addr</code>, <code>ifconfig</code>, <code>ipconfig</code>).</p>
+<p>It reads the operating system's interface table and <strong>sends nothing</strong>: no network is needed and no privileges - it works as a normal user, offline, instantly.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ip [interface] [-4 | -6] [<span class="tok-flag">--json</span>]</code></pre></div>
+<p>With no argument every interface is listed; with an interface name (<code>en0</code>, <code>eth0</code>, <code>lo</code>; the case does not matter) just that one. <code>-4</code> and <code>-6</code> list only the addresses of that family. The other <a href="usage.html#flags-shared-by-every-command">shared flags</a> (<code>--count</code>, <code>--timeout</code>, <code>--delay</code>, ...) mean nothing for a command that never waits, and are ignored.</p>
+<h2 id="what-it-reports">What it reports<a class="anchor" href="#what-it-reports" aria-label="Link to this section">#</a></h2>
+<p>One <code>interface</code> line per interface, followed by one <code>address</code> line for each of its addresses:</p>
+<div class="tablewrap"><table><thead><tr><th>Field</th><th>Meaning</th></tr></thead><tbody><tr><td><code>name</code>, <code>index</code></td><td>The interface's name and the operating system's number for it.</td></tr><tr><td><code>state</code></td><td><code>up</code> or <code>down</code>: the interface's administrative state (what <code>ip link set up/down</code> changes). It is not the same as having a cable or a signal.</td></tr><tr><td><code>flags</code></td><td>What the system says about it, as words: <code>broadcast</code>, <code>loopback</code>, <code>pointtopoint</code>, <code>multicast</code>, <code>running</code> (there is a carrier and the driver is active). <code>up</code> is not repeated here.</td></tr><tr><td><code>mtu</code></td><td>The largest packet the interface carries, in bytes.</td></tr><tr><td><code>mac</code></td><td>The hardware address; absent for interfaces that have none (loopback, tunnels).</td></tr><tr><td><code>addresses</code></td><td>How many addresses are listed for it (after <code>-4</code>/<code>-6</code>).</td></tr><tr><td><code>address</code></td><td>The address on its own, and <code>prefix</code>: the same address with its configured prefix length, the way you would write it in a configuration (<code>192.168.1.20/24</code>).</td></tr><tr><td><code>family</code></td><td><code>ipv4</code> or <code>ipv6</code>.</td></tr><tr><td><code>kind</code></td><td>What the address is for: <code>loopback</code>, <code>private</code> (RFC 1918 and IPv6 unique-local), <code>link-local</code>, <code>multicast</code>, <code>shared</code> (carrier-grade NAT), <code>documentation</code>, <code>global</code> and the rest - the same words <code>shint cidr</code> uses. <code>global</code> means none of the special ranges; it is not a promise that the address is reachable from the internet.</td></tr></tbody></table></div>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="everything">Everything<a class="anchor" href="#everything" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ip</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> interface <span class="tok-key">name</span>=lo0 <span class="tok-key">index</span>=1 <span class="tok-key">state</span>=up <span class="tok-key">flags</span>=[loopback,multicast,running] <span class="tok-key">mtu</span>=16384 <span class="tok-key">addresses</span>=3
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> address <span class="tok-key">interface</span>=lo0 <span class="tok-key">address</span>=127.0.0.1 <span class="tok-key">prefix</span>=127.0.0.1/8 <span class="tok-key">family</span>=ipv4 <span class="tok-key">kind</span>=loopback
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> address <span class="tok-key">interface</span>=lo0 <span class="tok-key">address</span>=::1 <span class="tok-key">prefix</span>=::1/128 <span class="tok-key">family</span>=ipv6 <span class="tok-key">kind</span>=loopback
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> address <span class="tok-key">interface</span>=lo0 <span class="tok-key">address</span>=fe80::1 <span class="tok-key">prefix</span>=fe80::1/64 <span class="tok-key">family</span>=ipv6 <span class="tok-key">kind</span>=link-local
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> interface <span class="tok-key">name</span>=en0 <span class="tok-key">index</span>=15 <span class="tok-key">state</span>=up <span class="tok-key">flags</span>=[broadcast,multicast,running] <span class="tok-key">mtu</span>=1500 <span class="tok-key">mac</span>=aa:bb:cc:dd:ee:ff <span class="tok-key">addresses</span>=3
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> address <span class="tok-key">interface</span>=en0 <span class="tok-key">address</span>=192.168.1.20 <span class="tok-key">prefix</span>=192.168.1.20/24 <span class="tok-key">family</span>=ipv4 <span class="tok-key">kind</span>=private
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> address <span class="tok-key">interface</span>=en0 <span class="tok-key">address</span>=fe80::1c2d:3e4f:5a6b:7c8d <span class="tok-key">prefix</span>=fe80::1c2d:3e4f:5a6b:7c8d/64 <span class="tok-key">family</span>=ipv6 <span class="tok-key">kind</span>=link-local
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> address <span class="tok-key">interface</span>=en0 <span class="tok-key">address</span>=2600:1700:abcd:1234::20 <span class="tok-key">prefix</span>=2600:1700:abcd:1234::20/64 <span class="tok-key">family</span>=ipv6 <span class="tok-key">kind</span>=global
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> interface <span class="tok-key">name</span>=utun3 <span class="tok-key">index</span>=20 <span class="tok-key">state</span>=down <span class="tok-key">flags</span>=[pointtopoint,multicast] <span class="tok-key">mtu</span>=1380 <span class="tok-key">addresses</span>=0
+<span class="tok-ts">Mon Sep 21 11:41:23 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> done <span class="tok-key">interfaces</span>=3 <span class="tok-key">addresses</span>=6 <span class="tok-key">total_time</span>=805.792µs</code></pre></div>
+<p>Read it top to bottom: the loopback interface with its three addresses; <code>en0</code>, the real network card, with a private IPv4 address and two IPv6 ones; and a tunnel that is <code>down</code> and has no address at all. An interface with no addresses is still listed - knowing it exists and is down is useful.</p>
+<h3 id="one-interface-one-family">One interface, one family<a class="anchor" href="#one-interface-one-family" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ip en0 -4</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Mon Sep 21 11:42:10 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> interface <span class="tok-key">name</span>=en0 <span class="tok-key">index</span>=15 <span class="tok-key">state</span>=up <span class="tok-key">flags</span>=[broadcast,multicast,running] <span class="tok-key">mtu</span>=1500 <span class="tok-key">mac</span>=aa:bb:cc:dd:ee:ff <span class="tok-key">addresses</span>=1
+<span class="tok-ts">Mon Sep 21 11:42:10 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> address <span class="tok-key">interface</span>=en0 <span class="tok-key">address</span>=192.168.1.20 <span class="tok-key">prefix</span>=192.168.1.20/24 <span class="tok-key">family</span>=ipv4 <span class="tok-key">kind</span>=private
+<span class="tok-ts">Mon Sep 21 11:42:10 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-ok">OK</span> done <span class="tok-key">interfaces</span>=1 <span class="tok-key">addresses</span>=1 <span class="tok-key">total_time</span>=612.375µs</code></pre></div>
+<p><code>-4</code> filters the <em>addresses</em>, not the interfaces: an interface that only has IPv6 addresses is still listed, with <code>addresses=0</code>.</p>
+<h3 id="an-interface-that-does-not-exist">An interface that does not exist<a class="anchor" href="#an-interface-that-does-not-exist" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ip wlan9</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Mon Sep 21 11:42:31 MDT 2026:</span> <span class="tok-mod">[ip]</span> <span class="tok-err">ERROR</span> failed <span class="tok-key">error</span>="no such interface wlan9 (available: lo0, en0, utun3)"</code></pre></div>
+<p>The exit status is <code>1</code>, and the message names the interfaces that do exist, which is usually what you wanted to know. The name is data, and what is available depends on the machine, so this is a failed check rather than a <a href="#exit-status">usage error</a>.</p>
+<h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> ip en0 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: { ... },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"ip"</span>,
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"name"</span>: <span class="tok-str">"en0"</span>,
+      <span class="tok-key">"index"</span>: <span class="tok-num">15</span>,
+      <span class="tok-key">"state"</span>: <span class="tok-str">"up"</span>,
+      <span class="tok-key">"flags"</span>: [<span class="tok-str">"broadcast"</span>, <span class="tok-str">"multicast"</span>, <span class="tok-str">"running"</span>],
+      <span class="tok-key">"mtu"</span>: <span class="tok-num">1500</span>,
+      <span class="tok-key">"mac"</span>: <span class="tok-str">"aa:bb:cc:dd:ee:ff"</span>,
+      <span class="tok-key">"addresses"</span>: [
+        {
+          <span class="tok-key">"address"</span>: <span class="tok-str">"192.168.1.20"</span>,
+          <span class="tok-key">"prefix"</span>: <span class="tok-str">"192.168.1.20/24"</span>,
+          <span class="tok-key">"prefix_length"</span>: <span class="tok-num">24</span>,
+          <span class="tok-key">"family"</span>: <span class="tok-str">"ipv4"</span>,
+          <span class="tok-key">"kind"</span>: <span class="tok-str">"private"</span>
+        }
+      ]
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: ...,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: ...,
+  <span class="tok-key">"total_time_taken_µs"</span>: ...,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<p>Like <a href="cidr.html"><code>cidr</code></a>, the document has no <code>dns_lookup</code>: nothing is looked up. <code>input_params.data</code> holds the interface name you asked for (empty for all). <code>addresses</code> is always a list, empty rather than <code>null</code> for an interface with none; <code>mac</code> is left out when there is none. When the run fails, <code>error</code> says why and <code>stats</code> holds whatever could be listed.</p>
+<h2 id="exit-status">Exit status<a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<p><code>0</code> when at least one interface was listed. <code>1</code> when the named interface does not exist, the interface table could not be read, or the addresses of an interface could not be read (that interface is reported with an <code>ERROR</code> line and the others are still listed). <code>2</code> for using it wrongly: <code>-4</code> and <code>-6</code> together, or more than one interface name.</p>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>Addresses are shown as configured</strong>: <code>192.168.1.20/24</code> is the address <em>with</em> its prefix length, not the network. To work out the network, mask and range of a prefix, use <a href="cidr.html"><code>cidr</code></a>.</li><li><strong>IPv6 link-local addresses</strong> (<code>fe80::...</code>) are shown without the <code>%en0</code> zone: the interface name is on the line above.</li><li><strong>Names differ by platform</strong> (<code>eth0</code> or <code>enp3s0</code> on Linux, <code>en0</code> on macOS, <code>Ethernet</code> on Windows) and this lists whatever the system calls them. The match is case-insensitive.</li><li><strong>It says nothing about routes.</strong> Which interface a packet to a given destination would leave by, and the default gateway, are the routing table - planned as <code>ip route</code>.</li><li><strong>It does not change anything.</strong> There is no way to add an address or bring an interface up or down with shint, and there never will be: it needs privileges and shint never does.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="cidr.html"><span>Previous</span>cidr</a><a class="next" href="listen.html"><span>Next</span>listen</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/ip.md">Edit this page on GitHub</a><span>shint v4.0.6 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#what-it-reports">What it reports</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#everything">Everything</a></li><li class="toc3"><a href="#one-interface-one-family">One interface, one family</a></li><li class="toc3"><a href="#an-interface-that-does-not-exist">An interface that does not exist</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

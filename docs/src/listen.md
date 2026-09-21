@@ -3,7 +3,7 @@ title: listen
 lead: Start a TCP, UDP or HTTP server on your own machine, so you can test firewalls, load balancers, monitoring and the other shint commands without touching anything real.
 description: shint listen runs a local TCP, UDP or minimal JSON HTTP listener that reports every connection, packet or request, with byte counts.
 section: Commands
-order: 10
+order: 11
 nav: listen
 ---
 

@@ -93,6 +93,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
   <a class="card" href="wol.html"><strong><code>wol</code></strong><span>Wake a machine on your network with a Wake-on-LAN packet.</span></a>
   <a class="card" href="rdns.html"><strong><code>rdns</code></strong><span>Which names does this IP address map back to? Reverse DNS.</span></a>
   <a class="card" href="cidr.html"><strong><code>cidr</code></strong><span>Network, mask, range and size of a subnet, offline.</span></a>
+  <a class="card" href="ip.html"><strong><code>ip</code></strong><span>What does this machine have? Its interfaces and addresses.</span></a>
   <a class="card" href="listen.html"><strong><code>listen</code></strong><span>Run a local TCP, UDP or HTTP server to test against.</span></a>
 </div>
 :::
@@ -112,6 +113,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
 | `wakeonlan aa:bb:cc:dd:ee:ff`, `etherwake` | `shint wol aa:bb:cc:dd:ee:ff` |
 | `dig -x 8.8.8.8`, `host 8.8.8.8` | `shint rdns 8.8.8.8` |
 | `ipcalc 192.168.1.0/24`, `sipcalc` | `shint cidr 192.168.1.0/24` |
+| `ip addr`, `ifconfig`, `ipconfig` | `shint ip` |
 
 shint covers the everyday checks; it does not replace the full feature sets of `curl` or `nmap`.
 

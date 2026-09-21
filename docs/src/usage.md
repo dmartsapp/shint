@@ -16,7 +16,7 @@ shint <command> <target> [flags]
 The target comes first (a host and port, a URL, a port to listen on); flags change how the check runs. Flags can go before or after the target.
 
 ```text
-A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, cidr and listener functionalities.
+A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, cidr, ip and listener functionalities.
 
 Usage:
   shint [command]
@@ -25,6 +25,7 @@ Available Commands:
   cidr        Work out a subnet: network, mask, range and size
   completion  Generate the autocompletion script for the specified shell
   help        Help about any command
+  ip          List this machine's network interfaces and addresses
   listen      Start a local TCP, UDP, or HTTP listener for testing
   nmap        Scan for open TCP ports on a host
   ntp         Check this machine's clock against an NTP time server
@@ -67,7 +68,7 @@ These are defined once, so they mean the same thing everywhere they apply:
 | `-6`, `--ipv6` | off | Resolve and check **IPv6 addresses only**. |
 
 :::note Every attempt waits first
-`--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr` does no attempts, so it has no delay.)
+`--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr` and `ip` do no attempts, so they have no delay.)
 :::
 
 ### IPv4 only, or IPv6 only
@@ -114,7 +115,7 @@ The flags work on every command that resolves a name - `telnet`, `ping`, `nmap`,
 ```
 
 - If a name has no address of the requested family, that is reported like a failed lookup (exit `1`).
-- `wol` is IPv4 only (IPv6 has no broadcast), so `-6` is refused there. `cidr` and `listen` do not resolve names and ignore the flags (`listen` takes `--bind`).
+- `wol` is IPv4 only (IPv6 has no broadcast), so `-6` is refused there. `cidr`, `ip` and `listen` do not resolve names: `cidr` and `listen` ignore the flags (`listen` takes `--bind`), and `ip` uses them to list only the addresses of that family.
 
 ### What --timeout limits
 
@@ -132,6 +133,7 @@ The flags work on every command that resolves a name - `telnet`, `ping`, `nmap`,
 | `wol` | each send may take (it never waits for a reply - there is none) |
 | `listen` | a connection may sit idle before it is closed |
 | `cidr` | *(not used: it never waits)* |
+| `ip` | *(not used: it never waits)* |
 
 ## Reading the output
 
@@ -150,7 +152,7 @@ Requests sent: 1, Response received: 1, Success: 100%
 Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 Sun Sep 20 01:50:10 MDT 2026: [telnet] OK done total_time=1.006831458s
 ```
-- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `cidr`, `listen-tcp`, `listen-udp`, `listen-http`).
+- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `cidr`, `ip`, `listen-tcp`, `listen-udp`, `listen-http`).
 - **OK or ERROR** is the level of that one line.
 - The `key=value` pairs are easy to `grep` and `awk`; values with spaces are quoted.
 - Commands that repeat a check finish with a **statistics** block: requests sent, responses received, and minimum, average and maximum latency.
@@ -200,6 +202,7 @@ What counts as a failure, per command:
 | `rdns` | the name lookup failed, or an address has no PTR record (or its lookup failed or timed out) |
 | `wol` | a magic packet could not be sent. A packet that was sent is a success: there is no reply to check |
 | `cidr` | never. Bad input is exit `2` and nothing is printed |
+| `ip` | the named interface does not exist, or the interface table (or one interface's addresses) could not be read |
 | `listen` | the port could not be bound |
 
 Results, including `ERROR` lines about failed checks, go to **stdout**; usage errors go to **stderr**. So `shint ... --json | jq` only ever sees JSON.

@@ -1,7 +1,8 @@
 // Command shint - "Simple Host INspection Toolkit" - bundles the everyday network
 // checks (telnet-style port checks, ping, an HTTP client, a port scanner, a
 // UDP probe, a clock check against an NTP server, Wake-on-LAN, reverse DNS,
-// a subnet calculator and local test listeners) into one static binary.
+// a subnet calculator, an interface lister and local test listeners) into one
+// static binary.
 //
 // This file is only the command line: it declares the cobra commands and
 // their flags, validates arguments, and turns each handler's result into the
@@ -90,7 +91,8 @@ var (
 //	   a run cut short by Ctrl+C (a scan, or a repeating check stopped before
 //	   its --count was done), no usable time reply (or a clock offset beyond
 //	   --max-offset), an address with no reverse (PTR) name, or a
-//	   Wake-on-LAN packet that could not be sent
+//	   Wake-on-LAN packet that could not be sent, an interface that does
+//	   not exist (ip)
 //	2  the command was used wrongly (bad argument, flag or value); nothing ran
 //
 // Results - including "ERROR" lines about failed checks - go to stdout; usage
@@ -137,7 +139,7 @@ func finish(ok bool) {
 var rootCmd = &cobra.Command{
 	Use:     filepath.Base(os.Args[0]),
 	Short:   "shint - Simple Host INspection Toolkit",
-	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, cidr and listener functionalities.`,
+	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, cidr, ip and listener functionalities.`,
 	Version: Version,
 }
 
@@ -378,6 +380,29 @@ It works entirely offline: nothing is looked up and nothing is sent. Only --json
 	},
 }
 
+var ipCmd = &cobra.Command{
+	Use:   "ip [interface]",
+	Short: "List this machine's network interfaces and addresses",
+	Long: `This command lists the network interfaces of this machine and what is on them: for each interface its state (up or down), flags, MTU and hardware (MAC) address, and every address with its prefix length and what kind of address it is (loopback, private, link-local, global, ...). Give an interface name to see just that one.
+
+It reads the operating system's interface table and sends nothing, so it needs no network and no privileges. -4 and -6 list only the addresses of that family. An interface name that does not exist is a failed check (exit status 1) and names the ones that do. Only --json, -4 and -6 apply; the other shared flags are ignored.`,
+	Args: cobra.MaximumNArgs(1),
+	Example: rootCmd.Name() + ` ip` + "\n" +
+		rootCmd.Name() + ` ip en0 --json` + "\n" +
+		rootCmd.Name() + ` ip -4`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := lib.SetIPFamily(ipv4Only, ipv6Only); err != nil {
+			usage(err.Error())
+			return
+		}
+		name := ""
+		if len(args) == 1 {
+			name = args[0]
+		}
+		finish(handlers.IPHandler(&jsonoutput, name))
+	},
+}
+
 var wolCmd = &cobra.Command{
 	Use:   "wol [mac]",
 	Short: "Send a Wake-on-LAN magic packet to wake a machine on your network",
@@ -554,7 +579,7 @@ func init() {
 // variables above are fully initialised first), runs cobra, and exits with the
 // status the chosen command recorded - see the exit-status notes above.
 func main() {
-	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, cidrCmd, listenCmd)
+	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, cidrCmd, ipCmd, listenCmd)
 	// cobra has already printed the error (and usage help) to stderr. Every
 	// error Execute returns is a usage error - the Run functions never return
 	// one; they report through usage() and finish() instead.

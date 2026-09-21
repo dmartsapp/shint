@@ -4,6 +4,10 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.2.0 - unreleased
+
+- **New command: `shint ip` - this machine's network interfaces and addresses.** Lists every interface with its state (`up`/`down`), flags, MTU and hardware address, and each address with its prefix length and what kind of address it is (`loopback`, `private`, `link-local`, `global`, ... - the same words `cidr` uses); `shint ip en0` shows one interface, `-4`/`-6` list only that family's addresses. It reads the operating system's interface table and sends nothing, so it needs no network and no privileges, and it reads the same on Linux, macOS and Windows. A name that does not exist is a failed check (exit `1`) that names the interfaces that do. See [ip](https://dmartsapp.github.io/shint/docs/ip.html). (Issue #42)
+
 ## v4.1.0 - unreleased
 
 - **New flags `-4`/`--ipv4` and `-6`/`--ipv6`: check IPv4 addresses only, or IPv6 addresses only.** A name with both kinds of address is still checked over both by default, but on a machine with no IPv6 that made every dual-stack check fail (the reported case: a Linux host with IPv6 disabled, `socket: address family not supported by protocol`, exit `1` for a service that works over IPv4) and the only workaround was to look up and pass the IPv4 address. The flags work on `telnet`, `ping`, `nmap`, `udp`, `web` (they bind the HTTP client's own connection too), `ntp` and `rdns`; both together, or an address of the other family, is a usage error (exit `2`). A failed IPv6 connect that is really this machine's lack of IPv6 now carries a hint pointing at `-4`. See [IPv4 only, or IPv6 only](https://dmartsapp.github.io/shint/docs/usage.html#ipv4-only-or-ipv6-only). (Issue #23)

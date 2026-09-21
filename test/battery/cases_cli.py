@@ -84,3 +84,16 @@ add("E.fd-pressure-count-3000", ["telnet", "127.0.0.1", E, "--count", "3000", "-
 
 # listen takes --count too, and -1 is not a valid value for it (0 means "until Ctrl+C")
 add("B.listen-count-negative", ["listen", "tcp", "{tcp_closed}", "--count", "-1"], rc=2, group="B flags", max=8, timeout=4)
+
+# ---------------- M: ip (reads the interface table; needs nothing from the network)
+add("M.ip", ["ip"], rc=0, contains=["[ip] OK interface name=", "[ip] OK done interfaces="], group="M ip", max=10)
+add("M.ip-json", ["ip", "--json"], rc=0, group="M ip", max=10,
+    check=lambda r: None if json.loads(r["out"])["stats"] else "the JSON lists no interfaces")
+add("M.ip-4-lists-no-ipv6", ["ip", "-4"], rc=0, absent=["family=ipv6"], group="M ip", max=10)
+add("M.ip-6-lists-no-ipv4", ["ip", "-6"], rc=0, absent=["family=ipv4"], group="M ip", max=10)
+add("M.ip-unknown-interface", ["ip", "no-such-interface0"], rc=1, contains=["no such interface no-such-interface0"], group="M ip", max=10)
+add("M.ip-unknown-interface-json", ["ip", "no-such-interface0", "--json"], rc=1, group="M ip", max=10,
+    check=lambda r: None if "no such interface" in json.loads(r["out"])["error"] else "the JSON does not say why")
+add("M.ip-both-families", ["ip", "-4", "-6"], rc=2, group="M ip", max=10)
+add("M.ip-two-arguments", ["ip", "a", "b"], rc=2, group="M ip", max=10)
+add("M.ip-ignores-shared-flags", ["ip", "--count", "5", "--timeout", "1", "--delay", "3000"], rc=0, group="M ip", max=6)
