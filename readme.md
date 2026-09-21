@@ -14,11 +14,11 @@
 
 | Target | Issue | State |
 |---|---|---|
-| `ip` - this machine's interfaces and addresses | [#42](https://github.com/dmartsapp/shint/issues/42) | Planned first: new code only, no conflict with the open 4.1.0 fixes |
-| `dns` - dig-style lookups: A, AAAA, MX, TXT, NS, CNAME, SRV, SOA, PTR, `@server`, TTLs, timing | [#43](https://github.com/dmartsapp/shint/issues/43) | Planned second: new code only |
-| Authoritative name servers shown whenever shint resolves a name | [#44](https://github.com/dmartsapp/shint/issues/44) | Planned, after the open 4.1.0 fixes (it touches every handler's resolve step) |
-| `telnet` banner grabbing, `--send` / `--expect` | [#45](https://github.com/dmartsapp/shint/issues/45) | Planned, after 4.1.0's #31 (the telnet attempt loop) |
-| `udp --hex` - send a binary payload | [#46](https://github.com/dmartsapp/shint/issues/46) | Planned, after 4.1.0's #29 and #32 (the udp handler) |
+| `ip` - this machine's interfaces and addresses | [#42](https://github.com/dmartsapp/shint/issues/42) | **Done**: code, tests, documentation page, battery cases |
+| `dns` - dig-style lookups: A, AAAA, MX, TXT, NS, CNAME, SRV, SOA, PTR, `@server`, TTLs, timing | [#43](https://github.com/dmartsapp/shint/issues/43) | **Done**: code, tests against a fake DNS server, documentation page, cookbook recipe, battery cases (a Python DNS server) |
+| Authoritative name servers shown whenever shint resolves a name | [#44](https://github.com/dmartsapp/shint/issues/44) | **Done**: every command that resolves a name prints `dns authoritative`; `dns_lookup.authoritative` with `--json` |
+| `telnet` banner grabbing, `--send` / `--expect` | [#45](https://github.com/dmartsapp/shint/issues/45) | Waiting for 4.1.0's #31 (it changes the telnet attempt loop this touches) |
+| `udp --hex` - send a binary payload | [#46](https://github.com/dmartsapp/shint/issues/46) | Waiting for 4.1.0's #29 and #32 (they change the udp handler this touches) |
 
 ## Bugs
 
@@ -26,15 +26,22 @@ Found by the black-box battery and planned for this release (all `fix-future-rel
 
 | Issue | State |
 |---|---|
-| [#35](https://github.com/dmartsapp/shint/issues/35) `listen http`: malformed or timed-out requests are neither logged nor counted | Planned, after 4.1.0's #34 (same code) |
-| [#36](https://github.com/dmartsapp/shint/issues/36) `web` ignores `HTTP_PROXY` / `HTTPS_PROXY`, and the documentation does not say so | Planned (documentation) |
-| [#38](https://github.com/dmartsapp/shint/issues/38) `web`: a URL without a scheme (`host:port/path`) fails with only "Invalid URL" | Planned |
-| [#39](https://github.com/dmartsapp/shint/issues/39) `listen tcp`: one log line per 4 KB read makes a large transfer unreadable | Planned |
-| [#40](https://github.com/dmartsapp/shint/issues/40) `listen udp`: `--timeout` is accepted and does nothing | Planned (documentation) |
+| [#35](https://github.com/dmartsapp/shint/issues/35) `listen http`: malformed or timed-out requests are neither logged nor counted | Waiting for 4.1.0's #34 (same code) |
+| [#36](https://github.com/dmartsapp/shint/issues/36) `web` ignores `HTTP_PROXY` / `HTTPS_PROXY`, and the documentation does not say so | **Done**: documented in `web --help`, the web page and Troubleshooting, and pinned by a test |
+| [#38](https://github.com/dmartsapp/shint/issues/38) `web`: a URL without a scheme (`host:port/path`) fails with only "Invalid URL" | **Done**: fetched over `https://`, clear usage errors, a hint for a plain-HTTP server |
+| [#39](https://github.com/dmartsapp/shint/issues/39) `listen tcp`: one log line per 4 KB read makes a large transfer unreadable | **Done**: reads that arrive together are one line; a 20 MB upload is 24 lines, not 4,887 |
+| [#40](https://github.com/dmartsapp/shint/issues/40) `listen udp`: `--timeout` is accepted and does nothing | **Done**: documented in the flag help and the listen page |
 
 ## Other changes on the branch
 
-None yet.
+- **`escapeBytes`**: the escaping that keeps untrusted bytes from garbling the terminal (from the listener previews) is now one shared helper, used by the listeners, `udp` and `dns`.
+- **`golang.org/x/net`** (for `dnsmessage`) is now a direct dependency; it was already in the module through go-ping.
+- **The battery** has grown from 356 to 415 cases (`ip`, `dns` against a Python DNS server, the URL cases, the listener log size, the authoritative line), and its list of known issues is down to the 16 still open.
+- **The live smoke test** checks `ip`, `dns` (forward and reverse) and the authoritative line, and its IPv4-only telnet check no longer depends on how many addresses google.com has.
+
+## Still to do on this branch
+
+The three items that touch code the open 4.1.0 fixes are changing - `telnet`'s attempt loop (#31), the `udp` handler (#29, #32) and the HTTP listener (#34) - wait until those are settled, to avoid rebasing the same lines twice.
 
 ## How README files work in this project
 
