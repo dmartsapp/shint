@@ -35,9 +35,26 @@
 
 Not code, so not on this branch: [#11](https://github.com/dmartsapp/shint/issues/11) (the GHCR package is private - a settings change).
 
+## Bugs found by the black-box battery, planned for this release
+
+Each is `fix-next-release`; a fix removes its case from `test/battery/known_issues.py` in the same commit.
+
+| Issue | State |
+|---|---|
+| [#28](https://github.com/dmartsapp/shint/issues/28) `web` holds the whole response body in memory (662 MB peak for a 300 MB download) | To do |
+| [#29](https://github.com/dmartsapp/shint/issues/29) `udp --payload -1` (or a huge value) crashes with a panic | To do |
+| [#30](https://github.com/dmartsapp/shint/issues/30) `--timeout` above ~9.2 billion seconds overflows into an instant failure; `--delay` overflow is silently ignored | To do |
+| [#31](https://github.com/dmartsapp/shint/issues/31) `--count` with `--delay 0` starts every attempt at once: "too many open files" at the default macOS limit (`telnet`, `web`, `udp`) | To do |
+| [#32](https://github.com/dmartsapp/shint/issues/32) Failures logged at `OK` level: `udp` "probe closed", `ping` "error sending request" (exit 1 with no `ERROR` line) | To do |
+| [#33](https://github.com/dmartsapp/shint/issues/33) An unknown `listen` or `completion` subcommand prints help and exits 0; `listen --count -1` is accepted | To do |
+| [#34](https://github.com/dmartsapp/shint/issues/34) `listen http` logs a request whose body never completed as `status=404` although the client got no response | To do |
+| [#41](https://github.com/dmartsapp/shint/issues/41) The Slack notifier's log lines appear all at once at the end of the step | Fixed on the branch ([`6bb5175`](https://github.com/dmartsapp/shint/commit/6bb5175)) |
+
+Planned for later releases, from the same battery: [#35](https://github.com/dmartsapp/shint/issues/35), [#36](https://github.com/dmartsapp/shint/issues/36), [#38](https://github.com/dmartsapp/shint/issues/38), [#39](https://github.com/dmartsapp/shint/issues/39), [#40](https://github.com/dmartsapp/shint/issues/40) (v4.2.0) and [#37](https://github.com/dmartsapp/shint/issues/37) (v4.3.0).
+
 ## Other changes on the branch
 
-- **v4.0.5 is merged in** (Ctrl+C on `telnet`, `web` and `udp` shows the summary, [#24](https://github.com/dmartsapp/shint/issues/24), released and closed); `ntp`, `rdns` and `wol` get the same behaviour on this branch, so v4.1.0 stays a descendant of `main`.
+- **v4.0.5 and v4.0.6 are merged in** (the branch is rebased onto `main` at v4.0.6): the `Ctrl+C` summary ([#24](https://github.com/dmartsapp/shint/issues/24)), the two wrong-answer fixes ([#26](https://github.com/dmartsapp/shint/issues/26): a cut-short `web` response is a failure; [#27](https://github.com/dmartsapp/shint/issues/27): `ping` no longer takes another ping's reply), the black-box test battery in `make test` and the Slack release notification - all released and closed, and none of them part of this milestone's own work. `ntp`, `rdns` and `wol` get the same `Ctrl+C` behaviour on this branch, so v4.1.0 stays a descendant of `main`.
 - The tool's expansion is now "Simple Host INspection Toolkit" (`shint --help`, the documentation home page).
 - `make vet` also vets for Windows, FreeBSD and Solaris, so a test that only builds on Unix fails in `make check`.
 - `make workflows` covers the new scripts (checksums, failure-issue text, release preflight) and runs `actionlint` with no exceptions; `make release-check` is the release-day preflight.
