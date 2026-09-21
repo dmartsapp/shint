@@ -22,13 +22,14 @@ There are 111 top-level Go tests: 79 in `lib/handlers`, 25 in `lib` and 7 end-to
 
 | Command | What it runs | Needs |
 |---|---|---|
-| `make check` | Everything below except the live test, in this order: tool check, `gofmt`, `go vet`, `go test -race ./...`, `golangci-lint`, `govulncheck`, the documentation tests and check, the workflow checks | the tools below; no network for the tests (`govulncheck` reads the vulnerability database) |
+| `make check` | Everything below except the live test, in this order: tool check, `gofmt`, `go vet`, `go test -race ./...`, the black-box battery, `golangci-lint`, `govulncheck`, the documentation tests and check, the workflow checks | the tools below; no network for the tests (`govulncheck` reads the vulnerability database) |
 | `make test-live` | The [live smoke test](#the-live-smoke-test) | the internet and unprivileged ICMP |
 | `make test-full` | `make check`, then `make test-live` - run this before a release | both |
-| `make test` | Just the Go tests, with the race detector | Go |
+| `make test` | The Go tests with the race detector, then the [black-box battery](#the-black-box-battery) | Go, python3 |
+| `make test-go`, `make test-battery` | Each half of `make test` on its own | as above |
 | `make fmt-check`, `vet`, `lint`, `vuln`, `docs-check`, `workflows` | One step of `make check` on its own | as above |
 
-`make check` takes about twenty seconds. The first thing it does is check that the tools are installed and prints the install command for any that are not: `golangci-lint` (it must be **v2.13.2**, the version CI pins - a different version is refused), `govulncheck`, `actionlint`, and `python3`. A tool that is not on `PATH` can be named: `make check GOLANGCI_LINT=/path/to/golangci-lint`.
+`make check` takes about a minute and a half (the Go tests about 15 s cold, the battery about a minute). The first thing it does is check that the tools are installed and prints the install command for any that are not: `golangci-lint` (it must be **v2.13.2**, the version CI pins - a different version is refused), `govulncheck`, `actionlint`, and `python3`. A tool that is not on `PATH` can be named: `make check GOLANGCI_LINT=/path/to/golangci-lint`.
 
 For finer control, call `go test` directly:
 
@@ -85,6 +86,24 @@ Two package-level variables exist only so tests can control time and slowness de
 | `TestIsLostPing` | A lost echo request logged at `OK` level while the run exited `1`. |
 | `TestWithPayloadSize`, `TestHandleICMPShowsPayloadSize` | Reply lines without the payload size; `payload_size_bytes` in the JSON being `0`. |
 | `TestUDPHelpDoesNotPromiseEscapes` | `udp --help` showing `\x00` escapes, which are never interpreted. |
+
+## The black-box battery
+
+`go test` calls the code; the battery runs **the shipped binary** the way a user does and attacks it from the outside. It is 356 cases in `test/battery`, started by `make test-battery` (part of `make test` and `make check`, about a minute) and needing only `python3` and `go`. Everything stays on the machine: the cases talk to servers the battery starts on loopback, and each server misbehaves in one particular way - an HTTP server with a path for a truncated body, a reset mid-body, a stall, a redirect loop, a 2 MB header, a 300 MB download, chunked and gzip and HTTP/1.0 replies, garbage instead of HTTP; TLS servers with a good and a wrong certificate; TCP servers that echo, close at once or say nothing; UDP servers that echo, stay silent or answer with more than a packet's worth; a closed TCP and UDP port.
+
+| Group | What it throws at the tool |
+|---|---|
+| A, B | the command line: unknown commands and flags, flags before and after arguments, every numeric flag at zero, negative, huge and not-a-number, boolean forms |
+| C, D | hosts and ports written every odd way: `127.1`, `0x7f000001`, `::ffff:127.0.0.1`, 300-character names, Unicode, trailing dots, ports 0, 65536, `+80`, `0x50`, Arabic digits |
+| E | `telnet`: refused, silent and closing servers, a black-hole address, DNS failure, 100 fast attempts, file-descriptor pressure |
+| F | `web`: URL forms, every method, header edge cases including CR/LF injection and 200 headers, hostile servers, TLS and mutual-TLS options, proxy variables |
+| G, H, I | `nmap` (single ports, ranges, the whole port range, filtered targets), `udp` (payload sizes, closed and silent ports, big replies), `ping` (payload limits, unreachable, multicast, and a reply that belongs to another ping) |
+| J | `listen`: 20 MB uploads, resets, binary data, idle timeouts, 150 concurrent connections, malformed and half-finished HTTP requests |
+| K, L | signals and closed pipes (SIGINT, SIGTERM, `| head -1`), and memory use on a 300 MB response |
+
+Each invocation is judged against rules that hold for every command - no panic, exit status 0, 1 or 2, `--json` prints one valid document, a usage error goes to stderr, exit 1 comes with an `ERROR` line and exit 0 without one, nothing hangs - plus what the case itself expects. Cases that open hundreds of connections run one at a time, after the parallel ones.
+
+**Known issues.** The battery was written by hunting for bugs, so some cases fail because of bugs that are open on the issue tracker. Each is listed in `test/battery/known_issues.py` with its issue number and **must keep failing**: the run is green while the bug exists, and turns red when the case starts to pass, telling you to delete the line. Anything failing that is not listed fails the run. So a fix and its line in the list change in the same commit, and a new bug found by the battery is added to the list with its issue. Details for adding a case are in `test/battery/README.md`.
 
 ## The live smoke test
 

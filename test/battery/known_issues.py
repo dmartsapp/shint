@@ -7,15 +7,6 @@ here in the same commit; when a new bug is found, add its case and the issue num
     case id: (issue, platforms the bug is known on, or None for all)
 """
 KNOWN = {
-    # web: a response body cut short is reported as a success
-    "F.srv-trunc-cleanly": ("#26", None),
-    "F.srv-trunc-cleanly-json": ("#26", None),
-    "F.srv-reset-mid-body": ("#26", None),
-    "F.srv-reset-mid-body-json": ("#26", None),
-    "F.srv-slow-body": ("#26", None),
-    "F.srv-slow-body-json": ("#26", None),
-    # ping: another ping's reply is taken for the target's
-    "I.no-false-success-from-another-ping": ("#27", ("darwin",)),
     # web keeps the whole body in memory
     "L.web-300MB-body-memory": ("#28", None),
     # udp panics on an invalid --payload

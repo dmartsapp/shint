@@ -107,13 +107,15 @@ ACTIONLINT ?= actionlint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.13.2
 
-.PHONY: help check test-full test-live tools fmt-check vet test lint vuln docs-check workflows
+.PHONY: help check test-full test-live tools fmt-check vet test test-go test-battery lint vuln docs-check workflows
 
 help:
-	echo "make check       fmt, vet, race tests, lint, vulncheck, docs and workflow checks (no network)"
+	echo "make check       fmt, vet, race tests, black-box battery, lint, vulncheck, docs and workflow checks (no network)"
 	echo "make test-live   smoke test against real hosts (needs the internet and ICMP)"
 	echo "make test-full   check + test-live"
-	echo "make test        just the Go tests, with the race detector"
+	echo "make test        the Go tests (race detector), then the black-box battery in test/battery"
+	echo "make test-go     just the Go tests, with the race detector"
+	echo "make test-battery  just the black-box battery (BATTERY_ARGS=\"--group F\" to pick, --list to see the cases)"
 	echo "make <platform>  build for one platform (linux-amd64, darwin-arm64, ...); all-platforms builds every one"
 
 check: tools fmt-check vet test lint vuln docs-check workflows
@@ -140,9 +142,22 @@ vet:
 	echo "==> go vet"
 	go vet ./...
 
-test:
+test: test-go test-battery
+
+test-go:
 	echo "==> go test -race"
 	go test -race ./...
+
+# About 350 black-box cases: the real binary, run as a user runs it, against loopback servers that
+# misbehave in every way the tests can think of (test/battery, and docs: Testing). A case for a bug
+# that is still open must keep failing and is listed in test/battery/known_issues.py; the run fails
+# on anything else, and when a listed bug is fixed. Needs python3; ping cases need unprivileged ICMP
+# and are skipped without it. BATTERY_ARGS passes options through (--group, --only, --list, --verbose).
+BATTERY_ARGS ?=
+test-battery:
+	echo "==> black-box battery"
+	tmp="$$(mktemp -d)"; trap 'rm -rf "$$tmp"' EXIT; \
+	CGO_ENABLED=0 go build -o "$$tmp/shint" . && python3 test/battery/run.py --bin "$$tmp/shint" $(BATTERY_ARGS)
 
 lint:
 	echo "==> golangci-lint"

@@ -103,7 +103,7 @@ git push -u origin release/vX.Y.Z
 make test-full
 ```
 
-That is `make check` - `gofmt`, `go vet`, `go test -race`, `golangci-lint` (v2.13.2, as CI uses), `govulncheck`, the documentation tests and check (the site is current; every link, anchor and site URL resolves), and the workflow checks - followed by `make test-live`, the smoke test against real hosts, which needs the internet. See [Testing](tech-testing.md#running-the-tests).
+That is `make check` - `gofmt`, `go vet`, `go test -race`, the black-box battery, `golangci-lint` (v2.13.2, as CI uses), `govulncheck`, the documentation tests and check (the site is current; every link, anchor and site URL resolves), and the workflow checks - followed by `make test-live`, the smoke test against real hosts, which needs the internet. See [Testing](tech-testing.md#running-the-tests).
 
 7. **Commit the release** as the last commit on the branch, with the message convention above; the body is the changelog. Push the branch.
 
