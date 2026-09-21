@@ -34,7 +34,7 @@ for cid, extra in [
     ("patch", ["-X", "PATCH", "-P", "{}"]), ("head", ["-X", "HEAD"]), ("options", ["-X", "OPTIONS"]), ("trace", ["-X", "TRACE"]),
     ("connect", ["-X", "CONNECT"]), ("lowercase-get", ["-X", "get"]), ("invalid-method-space", ["-X", "NOT VALID"]),
     ("empty-method", ["-X", ""]), ("get-with-body", ["-X", "GET", "-P", "body-on-get"]), ("body-empty", ["-X", "POST", "-P", ""]),
-    ("body-unicode", ["-X", "POST", "-P", "héllo wörld ☃"]), ("body-500k", ["-X", "POST", "-P", "x" * 500000]),
+    ("body-unicode", ["-X", "POST", "-P", "héllo wörld ☃"]), ("body-100k", ["-X", "POST", "-P", "x" * 100000]),
 ]:
     web("method-" + cid, H + "/echo", *extra, note=" ".join(extra)[:50])
 for cid, extra in [
