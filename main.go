@@ -44,6 +44,8 @@ var (
 	timeout      int
 	payload_size int
 	jsonoutput   bool
+	ipv4Only     bool
+	ipv6Only     bool
 
 	// nmap
 	fromport int
@@ -102,6 +104,21 @@ const (
 // exitCode is what main exits with once the chosen command has run.
 var exitCode = exitOK
 
+// applyFamily applies -4/-6 for a command that takes a host, and reports
+// whether the run may go on. Asking for both, or naming an address of the other
+// family (an IPv6 address with -4), is a usage error: nothing could be checked.
+func applyFamily(host string) bool {
+	if err := lib.SetIPFamily(ipv4Only, ipv6Only); err != nil {
+		usage(err.Error())
+		return false
+	}
+	if err := lib.HostFamilyConflict(host); err != nil {
+		usage(err.Error())
+		return false
+	}
+	return true
+}
+
 // usage reports a bad argument or flag value on stderr and marks the run as a
 // usage error. Callers return right after it; nothing is checked.
 func usage(msg string) {
@@ -131,6 +148,9 @@ var telnetCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		host := args[0]
+		if !applyFamily(host) {
+			return
+		}
 		port, err := lib.ValidatePort(args[1])
 		if err != nil {
 			usage(err.Error())
@@ -158,6 +178,9 @@ var pingCmd = &cobra.Command{
 	Long:  `This command sends ICMP ECHO_REQUEST packets to a host to test reachability.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		if !applyFamily(args[0]) {
+			return
+		}
 		if err := lib.RequirePositive("count", iterations); err != nil {
 			usage(err.Error())
 			return
@@ -204,6 +227,10 @@ var webCmd = &cobra.Command{
 			}
 		}
 
+		if !applyFamily(URL.Hostname()) {
+			return
+		}
+
 		tlsConfig, err := handlers.BuildTLSConfig(cacertFile, certFile, keyFile, insecureSkipVerify)
 		if err != nil {
 			usage(err.Error())
@@ -223,6 +250,9 @@ var nmapCmd = &cobra.Command{
 	Long:  `This command scans for open TCP ports on a host within a given range. --timeout is how long each individual port is given to answer; the scan itself runs until the whole range has been covered (Ctrl+C stops it early and reports how far it got).`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		if !applyFamily(args[0]) {
+			return
+		}
 		if err := lib.RequirePositive("count", iterations); err != nil {
 			usage(err.Error())
 			return
@@ -277,6 +307,9 @@ The payload is text, sent exactly as typed: --data sends a message, --payload se
 		rootCmd.Name() + ` udp 8.8.8.8 53 --payload 16 --timeout 3`,
 	Run: func(cmd *cobra.Command, args []string) {
 		host := args[0]
+		if !applyFamily(host) {
+			return
+		}
 		port, err := lib.ValidatePort(args[1])
 		if err != nil {
 			usage(err.Error())
@@ -308,6 +341,9 @@ An address that has no PTR record is reported as a failed check (exit status 1);
 	Example: rootCmd.Name() + ` rdns 8.8.8.8` + "\n" +
 		rootCmd.Name() + ` rdns example.com --json`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if !applyFamily(args[0]) {
+			return
+		}
 		if err := lib.RequirePositive("count", iterations); err != nil {
 			usage(err.Error())
 			return
@@ -349,6 +385,10 @@ The machine must have Wake-on-LAN enabled in its firmware and network card, and 
 	Example: rootCmd.Name() + ` wol aa:bb:cc:dd:ee:ff` + "\n" +
 		rootCmd.Name() + ` wol aa:bb:cc:dd:ee:ff --broadcast 192.168.1.255`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if ipv6Only {
+			usage("wol is IPv4 only (a magic packet is a broadcast, and IPv6 has none); -6/--ipv6 does not apply")
+			return
+		}
 		mac, err := handlers.ParseMAC(args[0])
 		if err != nil {
 			usage(err.Error())
@@ -385,6 +425,9 @@ A reply that cannot be trusted - it answers a different request, the server says
 	Example: rootCmd.Name() + ` ntp pool.ntp.org` + "\n" +
 		rootCmd.Name() + ` ntp time.cloudflare.com --max-offset 500`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if !applyFamily(args[0]) {
+			return
+		}
 		if ntpPort < 1 || ntpPort > 65535 {
 			usage("--port must be between 1 and 65535")
 			return
@@ -461,6 +504,8 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&payload_size, "payload", 4, "Ping/UDP payload size in bytes (filler content, ignored if --data is set on udp)")
 	rootCmd.PersistentFlags().BoolVar(&throttle, "throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
 	rootCmd.PersistentFlags().BoolVar(&jsonoutput, "json", false, "Flag option to output only in JSON format")
+	rootCmd.PersistentFlags().BoolVarP(&ipv4Only, "ipv4", "4", false, "Resolve and check IPv4 addresses only (a host with both kinds is normally checked over both)")
+	rootCmd.PersistentFlags().BoolVarP(&ipv6Only, "ipv6", "6", false, "Resolve and check IPv6 addresses only")
 
 	webCmd.Flags().StringVarP(&httpmethod, "method", "X", "GET", "HTTP method to use (GET, POST, PUT, DELETE)")
 	webCmd.Flags().StringVarP(&httpdata, "payload", "P", "", "HTTP payload data to send")

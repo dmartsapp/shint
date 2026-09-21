@@ -76,6 +76,7 @@ run_test "Ping shows the payload size" "$BINARY ping google.com --count 1 --payl
 
 # Timing, reverse DNS, clock check, Wake-on-LAN (aimed at this machine, so
 # nothing is woken) and the subnet calculator (offline)
+run_test "Telnet, IPv4 only" "$BINARY telnet google.com 443 -4" "addresses=1"
 run_test "Web timing" "$BINARY web https://google.com --timing --count 1" "timing url="
 run_test "Reverse DNS" "$BINARY rdns 8.8.8.8" "dns.google."
 run_test "NTP" "$BINARY ntp time.cloudflare.com" "[ntp] OK response"

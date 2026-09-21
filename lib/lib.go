@@ -21,13 +21,6 @@ const (
 	// DATETIMEFORMAT is the timestamp layout at the start of every text log
 	// line: Go's time.UnixDate, e.g. "Sun Sep 20 01:26:48 MDT 2026".
 	DATETIMEFORMAT string = time.UnixDate
-	// NetworkType controls DNS resolution family for telnet/nmap/udp/web's
-	// diagnostic lookups (ping's own resolution lives in the go-ping
-	// dependency and is already dual-stack): "ip" resolves both A and AAAA
-	// records, "ip4"/"ip6" restrict to one. Dual-stack by default so a host
-	// with both records gets checked over both protocols, the same way
-	// ping already does.
-	NetworkType string = "ip"
 	// Protocol is the network IsPortUp dials.
 	Protocol string = "tcp"
 )

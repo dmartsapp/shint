@@ -278,7 +278,7 @@ func NTPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 					stat.OffsetUs, stat.RoundTripUs, stat.ServerTimeUs = ex.offset.Microseconds(), ex.roundTrip.Microseconds(), ex.reply.transmit.UnixMicro()
 				}
 				if qerr != nil {
-					stat.Error = qerr.Error()
+					stat.Error = lib.ExplainError(qerr)
 				}
 				output.Stats = append(output.Stats.([]lib.NTPStats), stat)
 			}
@@ -287,7 +287,7 @@ func NTPHandler(jsonoutput *bool, iterations int, delay int, throttle *bool, tim
 			if !*jsonoutput {
 				where := lib.Fields("server", host, "address", ip, "attempt", fmt.Sprintf("%d/%d", attempt, iterations))
 				if qerr != nil {
-					fmt.Println(lib.LogWithTimestamp(ntpModule, "query failed "+where+" "+lib.Fields("time", taken, "error", qerr.Error()), true))
+					fmt.Println(lib.LogWithTimestamp(ntpModule, "query failed "+where+" "+lib.Fields("time", taken, "error", lib.ExplainError(qerr)), true))
 				} else {
 					fmt.Println(lib.LogWithTimestamp(ntpModule, "response "+where+" "+lib.Fields("stratum", ex.reply.stratum, "offset", formatOffset(ex.offset), "round_trip", ex.roundTrip, "leap", leapNames[ex.reply.leap&3], "version", ex.reply.version, "reference", ex.reply.referenceID, "time", taken), false))
 				}

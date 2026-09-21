@@ -331,3 +331,25 @@ func webJSONRaw(t *testing.T, target string, timing bool) string {
 		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", nil, false, nil, timing)
 	})
 }
+
+// -4 and -6 must bind the HTTP client's own dialer too: web hands the address
+// choice to net/http, which would otherwise wander into the other family.
+func TestWebDialsOnlyTheRequestedFamily(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) }))
+	defer srv.Close() // an IPv4 listener
+	old := lib.NetworkType
+	defer func() { lib.NetworkType = old }()
+
+	lib.NetworkType = "ip4"
+	if s := webJSON(t, 1, 0, srv.URL, nil, false); len(s) != 1 || !s[0].Success {
+		t.Errorf("-4 against an IPv4 server should work: %+v", s)
+	}
+	lib.NetworkType = "ip6" // the server is on 127.0.0.1: an IPv6-only dialer cannot reach it
+	if s := webJSON(t, 1, 0, srv.URL, nil, false); len(s) != 1 || s[0].Success {
+		t.Errorf("-6 must not reach an IPv4 address: %+v", s)
+	}
+	lib.NetworkType = "ip"
+	if s := webJSON(t, 1, 0, srv.URL, nil, false); len(s) != 1 || !s[0].Success {
+		t.Errorf("no restriction should work: %+v", s)
+	}
+}

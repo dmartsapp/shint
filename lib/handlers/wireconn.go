@@ -8,6 +8,8 @@ import (
 	"net/http/httptrace"
 	"sync"
 	"sync/atomic"
+
+	"github.com/dmartsapp/shint/v4/lib"
 )
 
 // countingConn wraps a net.Conn and tallies every byte that crosses it in
@@ -88,14 +90,14 @@ func newCountingTransport(tlsConfig *tls.Config) *http.Transport {
 	return &http.Transport{
 		TLSClientConfig: tlsConfig,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			conn, err := dialer.DialContext(ctx, network, addr)
+			conn, err := dialer.DialContext(ctx, lib.DialNetwork(network), addr)
 			if err != nil {
 				return nil, err
 			}
 			return &countingConn{Conn: conn}, nil
 		},
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			raw, err := dialer.DialContext(ctx, network, addr)
+			raw, err := dialer.DialContext(ctx, lib.DialNetwork(network), addr)
 			if err != nil {
 				return nil, err
 			}

@@ -35,7 +35,22 @@ macOS, the BSDs and Windows do not need this.
 
 ## ping and telnet report an IPv6 failure but the host works
 
-A name with both IPv4 and IPv6 addresses is tested over both, and each is reported separately. If your network has no IPv6 route, the IPv6 attempt fails with `network is unreachable` while the IPv4 one succeeds. That is real information about your network, not a fault in the host. The exit status is `1` because one of the checks failed; test the IPv4 address directly if that is what you care about.
+A name with both IPv4 and IPv6 addresses is tested over both, and each is reported separately. If this machine cannot use IPv6, the IPv6 attempt fails while the IPv4 one succeeds, and the exit status is `1` because one of the checks failed. Two errors look like this:
+
+| Error | Meaning |
+|---|---|
+| `connect: network is unreachable` | The machine has IPv6, but no route to the IPv6 internet (common on networks that only provide IPv4). |
+| `socket: address family not supported by protocol` | The machine cannot create an IPv6 socket at all: its kernel has IPv6 **disabled** (for example booted with `ipv6.disable=1`). A Docker container shares its host's kernel, so it inherits this and Docker cannot fix it. |
+
+That is real information about the machine, not a fault in the host you are checking. When IPv4 is all you care about, ask for exactly that:
+
+```bash
+shint telnet google.com 443 -4
+```
+
+`-4` resolves and checks only IPv4 addresses (`-6` does the reverse); see [IPv4 only, or IPv6 only](usage.md#ipv4-only-or-ipv6-only). shint also recognises these two errors on an IPv6 address and adds a hint to the error line - `(this system cannot use IPv6; use -4 to check IPv4 only)` - so you do not have to decode the errno.
+
+Before v4.1.0 there was no flag: the workaround was to pass the IPv4 address itself instead of the name.
 
 ## UDP says `open|filtered`
 

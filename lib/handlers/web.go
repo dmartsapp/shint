@@ -161,7 +161,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 					rec.abort()
 				}
 				if !*jsonoutput {
-					fmt.Println(lib.LogWithTimestamp(webModule, stage+" "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", elapsed, "error", err.Error()), true))
+					fmt.Println(lib.LogWithTimestamp(webModule, stage+" "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", elapsed, "error", lib.ExplainError(err)), true))
 					for _, line := range timingLines(rec, attempt, iterations) {
 						fmt.Println(line)
 					}
@@ -174,7 +174,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				sent, received := meter.totals()
 				stat := lib.WebStats{
 					URL:           URL.String(),
-					Errors:        append(append([]string{}, errors...), err.Error()),
+					Errors:        append(append([]string{}, errors...), lib.ExplainError(err)),
 					Request:       map[string]any{"method": method, "body": data, "headers": reqHeaders},
 					Response:      map[string]any{},
 					Success:       false,

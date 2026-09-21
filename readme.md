@@ -19,6 +19,7 @@
 | `wol` - Wake-on-LAN magic packet | [#18](https://github.com/dmartsapp/shint/issues/18) | Done: code, tests, documentation |
 | `cidr` - subnet calculator, offline | [#17](https://github.com/dmartsapp/shint/issues/17) | Done: code, tests, documentation |
 | `rdns` - reverse DNS lookup | [#16](https://github.com/dmartsapp/shint/issues/16) | Done: code, tests, documentation |
+| `-4` / `-6`: check IPv4 only or IPv6 only (a host with IPv6 disabled failed every dual-stack check) | [#23](https://github.com/dmartsapp/shint/issues/23) | Done: code, tests, documentation |
 | Module path `github.com/dmartsapp/shint/v4`, so `go install` works | [#15](https://github.com/dmartsapp/shint/issues/15) | Done on the branch; an outside module imports it at the branch commit. `go install ...@v4.1.0` can only be checked once the tag exists |
 | A `Check` workflow: `make check` after every merge to `main` | - | Done on the branch; first run when the branch is merged |
 | CI failure issues that carry the real run URL | - | Done on the branch |

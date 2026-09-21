@@ -119,13 +119,13 @@ func TelnetHandler(ctx context.Context, jsonoutput *bool, iterations int, delay 
 								Success:   false,
 								SentTime:  start.UnixMicro(),
 								TimeTaken: timeTaken.Microseconds(),
-								Error:     err.Error(),
+								Error:     lib.ExplainError(err),
 							}
 							statsMutex.Lock()
 							output.Stats = append(output.Stats.([]lib.TelnetStats), stat)
 							statsMutex.Unlock()
 						} else {
-							fmt.Println(lib.LogWithTimestamp(telnetModule, "connect failed "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken, "error", err.Error()), true))
+							fmt.Println(lib.LogWithTimestamp(telnetModule, "connect failed "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken, "error", lib.ExplainError(err)), true))
 						}
 					} else {
 						statsMutex.Lock()

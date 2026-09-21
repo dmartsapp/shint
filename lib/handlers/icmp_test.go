@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"net"
 	"strings"
 	"testing"
 
@@ -172,5 +173,33 @@ func TestHandleICMPShowsPayloadSize(t *testing.T) {
 		if s.PayloadSize != payload {
 			t.Errorf("stats[%d].payload_size_bytes = %d, want %d", i, s.PayloadSize, payload)
 		}
+	}
+}
+
+func TestRestrictFamily(t *testing.T) {
+	both := func() *netutils.Pinger {
+		return &netutils.Pinger{Destination: []net.IP{net.ParseIP("192.0.2.1"), net.ParseIP("2001:db8::1"), net.ParseIP("192.0.2.2")}}
+	}
+	old := lib.NetworkType
+	defer func() { lib.NetworkType = old }()
+
+	lib.NetworkType = "ip"
+	p := both()
+	if err := restrictFamily(p, "h"); err != nil || len(p.Destination) != 3 {
+		t.Errorf("no restriction: %v, %d addresses", err, len(p.Destination))
+	}
+	lib.NetworkType = "ip4"
+	p = both()
+	if err := restrictFamily(p, "h"); err != nil || len(p.Destination) != 2 || p.Destination[0].String() != "192.0.2.1" || p.Destination[1].String() != "192.0.2.2" {
+		t.Errorf("-4: %v, %v", err, p.Destination)
+	}
+	lib.NetworkType = "ip6"
+	p = both()
+	if err := restrictFamily(p, "h"); err != nil || len(p.Destination) != 1 || p.Destination[0].String() != "2001:db8::1" {
+		t.Errorf("-6: %v, %v", err, p.Destination)
+	}
+	p = &netutils.Pinger{Destination: []net.IP{net.ParseIP("192.0.2.1")}}
+	if err := restrictFamily(p, "only-v4.example"); err == nil || !strings.Contains(err.Error(), "only-v4.example has no IPv6 address") {
+		t.Errorf("a host with nothing of the requested family must fail like a lookup failure: %v", err)
 	}
 }

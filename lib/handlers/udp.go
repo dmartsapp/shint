@@ -168,7 +168,7 @@ attempts:
 						stat.ResponsePreview = previewBytes(received)
 					}
 					if err != nil {
-						stat.Error = err.Error()
+						stat.Error = lib.ExplainError(err)
 					}
 					output.Stats = append(output.Stats.([]lib.UDPStats), stat)
 				}
@@ -176,7 +176,7 @@ attempts:
 
 				if !*jsonoutput {
 					if err != nil {
-						fmt.Println(lib.LogWithTimestamp(udpModule, "probe error "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken, "error", err.Error()), true))
+						fmt.Println(lib.LogWithTimestamp(udpModule, "probe error "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken, "error", lib.ExplainError(err)), true))
 					} else {
 						fmt.Println(lib.LogWithTimestamp(udpModule, "probe "+state+" "+lib.Fields("host", ip, "port", port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "sent", len(payload), "received", len(received), "time", timeTaken), false))
 					}

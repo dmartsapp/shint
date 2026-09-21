@@ -105,6 +105,16 @@ shint udp 192.168.1.1 53 --data "hello" --timeout 3
 
 `open` means it answered; `closed` means the host said nothing is listening; `open|filtered` means silence. See [udp](udp.md) for how to read that.
 
+## Check only IPv4 (or only IPv6)
+
+A name with both kinds of address is checked over both. On a machine with no IPv6 that fails the IPv6 half, so if IPv4 is what you mean:
+
+```bash
+shint telnet db.internal 5432 -4 --timeout 2
+```
+
+`-6` is the reverse. Both work on `telnet`, `ping`, `nmap`, `udp`, `web`, `ntp` and `rdns` ([details](usage.md#ipv4-only-or-ipv6-only)).
+
 ## Find where a request is slow
 
 `--timing` splits each request into DNS, connect, TLS, wait for the first byte, and download, per redirect hop:

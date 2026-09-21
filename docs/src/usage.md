@@ -39,6 +39,8 @@ Flags:
       --count int     Number of times to check connectivity (listen commands: max connections/packets to accept, 0 = unlimited) (default 1)
       --delay int     Milliseconds delay between each iteration given in count (default 1000)
   -h, --help          help for shint
+  -4, --ipv4          Resolve and check IPv4 addresses only (a host with both kinds is normally checked over both)
+  -6, --ipv6          Resolve and check IPv6 addresses only
       --json          Flag option to output only in JSON format
       --payload int   Ping/UDP payload size in bytes (filler content, ignored if --data is set on udp) (default 4)
       --throttle      Flag option to throttle between every iteration of count to simulate non-uniform request.
@@ -61,10 +63,58 @@ These are defined once, so they mean the same thing everywhere they apply:
 | `--throttle` | off | Wait a random 0-10 seconds between attempts instead of a fixed `--delay`, to imitate uneven traffic. |
 | `--payload N` | `4` | Filler payload size in bytes for `ping` and `udp`. (On `web`, `-P` is the request *body* instead.) |
 | `--json` | off | Print one machine-readable JSON document instead of log lines. |
+| `-4`, `--ipv4` | off | Resolve and check **IPv4 addresses only**. See [IPv4 only, or IPv6 only](#ipv4-only-or-ipv6-only). |
+| `-6`, `--ipv6` | off | Resolve and check **IPv6 addresses only**. |
 
 :::note Every attempt waits first
 `--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr` does no attempts, so it has no delay.)
 :::
+
+### IPv4 only, or IPv6 only
+
+A name with both IPv4 and IPv6 addresses is checked over **both**, and each address is reported on its own - that is how an IPv6 problem gets noticed. When you only care about one family, say so:
+
+```bash
+shint telnet google.com 443
+```
+
+```text
+Sun Sep 20 22:33:54 MDT 2026: [telnet] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=46.0835ms
+Sun Sep 20 22:33:55 MDT 2026: [telnet] OK connect ok host=2607:f8b0:400a:803::200e port=443 attempt=1/1 time=30.424709ms
+Sun Sep 20 22:33:56 MDT 2026: [telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=28.368791ms
+
+======================================= telnet STATISTICS =======================================
+Requests sent: 2, Response received: 2, Success: 100%
+Latency: minimum: 28.368791ms, average: 29.39675ms, maximum: 30.424709ms
+Sun Sep 20 22:33:56 MDT 2026: [telnet] OK done total_time=2.077337417s
+```
+
+```bash
+shint telnet google.com 443 -4
+```
+
+```text
+Sun Sep 20 22:33:56 MDT 2026: [telnet] OK dns resolved host=google.com addresses=1 ips=[142.251.46.78] time=5.221708ms
+Sun Sep 20 22:33:57 MDT 2026: [telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=30.681166ms
+
+======================================= telnet STATISTICS =======================================
+Requests sent: 1, Response received: 1, Success: 100%
+Latency: minimum: 30.681166ms, average: 30.681166ms, maximum: 30.681166ms
+Sun Sep 20 22:33:57 MDT 2026: [telnet] OK done total_time=1.037681542s
+```
+
+`-4` resolves only the IPv4 address (`addresses=1`) and checks only that; `-6` does the same for IPv6. It is the right tool on a machine that has no IPv6 at all, where the IPv6 check would otherwise fail and turn the exit status into `1` even though the service is fine over IPv4 (see [Troubleshooting](troubleshooting.md#ping-and-telnet-report-an-ipv6-failure-but-the-host-works)).
+
+The flags work on every command that resolves a name - `telnet`, `ping`, `nmap`, `udp`, `web`, `ntp` and `rdns`. For `web` they also bind the connection itself, so the HTTP client cannot pick the other family. A few rules keep them honest:
+
+- `-4` and `-6` together is a usage error (exit `2`); so is `-4` with an IPv6 address, or `-6` with an IPv4 address, since nothing could be checked:
+
+```text
+::1 is an IPv6 address, but -4/--ipv4 was requested
+```
+
+- If a name has no address of the requested family, that is reported like a failed lookup (exit `1`).
+- `wol` is IPv4 only (IPv6 has no broadcast), so `-6` is refused there. `cidr` and `listen` do not resolve names and ignore the flags (`listen` takes `--bind`).
 
 ### What --timeout limits
 

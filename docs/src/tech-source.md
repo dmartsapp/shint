@@ -42,7 +42,9 @@ nav: Source reference
 | File | Contents |
 |---|---|
 | `lib/lib.go` | Constants `DATETIMEFORMAT` (`time.UnixDate`), `NetworkType` (`"ip"`: A and AAAA) and `Protocol` (`"tcp"`). `ResolveName` and `ResolveNameToIPs` (DNS), `IsPortUp` (one TCP dial bounded by a per-attempt timeout *and* a context), `ValidatePort`, `RequirePositive`, `GetMinAvgMax` (latency statistics), `ConvertIPToStringSlice`, and `SortTimeDurationSlice` (currently exercised only by tests). |
+| `lib/family.go` | The address family a run uses: `NetworkType` (`"ip"`, `"ip4"`, `"ip6"`), `SetIPFamily` (the `-4`/`-6` flags), `FamilyAllows`, `DialNetwork` (`tcp` to `tcp4`/`tcp6` for the HTTP client), `HostFamilyConflict` (an address of the other family), and `FamilyHint`/`ExplainError` (the hint on an IPv6 failure that is really this machine's lack of IPv6). |
 | `lib/output.go` | The JSON contract: `JSONOutput`, `InputParams`, `DNSLookup`, and the per-command stats types `TelnetStats`, `WebStats`, `NmapStats`, `ICMPStats`, `UDPStats`, `NTPStats`, `WOLStats`, `RDNSStats`, `CIDRStats`, the `--timing` types `WebTiming` and `WebHopTiming`, `LocalJSONOutput` (the document of `wol` and `cidr`, which have no `dns_lookup`), plus the listener events `ListenEvent` and `HTTPListenEvent`. Also the text log: `LogWithTimestamp` (the `time: [module] OK|ERROR message` prefix), `Fields` (the `key=value` suffix, quoting values with spaces) and `LogStats` (the statistics banner). |
+| `lib/family_test.go` | The family logic and the hint, built from the exact error a host with IPv6 disabled reported. |
 | `lib/lib_test.go`, `lib/output_test.go` | Unit tests for the above: validators, statistics maths, DNS (loopback, IPv6 literal, dual-stack, invalid host), `IsPortUp` (open, closed, IPv6, context cancellation), log formatting. |
 
 ## lib/handlers - one file per command
@@ -50,7 +52,7 @@ nav: Source reference
 | File | Contents |
 |---|---|
 | `telnet.go` | `TelnetHandler`: resolve, then one connection attempt per iteration per address; reports `true` only if all succeed. |
-| `icmp.go` | `HandleICMP`: wraps go-ping's `Pinger` (parallel pings, streamed log lines), converts its statistics to shint's output; reports `false` on any lost ping. |
+| `icmp.go` | `HandleICMP`: wraps go-ping's `Pinger` (parallel pings, streamed log lines), converts its statistics to shint's output; reports `false` on any lost ping. `restrictFamily` applies `-4`/`-6` to the addresses go-ping resolved (its own `SetNetwork` cannot: the constructor has already resolved both families). |
 | `web.go` | `WebHandler`: builds the request (method, body, headers), sends it through a counting transport, and reports status, timing, speed and bytes. Records failed attempts in JSON `stats`. `HTTP_CLIENT_USER_AGENT` is the default `User-Agent`. |
 | `webtiming.go` | The `--timing` recorder: `timingRecorder` collects an `httptrace` per request (a hop per connection request, so a redirect adds one), `timingHop` holds the moments, and `hopTimings`, `timingLines` and `timingOrNil` turn them into the JSON and text forms. `checkRedirect` is net/http's default redirect policy plus telling the recorder about each hop. |
 | `wireconn.go` | Wire-level byte counting shared by `web` and `listen http`: `countingConn` (a `net.Conn` wrapper), `countingListener`, `newCountingTransport` (HTTP/1.1 transport whose plain and TLS connections are wrapped) and `wireMeter` (per-request accounting across connections and redirect hops). |

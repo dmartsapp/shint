@@ -102,7 +102,8 @@ shint telnet 127.0.0.1 9999 --timeout 2 --delay 0 || echo "not reachable"
 | `connect ok` | The connection was established. `time` is how long that took. |
 | `connection refused` | The host answered, but nothing is listening on that port. |
 | `i/o timeout` | Nothing answered at all within `--timeout` - typically a firewall silently dropping the packets, or a host that is down. |
-| `no route to host` / `network is unreachable` | There is no path to that address from this machine (common for an IPv6 address on a network without IPv6). |
+| `no route to host` / `network is unreachable` | There is no path to that address from this machine (common for an IPv6 address on a network without IPv6). Add `-4` to check IPv4 only. |
+| `address family not supported by protocol` | This machine cannot use IPv6 at all (its kernel has it disabled), so the IPv6 address of a dual-stack name cannot be tried. Add `-4`. |
 | `dns resolution failed` | The name could not be resolved, so no connection was tried. |
 
 :::tip Tell a firewall from a stopped service

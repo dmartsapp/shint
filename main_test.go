@@ -193,6 +193,20 @@ func TestExitStatus(t *testing.T) {
 		{"udp closed port", []string{"udp", "127.0.0.1", udpClosed}, 1},
 		{"udp dns failure", []string{"udp", dead, "53"}, 1},
 
+		// -4 / -6: restrict the family; a contradiction is a usage error
+		{"telnet -4 on an IPv4 address", []string{"telnet", "127.0.0.1", open, "-4"}, 0},
+		{"telnet an IPv6 address with -4", []string{"telnet", "::1", open, "-4"}, 2},
+		{"telnet an IPv4 address with -6", []string{"telnet", "127.0.0.1", open, "-6"}, 2},
+		{"telnet -4 and -6 together", []string{"telnet", "127.0.0.1", open, "-4", "-6"}, 2},
+		{"ping an IPv6 address with -4", []string{"ping", "::1", "-4"}, 2},
+		{"nmap an IPv6 address with -4", []string{"nmap", "::1", "-4"}, 2},
+		{"udp an IPv4 address with -6", []string{"udp", "127.0.0.1", udpEcho, "-6"}, 2},
+		{"web an IPv4 URL with -6", []string{"web", web200.URL, "-6"}, 2},
+		{"web -4 on an IPv4 URL", []string{"web", web200.URL, "--ipv4"}, 0},
+		{"ntp an IPv6 address with -4", []string{"ntp", "::1", "-4"}, 2},
+		{"rdns -4 on an IPv4 address", []string{"rdns", "127.0.0.1", "-4"}, 0},
+		{"wol has no IPv6", []string{"wol", "aa:bb:cc:dd:ee:ff", "-6"}, 2},
+
 		// ntp: no usable time reply is a failure; --max-offset makes the offset a check
 		{"ntp answers", []string{"ntp", "127.0.0.1", "--port", ntpUp}, 0},
 		{"ntp offset within --max-offset", []string{"ntp", "127.0.0.1", "--port", ntpUp, "--max-offset", "5000"}, 0},
@@ -497,5 +511,49 @@ func TestCtrlCShowsTheSummary(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// With -4 a name that resolves to both families is checked over IPv4 only: every
+// address in the report is an IPv4 one (and with -6, an IPv6 one, wherever the
+// machine has IPv6 loopback at all).
+func TestFamilyFlagsRestrictWhatIsChecked(t *testing.T) {
+	open := strconv.Itoa(tcpListener(t))
+	for _, tc := range []struct {
+		flag string
+		is4  bool
+	}{{"-4", true}, {"-6", false}} {
+		code, stdout, stderr := runShint(t, "telnet", "localhost", open, tc.flag, "--json", "--delay", "0", "--timeout", "2")
+		var doc struct {
+			DNS struct {
+				Success bool     `json:"success"`
+				IPs     []string `json:"resolved_addresses"`
+			} `json:"dns_lookup"`
+			Stats []struct {
+				Address string `json:"address"`
+			} `json:"stats"`
+		}
+		if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+			t.Fatalf("%s: not JSON (exit %d): %v\n%s\n%s", tc.flag, code, err, stdout, stderr)
+		}
+		if !doc.DNS.Success {
+			if tc.is4 {
+				t.Fatalf("%s: localhost did not resolve: %s", tc.flag, stdout)
+			}
+			t.Skipf("%s: this machine has no IPv6 for localhost", tc.flag)
+		}
+		for _, ip := range doc.DNS.IPs {
+			if (net.ParseIP(ip).To4() != nil) != tc.is4 {
+				t.Errorf("%s: resolved %s, the wrong family", tc.flag, ip)
+			}
+		}
+		for _, s := range doc.Stats {
+			if (net.ParseIP(s.Address).To4() != nil) != tc.is4 {
+				t.Errorf("%s: checked %s, the wrong family", tc.flag, s.Address)
+			}
+		}
+		if tc.is4 && code != 0 {
+			t.Errorf("-4 against an IPv4 listener should pass, exit %d:\n%s", code, stdout)
+		}
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,28 @@ import (
 )
 
 const icmpModule = "icmp"
+
+// restrictFamily applies -4/-6 to the addresses go-ping resolved. go-ping's own
+// SetNetwork cannot do it: NewPinger has already resolved the name, both
+// families, by the time a Pinger exists, and nothing resolves again. It fails,
+// as a lookup failure does, when nothing of the requested family is left.
+func restrictFamily(pinger *netutils.Pinger, host string) error {
+	if lib.NetworkType == "ip" {
+		return nil
+	}
+	pinger.SetNetwork(lib.NetworkType)
+	kept := make([]net.IP, 0, len(pinger.Destination))
+	for _, ip := range pinger.Destination {
+		if lib.FamilyAllows(ip) {
+			kept = append(kept, ip)
+		}
+	}
+	if len(kept) == 0 {
+		return fmt.Errorf("%s has no %s address", host, lib.FamilyName())
+	}
+	pinger.Destination = kept
+	return nil
+}
 
 // MaxPingPayload is the largest echo payload, in bytes, the ping library will
 // send in one unfragmented packet. It is read from the library itself rather
@@ -92,6 +115,9 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 	output.ModuleName = icmpModule
 	start := time.Now()
 	pinger, err := netutils.NewPinger(host)
+	if err == nil {
+		err = restrictFamily(pinger, host)
+	}
 	if err != nil {
 		if *jsonoutput {
 			// Still one JSON document, so `--json | jq` keeps working.
