@@ -89,9 +89,19 @@ shint ships **one release every two weeks, one at a time**. Here is what is plan
 | **v4.3.0** | Nov 2 - Nov 15 | `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names |
 | **v4.4.0** | Nov 16 - Nov 29 | `ip route` (routing table and default gateway), richer `ping`: sub-millisecond timings, and "unreachable" replies told apart from timeouts |
 | **v4.5.0** | Nov 30 - Dec 13 | `speed` (measure throughput between two of your machines) |
+| **v4.5.x** | After Dec 13 | Patch releases only: fixes, no new features. A lot has changed since v4.0, and this is the time to check it |
+| **v5.0.0** | Not scheduled | The next major release, for the changes that would break what works today - see [What will break in v5.0.0](#what-will-break-in-v500) |
 | **Later** | | Package managers such as Homebrew |
 
+The plan runs to v4.5.0. After it there are no more minor releases - only patches - until v5.0.0.
+
 Everything on the list keeps shint's ground rules: one small file, nothing to configure, and **never any need for administrator or root privileges**. Have an idea, or want something moved up? [Open an issue](https://github.com/dmartsapp/shint/issues).
+
+### What will break in v5.0.0
+
+A change that would break scripts on purpose - taking a command or a flag away, changing what one means - does not go into a v4.x release. It waits for the next major release, v5.0.0, which has no date yet. What is planned for it so far:
+
+- **`shint listen tcp` is removed.** `shint listen` keeps `listen http` and `listen udp`. `listen http` also accepts a plain TCP connection, so it is the target for a `telnet` or `nmap` port check (a connection that sends nothing is accepted and not logged). `--echo` becomes a `listen udp` flag only; today `listen http` accepts it and ignores it. If you script `shint listen tcp <port>`, switch to `shint listen http <port>` - or to `nc -l <port>` if you want a listener that shows raw bytes. **Until v5.0.0, `listen tcp` keeps working.**
 
 ## Privacy
 
