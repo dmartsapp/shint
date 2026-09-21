@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -96,5 +100,45 @@ func TestWebIncompleteBodyIsAFailure(t *testing.T) {
 				t.Errorf("--json: want one stat with success=false and an error, got %+v", doc.Stats)
 			}
 		})
+	}
+}
+
+// web read every response body into memory, shown or not: a 300 MB download cost
+// 660 MB (issue #28). The body is now counted and discarded, and kept only for
+// --json -W, which shows it. Allocation, not the heap size, is measured: it does
+// not depend on when the collector runs.
+func TestWebKeepsTheBodyOnlyWhenItIsShown(t *testing.T) {
+	const size = 24 << 20
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", strconv.Itoa(size))
+		chunk := make([]byte, 64<<10)
+		for sent := 0; sent < size; sent += len(chunk) {
+			if _, err := w.Write(chunk); err != nil {
+				return
+			}
+		}
+	}))
+	defer server.Close()
+	target, _ := url.Parse(server.URL)
+
+	allocated := func(asJSON, withBody bool) (uint64, string) {
+		throttle := false
+		var before, after runtime.MemStats
+		runtime.GC()
+		runtime.ReadMemStats(&before)
+		out := captureStdout(t, func() {
+			WebHandler(context.Background(), &asJSON, 1, 0, &throttle, 60, target, "GET", "", nil, withBody, nil, false)
+		})
+		runtime.ReadMemStats(&after)
+		return after.TotalAlloc - before.TotalAlloc, out
+	}
+
+	// text mode and --json without -W read the body the same way, so text mode stands for both
+	if got, out := allocated(false, false); got > 10<<20 || !strings.Contains(out, "bytes_received=") {
+		t.Errorf("%d MB allocated for a %d MB body, want a few (the body must be discarded):\n%.300s", got>>20, size>>20, out)
+	}
+	// the control: with --json -W the body is what the document carries, so it is kept
+	if got, out := allocated(true, true); got < size || !strings.Contains(out, `"body"`) {
+		t.Errorf("--json -W: %d MB allocated for a %d MB body: the body it shows must be held", got>>20, size>>20)
 	}
 }

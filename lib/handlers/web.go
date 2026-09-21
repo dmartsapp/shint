@@ -265,7 +265,16 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				return
 			}
 			defer func() { _ = response.Body.Close() }()
-			body, readErr := io.ReadAll(response.Body)
+			// The body is read to its end either way - the byte counts, the timing and the
+			// early-end check need it - but only --json -W shows it, so only then is it
+			// kept: buffering every response made a 300 MB download cost 660 MB of memory.
+			var body []byte
+			var readErr error
+			if *jsonoutput && includeresponsebody {
+				body, readErr = io.ReadAll(response.Body)
+			} else {
+				_, readErr = io.Copy(io.Discard, response.Body)
+			}
 			if readErr != nil {
 				if ctx.Err() != nil {
 					return // cut off by Ctrl+C while the body was arriving

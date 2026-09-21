@@ -24,7 +24,7 @@ shint web <url> [-X METHOD] [-H "Name: value"]... [-P body] [-W] [flags]
 | `-X`, `--method` | HTTP method: `GET` (default), `POST`, `PUT`, `DELETE`, ... |
 | `-H`, `--header` | A header to send, as `"Name: value"`. Repeat for several. |
 | `-P`, `--payload` | The request body. |
-| `-W`, `--withbody` | Include the response body in the `--json` output. |
+| `-W`, `--withbody` | Include the response body in the `--json` output. **The body is then held in memory**; without `-W` it is counted and discarded, so memory stays flat however large the download. |
 | `--cacert FILE` | Trust this PEM CA bundle *in addition to* the system roots. |
 | `--cert FILE`, `--key FILE` | Client certificate and key for mutual TLS (give both). |
 | `-k`, `--insecure` | Skip certificate verification. Diagnostics only. |
@@ -395,5 +395,6 @@ With `--json`, each stat gains a `timing` object (and only with `--timing`: with
 - **Timing.** `--timing` changes nothing about how the request is made: the redirect limit, the byte counts and the exit status are the same with and without it.
 - **`--payload`** means the *size* of filler data for `ping` and `udp`, but on `web` the `-P` form means the request *body*.
 - **No proxy is ever used.** `web` connects directly to the address the host name resolves to; `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` are ignored. That is deliberate - it measures the path from *this* machine, and the byte counts and [timing](#timing-where-the-time-went) describe the connection to the server, not to a proxy - but it means that on a network where the internet is reachable only through a proxy, a request that works in your browser or with `curl` can time out here (see [Troubleshooting](troubleshooting.md#it-works-with-curl-or-my-browser-but-not-with-shint-behind-a-proxy)).
+- **Memory does not grow with the response.** The body is read to its end - the byte counts, the timing and the check that it arrived whole need that - and thrown away as it goes; only `--json -W` keeps it, because it is what the document shows, so use `-W` on bodies that fit in memory. (A 300 MB download used to cost 660 MB of memory whether or not anything was shown.)
 - **HTTP/1.1** is used for all requests; the byte counts describe that plain byte stream.
 - The default `User-Agent` is `dmarts.app-http-v0.1`; override it with `-H "User-Agent: ..."`.
