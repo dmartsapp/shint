@@ -59,6 +59,7 @@ shint rdns one.one.one.one
 
 ```text
 Sun Sep 20 17:30:35 MDT 2026: [rdns] OK dns resolved host=one.one.one.one addresses=4 ips=[2606:4700:4700::1001,2606:4700:4700::1111,1.1.1.1,1.0.0.1] time=5.194167ms
+Sun Sep 20 17:30:35 MDT 2026: [rdns] OK dns authoritative zone=one.one.one nameservers=[dorthy.ns.cloudflare.com,terin.ns.cloudflare.com] time=43.177ms
 Sun Sep 20 17:30:36 MDT 2026: [rdns] OK reverse lookup address=2606:4700:4700::1001 query=1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.7.4.0.0.7.4.6.0.6.2.ip6.arpa. attempt=1/1 names=[one.one.one.one.] time=9.695625ms
 Sun Sep 20 17:30:37 MDT 2026: [rdns] OK reverse lookup address=2606:4700:4700::1111 query=1.1.1.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.7.4.0.0.7.4.6.0.6.2.ip6.arpa. attempt=1/1 names=[one.one.one.one.] time=43.543958ms
 Sun Sep 20 17:30:38 MDT 2026: [rdns] OK reverse lookup address=1.1.1.1 query=1.1.1.1.in-addr.arpa. attempt=1/1 names=[one.one.one.one.] time=39.611ms

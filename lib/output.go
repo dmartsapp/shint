@@ -7,14 +7,28 @@ import (
 	"time"
 )
 
+// Authoritative is who runs the DNS for a name: the zone the name belongs to and
+// the name servers its delegation lists, as the system's resolver serves them. It
+// is what every command shows after it resolves a host name (and puts in
+// dns_lookup.authoritative with --json). It is context, not a check: it never
+// changes a command's exit status, and Error - set when no zone could be found -
+// is information, not a failure.
+type Authoritative struct {
+	Zone        string   `json:"zone,omitempty"`
+	Nameservers []string `json:"nameservers"`
+	TimeTaken   int64    `json:"time_taken_µs"`
+	Error       string   `json:"error,omitempty"`
+}
+
 // DNSLookup is the outcome of resolving the target's host name; every JSON
 // document carries one.
 type DNSLookup struct {
-	Hostname          string   `json:"hostname"`
-	ResolvedAddresses []string `json:"resolved_addresses"`
-	Error             string   `json:"error"`
-	Success           bool     `json:"success"`
-	TimeTaken         int64    `json:"time_taken_µs"`
+	Hostname          string         `json:"hostname"`
+	ResolvedAddresses []string       `json:"resolved_addresses"`
+	Error             string         `json:"error"`
+	Success           bool           `json:"success"`
+	TimeTaken         int64          `json:"time_taken_µs"`
+	Authoritative     *Authoritative `json:"authoritative,omitempty"`
 }
 
 // InputParams records what a command ran with, so a saved JSON document says

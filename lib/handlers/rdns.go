@@ -86,11 +86,12 @@ func RDNSHandler(ctx context.Context, jsonoutput *bool, iterations int, delay in
 	}
 
 	if *jsonoutput {
-		output.DNSLookup = lib.DNSLookup{Hostname: host, Success: true, ResolvedAddresses: addresses, TimeTaken: time.Since(istart).Microseconds()}
+		output.DNSLookup = lib.DNSLookup{Hostname: host, Success: true, ResolvedAddresses: addresses, TimeTaken: time.Since(istart).Microseconds(), Authoritative: findAuthoritative(ctx, host, authoritativeTimeout(timeout))}
 		output.Stats = make([]lib.RDNSStats, 0)
 		output.StartTime = istart.UnixMicro()
 	} else {
 		fmt.Println(lib.LogWithTimestamp(rdnsModule, "dns resolved "+lib.Fields("host", host, "addresses", len(addresses), "ips", "["+strings.Join(addresses, ",")+"]", "time", time.Since(istart)), false))
+		printAuthoritative(rdnsModule, findAuthoritative(ctx, host, authoritativeTimeout(timeout)))
 	}
 
 	var resolved, failures, completed int

@@ -42,14 +42,14 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 
 | Module | Messages |
 |---|---|
-| `telnet` | `dns resolved`, `dns resolution failed`, `connect ok`, `connect failed`, `done` |
-| `icmp` | `dns resolved`, `received reply for request #N from ADDR (ipv4/ipv6) in Nms bytes=N`, `ping failed`, `done` |
-| `web` | `dns resolved`, `response`, `timing` (with `--timing`), `request failed`, `tls verification disabled`, `using client certificate for mutual TLS`, `using custom CA bundle...`, `done` |
-| `nmap` | `dns resolved`, `scan started`, `progress`, `port open`, `scan complete`, `scan interrupted`, `done` |
-| `udp` | `dns resolved`, `probe open`, `probe closed`, `probe open|filtered`, `probe error`, `done` |
-| `ntp` | `dns resolved`, `dns resolution failed`, `response`, `query failed`, `done` |
+| `telnet` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `connect ok`, `connect failed`, `done` |
+| `icmp` | `dns resolved`, `dns authoritative`, `received reply for request #N from ADDR (ipv4/ipv6) in Nms bytes=N`, `ping failed`, `done` |
+| `web` | `dns resolved`, `dns authoritative`, `response`, `timing` (with `--timing`), `request failed`, `tls verification disabled`, `using client certificate for mutual TLS`, `using custom CA bundle...`, `done` |
+| `nmap` | `dns resolved`, `dns authoritative`, `scan started`, `progress`, `port open`, `scan complete`, `scan interrupted`, `done` |
+| `udp` | `dns resolved`, `dns authoritative`, `probe open`, `probe closed`, `probe open|filtered`, `probe error`, `done` |
+| `ntp` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `response`, `query failed`, `done` |
 | `wol` | `magic packet sent`, `send failed`, `done` |
-| `rdns` | `dns resolved`, `dns resolution failed`, `reverse lookup`, `reverse lookup failed`, `done` |
+| `rdns` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `reverse lookup`, `reverse lookup failed`, `done` |
 | `dns` | `server resolved`, `dns resolution failed`, `query`, `query failed`, `answer`, `authority`, `no server to ask`, `done` |
 | `cidr` | `subnet`, `done` |
 | `ip` | `interface`, `address`, `failed`, `done` |
@@ -140,6 +140,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `resolved_addresses` | Every address it resolved to, IPv4 and IPv6. |
 | `success`, `error` | Whether the lookup worked, and why not. |
 | `time_taken_µs` | How long it took. |
+| `authoritative` | Present when the host is a name that has a zone: `{zone, nameservers, time_taken_µs}` - the zone it belongs to and that zone's name servers (see [Who runs the DNS for this name](usage.md#who-runs-the-dns-for-this-name)). When none could be found it has `error` and no `zone`. Absent for an IP address or a single-label name. |
 
 ### Stats entries
 

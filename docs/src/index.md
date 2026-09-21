@@ -47,6 +47,7 @@ shint telnet google.com 443
 
 ```text
 Sun Sep 20 01:50:14 MDT 2026: [telnet] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=47.672458ms
+Sun Sep 20 01:50:14 MDT 2026: [telnet] OK dns authoritative zone=google.com nameservers=[ns1.google.com,ns2.google.com,ns3.google.com,ns4.google.com] time=41.446ms
 Sun Sep 20 01:50:15 MDT 2026: [telnet] OK connect ok host=2607:f8b0:400a:803::200e port=443 attempt=1/1 time=30.388833ms
 Sun Sep 20 01:50:16 MDT 2026: [telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=30.467459ms
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -139,10 +140,16 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 
 	wg := sync.WaitGroup{}
 
+	var authoritative *lib.Authoritative // for the JSON document; text mode prints its line below
+	if *jsonoutput {
+		authoritative = findAuthoritative(context.Background(), host, authoritativeTimeout(timeout))
+	}
+
 	// In text mode go-ping's own log lines are streamed as replies arrive; in
 	// JSON mode everything is reported once at the end from Stats.Packets.
 	if !*jsonoutput {
 		fmt.Println(lib.LogWithTimestamp(icmpModule, "dns resolved "+lib.Fields("host", host, "addresses", len(pinger.Destination), "ips", "["+strings.Join(lib.ConvertIPToStringSlice(pinger.Destination), ",")+"]", "time", pinger.Stats.ResolveTime), false))
+		printAuthoritative(icmpModule, findAuthoritative(context.Background(), host, authoritativeTimeout(timeout)))
 		wg.Add(1)
 		go func(pinger *netutils.Pinger, payload int, wg *sync.WaitGroup) {
 			defer wg.Done()
@@ -160,6 +167,7 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 				Success:           true,
 				ResolvedAddresses: lib.ConvertIPToStringSlice(pinger.Destination),
 				TimeTaken:         pinger.Stats.ResolveTime.Microseconds(),
+				Authoritative:     authoritative,
 			}
 			output.Error = err.Error()
 			output.Stats = make([]lib.ICMPStats, 0)
@@ -192,6 +200,7 @@ func HandleICMP(host string, jsonoutput *bool, iterations int, delay int, thrott
 			Success:           true,
 			ResolvedAddresses: lib.ConvertIPToStringSlice(pinger.Destination),
 			TimeTaken:         pinger.Stats.ResolveTime.Microseconds(),
+			Authoritative:     authoritative,
 		}
 		output.StartTime = start.UnixMicro()
 		output.EndTime = time.Now().UnixMicro()

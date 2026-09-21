@@ -90,6 +90,7 @@ run_test "CIDR" "$BINARY cidr 192.168.1.10/24" "network=192.168.1.0/24"
 run_test "IP" "$BINARY ip" "[ip] OK done interfaces="
 run_test "DNS" "$BINARY dns google.com A @8.8.8.8" "[dns] OK done queries=1 answered=1"
 run_test "DNS reverse" "$BINARY dns 8.8.8.8 @8.8.8.8" "data=dns.google."
+run_test "Authoritative name servers" "$BINARY telnet google.com 443 --delay 0" "dns authoritative zone=google.com"
 
 
 # --- Summary ---

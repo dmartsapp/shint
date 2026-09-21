@@ -47,6 +47,7 @@ shint ping google.com --count 2 --delay 500
 
 ```text
 Sun Sep 20 15:37:48 MDT 2026: [icmp] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.45.142] time=3.208084ms
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK dns authoritative zone=google.com nameservers=[ns1.google.com,ns2.google.com,ns3.google.com,ns4.google.com] time=41.446ms
 Sun Sep 20 15:37:48 MDT 2026: [icmp] OK received reply for request #1 from 142.251.45.142 (ipv4) in 27ms bytes=4
 Sun Sep 20 15:37:48 MDT 2026: [icmp] OK received reply for request #1 from 2607:f8b0:400a:803::200e (ipv6) in 32ms bytes=4
 Sun Sep 20 15:37:49 MDT 2026: [icmp] OK received reply for request #2 from 2607:f8b0:400a:803::200e (ipv6) in 28ms bytes=4

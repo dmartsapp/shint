@@ -72,12 +72,14 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 	} else {
 		if !*jsonoutput {
 			fmt.Println(lib.LogWithTimestamp(nmapModule, "dns resolved "+lib.Fields("host", host, "addresses", len(ipaddresses), "ips", "["+strings.Join(ipaddresses, ",")+"]", "time", time.Since(istart)), false))
+			printAuthoritative(nmapModule, findAuthoritative(ctx, host, authoritativeTimeout(timeout)))
 		} else {
 			output.DNSLookup = lib.DNSLookup{
 				Hostname:          host,
 				Success:           true,
 				ResolvedAddresses: ipaddresses,
 				TimeTaken:         time.Since(istart).Microseconds(),
+				Authoritative:     findAuthoritative(ctx, host, authoritativeTimeout(timeout)),
 			}
 		}
 		var WG sync.WaitGroup

@@ -85,6 +85,12 @@ add("E.fd-pressure-count-3000", ["telnet", "127.0.0.1", E, "--count", "3000", "-
 # listen takes --count too, and -1 is not a valid value for it (0 means "until Ctrl+C")
 add("B.listen-count-negative", ["listen", "tcp", "{tcp_closed}", "--count", "-1"], rc=2, group="B flags", max=8, timeout=4)
 
+# the dns authoritative line is for host names that have a zone: never an address or a single label
+add("E.no-authoritative-line-for-an-address", ["telnet", "127.0.0.1", E, "--delay", "0"], rc=0, absent=["dns authoritative"], group="E telnet")
+add("E.no-authoritative-line-for-localhost", ["telnet", "localhost", E, "--delay", "0"], rc=None, absent=["dns authoritative"], group="E telnet")
+add("E.no-authoritative-in-json-for-an-address", ["telnet", "127.0.0.1", E, "--delay", "0", "--json"], rc=0, group="E telnet",
+    check=lambda r: "an IP address has no zone, but dns_lookup has an authoritative field" if "authoritative" in json.loads(r["out"])["dns_lookup"] else None)
+
 # ---------------- M: ip (reads the interface table; needs nothing from the network)
 add("M.ip", ["ip"], rc=0, contains=["[ip] OK interface name=", "[ip] OK done interfaces="], group="M ip", max=10)
 add("M.ip-json", ["ip", "--json"], rc=0, group="M ip", max=10,

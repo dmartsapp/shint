@@ -248,8 +248,9 @@ func NTPHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 
 	if !*jsonoutput {
 		fmt.Println(lib.LogWithTimestamp(ntpModule, "dns resolved "+lib.Fields("host", host, "addresses", len(ipaddresses), "ips", "["+strings.Join(ipaddresses, ",")+"]", "time", time.Since(istart)), false))
+		printAuthoritative(ntpModule, findAuthoritative(ctx, host, authoritativeTimeout(timeout)))
 	} else {
-		output.DNSLookup = lib.DNSLookup{Hostname: host, Success: true, ResolvedAddresses: ipaddresses, TimeTaken: time.Since(istart).Microseconds()}
+		output.DNSLookup = lib.DNSLookup{Hostname: host, Success: true, ResolvedAddresses: ipaddresses, TimeTaken: time.Since(istart).Microseconds(), Authoritative: findAuthoritative(ctx, host, authoritativeTimeout(timeout))}
 		output.Stats = make([]lib.NTPStats, 0)
 		output.StartTime = istart.UnixMicro()
 	}

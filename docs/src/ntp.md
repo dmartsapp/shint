@@ -56,6 +56,7 @@ shint ntp time.cloudflare.com
 
 ```text
 Sun Sep 20 17:30:39 MDT 2026: [ntp] OK dns resolved host=time.cloudflare.com addresses=4 ips=[2606:4700:f1::1,2606:4700:f1::123,162.159.200.1,162.159.200.123] time=65.099125ms
+Sun Sep 20 17:30:39 MDT 2026: [ntp] OK dns authoritative zone=time.cloudflare.com nameservers=[jobs.ns.cloudflare.com,meera.ns.cloudflare.com] time=56.137ms
 Sun Sep 20 17:30:40 MDT 2026: [ntp] OK response server=time.cloudflare.com address=2606:4700:f1::1 attempt=1/1 stratum=3 offset=+342.371µs round_trip=17.080016ms leap=none version=4 reference=10.153.8.152 time=18.36625ms
 Sun Sep 20 17:30:41 MDT 2026: [ntp] OK response server=time.cloudflare.com address=2606:4700:f1::123 attempt=1/1 stratum=3 offset=+264.983µs round_trip=14.698355ms leap=none version=4 reference=10.153.8.152 time=16.118625ms
 Sun Sep 20 17:30:42 MDT 2026: [ntp] OK response server=time.cloudflare.com address=162.159.200.1 attempt=1/1 stratum=3 offset=+76.992µs round_trip=15.669518ms leap=none version=4 reference=10.153.8.152 time=16.583291ms
@@ -73,6 +74,7 @@ shint ntp pool.ntp.org --max-offset 1
 
 ```text
 Sun Sep 20 17:30:43 MDT 2026: [ntp] OK dns resolved host=pool.ntp.org addresses=4 ips=[185.214.143.237,72.14.182.49,108.61.215.221,72.14.186.59] time=40.837583ms
+Sun Sep 20 17:30:43 MDT 2026: [ntp] OK dns authoritative zone=pool.ntp.org nameservers=[a.ntpns.org,b.ntpns.org,c.ntpns.org,d.ntpns.org,e.ntpns.org,f.ntpns.org,g.ntpns.org,h.ntpns.org,i.ntpns.org] time=63.802ms
 Sun Sep 20 17:30:44 MDT 2026: [ntp] ERROR query failed server=pool.ntp.org address=185.214.143.237 attempt=1/1 time=75.919958ms error="offset -8.77073ms is larger than --max-offset 1ms"
 Sun Sep 20 17:30:45 MDT 2026: [ntp] ERROR query failed server=pool.ntp.org address=72.14.182.49 attempt=1/1 time=67.974458ms error="offset +3.503899ms is larger than --max-offset 1ms"
 Sun Sep 20 17:30:46 MDT 2026: [ntp] ERROR query failed server=pool.ntp.org address=108.61.215.221 attempt=1/1 time=72.541542ms error="offset +8.316053ms is larger than --max-offset 1ms"

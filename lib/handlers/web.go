@@ -94,6 +94,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			fmt.Println(lib.LogWithTimestamp(webModule, "dns resolution failed "+lib.Fields("host", URL.Hostname(), "error", err.Error()), true))
 		} else {
 			fmt.Println(lib.LogWithTimestamp(webModule, "dns resolved "+lib.Fields("host", URL.Hostname(), "addresses", len(ipaddresses), "ips", "["+strings.Join(ipaddresses, ",")+"]", "time", time.Since(istart)), false))
+			printAuthoritative(webModule, findAuthoritative(ctx, URL.Hostname(), authoritativeTimeout(timeout)))
 		}
 	}
 
@@ -124,6 +125,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			output.DNSLookup.Success = true
 			output.DNSLookup.ResolvedAddresses = lib.ConvertIPToStringSlice(resolvedIPs)
 			output.DNSLookup.TimeTaken = time.Since(istart).Microseconds()
+			output.DNSLookup.Authoritative = findAuthoritative(ctx, URL.Hostname(), authoritativeTimeout(timeout))
 		}
 
 		if port, err := parsePort(URL.Port()); err == nil && port != 0 {

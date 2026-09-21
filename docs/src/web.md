@@ -260,6 +260,7 @@ shint web https://example.com --timing
 
 ```text
 Sun Sep 20 17:36:50 MDT 2026: [web] OK dns resolved host=example.com addresses=4 ips=[2606:4700:10::6814:179a,2606:4700:10::ac42:93f3,172.66.147.243,104.20.23.154] time=5.305375ms
+Sun Sep 20 17:36:50 MDT 2026: [web] OK dns authoritative zone=example.com nameservers=[elliott.ns.cloudflare.com,hera.ns.cloudflare.com] time=49.024ms
 Sun Sep 20 17:36:51 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=4.85KB/s attempt=1/1 time=141.889375ms
 Sun Sep 20 17:36:51 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 connection=new dns=3.845ms connect=34.038ms tls=55.517ms wait=45.806ms download=1.907ms total=141.678ms attempt=1/1
 
@@ -281,6 +282,7 @@ shint web http://google.com --timing
 
 ```text
 Sun Sep 20 17:36:51 MDT 2026: [web] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=5.836708ms
+Sun Sep 20 17:36:51 MDT 2026: [web] OK dns authoritative zone=google.com nameservers=[ns1.google.com,ns2.google.com,ns3.google.com,ns4.google.com] time=41.446ms
 Sun Sep 20 17:36:53 MDT 2026: [web] OK response url=http://google.com status=200 bytes_sent=218 bytes_received=30872 speed=69.91KB/s attempt=1/1 time=431.219708ms
 Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=http://google.com hop=1/2 status=301 connection=new dns=3.677ms connect=199.103ms tls=0s wait=46.649ms download=625µs total=250.689ms attempt=1/1
 Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=http://www.google.com/ hop=2/2 status=200 connection=new dns=4.932ms connect=42.979ms tls=0s wait=74.752ms download=56.807ms total=180.304ms attempt=1/1
@@ -303,6 +305,7 @@ shint web https://example.com --timing --count 2 --delay 500
 
 ```text
 Sun Sep 20 17:36:53 MDT 2026: [web] OK dns resolved host=example.com addresses=4 ips=[2606:4700:10::ac42:93f3,2606:4700:10::6814:179a,172.66.147.243,104.20.23.154] time=6.259083ms
+Sun Sep 20 17:36:53 MDT 2026: [web] OK dns authoritative zone=example.com nameservers=[elliott.ns.cloudflare.com,hera.ns.cloudflare.com] time=49.024ms
 Sun Sep 20 17:36:53 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=5.86KB/s attempt=1/2 time=117.558167ms
 Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 connection=new dns=5.217ms connect=28.472ms tls=47.975ms wait=35.328ms download=87µs total=117.461ms attempt=1/2
 Sun Sep 20 17:36:54 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=18.04KB/s attempt=2/2 time=38.163792ms

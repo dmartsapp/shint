@@ -82,6 +82,7 @@ shint telnet google.com 443
 
 ```text
 Sun Sep 20 22:33:54 MDT 2026: [telnet] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=46.0835ms
+Sun Sep 20 22:33:54 MDT 2026: [telnet] OK dns authoritative zone=google.com nameservers=[ns1.google.com,ns2.google.com,ns3.google.com,ns4.google.com] time=41.446ms
 Sun Sep 20 22:33:55 MDT 2026: [telnet] OK connect ok host=2607:f8b0:400a:803::200e port=443 attempt=1/1 time=30.424709ms
 Sun Sep 20 22:33:56 MDT 2026: [telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=28.368791ms
 
@@ -97,6 +98,7 @@ shint telnet google.com 443 -4
 
 ```text
 Sun Sep 20 22:33:56 MDT 2026: [telnet] OK dns resolved host=google.com addresses=1 ips=[142.251.46.78] time=5.221708ms
+Sun Sep 20 22:33:56 MDT 2026: [telnet] OK dns authoritative zone=google.com nameservers=[ns1.google.com,ns2.google.com,ns3.google.com,ns4.google.com] time=41.446ms
 Sun Sep 20 22:33:57 MDT 2026: [telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=30.681166ms
 
 ======================================= telnet STATISTICS =======================================
@@ -158,6 +160,22 @@ Sun Sep 20 01:50:10 MDT 2026: [telnet] OK done total_time=1.006831458s
 - **OK or ERROR** is the level of that one line.
 - The `key=value` pairs are easy to `grep` and `awk`; values with spaces are quoted.
 - Commands that repeat a check finish with a **statistics** block: requests sent, responses received, and minimum, average and maximum latency.
+
+### Who runs the DNS for this name
+
+When a command resolves a **host name**, one more line follows `dns resolved`: the zone the name belongs to and the name servers that are authoritative for it.
+
+```text
+Mon Sep 21 12:15:02 MDT 2026: [telnet] OK dns resolved host=www.github.com addresses=1 ips=[140.82.114.4] time=63.9ms
+Mon Sep 21 12:15:02 MDT 2026: [telnet] OK dns authoritative zone=github.com nameservers=[dns1.p08.nsone.net,dns2.p08.nsone.net,ns-1283.awsdns-32.org,...] time=41.4ms
+```
+
+That answers "who runs the DNS for this?" at the moment you are debugging why it does not resolve as expected. `www.github.com` is not a zone of its own; it belongs to `github.com`, and the line says so. With `--json` the same information is `dns_lookup.authoritative` (`zone`, `nameservers`, `time_taken_µs`).
+
+- **It is context, not a check.** It never changes the exit status; when no zone can be found the line is simply not printed (the JSON says why, in `authoritative.error`).
+- **Only for names.** An IP address, a single-label name (`localhost`, a machine name) and a name that did not resolve have no zone to report.
+- **It is bounded** by `--timeout` and never by more than three seconds, is looked up in parallel with the parent names, and is dropped as soon as the closest zone is known - usually 40 to 100 ms.
+- **It is the delegation as your resolver serves it**, not proof of which server answered a query and not an "authoritative answer" flag. To ask one of those servers directly and see the `aa` flag, use [`shint dns`](dns.md): `shint dns example.com SOA @a.iana-servers.net --no-recurse`.
 
 The full description, including every JSON field, is on the [Output formats](output.md) page.
 
