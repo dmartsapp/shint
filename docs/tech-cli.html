@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.1.0</span>
+  <span class="version">v4.2.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -54,7 +54,7 @@
 <ol><li><strong>Handler.</strong> Create <code>lib/handlers/&lt;name&gt;.go</code> with a <code>&lt;name&gt;Module</code> constant (it becomes the <code>[module]</code> in log lines) and a function that takes plain values plus <code>jsonoutput *bool</code> and returns <code>bool</code>. Print with <code>lib.LogWithTimestamp</code>/<code>lib.Fields</code>, and render JSON through <code>lib.JSONOutput</code>.</li><li><strong>Output types.</strong> Add a <code>&lt;Name&gt;Stats</code> struct to <code>lib/output.go</code> with tagged fields, and document it on <a href="output.html">Output formats</a>.</li><li><strong>Command.</strong> In <code>main.go</code>, add a <code>cobra.Command</code>: <code>Args:</code> for the positional shape, <code>Run</code> that validates (each failure <code>usage(...)</code>; <code>return</code>), then calls <code>finish(handlers.YourHandler(...))</code>. Register any flag in <code>init()</code> and the command in <code>main()</code>.</li><li><strong>Bound every operation</strong> with <code>--timeout</code>, never the whole run.</li><li><strong>Tests.</strong> A handler test with a locally started target; an entry in <code>TestExitStatus</code> (main_test.go) for each of the 0, 1 and 2 paths; a <code>--json</code> failure case in <code>TestFailuresUnderJSONAreStillJSON</code>.</li><li><strong>Docs.</strong> A command page under <code>docs/src/</code>, a line in <a href="usage.html">Using shint</a> if it changes the shared tables, and a changelog entry.</li></ol>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="tech-source.html"><span>Previous</span>Source reference</a><a class="next" href="tech-design.html"><span>Next</span>Design notes</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-cli.md">Edit this page on GitHub</a><span>shint v4.1.0 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tech-cli.md">Edit this page on GitHub</a><span>shint v4.2.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#principles">Principles</a></li><li class="toc2"><a href="#the-output-contract">The output contract</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#adding-a-command">Adding a command</a></li></ul></aside>
 </div>

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -41,6 +42,28 @@ func runShintWithDescriptors(t *testing.T, limit int, args ...string) (code int,
 	return code, out.String()
 }
 
+// acceptingTCPListener is a TCP server that accepts every connection and closes it.
+// (tcpListener only listens: a connection nobody accepts stays in the kernel's backlog,
+// which holds about 128, and then a burst of hundreds of connects loses a few.)
+func acceptingTCPListener(t *testing.T) (port int) {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			_ = c.Close()
+		}
+	}()
+	return l.Addr().(*net.TCPAddr).Port
+}
+
 // "--count N --delay 0" started every attempt at once, so a process that could open
 // fewer than N files failed the surplus with "too many open files" and blamed the
 // target (issue #31): 3000 attempts under ulimit -n 256 lost 2379 of them. Now the
@@ -58,7 +81,7 @@ func TestManyAttemptsAtOnceWithFewDescriptors(t *testing.T) {
 		args []string
 		ok   string
 	}{
-		{"telnet", []string{"telnet", "127.0.0.1", strconv.Itoa(tcpListener(t))}, "connect ok"},
+		{"telnet", []string{"telnet", "127.0.0.1", strconv.Itoa(acceptingTCPListener(t))}, "connect ok"},
 		{"web", []string{"web", web.URL}, "OK response"},
 		{"udp", []string{"udp", "127.0.0.1", strconv.Itoa(udpSocket(t, true)), "--data", "x"}, "probe open"},
 	}

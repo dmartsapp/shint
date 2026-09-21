@@ -15,7 +15,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.1.0</span>
+  <span class="version">v4.2.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -101,7 +101,7 @@
 <ul><li><strong>Addresses are shown as configured</strong>: <code>192.168.1.20/24</code> is the address <em>with</em> its prefix length, not the network. To work out the network, mask and range of a prefix, use <a href="cidr.html"><code>cidr</code></a>.</li><li><strong>IPv6 link-local addresses</strong> (<code>fe80::...</code>) are shown without the <code>%en0</code> zone: the interface name is on the line above.</li><li><strong>Names differ by platform</strong> (<code>eth0</code> or <code>enp3s0</code> on Linux, <code>en0</code> on macOS, <code>Ethernet</code> on Windows) and this lists whatever the system calls them. The match is case-insensitive.</li><li><strong>It says nothing about routes.</strong> Which interface a packet to a given destination would leave by, and the default gateway, are the routing table - planned as <code>ip route</code>.</li><li><strong>It does not change anything.</strong> There is no way to add an address or bring an interface up or down with shint, and there never will be: it needs privileges and shint never does.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="cidr.html"><span>Previous</span>cidr</a><a class="next" href="listen.html"><span>Next</span>listen</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/ip.md">Edit this page on GitHub</a><span>shint v4.1.0 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/ip.md">Edit this page on GitHub</a><span>shint v4.2.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#what-it-reports">What it reports</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#everything">Everything</a></li><li class="toc3"><a href="#one-interface-one-family">One interface, one family</a></li><li class="toc3"><a href="#an-interface-that-does-not-exist">An interface that does not exist</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
 </div>
