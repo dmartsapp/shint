@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dmartsapp/shint/v4/lib"
 )
@@ -279,5 +280,117 @@ func TestValidateUDPPayload(t *testing.T) {
 	}
 	if err := ValidateUDPPayload(4, strings.Repeat("x", MaxUDPPayload+1)); err == nil || !strings.Contains(err.Error(), "--data is 65508 bytes") {
 		t.Errorf("--data one byte too large: %v", err)
+	}
+}
+
+func TestParseHexPayload(t *testing.T) {
+	five := []byte{0x00, 0x01, 0x02, 0x03, 0xff}
+	good := map[string][]byte{
+		"00010203ff":            five,
+		"00010203FF":            five,
+		"00 01 02 03 ff":        five,
+		"00:01:02:03:FF":        five,
+		"  00:01 02:03 ff  ":    five,
+		"0001 0203 ff":          five, // separators fall wherever they like
+		"0 0 0 1 0 2 0 3 f f":   five, // ... even inside a byte: they are ignored, not parsed
+		"aB":                    {0xab},
+		"00":                    {0x00},
+		"deadbeef":              {0xde, 0xad, 0xbe, 0xef},
+		"123401000001000000000": nil, // odd - filled in below
+	}
+	delete(good, "123401000001000000000")
+	for in, want := range good {
+		got, err := ParseHexPayload(in)
+		if err != nil || string(got) != string(want) {
+			t.Errorf("ParseHexPayload(%q) = %v, %v; want %v", in, got, err, want)
+		}
+	}
+
+	bad := map[string]string{
+		"":         "at least one byte",
+		"   ":      "at least one byte",
+		":: ::":    "at least one byte",
+		"0":        "1 hex digits, an odd number",
+		"abc":      "3 hex digits, an odd number",
+		"00 0":     "3 hex digits, an odd number",
+		"0x00":     `'x' is not a hex digit`,
+		"zz":       `'z' is not a hex digit`,
+		"00-01":    `'-' is not a hex digit`,
+		"00,01":    `',' is not a hex digit`,
+		"0g":       `'g' is not a hex digit`,
+		"é0":       `'é' is not a hex digit`,
+		"00\n01":   `'\n' is not a hex digit`,
+		"\\x00":    `'\\' is not a hex digit`,
+		"00\x0001": `'\x00' is not a hex digit`,
+	}
+	for in, want := range bad {
+		got, err := ParseHexPayload(in)
+		if err == nil || !strings.Contains(err.Error(), want) || got != nil {
+			t.Errorf("ParseHexPayload(%q) = %v, %v; want an error containing %q", in, got, err, want)
+		}
+		if err != nil && !strings.HasPrefix(err.Error(), "--hex") {
+			t.Errorf("ParseHexPayload(%q): the error should name the flag: %v", in, err)
+		}
+	}
+
+	// the largest datagram is fine, one byte more is not
+	if got, err := ParseHexPayload(strings.Repeat("ab", MaxUDPPayload)); err != nil || len(got) != MaxUDPPayload {
+		t.Errorf("the largest payload: %d bytes, %v", len(got), err)
+	}
+	if _, err := ParseHexPayload(strings.Repeat("ab", MaxUDPPayload+1)); err == nil || !strings.Contains(err.Error(), "--hex is 65508 bytes") {
+		t.Errorf("one byte too many: %v", err)
+	}
+}
+
+// The bytes --hex decodes reach the wire exactly - a zero byte and bytes that are not
+// valid text included - and the reply is previewed escaped.
+func TestUDPHandlerSendsBinaryPayloadExactly(t *testing.T) {
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	got := make(chan []byte, 1)
+	go func() {
+		buf := make([]byte, 2048)
+		n, from, err := conn.ReadFromUDP(buf)
+		if err != nil {
+			return
+		}
+		got <- append([]byte(nil), buf[:n]...)
+		_, _ = conn.WriteToUDP(buf[:n], from)
+	}()
+	port := conn.LocalAddr().(*net.UDPAddr).Port
+
+	want, err := ParseHexPayload("00 01 02 ff fe 80 0a 41")
+	if err != nil {
+		t.Fatal(err)
+	}
+	jsonOutput, throttle := true, false
+	out := captureStdout(t, func() {
+		UDPHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 2, 4, string(want), port, "127.0.0.1")
+	})
+	select {
+	case b := <-got:
+		if string(b) != string(want) {
+			t.Errorf("the server received % x, want % x", b, want)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("the server received nothing")
+	}
+	var result lib.JSONOutput
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	statsJSON, _ := json.Marshal(result.Stats)
+	var stats []lib.UDPStats
+	if err := json.Unmarshal(statsJSON, &stats); err != nil || len(stats) != 1 {
+		t.Fatalf("stats: %v %s", err, statsJSON)
+	}
+	if stats[0].BytesSent != len(want) || stats[0].BytesReceived != len(want) {
+		t.Errorf("bytes sent/received = %d/%d, want %d each", stats[0].BytesSent, stats[0].BytesReceived, len(want))
+	}
+	if stats[0].ResponsePreview != `\x00\x01\x02\xff\xfe\x80\nA` {
+		t.Errorf("response_preview = %q", stats[0].ResponsePreview)
 	}
 }

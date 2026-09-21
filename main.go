@@ -64,6 +64,7 @@ var (
 
 	// udp
 	udpData string
+	udpHex  string
 
 	// dns
 	dnsTCP       bool
@@ -303,9 +304,10 @@ var udpCmd = &cobra.Command{
 	Short: "Send a UDP probe to a host on a specific port",
 	Long: `This command sends a UDP datagram to a host on a specific port and reports whether a reply, an ICMP port-unreachable, or nothing at all came back within the timeout.
 
-The payload is text, sent exactly as typed: --data sends a message, --payload sends that many bytes of filler. Backslash escapes such as \x00 are not interpreted (the shell passes them through as ordinary characters), so binary payloads cannot be sent yet.`,
+The payload is one of three things: --data sends a message, as text exactly as typed; --hex sends exact bytes, written as hex digits (00010203ff, or 00 01 02 03 ff, or 00:01:02:03:ff), which is how to send a binary probe such as a DNS or STUN request; --payload sends that many bytes of filler. --hex and --data cannot be combined, and --payload is ignored when either is given. Backslash escapes such as \x00 are not interpreted in --data (the shell passes them through as ordinary characters): use --hex for bytes.`,
 	Args: cobra.ExactArgs(2),
 	Example: rootCmd.Name() + ` udp 127.0.0.1 9001 --data "hello"` + "\n" +
+		rootCmd.Name() + ` udp 127.0.0.1 9001 --hex "00 01 02 ff"` + "\n" +
 		rootCmd.Name() + ` udp 8.8.8.8 53 --payload 16 --timeout 3`,
 	Run: func(cmd *cobra.Command, args []string) {
 		host := args[0]
@@ -320,7 +322,20 @@ The payload is text, sent exactly as typed: --data sends a message, --payload se
 		if !checkRunFlags(true) {
 			return
 		}
-		if err := handlers.ValidateUDPPayload(payload_size, udpData); err != nil {
+		data := udpData
+		if cmd.Flags().Changed("hex") {
+			if cmd.Flags().Changed("data") {
+				usage("--hex and --data cannot be used together: give the payload one way")
+				return
+			}
+			bytes, err := handlers.ParseHexPayload(udpHex)
+			if err != nil {
+				usage(err.Error())
+				return
+			}
+			data = string(bytes)
+		}
+		if err := handlers.ValidateUDPPayload(payload_size, data); err != nil {
 			usage(err.Error())
 			return
 		}
@@ -328,7 +343,7 @@ The payload is text, sent exactly as typed: --data sends a message, --payload se
 		ctx, stop := interruptContext()
 		defer stop()
 
-		finish(handlers.UDPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, udpData, port, host))
+		finish(handlers.UDPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, data, port, host))
 	},
 }
 
@@ -579,7 +594,7 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&iterations, "count", 1, "Number of times to check connectivity (listen commands: max requests/packets to accept, 0 = unlimited)")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 5, "Timeout in seconds to connect (listen http: idle timeout on a connection, 0 = no timeout; no effect on listen udp)")
 	rootCmd.PersistentFlags().IntVar(&delay, "delay", 1000, "Milliseconds delay between each iteration given in count")
-	rootCmd.PersistentFlags().IntVar(&payload_size, "payload", 4, "Ping/UDP payload size in bytes (filler content, ignored if --data is set on udp)")
+	rootCmd.PersistentFlags().IntVar(&payload_size, "payload", 4, "Ping/UDP payload size in bytes (filler content, ignored if --data or --hex is set on udp)")
 	rootCmd.PersistentFlags().BoolVar(&throttle, "throttle", false, "Flag option to throttle between every iteration of count to simulate non-uniform request.")
 	rootCmd.PersistentFlags().BoolVar(&jsonoutput, "json", false, "Flag option to output only in JSON format")
 	rootCmd.PersistentFlags().BoolVarP(&ipv4Only, "ipv4", "4", false, "Resolve and check IPv4 addresses only (a host with both kinds is normally checked over both)")
@@ -599,6 +614,7 @@ func init() {
 	nmapCmd.Flags().IntVar(&endport, "to", 80, "End port for TCP scan")
 
 	udpCmd.Flags().StringVarP(&udpData, "data", "D", "", "Explicit payload data to send instead of the generated --payload filler")
+	udpCmd.Flags().StringVar(&udpHex, "hex", "", "Exact payload bytes as hex digits, e.g. 00010203ff or \"00 01 02 03 ff\" (spaces and colons are ignored; not with --data)")
 
 	dnsCmd.Flags().BoolVar(&dnsTCP, "tcp", false, "Ask over TCP only (by default UDP, with a TCP retry when the answer is truncated)")
 	dnsCmd.Flags().BoolVar(&dnsNoRecurse, "no-recurse", false, "Clear the \"recursion desired\" bit: ask the server only for what it knows itself (use with an authoritative @server)")

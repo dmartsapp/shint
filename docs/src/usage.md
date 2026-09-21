@@ -44,7 +44,7 @@ Flags:
   -4, --ipv4          Resolve and check IPv4 addresses only (a host with both kinds is normally checked over both)
   -6, --ipv6          Resolve and check IPv6 addresses only
       --json          Flag option to output only in JSON format
-      --payload int   Ping/UDP payload size in bytes (filler content, ignored if --data is set on udp) (default 4)
+      --payload int   Ping/UDP payload size in bytes (filler content, ignored if --data or --hex is set on udp) (default 4)
       --throttle      Flag option to throttle between every iteration of count to simulate non-uniform request.
       --timeout int   Timeout in seconds to connect (listen http: idle timeout on a connection, 0 = no timeout; no effect on listen udp) (default 5)
   -v, --version       version for shint
@@ -63,7 +63,7 @@ These are defined once, so they mean the same thing everywhere they apply:
 | `--timeout S` | `5` | Seconds to wait, from 1 to 86400 (a day) - see [what it limits](#what-timeout-limits) below. For `listen`, the idle time before a quiet connection is closed, 0 to 86400 (`0`: never). |
 | `--delay MS` | `1000` | Milliseconds to pause before each attempt, from 0 to 86400000 (a day). Use `--delay 0` for back-to-back checks. |
 | `--throttle` | off | Wait a random 0-10 seconds between attempts instead of a fixed `--delay`, to imitate uneven traffic. |
-| `--payload N` | `4` | Filler payload size in bytes for `ping` and `udp`. (On `web`, `-P` is the request *body* instead.) |
+| `--payload N` | `4` | Filler payload size in bytes for `ping` and `udp` (ignored by `udp` when `--data` or `--hex` gives the payload). (On `web`, `-P` is the request *body* instead.) |
 | `--json` | off | Print one machine-readable JSON document instead of log lines. |
 | `-4`, `--ipv4` | off | Resolve and check **IPv4 addresses only**. See [IPv4 only, or IPv6 only](#ipv4-only-or-ipv6-only). |
 | `-6`, `--ipv6` | off | Resolve and check **IPv6 addresses only**. |

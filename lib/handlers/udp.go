@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -84,13 +85,51 @@ func ValidateUDPPayload(size int, data string) error {
 	return nil
 }
 
+// ParseHexPayload decodes the value of udp's --hex flag into the bytes to send:
+// pairs of hex digits, in either case, with spaces and colons ignored wherever they
+// fall - so "00010203ff", "00 01 02 03 FF" and "00:01:02:03:ff" are the same five
+// bytes. It is the unambiguous way to send a binary payload: --data is text as typed,
+// and a backslash escape such as \x00 reaches shint as four ordinary characters.
+//
+// It refuses what it cannot read rather than guess: no digits at all (a datagram of
+// zero bytes is --payload 0), an odd number of digits, a character that is not a hex
+// digit (a "0x" prefix included), and more bytes than one datagram carries.
+func ParseHexPayload(s string) ([]byte, error) {
+	digits := make([]byte, 0, len(s))
+	for _, r := range s {
+		switch {
+		case r == ' ' || r == ':':
+		case r >= '0' && r <= '9', r >= 'a' && r <= 'f', r >= 'A' && r <= 'F':
+			digits = append(digits, byte(r))
+		default:
+			return nil, fmt.Errorf("--hex: %q is not a hex digit (write the bytes as 00010203ff, or 00 01 02 03 ff, or 00:01:02:03:ff)", r)
+		}
+	}
+	if len(digits) == 0 {
+		return nil, fmt.Errorf("--hex needs at least one byte, as two hex digits (a datagram with no data is --payload 0)")
+	}
+	if len(digits)%2 != 0 {
+		return nil, fmt.Errorf("--hex has %d hex digits, an odd number: every byte is two digits", len(digits))
+	}
+	if len(digits)/2 > MaxUDPPayload {
+		return nil, fmt.Errorf("--hex is %d bytes, but one UDP datagram carries at most %d", len(digits)/2, MaxUDPPayload)
+	}
+	out := make([]byte, len(digits)/2)
+	if _, err := hex.Decode(out, digits); err != nil {
+		return nil, fmt.Errorf("--hex: %v", err) // unreachable: every character was checked above
+	}
+	return out, nil
+}
+
 // UDPHandler sends the probe iterations times to every address host resolves
 // to. It reports false if the lookup failed or any probe found the port closed
 // (the OS surfaced an ICMP port-unreachable) or hit an error. An "open|filtered"
 // probe - no reply, no ICMP error - is inconclusive rather than a failure: many
 // UDP services simply do not answer input they do not understand. ctx is
 // cancelled by Ctrl+C and nothing else - never a deadline; see interrupt.go for
-// how a cancelled run ends.
+// how a cancelled run ends. data is the payload exactly as it is sent - text from
+// --data, or the bytes --hex decoded (a Go string holds any bytes); when it is empty
+// the payload is payloadSize bytes of filler.
 func UDPHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, payloadSize int, data string, port int, host string) (ok bool) {
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}

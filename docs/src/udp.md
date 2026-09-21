@@ -22,15 +22,16 @@ If the name resolves to several addresses, each one is probed.
 ## Syntax
 
 ```bash
-shint udp <host> <port> [--data TEXT | --payload BYTES] [--count N] [--timeout S] [--json]
+shint udp <host> <port> [--data TEXT | --hex BYTES | --payload N] [--count N] [--timeout S] [--json]
 ```
 
 | Flag | Meaning |
 |---|---|
 | `-D`, `--data TEXT` | The payload to send. Sent exactly as typed - it is text, and backslash escapes such as `\x00` are **not** interpreted. At most 65507 bytes. |
-| `--payload N` | If `--data` is not given, send N bytes of filler (default 4), from 0 to 65507 - the most one UDP datagram carries (65535 minus the 8-byte UDP and 20-byte IPv4 headers). A negative or larger value is a usage error (exit `2`); it used to crash. |
+| `--hex BYTES` | The payload to send as **exact bytes**, written as hex digits: `00010203ff`, `00 01 02 03 ff` and `00:01:02:03:FF` are the same five bytes (either case; spaces and colons are ignored). This is how to send a binary probe - a DNS or STUN request, say - which `--data` cannot: a `\x00` typed there reaches shint as four ordinary characters. At least one byte and at most 65507; an odd number of digits, a character that is not a hex digit (a `0x` prefix included) or an empty value is a usage error (exit `2`). Cannot be combined with `--data`. |
+| `--payload N` | If neither `--data` nor `--hex` is given, send N bytes of filler (default 4), from 0 to 65507 - the most one UDP datagram carries (65535 minus the 8-byte UDP and 20-byte IPv4 headers). A negative or larger value is a usage error (exit `2`); it used to crash. |
 
-The other [shared flags](usage.md#flags-shared-by-every-command) apply; `--timeout` is how long to wait for a reply.
+`--payload` is ignored when `--data` or `--hex` is given. The log line and the JSON show how many bytes went out (`sent=`, `bytes_sent`). The other [shared flags](usage.md#flags-shared-by-every-command) apply; `--timeout` is how long to wait for a reply.
 
 ## Examples
 
@@ -73,7 +74,35 @@ Sun Sep 20 01:50:34 MDT 2026: [udp] OK dns resolved host=8.8.8.8 addresses=1 ips
 Sun Sep 20 01:50:37 MDT 2026: [udp] OK probe open|filtered host=8.8.8.8 port=53 attempt=1/1 sent=4 received=0 time=2.003359834s
 Sun Sep 20 01:50:37 MDT 2026: [udp] OK done probes_sent=1 open=0 total_time=3.005550834s
 ```
-`open|filtered` here does not mean the port is closed - only that no reply was seen. To learn more, send a payload the service understands (a real query, for a DNS server).
+`open|filtered` here does not mean the port is closed - only that no reply was seen. To learn more, send a payload the service understands (a real query, for a DNS server) - see the next example.
+
+### A binary payload
+
+`--hex` sends exact bytes. This is a real DNS query for `example.com` (an A record, header `1234 0100 0001 0000 0000 0000`, then the name as length-prefixed labels, then type and class):
+
+```bash
+shint udp 8.8.8.8 53 --hex "1234 0100 0001 0000 0000 0000 07 6578616d706c65 03 636f6d 00 0001 0001" --timeout 3
+```
+
+```text
+Mon Sep 21 14:47:05 MDT 2026: [udp] OK dns resolved host=8.8.8.8 addresses=1 ips=[8.8.8.8] time=34µs
+Mon Sep 21 14:47:06 MDT 2026: [udp] OK probe open host=8.8.8.8 port=53 attempt=1/1 sent=29 received=61 time=38.178875ms
+Mon Sep 21 14:47:06 MDT 2026: [udp] OK done probes_sent=1 open=1 total_time=1.040096042s
+```
+
+29 bytes went out and the server answered with 61: this time it is `open`, where the four filler bytes above got no answer. With `--json` the reply is in `response_preview`, escaped so a binary reply cannot garble the terminal - `\x81\x80` are the header flags of a successful answer, and the name and the two addresses are in there. (Bytes that happen to be valid text, such as `example`, are shown as text; everything else as `\xNN`.) To read a DNS answer properly use [`shint dns`](dns.md); this is for protocols shint has no command for.
+
+The same against a local listener, to see exactly what arrives (`shint listen udp 9001 --echo`):
+
+```bash
+shint udp 127.0.0.1 9001 --hex "00 01 02 ff"
+```
+
+```text
+Mon Sep 21 14:46:59 MDT 2026: [udp] OK probe open host=127.0.0.1 port=9001 attempt=1/1 sent=4 received=4 time=971.625µs
+```
+
+The listener reports `bytes=4 preview=\x00\x01\x02\xff`.
 
 ### JSON
 

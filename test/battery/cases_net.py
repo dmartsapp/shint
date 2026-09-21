@@ -54,6 +54,35 @@ add("H.big-reply", ["udp", "127.0.0.1", "{udp_big}", "--delay", "0", "--data", "
 add("H.ipv6-echo", ["udp", "::1", "{udp_echo6}", "--delay", "0", "--data", "x"], group="H udp", rc=0)
 add("H.count-50", ["udp", "127.0.0.1", "{udp_echo}", "--delay", "0", "--count", "50", "--data", "x"], group="H udp", rc=0, serial=True,
     check=lambda r: None if r["out"].count("probe open") == 50 else "expected 50 open probes, got %d" % r["out"].count("probe open"))
+
+
+# --hex sends exact bytes: the echo server returns them, and the JSON shows how many went out and the escaped reply
+def hex_echo(nbytes, preview):
+    def check(r):
+        st = json.loads(r["out"])["stats"][0]
+        if st["bytes_sent"] != nbytes or st["bytes_received"] != nbytes:
+            return "sent %r / received %r bytes, want %d each" % (st["bytes_sent"], st["bytes_received"], nbytes)
+        if st.get("response_preview") != preview:
+            return "response_preview %r, want %r" % (st.get("response_preview"), preview)
+    return check
+
+
+ud("hex", "--hex", "00 01 02 ff", "--json", rc=0, check=hex_echo(4, "\\x00\\x01\\x02\\xff"))
+ud("hex-no-separators", "--hex", "000102ff", "--json", rc=0, check=hex_echo(4, "\\x00\\x01\\x02\\xff"))
+ud("hex-colons-and-capitals", "--hex", "00:01:02:FF", "--json", rc=0, check=hex_echo(4, "\\x00\\x01\\x02\\xff"))
+ud("hex-text-bytes", "--hex", "68 65 6c 6c 6f", "--json", rc=0, check=hex_echo(5, "hello"))
+ud("hex-log-shows-bytes-sent", "--hex", "00 01 02", rc=0, contains=["sent=3 received=3"])
+ud("hex-ignores-payload", "--hex", "00", "--payload", "-1", rc=0)
+ud("hex-largest-datagram", "--hex", "ab" * 65507, rc=None)  # accepted by shint; some systems (macOS: 9216) refuse to send that much, which is an ERROR line, not a usage error
+ud("hex-odd-digits", "--hex", "abc", rc=2, contains=["odd number"])
+ud("hex-not-hex", "--hex", "zz", rc=2, contains=["not a hex digit"])
+ud("hex-0x-prefix", "--hex", "0x00", rc=2, contains=["not a hex digit"])
+ud("hex-backslash-escape", "--hex", "\\x00", rc=2, contains=["not a hex digit"])
+ud("hex-empty", "--hex", "", rc=2, contains=["at least one byte"])
+ud("hex-and-data", "--hex", "00", "--data", "x", rc=2, contains=["cannot be used together"])
+ud("hex-larger-than-a-datagram", "--hex", "ab" * 65508, rc=2, contains=["one UDP datagram carries at most"])
+ud("hex-usage-error-sends-nothing-json", "--hex", "abc", "--json", rc=2, absent=['"stats"'])
+
 add("H.dns-fail", ["udp", "no-such-host.invalid", "53", "--delay", "0"], group="H udp", rc=1)
 add("H.port-0", ["udp", "127.0.0.1", "0"], group="H udp", rc=2)
 add("H.port-65536", ["udp", "127.0.0.1", "65536"], group="H udp", rc=2)

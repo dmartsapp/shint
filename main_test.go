@@ -325,6 +325,16 @@ func TestExitStatus(t *testing.T) {
 		{"udp payload larger than a datagram", []string{"udp", "127.0.0.1", udpEcho, "--payload", "65508"}, 2},
 		{"udp payload of int64 max", []string{"udp", "127.0.0.1", udpEcho, "--payload", "9223372036854775807"}, 2},
 		{"udp zero payload is valid", []string{"udp", "127.0.0.1", udpEcho, "--payload", "0"}, 0},
+		{"udp hex", []string{"udp", "127.0.0.1", udpEcho, "--hex", "00 01 ff"}, 0},
+		{"udp hex without separators", []string{"udp", "127.0.0.1", udpEcho, "--hex", "0001FF"}, 0},
+		{"udp hex with colons", []string{"udp", "127.0.0.1", udpEcho, "--hex", "00:01:ff"}, 0},
+		{"udp hex ignores --payload", []string{"udp", "127.0.0.1", udpEcho, "--hex", "00", "--payload", "-1"}, 0},
+		{"udp hex odd digit count", []string{"udp", "127.0.0.1", udpEcho, "--hex", "abc"}, 2},
+		{"udp hex not hex", []string{"udp", "127.0.0.1", udpEcho, "--hex", "zz"}, 2},
+		{"udp hex with a 0x prefix", []string{"udp", "127.0.0.1", udpEcho, "--hex", "0x00"}, 2},
+		{"udp hex empty", []string{"udp", "127.0.0.1", udpEcho, "--hex", ""}, 2},
+		{"udp hex and data", []string{"udp", "127.0.0.1", udpEcho, "--hex", "00", "--data", "x"}, 2},
+		{"udp hex larger than a datagram", []string{"udp", "127.0.0.1", udpEcho, "--hex", strings.Repeat("ab", 65508)}, 2},
 		{"listen unknown subcommand", []string{"listen", "bogus"}, 2},
 		{"completion unknown subcommand", []string{"completion", "bogus"}, 2},
 		{"listen negative count", []string{"listen", "http", closed, "--count", "-1"}, 2},
@@ -477,6 +487,70 @@ func TestFailuresUnderJSONAreStillJSON(t *testing.T) {
 			t.Errorf("expected one failed stat with an error, got %+v", doc.Stats)
 		}
 	})
+}
+
+// udp --hex puts exactly the bytes it was given on the wire - a zero byte and bytes that
+// are not text included - which --data cannot do.
+func TestUDPHexReachesTheWireExactly(t *testing.T) {
+	c, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = c.Close() }()
+	got := make(chan []byte, 4)
+	go func() {
+		buf := make([]byte, 2048)
+		for {
+			n, from, err := c.ReadFromUDP(buf)
+			if err != nil {
+				return
+			}
+			got <- append([]byte(nil), buf[:n]...)
+			_, _ = c.WriteToUDP(buf[:n], from)
+		}
+	}()
+	port := strconv.Itoa(c.LocalAddr().(*net.UDPAddr).Port)
+
+	for _, tc := range []struct {
+		hex  string
+		want []byte
+	}{
+		{"00010203ff", []byte{0, 1, 2, 3, 0xff}},
+		{"DE AD be ef", []byte{0xde, 0xad, 0xbe, 0xef}},
+		{"12:34:01:00", []byte{0x12, 0x34, 0x01, 0x00}},
+	} {
+		code, stdout, stderr := runShint(t, "udp", "127.0.0.1", port, "--hex", tc.hex, "--delay", "0", "--timeout", "2")
+		if code != 0 {
+			t.Fatalf("--hex %q: exit status %d\n%s%s", tc.hex, code, stdout, stderr)
+		}
+		select {
+		case b := <-got:
+			if string(b) != string(tc.want) {
+				t.Errorf("--hex %q: the server received % x, want % x", tc.hex, b, tc.want)
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatalf("--hex %q: the server received nothing", tc.hex)
+		}
+		if want := "sent=" + strconv.Itoa(len(tc.want)) + " received=" + strconv.Itoa(len(tc.want)); !strings.Contains(stdout, want) {
+			t.Errorf("--hex %q: the log should say %q:\n%s", tc.hex, want, stdout)
+		}
+	}
+
+	// the usage errors say what is wrong, on stderr, and send nothing
+	for hex, want := range map[string]string{"abc": "odd number", "0xff": "not a hex digit", "": "at least one byte"} {
+		code, stdout, stderr := runShint(t, "udp", "127.0.0.1", port, "--hex", hex)
+		if code != 2 || stdout != "" || !strings.Contains(stderr, want) {
+			t.Errorf("--hex %q: exit status %d, stdout %q, stderr %q; want 2, nothing, and %q", hex, code, stdout, stderr, want)
+		}
+	}
+	select {
+	case b := <-got:
+		t.Errorf("a usage error must send nothing, but the server received % x", b)
+	case <-time.After(300 * time.Millisecond):
+	}
+	if code, _, stderr := runShint(t, "udp", "127.0.0.1", port, "--hex", "00", "--data", "x"); code != 2 || !strings.Contains(stderr, "--hex and --data cannot be used together") {
+		t.Errorf("--hex with --data: exit status %d, stderr %q", code, stderr)
+	}
 }
 
 // A listener that finishes its work (its --count reached) exits 0.
