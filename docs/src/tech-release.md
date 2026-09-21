@@ -73,7 +73,7 @@ What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 ```
 
 - **Types** seen in the history: `feat:` (new capability), `fix:` (correction), `docs:` (documentation only). Release commits also name the version in the subject.
-- **The release commit's body is the changelog** for that version, plus how it was verified. It is what appears on the GitHub release page under "Commit Message".
+- **The release commit's body is the changelog** for that version, plus how it was verified. The GitHub release page shows the changelog's section for the tag under "What's new" (`.github/scripts/changelog-section.sh`; the tagged commit's message is only the fallback for a tag with no section), so the page is right even when the tag is on a later commit than the release commit.
 - Bodies explain *why*, especially for behaviour changes, and name the tests that pin the behaviour.
 
 ## How the version string gets into the binary

@@ -142,12 +142,22 @@ jobs:
         run: |
           echo "## Release Notes for ${{ github.ref_name }}" >> release_notes.md
           echo "" >> release_notes.md
-          echo "" >> release_notes.md
-          echo "### Commit Message" >> release_notes.md
-          echo "" >> release_notes.md
-          echo "\`\`\`code" >> release_notes.md
-          echo "$COMMIT_MSG" >> release_notes.md
-          echo "\`\`\`" >> release_notes.md
+          # What's new is the changelog's section for this tag. The commit message of the
+          # tagged commit used to be shown here, which is the wrong text whenever the tag is
+          # not on the release commit (a later fix commit was what v4.2.0's page showed). The
+          # commit message is only the fallback for a tag with no changelog section.
+          SECTION="$(bash .github/scripts/changelog-section.sh "${{ github.ref_name }}" || true)"
+          if [ -n "$SECTION" ]; then
+            echo "### What's new" >> release_notes.md
+            echo "" >> release_notes.md
+            printf '%s\n' "$SECTION" >> release_notes.md
+          else
+            echo "### Commit Message" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "\`\`\`code" >> release_notes.md
+            echo "$COMMIT_MSG" >> release_notes.md
+            echo "\`\`\`" >> release_notes.md
+          fi
           echo "" >> release_notes.md
           echo "" >> release_notes.md
           echo "" >> release_notes.md

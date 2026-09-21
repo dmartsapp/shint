@@ -94,14 +94,14 @@ Step-by-step instructions for every platform, building from source and shell com
 
 ## Roadmap
 
-shint ships **one release every two weeks, one at a time**. Here is what has shipped and what is planned. Dates for what is planned are targets, and the plan may change as we learn what is most useful. v4.1.0 and v4.2.0 were released together, ahead of their windows, to clear the backlog of fixes and features.
+shint ships **one release every two weeks, one at a time**. Here is what has shipped and what is planned. Dates for what is planned are targets, and the plan may change as we learn what is most useful. v4.1.0 was never released on its own: everything planned for it shipped in v4.2.0, which came out ahead of its window to clear the backlog of fixes and features.
 
 | Release | Sprint | What it brings |
 |---|---|---|
 | **v4.0.4** | Released Sep 20 | Fixes: `ping --timeout` now works and `ping` shows the payload size on every reply, clearer `udp` help, documentation fixes. Releases now build only from a version tag on `main` |
 | **v4.0.5** | Released Sep 20 | `Ctrl+C` on a repeating `telnet`, `web` or `udp` run shows the summary and how far it got |
 | **v4.0.6** | Released Sep 21 | Two wrong answers fixed: `web` no longer reports a cut-short response as a success, and `ping` no longer reports a dead host as reachable. A black-box test battery, and every release's result posted to Slack |
-| **v4.1.0** | Released Sep 21 | `web --timing` (where the time went: DNS, connect, TLS, first byte, download), `wol` (wake a machine on your network), `cidr` (subnet calculator), `ntp` (check your clock against a time server), `rdns` (reverse DNS lookups), `-4`/`-6` to check one address family. Verified downloads: SHA-256 checksums and signed build attestations for every binary. `go install` support |
+| **v4.1.0** | Shipped in v4.2.0 | `web --timing` (where the time went: DNS, connect, TLS, first byte, download), `wol` (wake a machine on your network), `cidr` (subnet calculator), `ntp` (check your clock against a time server), `rdns` (reverse DNS lookups), `-4`/`-6` to check one address family. Verified downloads: SHA-256 checksums and signed build attestations for every binary. `go install` support |
 | **v4.2.0** | Released Sep 21 | `ip` (your interfaces and addresses), `dns` (lookups like `dig`), authoritative name servers shown whenever shint resolves a name, `udp --hex` for binary payloads, and fixes for what the test battery found: no crashes or overflows on bad flag values, `web` no longer holds a whole download in memory, `--count` with `--delay 0` no longer runs out of file descriptors, failures logged as errors, and `listen http` logs the requests it cannot serve |
 | **v4.3.0** | Nov 2 - Nov 15 | `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names, banner grabbing in `telnet` |
 | **v4.4.0** | Nov 16 - Nov 29 | `ip route` (routing table and default gateway), richer `ping`: sub-millisecond timings, and "unreachable" replies told apart from timeouts |

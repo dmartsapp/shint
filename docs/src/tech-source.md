@@ -121,6 +121,7 @@ nav: Source reference
 | `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
 | `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
 | `.github/workflows/check.yaml` | After a merge to `main` (never a branch, PR or tag; ignores `.github/**`): `make check-quick` when the local check receipt is there, the whole `make check` when it is not; opens an issue on failure. |
+| `.github/scripts/changelog-section.sh` | Prints one release's section of `CHANGELOG.md`: the release page's "What's new" (with `test-changelog-section.sh`). |
 | `.github/scripts/post-check-status.sh` | `make attest`: records that `make check` passed locally, as the commit status `local/make-check` on the pushed commit. |
 | `.github/scripts/verify-local-check.sh` | The Check workflow's side: is there a valid receipt (success, from whoever pushed, for this tree)? Writes `fast=true/false`; never fails. |
 | `.github/scripts/test-local-check.sh` | Tests for both, in throw-away repositories with a fake `gh`. |

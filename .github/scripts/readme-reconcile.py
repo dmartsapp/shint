@@ -22,7 +22,9 @@ It also puts back what the README must always have (the tagline's expansion, the
 badge row - donate button included - and the support line at the bottom), and
 WARNS - never "fixes" - what it cannot know: a row that says Released but has no
 tag, a release still planned although a later one shipped, a release that came out
-ahead of its sprint window.
+ahead of its sprint window. A release that never came out on its own is written
+"Shipped in v4.2.0" in the Sprint column (by a person: the script cannot know); that is
+a finished row, and the script only checks that the tag it names exists.
 
 Running it again changes nothing (it is idempotent), and it touches only the
 Roadmap table, the Commands table, the tagline and the badges, and the last line.
@@ -73,6 +75,7 @@ LATER = 10 ** 9
 X = 10 ** 6               # "v4.5.x" sorts after every numbered v4.5.N
 
 ROW_VERSION = re.compile(r"^\*\*v(\d+)\.(\d+)\.(\d+|x)\*\*$")
+FOLDED = re.compile(r"^Shipped in (v\d+\.\d+\.\d+)$")   # a release that never came out on its own
 TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
 
 
@@ -117,6 +120,11 @@ def version_of(cell):
 
 def label(version):
     return "v%d.%d.%d" % version
+
+
+def is_done(cell):
+    """A row that is no longer a plan: released, or folded into a later release."""
+    return cell.startswith("Released") or bool(FOLDED.match(cell))
 
 
 class Table:
@@ -321,6 +329,7 @@ def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, war
     if only_tag and not released and TAG.match(only_tag):
         raise Unreadable("the tag %s is not among the tags given (or is older than the Roadmap's oldest row)" % only_tag)
 
+    touched = set()   # rows this run added or moved to Released: the one-off notes are about these
     for version in sorted(released):
         day, name = released[version], label(version)
         want = "Released " + nice(day)
@@ -331,6 +340,7 @@ def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, war
         if i is None:
             summary = (entry or {}).get("summary") or "See the [changelog](CHANGELOG.md)."
             insert(version, ["**%s**" % name, want, cell_text(summary)])
+            touched.add(version)
             changes.append("Row added for **%s**: %s." % (name, want))
             if not entry:
                 warnings.append("%s has no section in CHANGELOG.md, so its row only points there." % name)
@@ -340,6 +350,7 @@ def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, war
             continue
         was = row[1]
         row[1] = want
+        touched.add(version)
         if was.startswith("Released"):
             changes.append("**%s**: the date was corrected (%s -> %s)." % (name, was, want))
         else:
@@ -350,7 +361,7 @@ def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, war
     # planned rows follow their milestones' sprint windows
     for row in table.rows:
         version = version_of(row[0])
-        if not version or version[2] == X or row[1].startswith("Released"):
+        if not version or version[2] == X or is_done(row[1]):
             continue
         due = milestones.get(label(version))
         if due and row[1] != sprint_text(due):
@@ -364,12 +375,18 @@ def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, war
             version = version_of(row[0])
             if version and version[2] != X and row[1].startswith("Released") and version not in tagged:
                 warnings.append("**%s** is marked Released but there is no tag %s. Tag it, or change the row." % (label(version), label(version)))
+        for row in table.rows:
+            folded = FOLDED.match(row[1])
+            if folded and folded.group(1) not in {label(v) for v in tagged}:
+                warnings.append("**%s** says %s but there is no tag %s." % (row[0].strip("*"), row[1], folded.group(1)))
         newest = max(tagged, default=None)
         for row in table.rows:
             version = version_of(row[0])
-            if version and version[2] != X and not row[1].startswith("Released") and newest and version < newest:
+            if version and version[2] != X and not is_done(row[1]) and newest and version < newest:
                 warnings.append("**%s** is still planned although %s has been released. Was it skipped or folded into a later release?" % (label(version), label(newest)))
         for version, day in sorted(released.items()):
+            if version not in touched:
+                continue
             due = milestones.get(label(version))
             if due and day < due - datetime.timedelta(days=SPRINT_DAYS - 1):
                 warnings.append("%s was released %d days ahead of its sprint window (%s)." % (label(version), (due - datetime.timedelta(days=SPRINT_DAYS - 1) - day).days, sprint_text(due)))

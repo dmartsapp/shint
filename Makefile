@@ -234,6 +234,7 @@ workflows:
 	python3 .github/scripts/test_readme_reconcile.py
 	bash .github/scripts/test-readme-release.sh
 	bash .github/scripts/test-local-check.sh
+	bash .github/scripts/test-changelog-section.sh
 	$(ACTIONLINT) -shellcheck= .github/workflows/*.yaml
 
 # After a release: a branch off main with its README reconciled with the release tags,

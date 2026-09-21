@@ -198,6 +198,29 @@ class Roadmap(unittest.TestCase):
         self.assertIn("**v4.1.0** is still planned although v4.2.0 has been released", joined)
         self.assertIn("v4.2.0 was released 28 days ahead of its sprint window (Oct 19 - Nov 1)", joined)
 
+    def test_a_release_folded_into_a_later_one_is_finished_and_not_flagged(self):
+        text = OLD.replace("| **v4.1.0** | Oct 5 - Oct 18 | web --timing, wol |", "| **v4.1.0** | Shipped in v4.2.0 | web --timing, wol |")
+        new, changes, warnings = run(text=text, milestones={"v4.1.0": D(2026, 10, 18)})
+        self.assertEqual(row(new, "v4.1.0"), "| **v4.1.0** | Shipped in v4.2.0 | web --timing, wol |")
+        self.assertFalse(any("v4.1.0" in w for w in warnings), warnings)
+        self.assertFalse(any("v4.1.0" in c for c in changes), changes)      # not moved back to a milestone window
+
+    def test_a_folded_row_naming_a_tag_that_does_not_exist_is_flagged(self):
+        text = OLD.replace("| **v4.1.0** | Oct 5 - Oct 18 | web --timing, wol |", "| **v4.1.0** | Shipped in v4.7.0 | web --timing, wol |")
+        _, _, warnings = run(text=text)
+        self.assertTrue(any("v4.1.0" in w and "no tag v4.7.0" in w for w in warnings), warnings)
+
+    def test_a_folded_row_whose_own_tag_appears_later_becomes_released(self):
+        text = OLD.replace("| **v4.1.0** | Oct 5 - Oct 18 | web --timing, wol |", "| **v4.1.0** | Shipped in v4.2.0 | web --timing, wol |")
+        new, changes, _ = run(text=text, tags=dict(TAGS, **{"v4.1.0": D(2026, 9, 22)}))
+        self.assertEqual(row(new, "v4.1.0"), "| **v4.1.0** | Released Sep 22 | web --timing, wol |")
+
+    def test_the_ahead_of_schedule_note_appears_once_not_on_every_run(self):
+        once, _, first = run(milestones={"v4.2.0": D(2026, 11, 1)})
+        self.assertTrue(any("ahead of its sprint window" in w for w in first))
+        _, _, second = rr.reconcile(once, TAGS, changelog(), {"v4.2.0": D(2026, 11, 1)})
+        self.assertFalse(any("ahead of its sprint window" in w for w in second), second)
+
     def test_no_tag_warnings_when_no_tags_are_known(self):
         _, _, warnings = run(tags={})
         self.assertEqual(warnings, [])
