@@ -80,6 +80,7 @@ func TelnetHandler(ctx context.Context, jsonoutput *bool, iterations int, delay 
 			output.Stats = make([]lib.TelnetStats, 0)
 			output.StartTime = istart.UnixMicro()
 		}
+		slots := newAttemptSlots()
 	attempts:
 		for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
 			attempt := i + 1
@@ -102,9 +103,13 @@ func TelnetHandler(ctx context.Context, jsonoutput *bool, iterations int, delay 
 				if !pause(ctx, time.Millisecond*time.Duration(delay)) {
 					break attempts
 				}
+				if !slots.acquire(ctx) {
+					break attempts
+				}
 				WG.Add(1)
 				go func(ip string, attempt int) {
 					defer WG.Done()
+					defer slots.release()
 					start := time.Now()
 					_, err := lib.IsPortUp(ctx, ip, port, timeout)
 					timeTaken := time.Since(start)

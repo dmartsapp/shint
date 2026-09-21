@@ -154,6 +154,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 	var WG sync.WaitGroup
 	var failed int32    // attempts that got no HTTP response
 	var completed int32 // attempts that finished, whatever the outcome
+	slots := newAttemptSlots()
 	for i := 0; i < iterations; i++ {
 		attempt := i + 1
 		if ctx.Err() != nil {
@@ -173,9 +174,13 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 		} else if !pause(ctx, time.Millisecond*time.Duration(delay)) {
 			break
 		}
+		if !slots.acquire(ctx) {
+			break
+		}
 		WG.Add(1)
 		go func(URL *url.URL, attempt int) {
 			defer WG.Done()
+			defer slots.release()
 			errors := make([]string, 0)
 			var meter wireMeter
 			var rec *timingRecorder

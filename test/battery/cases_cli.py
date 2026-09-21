@@ -80,9 +80,6 @@ add("E.count-100-fast", ["telnet", "127.0.0.1", E, "--count", "100", "--delay", 
     check=lambda r: None if r["out"].count("connect ok") == 100 else "expected 100 'connect ok' lines, got %d" % r["out"].count("connect ok"))
 add("E.count-100-json", ["telnet", "127.0.0.1", E, "--count", "100", "--delay", "0", "--json"], rc=0, group="E telnet", serial=True,
     check=lambda r: None if sum(s["success"] for s in json.loads(r["out"])["stats"]) == 100 else "expected 100 successful attempts in the JSON")
-add("E.fd-pressure-count-3000", ["telnet", "127.0.0.1", E, "--count", "3000", "--delay", "0", "--timeout", "10"], group="E telnet", wrap="ulimit -n 256;", max=60, timeout=90, serial=True,
-    note="256 file descriptors, 3000 attempts launched at once",
-    check=lambda r: ("%d of 3000 attempts failed (fd exhaustion?): %s" % (r["out"].count("connect failed"), (re.search(r'error="([^"]*)"', r["out"]) or [None, ""])[1][:60])) if r["out"].count("connect failed") else None)
 
 # listen takes --count too, and -1 is not a valid value for it (0 means "until Ctrl+C")
 add("B.listen-count-negative", ["listen", "tcp", "{tcp_closed}", "--count", "-1"], rc=2, group="B flags", max=8, timeout=4)

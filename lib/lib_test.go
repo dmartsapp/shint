@@ -314,3 +314,34 @@ func TestRequireRanges(t *testing.T) {
 		t.Errorf("the largest delay overflows: %v", d)
 	}
 }
+
+func TestInFlightLimit(t *testing.T) {
+	cases := []struct {
+		name  string
+		max   int
+		limit uint64
+		known bool
+		want  int
+	}{
+		{"unknown limit: the cap", 500, 0, false, 500},
+		{"a generous limit: the cap", 500, 1048576, true, 500},
+		{"unlimited", 500, 1<<63 - 1, true, 500},
+		{"1024 (the usual Linux default)", 500, 1024, true, 500},
+		{"512: exactly half is the cap", 500, 1000, true, 500},
+		{"256 (an old default, or ulimit -n 256): half", 500, 256, true, 128},
+		{"64", 500, 64, true, 32},
+		{"8: half of it is 4", 500, 8, true, 4},
+		{"below the floor: still makes progress", 500, 3, true, 4},
+		{"zero: still makes progress", 500, 0, true, 4},
+		{"a lower cap than the limit allows", 100, 4096, true, 100},
+	}
+	for _, c := range cases {
+		if got := inFlightLimit(c.max, c.limit, c.known); got != c.want {
+			t.Errorf("%s: inFlightLimit(%d, %d, %v) = %d, want %d", c.name, c.max, c.limit, c.known, got, c.want)
+		}
+	}
+	// the real process: a positive bound no larger than the cap
+	if got := InFlightLimit(500); got < 4 || got > 500 {
+		t.Errorf("InFlightLimit(500) = %d", got)
+	}
+}

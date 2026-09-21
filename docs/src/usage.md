@@ -72,6 +72,10 @@ These are defined once, so they mean the same thing everywhere they apply:
 `--timeout` and `--delay` become a duration in nanoseconds, which silently overflows above about 292 years: `--timeout 10000000000` used to turn into a check that "timed out" at once. A day is far more than any check waits, so anything outside the ranges above - and a negative `--delay` or `--count` - is a [usage error](#exit-status): exit `2`, one line on stderr saying what the range is, nothing run.
 :::
 
+:::note --count with --delay 0 does not open a socket per attempt
+`shint web URL --count 3000 --delay 0` starts attempts as fast as it can, but never more than 500 are running at once - fewer where the process may open few files (a container, a CI runner, a script that ran `ulimit -n 256`: half of its descriptor limit) - and the rest wait their turn. Before, they all started together, and where the limit was low the surplus failed with `too many open files` and was blamed on the target. `nmap` is bounded the same way (`max_in_flight` on its first line).
+:::
+
 :::note Every attempt waits first
 `--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr` and `ip` do no attempts, so they have no delay.)
 :::

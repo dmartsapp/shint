@@ -84,7 +84,8 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		}
 		var WG sync.WaitGroup
 		var statsMutex sync.Mutex
-		semaphore := make(chan struct{}, maxConcurrentPortScans)
+		inFlight := lib.InFlightLimit(maxConcurrentPortScans)
+		semaphore := make(chan struct{}, inFlight)
 		// scanned counts ports whose probe actually finished (open or
 		// closed); a dial aborted by cancellation is neither, and is not
 		// counted. plannedScans is what the whole run would cover.
@@ -94,7 +95,7 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		// Text mode only: --json output must stay one clean document.
 		stopProgress := func() {}
 		if !*jsonoutput {
-			fmt.Println(lib.LogWithTimestamp(nmapModule, "scan started "+lib.Fields("ports_total", plannedScans, "timeout", fmt.Sprintf("%ds", timeout), "max_in_flight", maxConcurrentPortScans), false))
+			fmt.Println(lib.LogWithTimestamp(nmapModule, "scan started "+lib.Fields("ports_total", plannedScans, "timeout", fmt.Sprintf("%ds", timeout), "max_in_flight", inFlight), false))
 			done := make(chan struct{})
 			var progressWG sync.WaitGroup
 			progressWG.Add(1)

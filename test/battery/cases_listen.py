@@ -272,3 +272,28 @@ def no_scheme_plain_server():
 
 
 add_func("F.url-no-scheme-plain-http-server-is-explained", no_scheme_plain_server, group="F web")
+
+
+# ---------------- E (telnet): many attempts at once with few file descriptors
+def fd_pressure():
+    """--count 1500 --delay 0 under ulimit -n 96 must take turns, not run out of descriptors.
+    The target is shint's own listener: the Python servers cannot accept thousands a second."""
+    port = free_port()
+    proc, _read = start_listener(["listen", "tcp", str(port)])
+    try:
+        rc, out, err, dur = spawn(["telnet", "127.0.0.1", str(port), "--count", "1500", "--delay", "0", "--timeout", "10"],
+                                  timeout=90, wrap="ulimit -n 96;")
+    finally:
+        proc.send_signal(signal.SIGINT)
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    problems = []
+    ok, failed = out.count("connect ok"), out.count("connect failed")
+    if rc != 0 or failed or ok != 1500:
+        problems.append("exit %r, %d of 1500 attempts connected, %d failed (%s)" % (rc, ok, failed, out[out.find("connect failed"):][:120].strip() if failed else ""))
+    return problems
+
+
+add_func("E.fd-pressure-many-attempts-at-once", fd_pressure, group="E telnet", needs=("unix",))

@@ -9,8 +9,6 @@ here in the same commit; when a new bug is found, add its case and the issue num
 KNOWN = {
     # web keeps the whole body in memory
     "L.web-300MB-body-memory": ("#28", None),
-    # --count with --delay 0 runs out of file descriptors
-    "E.fd-pressure-count-3000": ("#31", None),
     # listen http reports a stalled request as answered / ignores malformed ones
     "J.http-client-stalls-mid-body-is-not-logged-as-ok": ("#34", None),
     "J.http-malformed-request-is-logged-and-counted": ("#35", None),

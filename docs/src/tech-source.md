@@ -44,6 +44,7 @@ nav: Source reference
 | File | Contents |
 |---|---|
 | `lib/lib.go` | Constants `DATETIMEFORMAT` (`time.UnixDate`), `NetworkType` (`"ip"`: A and AAAA) and `Protocol` (`"tcp"`). `ResolveName` and `ResolveNameToIPs` (DNS), `IsPortUp` (one TCP dial bounded by a per-attempt timeout *and* a context), `ValidatePort`, `RequirePositive`, `GetMinAvgMax` (latency statistics), `ConvertIPToStringSlice`, and `SortTimeDurationSlice` (currently exercised only by tests). |
+| `lib/descriptors_unix.go`, `descriptors_other.go` | `descriptorLimit`: the process's soft `RLIMIT_NOFILE` on Unix (Go raises it to the hard limit at start), unknown elsewhere. `lib.InFlightLimit` turns it into a bound on simultaneous attempts: half the limit, at most the cap, at least 4. |
 | `lib/family.go` | The address family a run uses: `NetworkType` (`"ip"`, `"ip4"`, `"ip6"`), `SetIPFamily` (the `-4`/`-6` flags), `FamilyAllows`, `DialNetwork` (`tcp` to `tcp4`/`tcp6` for the HTTP client), `HostFamilyConflict` (an address of the other family), and `FamilyHint`/`ExplainError` (the hint on an IPv6 failure that is really this machine's lack of IPv6). |
 | `lib/output.go` | The JSON contract: `JSONOutput`, `InputParams`, `DNSLookup`, and the per-command stats types `TelnetStats`, `WebStats`, `NmapStats`, `ICMPStats`, `UDPStats`, `NTPStats`, `WOLStats`, `RDNSStats`, `CIDRStats`, `IPStats` and `IPAddress`, `DNSStats` and `DNSRecord`, the `--timing` types `WebTiming` and `WebHopTiming`, `LocalJSONOutput` (the document of `wol` and `cidr`, which have no `dns_lookup`), plus the listener events `ListenEvent` and `HTTPListenEvent`. Also the text log: `LogWithTimestamp` (the `time: [module] OK|ERROR message` prefix), `Fields` (the `key=value` suffix, quoting values with spaces) and `LogStats` (the statistics banner). |
 | `lib/family_test.go` | The family logic and the hint, built from the exact error a host with IPv6 disabled reported. |
@@ -69,7 +70,7 @@ nav: Source reference
 | `escape.go` | `escapeBytes`: the one place untrusted bytes (a packet, a DNS record) are made safe to print; `previewBytes` adds trimming and truncation on top. |
 | `ip.go` | `IPHandler`: the interface table (`net.Interfaces`, behind the `systemInterfaces` hook so tests can describe interfaces), the per-interface report and the `-4`/`-6` filter. Uses `addressKind` from `cidr.go`. |
 | `cidr.go` | `ParseSubnets`, `subnetStats` and `CIDRHandler`: subnet arithmetic with `net/netip` and `math/big` (IPv6 counts overflow 64 bits). |
-| `pacing.go` | `attemptDelay`: the `--delay` / `--throttle` pause before an attempt, shared by `ntp`, `wol` and `rdns`. |
+| `pacing.go` (`attemptSlots`) | `attemptDelay`: the `--delay` / `--throttle` pause before an attempt, shared by `ntp`, `wol` and `rdns`. |
 | `interrupt.go` | How a repeating check ends on `Ctrl+C`: `pause` (a `--delay` that a cancellation cuts short), `watchCancel` (expires a connection's deadline so a blocked read returns), and `interruptedLine` / `interruptedNote` (the `ERROR interrupted ...` line and the JSON run-level error). |
 | `tcplisten.go` | `TCPListenHandler` and `handleTCPConnection`; also `previewBytes`, the short single-line preview used by all listeners and `udp`: printable text as is, everything else escaped (`\xNN`, `\n`, ...). |
 | `udplisten.go` | `UDPListenHandler`. |

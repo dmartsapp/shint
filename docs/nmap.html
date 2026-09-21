@@ -117,7 +117,7 @@
 <h2 id="how-long-will-it-take">How long will it take?<a class="anchor" href="#how-long-will-it-take" aria-label="Link to this section">#</a></h2>
 <p><code>--timeout</code> is what each port gets, so total time depends on <strong>how many ports do not answer</strong>:</p>
 <div class="tablewrap"><table><thead><tr><th>Port behaviour</th><th>Cost</th></tr></thead><tbody><tr><td>Open, or actively refused (<code>connection refused</code>)</td><td>Milliseconds - the host answers at once</td></tr><tr><td>Silently dropped by a firewall</td><td>The full <code>--timeout</code>, for every such port</td></tr></tbody></table></div>
-<p>With up to 500 ports in flight, a worst case (a host that drops everything) takes about <strong>ports ÷ 500 × timeout</strong> seconds:</p>
+<p>With up to 500 ports in flight (<code>max_in_flight</code> on the <code>scan started</code> line says how many; it is lower where the process may open few files - half its descriptor limit), a worst case (a host that drops everything) takes about <strong>ports ÷ 500 × timeout</strong> seconds:</p>
 <div class="tablewrap"><table><thead><tr><th>Range</th><th><code>--timeout 5</code> (default)</th><th><code>--timeout 1</code></th></tr></thead><tbody><tr><td>1-1024</td><td>about 15 s</td><td>about 3 s</td></tr><tr><td>20-9000</td><td>about 90 s</td><td>about 18 s</td></tr><tr><td>1-65535</td><td>about 11 min</td><td>about 2 min</td></tr></tbody></table></div>
 <p>On a fast, reliable network, <code>--timeout 1</code> is usually plenty and makes silent hosts much quicker to scan.</p>
 <h2 id="reading-the-results">Reading the results<a class="anchor" href="#reading-the-results" aria-label="Link to this section">#</a></h2>

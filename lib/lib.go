@@ -145,6 +145,32 @@ func RequireNonNegative(name string, value int) error {
 	return nil
 }
 
+// InFlightLimit is how many network operations a command may have running at once:
+// at most max, and never more than half of what the process's descriptor limit
+// allows. The other half is for standard streams, resolver sockets and the rest of
+// the runtime; without that margin a run that starts every attempt at once (--count
+// 3000 --delay 0, or a scan of a filtered host) runs out of file descriptors and
+// the surplus attempts fail with "too many open files" - blamed on the target.
+func InFlightLimit(max int) int {
+	limit, ok := descriptorLimit()
+	return inFlightLimit(max, limit, ok)
+}
+
+// inFlightLimit is InFlightLimit for a given descriptor limit (ok false: unknown).
+func inFlightLimit(max int, limit uint64, ok bool) int {
+	if !ok {
+		return max
+	}
+	half := limit / 2
+	if half < 4 {
+		half = 4 // some progress is better than none, however low the limit
+	}
+	if half > uint64(max) {
+		return max
+	}
+	return int(half)
+}
+
 // ConvertIPToStringSlice returns the text form of each address; nil for an
 // empty input.
 func ConvertIPToStringSlice(ips []net.IP) []string {

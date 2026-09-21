@@ -149,7 +149,7 @@ Every port scanned appears in `stats`, open or not.
 | Open, or actively refused (`connection refused`) | Milliseconds - the host answers at once |
 | Silently dropped by a firewall | The full `--timeout`, for every such port |
 
-With up to 500 ports in flight, a worst case (a host that drops everything) takes about **ports ÷ 500 × timeout** seconds:
+With up to 500 ports in flight (`max_in_flight` on the `scan started` line says how many; it is lower where the process may open few files - half its descriptor limit), a worst case (a host that drops everything) takes about **ports ÷ 500 × timeout** seconds:
 
 | Range | `--timeout 5` (default) | `--timeout 1` |
 |---|---|---|
