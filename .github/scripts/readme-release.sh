@@ -17,7 +17,17 @@
 #      Actions may not open pull requests (a repository setting), an issue that links the branch.
 # Nothing is merged; a person reads the diff and the warnings and merges.
 #
-# Environment (all optional): TAG, PUSH=1, BASE_REF (default origin/main), NO_FETCH=1,
+# The one exception, and only when asked (AUTO_COMMIT=1): a CLEAN reconcile is committed
+# straight to main, with "[skip ci]" (a README needs no test run). Clean means all of
+#   * no warnings - nothing for a person to look at,
+#   * the commit changes readme.md and nothing else,
+#   * the README link check (docs/build.py --check, where the repository has it) passes,
+#   * and the push is a fast-forward (main did not move meanwhile).
+# If any of them is not so, it says which and takes the branch-and-pull-request path above.
+# Nothing sets AUTO_COMMIT yet: it belongs to the end of a release that has passed (see
+# docs: README after a release), not to a tag that has only just been pushed.
+#
+# Environment (all optional): TAG, PUSH=1, AUTO_COMMIT=1, BASE_REF (default origin/main), NO_FETCH=1,
 #   BIN (a shint binary whose --help lists the commands; default: built with go, if there is go),
 #   MILESTONES_JSON (a file; default: asked of GitHub through gh, if gh is usable),
 #   REPO (owner/name; default: from the origin URL).
@@ -101,6 +111,25 @@ git commit -q -F "$tmp/message.txt" || die "could not commit"
 echo "readme-release: committed the README on $branch:"
 git log -1 --format='  %h %s'
 echo; cat "$tmp/report.md"
+
+if [ "${AUTO_COMMIT:-0}" = 1 ]; then
+  reason=""
+  grep -q "Needs a human look" "$tmp/report.md" && reason="the reconcile has warnings for a person to read"
+  if [ -z "$reason" ] && [ "$(git diff --name-only "$base"..HEAD | tr '\n' ' ')" != "readme.md " ]; then reason="it changes more than readme.md"; fi
+  if [ -z "$reason" ] && [ -f docs/build.py ] && ! python3 docs/build.py --check >"$tmp/docs.out" 2>&1; then reason="the README link check failed"; fi
+  if [ -z "$reason" ]; then
+    { echo "$subject [skip ci]"; echo; cat "$tmp/report.md"; } > "$tmp/message-skip.txt"
+    git commit -q --amend -F "$tmp/message-skip.txt"
+    if git push -q origin "$branch":main 2>"$tmp/auto.err"; then
+      echo "readme-release: a clean reconcile: committed straight to main ($(git rev-parse --short HEAD))."
+      restore; git branch -q -D "$branch"
+      exit 0
+    fi
+    reason="main moved, so the push was not a fast-forward"
+    git commit -q --amend -F "$tmp/message.txt"
+  fi
+  echo "readme-release: not committing to main: $reason. Proposing it on $branch instead."
+fi
 
 if [ "${PUSH:-0}" = 1 ]; then
   git push -q origin "$branch" || die "could not push $branch"

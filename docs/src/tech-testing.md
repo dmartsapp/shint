@@ -28,7 +28,8 @@ There are 174 top-level Go tests: 135 in `lib/handlers`, 31 in `lib` and 8 end-t
 | `make test` | The Go tests with the race detector, then the [black-box battery](#the-black-box-battery) | Go, python3 |
 | `make test-go`, `make test-battery` | Each half of `make test` on its own | as above |
 | `make fmt-check`, `vet`, `lint`, `vuln`, `docs-check`, `workflows` | One step of `make check` on its own | as above |
-| `make attest` | `make check`, then records it as the commit status `local/make-check` on the pushed commit, so the Check workflow on `main` runs the short subset instead of everything ([the local check receipt](tech-ci.md#the-local-check-receipt)) | as above, `gh` signed in |
+| `make attest` | `make check`, then signs a report of it with your SSH key and attaches it to the commit as a git note, so the Check workflow on `main` runs the short subset instead of everything ([the signed local check report](tech-ci.md#the-signed-local-check-report)) | as above, an SSH key listed in `.github/allowed_signers` |
+| `make hooks` | Installs the `pre-push` hook: pushing `main` or a release tag with no valid signed report runs `make attest` first | git |
 | `make check-quick` | What CI runs when that receipt exists: `gofmt`, `go vet` (this OS only), `go test` for the CLI tests and `lib`, the battery's command-line groups A to D, `govulncheck`, the docs check | Go, python3 |
 
 `make check` takes about a minute and a half (the Go tests about 15 s cold, the battery about a minute). The first thing it does is check that the tools are installed and prints the install command for any that are not: `golangci-lint` (it must be **v2.13.2**, the version CI pins - a different version is refused), `govulncheck`, `actionlint`, and `python3`. A tool that is not on `PATH` can be named: `make check GOLANGCI_LINT=/path/to/golangci-lint`.

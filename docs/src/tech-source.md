@@ -120,11 +120,15 @@ nav: Source reference
 | `.github/workflows/build.yaml` | Guard, gate, then 14 cross-builds (each attested and given a `.sha256` file), then the GitHub Release with the binaries and checksum files attached. |
 | `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
 | `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
-| `.github/workflows/check.yaml` | After a merge to `main` (never a branch, PR or tag; ignores `.github/**`): `make check-quick` when the local check receipt is there, the whole `make check` when it is not; opens an issue on failure. |
+| `.github/workflows/check.yaml` | After a merge to `main` (never a branch, PR or tag; ignores `.github/**`): `make check-quick` when a valid signed local check report is on the commit, the whole `make check` when it is not; opens an issue on failure. |
 | `.github/scripts/changelog-section.sh` | Prints one release's section of `CHANGELOG.md`: the release page's "What's new" (with `test-changelog-section.sh`). |
-| `.github/scripts/post-check-status.sh` | `make attest`: records that `make check` passed locally, as the commit status `local/make-check` on the pushed commit. |
-| `.github/scripts/verify-local-check.sh` | The Check workflow's side: is there a valid receipt (success, from whoever pushed, for this tree)? Writes `fast=true/false`; never fails. |
-| `.github/scripts/test-local-check.sh` | Tests for both, in throw-away repositories with a fake `gh`. |
+| `.github/scripts/attest.sh` | `make attest`: runs `make check`, builds and signs the report, attaches it to the commit as a git note (`refs/notes/checks`) and pushes the note. |
+| `.github/scripts/check-report.py` | Builds the report from `make check`'s output, signs it with `ssh-keygen -Y sign`, and verifies a note (signature, tree, every stage, age). Standard library only. |
+| `.github/scripts/test_check_report.py` | Its tests, with throw-away SSH keys: a valid report, and each way one is refused. |
+| `.github/scripts/verify-local-check.sh` | The Check workflow's side: fetches the note and the allowed signers (from the commit before the push) and asks `check-report.py`. Writes `fast=true/false`; never fails. |
+| `.github/scripts/test-attest.sh` | Tests for `attest.sh`, the verifier and the hook, in throw-away repositories. |
+| `.githooks/pre-push` | Installed by `make hooks`: pushing `main` or a release tag with no valid signed report runs `make attest` first. |
+| `.github/allowed_signers` | The public keys whose signed reports CI accepts (namespace `shint-check`). |
 | `.github/workflows/readme-reconcile.yaml` | After a release tag, once the GitHub Release exists: proposes `main`'s README for it (a branch and a pull request, or an issue that links the branch). Never commits to `main`. |
 | `.github/scripts/readme-reconcile.py` | Brings a README in line with the release tags, the changelog, the milestones and the binary's `--help`, puts back what it must always have (expansion, badges with the donate button, support line), warns about what it cannot know; idempotent, fails closed. |
 | `.github/scripts/test_readme_reconcile.py` | Its tests, on README fixtures (35 of them). |

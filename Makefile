@@ -107,11 +107,12 @@ ACTIONLINT ?= actionlint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.13.2
 
-.PHONY: help check check-quick attest test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-check readme-reconcile
+.PHONY: help check check-quick attest hooks test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-check readme-reconcile
 
 help:
 	echo "make check       fmt, vet, race tests, black-box battery, lint, vulncheck, docs and workflow checks (no network)"
-	echo "make attest      make check, then record it as a commit status on the pushed commit, so CI on main runs a short subset instead of everything"
+	echo "make attest      make check, then sign a report of it and attach it to the commit as a git note, so CI on main runs a short subset instead of everything"
+	echo "make hooks       install the pre-push hook, which runs make attest when you push main or a release tag without a signed report"
 	echo "make check-quick the short subset CI runs when that status exists: fmt, vet, quick tests, CLI battery groups, vulncheck, docs"
 	echo "make test-live   smoke test against real hosts (needs the internet and ICMP)"
 	echo "make test-full   check + test-live"
@@ -128,13 +129,20 @@ check: tools fmt-check vet test lint vuln docs-check workflows
 test-full: check test-live
 	echo "==> full test run passed"
 
-# Run the whole of make check on this machine, then record that on the (pushed) commit as
-# the status local/make-check. The Check workflow, on a push to main, verifies the status
-# and - only then - runs check-quick instead of check. Push the branch first, and run this
-# on a clean tree at the commit that will be merged: a fast-forward merge keeps commit ids,
-# so the status on the branch tip is the status on main's tip.
-attest: check
-	bash .github/scripts/post-check-status.sh
+# Run the whole of make check on this machine, sign a report of it with your SSH key and attach
+# it to the commit as a git note (refs/notes/checks), which it pushes. The Check workflow, on a
+# push to main, verifies the signature (against .github/allowed_signers), that the report is for
+# the tree pushed, complete and recent - and only then runs check-quick instead of check. Run it
+# on a clean tree at the commit that will be merged: a fast-forward merge keeps commit ids, so
+# the note on the branch tip is the note on main's tip. See .github/scripts/check-report.py.
+attest:
+	bash .github/scripts/attest.sh
+
+# The pre-push hook: pushing main or a release tag with no valid signed report runs make attest
+# first. A convenience on this machine; the gate is CI, which runs everything without a report.
+hooks:
+	git config core.hooksPath .githooks
+	echo "pre-push hook installed (git config core.hooksPath .githooks). Skip it once with SHINT_SKIP_ATTEST=1."
 
 # What CI runs when the whole suite has already passed here (a valid local check receipt):
 # what is cheap, what can differ on Linux, and what goes stale - a vulnerability database
@@ -233,7 +241,8 @@ workflows:
 	python3 .github/scripts/test_notify_slack.py
 	python3 .github/scripts/test_readme_reconcile.py
 	bash .github/scripts/test-readme-release.sh
-	bash .github/scripts/test-local-check.sh
+	python3 .github/scripts/test_check_report.py
+	bash .github/scripts/test-attest.sh
 	bash .github/scripts/test-changelog-section.sh
 	$(ACTIONLINT) -shellcheck= .github/workflows/*.yaml
 

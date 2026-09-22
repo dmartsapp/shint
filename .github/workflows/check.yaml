@@ -8,14 +8,16 @@ name: Check
 #
 # What it runs depends on whether the suite already passed on the maintainer's machine:
 #
-#   * `make attest` (run locally on the pushed branch) records a commit status,
-#     local/make-check, on the commit. A fast-forward merge keeps commit ids, so it is
-#     also the status of the commit pushed to main. If .github/scripts/verify-local-check.sh
-#     finds that status - a success, from the person who pushed, for this tree - this
-#     runs `make check-quick`: about a minute (the vulnerability check fresh, the CLI
+#   * `make attest` (run locally, on the commit that will be merged) runs the whole suite,
+#     signs a report of it with the maintainer's SSH key and attaches it to the commit as a
+#     git note (refs/notes/checks). A fast-forward merge keeps commit ids, so it is also the
+#     note on the commit pushed to main. If .github/scripts/verify-local-check.sh finds that
+#     note and check-report.py accepts it - signed by a key in .github/allowed_signers (the
+#     copy on the commit before this push), for this tree, complete, passing and recent -
+#     this runs `make check-quick`: about a minute (the vulnerability check fresh, the CLI
 #     tests and the fast battery groups, the docs).
-#   * Otherwise (a direct push, a merge commit, a stale or missing status) it runs the
-#     whole `make check`, as before. A missing receipt costs time, never coverage.
+#   * Otherwise (a direct push, a merge commit, a stale, forged or missing report) it runs
+#     the whole `make check`, as before. A missing report costs time, never coverage.
 #
 # It publishes nothing. Releases are a vX.Y.Z tag on main (see the other workflows).
 
@@ -32,17 +34,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      statuses: read   # the local check receipt
     steps:
       - uses: actions/checkout@v5
 
-      - name: Look for the local check receipt
+      - name: Look for a signed local check report
         id: receipt
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
-          ACTOR: ${{ github.actor }}
+          BEFORE: ${{ github.event.before }}
         run: bash .github/scripts/verify-local-check.sh
 
       - name: Set up Go

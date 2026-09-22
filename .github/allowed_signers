@@ -1,0 +1,4 @@
+# Public keys allowed to sign check reports (git notes, refs/notes/checks); see .github/scripts/check-report.py.
+# One line per key: <who> namespaces="shint-check" <key type> <public key>
+# CI reads this file from the commit BEFORE a push, so a push cannot add the key that approves it.
+farhansabbir namespaces="shint-check" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHJaJTqo2695xJ/iyuGBguT7oAurIrXOdREkDdcMYwqe

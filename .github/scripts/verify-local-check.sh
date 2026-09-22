@@ -1,40 +1,48 @@
 #!/usr/bin/env bash
-# CI side of post-check-status.sh: is there a receipt for the commit that was pushed?
+# CI side of attest.sh: is there a signed check report for the commit that was pushed?
 #
 # It writes fast=true or fast=false to $GITHUB_OUTPUT (stdout when that is unset) and never
-# fails: when there is no valid receipt the answer is simply "run the whole suite".
+# fails: when there is no valid report the answer is simply "run the whole suite".
 #
-# A receipt is valid when the newest commit status with context local/make-check
-#   * is "success",
-#   * was created by the person who pushed (ACTOR) - a status from anyone else does not count, and
-#   * names the tree that was checked out ("tree <first 12 characters of HEAD^{tree}>").
+# A report is valid when the git note on the pushed commit (refs/notes/checks)
+#   * is signed by a key listed in .github/allowed_signers - the copy on the commit BEFORE this
+#     push, so a push cannot approve itself by adding its own key in the same breath (a push
+#     that introduces the file, or has no earlier commit, gets the whole suite),
+#   * is for the tree that was checked out, lists every stage of make check as ok, and is recent.
+# check-report.py does the checking; this only fetches what it needs.
 #
-# Environment: REPO, SHA, ACTOR, GH_TOKEN (all required).
+# Environment: SHA (the pushed commit), BEFORE (main's tip before the push; all zeros or empty
+# when there is none), optional MAX_AGE_DAYS (default 14), GITHUB_OUTPUT, GITHUB_STEP_SUMMARY.
 set -uo pipefail
 
-CONTEXT="local/make-check"
-repo="${REPO:?REPO (owner/name) is required}"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 sha="${SHA:?SHA (the pushed commit) is required}"
-actor="${ACTOR:?ACTOR (who pushed) is required}"
+before="${BEFORE:-}"
 out="${GITHUB_OUTPUT:-/dev/stdout}"
-tree="$(git rev-parse 'HEAD^{tree}' | cut -c1-12)"
+tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+tree="$(git rev-parse "$sha^{tree}")"
 
-say() { # fast|slow, why
+say() { # true|false, why
   echo "fast=$1" >> "$out"
-  echo "local check receipt: $2"
-  [ -z "${GITHUB_STEP_SUMMARY:-}" ] || echo "**Local check receipt:** $2" >> "$GITHUB_STEP_SUMMARY"
+  echo "local check report: $2"
+  [ -z "${GITHUB_STEP_SUMMARY:-}" ] || echo "**Local check report:** $2" >> "$GITHUB_STEP_SUMMARY"
 }
 
-# newest first; the fields are separated by a character no description or login contains
-latest="$(gh api "repos/$repo/commits/$sha/statuses?per_page=100" \
-  --jq "[.[] | select(.context==\"$CONTEXT\")][0] | select(. != null) | \"\(.state)|\(.creator.login)|\(.description)\"" 2>/dev/null)"
-rc=$?
-if [ "$rc" != 0 ]; then say false "the commit statuses could not be read, so the whole suite runs."; exit 0; fi
-if [ -z "$latest" ]; then say false "none for ${sha:0:12}, so the whole suite runs. (make attest records one after a local make check, on a pushed commit.)"; exit 0; fi
+git fetch -q --no-tags --depth=1 origin '+refs/notes/checks:refs/notes/checks' 2>/dev/null
+if ! git notes --ref=checks show "$sha" > "$tmp/note" 2>/dev/null; then
+  say false "none for ${sha:0:12}, so the whole suite runs. (make attest signs and attaches one after a local make check.)"; exit 0
+fi
 
-state="${latest%%|*}"; rest="${latest#*|}"; creator="${rest%%|*}"; description="${rest#*|}"
-if [ "$state" != success ]; then say false "the latest one is '$state', so the whole suite runs."; exit 0; fi
-if [ "$creator" != "$actor" ]; then say false "recorded by $creator, not by $actor who pushed, so the whole suite runs."; exit 0; fi
-case "$description" in *"tree $tree"*) ;; *) say false "it is for another tree ($description; this one is $tree), so the whole suite runs."; exit 0;; esac
+if [ -z "$before" ] || [[ "$before" =~ ^0+$ ]]; then
+  say false "there is no earlier commit to take the allowed signers from, so the whole suite runs."; exit 0
+fi
+if ! { git cat-file -e "$before^{commit}" 2>/dev/null || git fetch -q --no-tags --depth=1 origin "$before" 2>/dev/null; } \
+   || ! git show "$before:.github/allowed_signers" > "$tmp/allowed_signers" 2>/dev/null; then
+  say false ".github/allowed_signers is not on the commit before this push (${before:0:12}), so it cannot be trusted yet and the whole suite runs."; exit 0
+fi
 
-say true "make check passed locally on this tree ($description); running the short subset and the vulnerability check."
+if result="$(python3 "$here/check-report.py" verify --note "$tmp/note" --allowed-signers "$tmp/allowed_signers" --tree "$tree" --max-age-days "${MAX_AGE_DAYS:-14}" 2>&1)"; then
+  say true "${result#check-report: valid: }; running the short subset and the vulnerability check."
+else
+  say false "${result#check-report: } The whole suite runs."
+fi

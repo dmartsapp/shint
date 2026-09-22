@@ -147,5 +147,33 @@ new_repo; printf '# no roadmap\n' > readme.md; git commit -qam "bad readme"; git
 out="$(TAG=v1.1.0 run)"; rc=$?
 check "a README it cannot read is refused, and the branch is cleaned up" '[ $rc = 1 ] && grep -q "could not reconcile" <<<"$out" && [ "$(git branch --show-current)" = main ] && ! git rev-parse -q --verify refs/heads/readme/main-v1.1.0 >/dev/null'
 
+# ---- AUTO_COMMIT: only a clean reconcile goes straight to main ----
+# a README whose roadmap has no row for the tag, so nothing is "written as a plan" and nothing warns
+clean_repo() {
+  new_repo
+  python3 - <<'INNER'
+s = open("readme.md").read().replace("| **v1.1.0** | Feb 1 - Feb 14 | Second |\n", "")
+open("readme.md", "w").write(s)
+INNER
+  git commit -qam "no row for v1.1.0"; git push -q origin main 2>/dev/null; git fetch -q origin
+}
+clean_repo; out="$(TAG=v1.1.0 AUTO_COMMIT=1 run)"; rc=$?
+check "a clean reconcile is committed straight to main, with [skip ci]" '[ $rc = 0 ] && grep -q "committed straight to main" <<<"$out" && git --git-dir="$tmp/origin.git" log -1 --format=%s main | grep -q "\[skip ci\]" && git --git-dir="$tmp/origin.git" show main:readme.md | grep -q "Released Feb 3" && [ "$(git branch --show-current)" = main ] && ! git rev-parse -q --verify refs/heads/readme/main-v1.1.0 >/dev/null'
+check "a direct commit touches readme.md and nothing else, and no branch is left on origin" '[ "$(git --git-dir="$tmp/origin.git" show --name-only --format= main | tr "\n" " ")" = "readme.md " ] && ! git ls-remote --exit-code --heads origin readme/main-v1.1.0 >/dev/null 2>&1'
+
+new_repo; out="$(TAG=v1.1.0 AUTO_COMMIT=1 run)"; rc=$?
+check "warnings for a person keep it off main: a branch is proposed instead" '[ $rc = 0 ] && grep -q "not committing to main: the reconcile has warnings" <<<"$out" && [ "$(git branch --show-current)" = readme/main-v1.1.0 ] && [ "$(git --git-dir="$tmp/origin.git" rev-parse main)" = "$(git rev-parse origin/main)" ]'
+
+clean_repo; mkdir -p docs; printf 'import sys\nsys.exit(1)\n' > docs/build.py; git add -A; git commit -qm "a link check that fails"; git push -q origin main 2>/dev/null; git fetch -q origin
+out="$(TAG=v1.1.0 AUTO_COMMIT=1 run)"; rc=$?
+check "a failing README link check keeps it off main" '[ $rc = 0 ] && grep -q "not committing to main: the README link check failed" <<<"$out" && [ "$(git --git-dir="$tmp/origin.git" rev-parse main)" = "$(git rev-parse origin/main)" ]'
+
+clean_repo; git clone -q "$tmp/origin.git" "$tmp/other" 2>/dev/null; (cd "$tmp/other" && echo x > other.txt && git add -A && git commit -qm "main moved" && git push -q origin main 2>/dev/null); rm -rf "$tmp/other"
+out="$(TAG=v1.1.0 AUTO_COMMIT=1 run)"; rc=$?      # origin/main here is stale, so the push is not a fast-forward
+check "main having moved falls back to the branch, and the branch keeps its normal commit message" '[ $rc = 0 ] && grep -q "main moved" <<<"$out" && [ "$(git branch --show-current)" = readme/main-v1.1.0 ] && ! git log -1 --format=%s | grep -q "skip ci"'
+
+clean_repo; out="$(TAG=v1.1.0 run)"; rc=$?
+check "without AUTO_COMMIT nothing goes to main, clean or not" '[ "$(git --git-dir="$tmp/origin.git" rev-parse main)" = "$(git rev-parse origin/main)" ]'
+
 echo
 if [ "$failures" = 0 ]; then echo "all passed"; else echo "$failures FAILED"; exit 1; fi
