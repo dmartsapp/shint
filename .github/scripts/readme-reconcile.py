@@ -67,6 +67,7 @@ BADGES = [
     ("workflows/docker-hub.yaml/badge.svg", "[![Docker Hub](https://github.com/dmartsapp/shint/actions/workflows/docker-hub.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/docker-hub.yaml)"),
     ("workflows/ghcr.yaml/badge.svg", "[![GHCR](https://github.com/dmartsapp/shint/actions/workflows/ghcr.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/ghcr.yaml)"),
     ("workflows/check.yaml/badge.svg", "[![Check](https://github.com/dmartsapp/shint/actions/workflows/check.yaml/badge.svg?branch=main)](https://github.com/dmartsapp/shint/actions/workflows/check.yaml)"),
+    ("img.shields.io/github/discussions", "[![Discussions](https://img.shields.io/github/discussions/dmartsapp/shint)](https://github.com/dmartsapp/shint/discussions)"),
     ("img.shields.io/badge/Donate", "[![Donate](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](%s)" % SUPPORT_URL),
 ]
 
