@@ -32,6 +32,16 @@ python3 docs/build.py --check   # verify pages are current and every link and an
 git add docs && git commit
 ```
 
+A documentation change needs no release branch, no version bump and no tag - it is not a release. Push it like any other change to `main` ([Merging a branch to main](tech-ci.md#merging-a-branch-to-main-a-practical-checklist)):
+
+```bash
+git fetch origin && git merge --ff-only origin/main   # only if main moved since you started
+make attest                                            # optional: signs a report so Check runs the quick path
+git push origin main
+```
+
+That triggers `Check` - the whole `make check`, or `make check-quick` if `make attest` ran first - and nothing else: no binaries, no release, no tag.
+
 `--check` exits non-zero if a generated page is stale, an internal link or `#anchor` is broken, **or a published-site URL** (`https://dmartsapp.github.io/shint/...`) in `readme.md`, `CHANGELOG.md` or a page source does not name a page that exists (and an anchor that exists on it). The last rule runs offline: the site is the repository root served as-is, so `.../shint/docs/install.html` must be `docs/install.html` in the repo. It was added after the README linked to `.../shint/install.html` (missing `/docs/`) and every link in that section returned 404 for a release without anything noticing. Use it as a pre-commit or release check.
 
 The generator has its own tests, also standard-library only: `python3 docs/test_build.py`. They cover the URL check (including a regression test for exactly that README bug) and a few renderer rules.
