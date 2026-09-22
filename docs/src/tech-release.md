@@ -120,18 +120,96 @@ Or `make attest` instead of `make check`, on the commit that will be merged: it 
 
 **On release day** (the last day of the sprint window, or earlier for an urgent fix)
 
-8. **Rebase if `main` moved, merge, tag, push** - `main` first, then the tag, which starts the pipeline (re-run `make release-check` after a rebase):
+8. **Rebase if `main` moved, merge, tag, push** - `main` first, then the tag, as two separate pushes, never `git push --follow-tags` (re-run `make release-check` after a rebase):
 
 ```bash
 git fetch origin && git rebase origin/main        # on the release branch, only if main moved
 git checkout main && git merge --ff-only release/vX.Y.Z
-git push origin main
+git push origin main                              # first push: the commit
+                                                   # wait here for Check to go green (next step) -
+                                                   # this is why it is two pushes, not one --follow-tags
 git tag -a vX.Y.Z -m "vX.Y.Z: summary" -m "<changelog>"
-git push origin refs/tags/vX.Y.Z
+git push origin refs/tags/vX.Y.Z                  # second push: the tag. This starts the release
+                                                   # pipeline - binaries, images, the GitHub Release -
+                                                   # so it happens only once you have seen Check pass.
 ```
+
+**Why not `git push --follow-tags`?** That single command would push the commit and the tag together, before anything has checked the commit that is about to be tagged. The tag push is irreversible in effect - once the pipeline runs, binaries are downloaded and images are pulled - so the gap between the two pushes is deliberate: it is where you watch [Check](tech-ci.md#check-after-a-merge-to-main) pass on `main` before minting something permanent. `make attest`, run before the merge, makes that wait short (`check-quick`, about a minute) instead of long (the whole `make check`, about three and a half).
 
 9. **Watch the five workflows** - the result is posted to Slack when the last one finishes ([Slack notification](tech-ci.md#slack-notification)), or follow them with the [commands here](tech-ci.md#watching-a-release) - and confirm the release has 28 assets (14 binaries and their 14 `.sha256` files). (Before tagging, let the [Check](tech-ci.md#check-after-a-merge-to-main) run for the merge to `main` finish green.)
 10. **Verify**: download a binary and its `.sha256`, check it (`shasum -a 256 -c`), run `gh attestation verify <file> --repo dmartsapp/shint`, and run `--version`; pull the image.
+
+### Command by command
+
+Everything above, top to bottom, nothing skipped. `vX.Y.Z` is the version - replace it everywhere it appears. This assumes a release branch (`release/vX.Y.Z`); for an ordinary merge to `main` that is not a release, see [Merging a branch to main](tech-ci.md#merging-a-branch-to-main-a-practical-checklist) instead - stop after "push origin main" below and skip everything from "Release day" on.
+
+**Start the branch**, at the start of the sprint:
+
+```bash
+git switch -c release/vX.Y.Z main
+git push -u origin release/vX.Y.Z
+```
+
+**Do the work.** Commits, features, fixes - whatever the sprint calls for. Nothing below happens until it is done.
+
+**Finish the release**, on the branch:
+
+```bash
+# version and changelog
+$EDITOR main.go               # bump Version to X.Y.Z
+$EDITOR CHANGELOG.md          # finish and date the ## vX.Y.Z section
+python3 docs/build.py         # rebuild the site so it matches
+
+# every check, locally - CI does not run these for you
+make attest                   # runs make check, then signs and attaches a report (recommended)
+# or, without a report:
+# make test-full               # make check + the live smoke test against real hosts
+
+# the release commit: message body is the changelog; the README goes back to main's
+git checkout origin/main -- readme.md
+git add -A
+git commit                    # "<type>: <summary> (vX.Y.Z)", body = the changelog, no attribution trailers
+git push origin release/vX.Y.Z
+
+# preflight: on top of main, readme.md matches main's, version/changelog/message agree, tag is free
+make release-check
+```
+
+**Release day** - merge to `main`, wait for Check, only then tag:
+
+```bash
+git fetch origin && git rebase origin/main   # only if main moved since you branched; re-run make release-check after
+git checkout main
+git merge --ff-only release/vX.Y.Z
+git push origin main
+```
+
+Wait here. Watch it with `gh run list --branch main --limit 3` or `gh run watch <id>`, until `Check` is green. Then, and only then:
+
+```bash
+git tag -a vX.Y.Z -m "vX.Y.Z: <one-line summary>" -m "<changelog>"
+git push origin refs/tags/vX.Y.Z
+```
+
+**Watch the release:**
+
+```bash
+gh run list --branch vX.Y.Z --limit 8   # the five release workflows and the Slack notifier
+gh run watch <id>                       # or wait for the Slack message - see Watching a release
+```
+
+**Verify:**
+
+```bash
+gh release view vX.Y.Z                                          # 28 assets: 14 binaries, 14 .sha256 files
+shasum -a 256 -c shint.darwin.arm64.sha256                      # or sha256sum -c on Linux
+gh attestation verify shint.darwin.arm64 --repo dmartsapp/shint
+./shint.darwin.arm64 --version
+```
+
+**Afterwards, unattended:** `README Reconcile` runs on the tag and either commits straight to `main` (a clean reconcile) or opens a pull request - or, where Actions cannot open one, an issue that links a branch - for you to read and merge. See [README after a release](#readme-after-a-release).
+
+## README after a release
 
 ## README after a release
 
