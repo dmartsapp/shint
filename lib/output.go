@@ -310,12 +310,12 @@ type IPStats struct {
 // Authority are the two sections that matter (the latter carries the SOA of a
 // negative answer); Additional counts the third without listing it. Skipped
 // names the servers tried first that did not answer. Error is set only when the
-// question failed - including when no server answered, in which case Server is
+// question failed - including when no server answered, in which case Nameserver is
 // empty.
 type DNSStats struct {
 	Name           string      `json:"name"`
 	Type           string      `json:"type"`
-	Server         string      `json:"server,omitempty"`
+	Nameserver     string      `json:"nameserver,omitempty"`
 	Transport      string      `json:"transport,omitempty"`
 	RCode          string      `json:"rcode,omitempty"`
 	Flags          []string    `json:"flags"`

@@ -243,7 +243,7 @@ func TestDNSRecordFormats(t *testing.T) {
 			if !ok {
 				t.Errorf("DNSHandler = false:\n%s", out)
 			}
-			mustContain(t, out, append([]string{"[dns] OK query name=" + q.Name + " type=" + c.args[1] + " server=" + f.addr + " transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra]", "[dns] OK done queries=1 answered=1"}, c.want...)...)
+			mustContain(t, out, append([]string{"[dns] OK query name=" + q.Name + " type=" + c.args[1] + " nameserver=" + f.addr + " transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra]", "[dns] OK done queries=1 answered=1"}, c.want...)...)
 			if strings.Contains(out, "] ERROR ") || strings.Contains(out, "ERROR") {
 				t.Errorf("a successful answer printed the text ERROR (an ERROR line means a failed check; the response code is lower case for that reason):\n%s", out)
 			}
@@ -329,7 +329,7 @@ func TestDNSNegativeAnswersAreFailedChecksWithTheirReason(t *testing.T) {
 			if ok {
 				t.Errorf("DNSHandler = true for a negative answer:\n%s", out)
 			}
-			mustContain(t, out, append([]string{"[dns] ERROR query failed name=nope.example.com. type=A server=" + f.addr, "[dns] OK done queries=1 answered=0"}, c.want...)...)
+			mustContain(t, out, append([]string{"[dns] ERROR query failed name=nope.example.com. type=A nameserver=" + f.addr, "[dns] OK done queries=1 answered=0"}, c.want...)...)
 		})
 	}
 }
@@ -507,7 +507,7 @@ func TestDNSSkipsServersThatDoNotAnswer(t *testing.T) {
 	if !ok {
 		t.Errorf("DNSHandler = false:\n%s", out)
 	}
-	mustContain(t, out, "server="+live.addr, "skipped="+`"`+dead+" (", "connection refused")
+	mustContain(t, out, "nameserver="+live.addr, "skipped="+`"`+dead+" (", "connection refused")
 	if strings.Contains(out, "ERROR") {
 		t.Errorf("a query that a later server answered printed the text ERROR:\n%s", out)
 	}
@@ -599,7 +599,7 @@ func TestDNSJSONIsOneDocument(t *testing.T) {
 		t.Fatalf("ok=%v module=%q dns_lookup=%s error=%q stats=%d", ok, doc.ModuleName, doc.DNSLookup, doc.Error, len(doc.Stats))
 	}
 	s := doc.Stats[0]
-	if !s.Success || s.Server != f.addr || s.Transport != "udp" || s.RCode != "NOERROR" || len(s.Answers) != 2 || s.Answers[0].Data != "192.0.2.1" || s.Answers[0].TTL != 30 ||
+	if !s.Success || s.Nameserver != f.addr || s.Transport != "udp" || s.RCode != "NOERROR" || len(s.Answers) != 2 || s.Answers[0].Data != "192.0.2.1" || s.Answers[0].TTL != 30 ||
 		s.Authority == nil || len(s.Flags) == 0 || s.Flags[0] != "qr" {
 		t.Errorf("stat = %+v", s)
 	}

@@ -683,7 +683,7 @@ attempts:
 			if a.Err != nil {
 				reason = a.Err.Error()
 			} else {
-				stat.Server, stat.Transport, stat.RetriedOverTCP = a.Server, a.Transport, a.RetriedTCP
+				stat.Nameserver, stat.Transport, stat.RetriedOverTCP = a.Server, a.Transport, a.RetriedTCP
 				stat.RCode, stat.Flags = rcodeName(a.Msg.RCode), headerFlags(a.Msg.Header)
 				stat.Answers, stat.Authority = records(a.Msg.Answers), records(a.Msg.Authorities)
 				stat.Additional = len(records(a.Msg.Additionals))
@@ -729,8 +729,8 @@ attempts:
 // printDNSStat writes one question's lines: the exchange, then its records.
 func printDNSStat(s lib.DNSStats, attempt, iterations int) {
 	where := []any{"name", s.Name, "type", s.Type}
-	if s.Server != "" {
-		where = append(where, "server", s.Server, "transport", s.Transport)
+	if s.Nameserver != "" {
+		where = append(where, "nameserver", s.Nameserver, "transport", s.Transport)
 	}
 	where = append(where, "attempt", fmt.Sprintf("%d/%d", attempt, iterations))
 	if s.RCode != "" {
@@ -740,7 +740,7 @@ func printDNSStat(s lib.DNSStats, attempt, iterations int) {
 	if s.RetriedOverTCP {
 		where = append(where, "retried", "tcp")
 	}
-	if len(s.Skipped) > 0 && s.Server != "" {
+	if len(s.Skipped) > 0 && s.Nameserver != "" {
 		where = append(where, "skipped", strings.Join(s.Skipped, ", "))
 	}
 	where = append(where, "time", time.Duration(s.TimeTaken)*time.Microsecond)

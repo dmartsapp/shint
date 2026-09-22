@@ -238,7 +238,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Field | Meaning |
 |---|---|
 | `name`, `type` | What was asked. |
-| `server`, `transport` | Who answered, and `udp` or `tcp`; `server` is absent when no server answered. |
+| `nameserver`, `transport` | Who answered, and `udp` or `tcp`; `nameserver` is absent when no server answered. |
 | `rcode`, `flags` | The response code (`NOERROR`, `NXDOMAIN`, `SERVFAIL`, ... - capitals here, lower case in the text log) and the header flags set (`qr`, `aa`, `tc`, `rd`, `ra`, `ad`, `cd`). |
 | `success` | Whether the server answered with at least one record of the type asked. |
 | `answers`, `authority` | Lists of `{name, type, ttl, data}` (a TXT record also has `strings`). Empty, never `null`. |

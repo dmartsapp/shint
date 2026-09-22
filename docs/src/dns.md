@@ -46,7 +46,7 @@ Each question prints one `query` line, then one line per record:
 | Field | Meaning |
 |---|---|
 | `name`, `type` | What was asked (the name fully qualified, with its trailing dot). |
-| `server`, `transport` | Who answered and how: `udp` or `tcp`. `retried=tcp` means the UDP answer was truncated and the TCP one is shown. |
+| `nameserver`, `transport` | Who answered and how: `udp` or `tcp`. `retried=tcp` means the UDP answer was truncated and the TCP one is shown. |
 | `rcode` | The response code: `noerror`, `nxdomain` (the name does not exist), `servfail`, `refused`, ... **In lower case on purpose**: `NOERROR` would contain the text `ERROR`, and in shint an `ERROR` line means a failed check. The JSON has the usual capitals. |
 | `flags` | The header flags that were set: `qr` (a response), `aa` (an **authoritative** answer), `tc` (truncated), `rd` (recursion was asked for), `ra` (the server offers recursion), `ad` (the server says it validated DNSSEC), `cd`. |
 | `answers`, `authority`, `additional` | How many records are in each section. Answers and authority are listed; additional (glue, the EDNS option) is only counted. |
@@ -66,10 +66,10 @@ shint dns example.com @1.1.1.1
 ```
 
 ```text
-Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=example.com. type=A server=1.1.1.1:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra] answers=2 authority=0 additional=0 time=16.978ms
+Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=example.com. type=A nameserver=1.1.1.1:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra] answers=2 authority=0 additional=0 time=16.978ms
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK answer name=example.com. type=A ttl=122 data=104.20.23.154
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK answer name=example.com. type=A ttl=122 data=172.66.147.243
-Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=example.com. type=AAAA server=1.1.1.1:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra] answers=2 authority=0 additional=0 time=16.022ms
+Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=example.com. type=AAAA nameserver=1.1.1.1:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra] answers=2 authority=0 additional=0 time=16.022ms
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK answer name=example.com. type=AAAA ttl=126 data=2606:4700:10::6814:179a
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK answer name=example.com. type=AAAA ttl=126 data=2606:4700:10::ac42:93f3
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK done queries=2 answered=2 total_time=33.114792ms
@@ -84,7 +84,7 @@ shint dns gmail.com MX @8.8.8.8
 ```
 
 ```text
-Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=gmail.com. type=MX server=8.8.8.8:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra] answers=5 authority=0 additional=0 time=27.939ms
+Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=gmail.com. type=MX nameserver=8.8.8.8:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra] answers=5 authority=0 additional=0 time=27.939ms
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK answer name=gmail.com. type=MX ttl=1468 data="5 gmail-smtp-in.l.google.com."
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK answer name=gmail.com. type=MX ttl=1468 data="10 alt1.gmail-smtp-in.l.google.com."
 ...
@@ -99,7 +99,7 @@ shint dns 8.8.8.8 @1.1.1.1
 ```
 
 ```text
-Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=8.8.8.8.in-addr.arpa. type=PTR server=1.1.1.1:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra] answers=1 authority=0 additional=0 time=17.894ms
+Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=8.8.8.8.in-addr.arpa. type=PTR nameserver=1.1.1.1:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,rd,ra] answers=1 authority=0 additional=0 time=17.894ms
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK answer name=8.8.8.8.in-addr.arpa. type=PTR ttl=77661 data=dns.google.
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK done queries=1 answered=1 total_time=18.01275ms
 ```
@@ -112,7 +112,7 @@ shint dns example.com SOA @a.iana-servers.net --no-recurse
 
 ```text
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK server resolved host=a.iana-servers.net addresses=2 ips=[2001:500:8f::53,199.43.135.53] time=5.047333ms
-Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=example.com. type=SOA server=[2001:500:8f::53]:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,aa] answers=1 authority=0 additional=0 time=67.352ms
+Mon Sep 21 12:00:10 MDT 2026: [dns] OK query name=example.com. type=SOA nameserver=[2001:500:8f::53]:53 transport=udp attempt=1/1 rcode=noerror flags=[qr,aa] answers=1 authority=0 additional=0 time=67.352ms
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK answer name=example.com. type=SOA ttl=3600 data="ns.icann.org. noc.dns.icann.org. 2026091701 7200 3600 1209600 3600"
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK done queries=1 answered=1 total_time=72.573833ms
 ```
@@ -126,7 +126,7 @@ shint dns nope.example.invalid A @1.1.1.1
 ```
 
 ```text
-Mon Sep 21 12:00:10 MDT 2026: [dns] ERROR query failed name=nope.example.invalid. type=A server=1.1.1.1:53 transport=udp attempt=1/1 rcode=nxdomain flags=[qr,rd,ra] answers=0 authority=1 additional=0 time=18.951ms error="no such domain (NXDOMAIN): nope.example.invalid. does not exist"
+Mon Sep 21 12:00:10 MDT 2026: [dns] ERROR query failed name=nope.example.invalid. type=A nameserver=1.1.1.1:53 transport=udp attempt=1/1 rcode=nxdomain flags=[qr,rd,ra] answers=0 authority=1 additional=0 time=18.951ms error="no such domain (NXDOMAIN): nope.example.invalid. does not exist"
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK authority name=. type=SOA ttl=86400 data="a.root-servers.net. nstld.verisign-grs.com. 2026092101 1800 900 604800 86400"
 Mon Sep 21 12:00:10 MDT 2026: [dns] OK done queries=1 answered=0 total_time=19.116917ms
 ```
@@ -160,7 +160,7 @@ shint dns example.com A @1.1.1.1 --json
     {
       "name": "example.com.",
       "type": "A",
-      "server": "1.1.1.1:53",
+      "nameserver": "1.1.1.1:53",
       "transport": "udp",
       "rcode": "NOERROR",
       "flags": ["qr", "rd", "ra"],
