@@ -9,6 +9,8 @@ nav: Releases and tagging
 
 ## Philosophy
 
+A release is one specific thing: a `vX.Y.Z` tag. An ordinary merge to `main` is not a release by itself - see [Merging a branch to main](tech-ci.md#merging-a-branch-to-main-a-practical-checklist) for that everyday case; everything below is about the tag.
+
 **A tag is a release, and a release is forever.** Pushing a tag of the form `vX.Y.Z`, on a commit that is on `main`, starts the entire release pipeline ([CI/CD workflows](tech-ci.md)): binaries are built and attached to a GitHub Release, and container images are pushed under that version. People download those files and pull those images, so a published tag is treated as **immutable**. It is never moved, deleted or re-pushed. If something is wrong, the answer is a new, higher version.
 
 **Versions describe what users experience**, following [semantic versioning](https://semver.org):

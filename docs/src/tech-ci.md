@@ -97,7 +97,45 @@ The GitHub-managed automation listed [below](#automation-github-manages) is not 
 | `check` | Checks out the code, looks for a [signed local check report](#the-signed-local-check-report), sets up Go, and then runs one of two things. **With a valid report**: installs `govulncheck` and runs **`make check-quick`**, about a minute. **Without one**: installs `golangci-lint` v2.13.2 (the version `make check` insists on), `govulncheck` and `actionlint` with `go install`, and runs the whole **`make check`**, the command you run locally ([Testing](tech-testing.md#running-the-tests)), about three and a half minutes. Neither runs the live smoke test, which needs real hosts. |
 | `report-failure` | If `check` itself failed, files an issue "CI Failure: make check" (see [Failure issues](#failure-issues)). |
 
-Because it runs *after* the merge, a failure does not stop the merge; it opens an issue. That fits the process: `main` is only updated on release day, and the release is tagged after Check has passed ([Releases and tagging](tech-release.md#release-checklist)).
+Because it runs *after* the merge, a failure does not stop the merge - it opens an issue rather than blocking anything (see [Failure issues](#failure-issues)). Merging to main happens on its own timeline (see the checklist below); a release is a separate, later step: a `vX.Y.Z` tag pushed once `main` already has the release commit ([Releases and tagging](tech-release.md#release-checklist)).
+
+### Merging a branch to main: a practical checklist
+
+A plain merge to main (no tag) is the everyday case: a branch's fixes are ready and get folded in. It is different from a release, which is a `vX.Y.Z` tag pushed *afterwards* (see [Releases and tagging](tech-release.md)) - merging to main by itself publishes nothing and builds nothing. It only triggers `Check`.
+
+**Before you merge**, on the branch, at the commit that is about to become `main`'s tip:
+
+1. **`make check` passes** - or better, **`make attest`**, which runs `make check` and then signs and attaches a report, so the push gets the quick path below instead of the full one (see [The signed local check report](#the-signed-local-check-report)).
+2. **The branch is caught up with `origin/main`** (`git fetch origin && git merge --ff-only origin/main`), so the merge into `main` really can be a fast-forward - never a rebase of pushed history, and never a merge commit that could smuggle in something CI has not checked. Whatever state the branch is in is exactly what lands on `main`.
+3. **No attribution trailers** in the commits (shint's own convention; `make release-check` enforces it on release day, but the habit starts here).
+
+**The merge:**
+
+```bash
+git switch your-branch
+git fetch origin && git merge --ff-only origin/main   # only if main moved since you started
+make attest                                            # optional but recommended: signs + attaches the report
+git switch main
+git merge --ff-only your-branch
+git push origin main
+```
+
+**What that push fires:**
+
+| The push | Fires |
+|---|---|
+| Touches only `.github/**` | Nothing (see [the trigger rule](#the-workflow-trigger-rule)) |
+| Touches anything else | `Check` - `make check-quick` (about a minute) if the pushed commit carries a valid signed report, otherwise the whole `make check` (about three and a half minutes) |
+| ...plus, separately, a `vX.Y.Z` tag pushed on a commit that is now on `main` | The five release workflows, `Notify Slack` and `README Reconcile` - a different event; see [Releases and tagging](tech-release.md) |
+
+A plain push to `main` never builds a binary, never publishes an image or a release, and never touches the README by itself - all of that waits for the tag.
+
+**Watching it:**
+
+```bash
+gh run list --branch main --limit 3
+gh run watch $(gh run list --branch main --limit 1 --json databaseId --jq '.[0].databaseId')
+```
 
 ### The signed local check report
 
