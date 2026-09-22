@@ -38,7 +38,7 @@ Tags up to `v2.2.6` predate the current process, and the list contains a run of 
 
 `main` always contains the latest release. A repository ruleset (`protect_mother`) forbids deleting it and forbids non-fast-forward pushes to it, so its history is linear: a release is merged with `--ff-only`, and the tag, the release branch tip and `main` all end up on the same commit. No other branch is restricted.
 
-**One release branch per release: `release/vX.Y.Z`.** It is created from `main` when the release's sprint starts (for example `release/v4.1.0`), pushed at once, and all of the sprint's work lands on it, ending with the release commit (version bump, changelog). Never name a branch like a tag: a branch and a tag both called `v4.0.1` make `git` warn that the name is ambiguous. The older version-named branches on the remote (`v3`, `v3.1`, `v4.0.0`, `v4.0.1`) are history and are left alone.
+**One release branch per release: `release/vX.Y.Z`.** It is created from `main` when the release's sprint starts (for example `release/v4.3.0`), pushed at once, and all of the sprint's work lands on it, ending with the release commit (version bump, changelog). Never name a branch like a tag: a branch and a tag both called `v4.0.1` make `git` warn that the name is ambiguous. The older version-named branches on the remote (`v3`, `v3.1`, `v4.0.0`, `v4.0.1`) are history and are left alone.
 
 **Cadence: one release every two weeks, one at a time.** A sprint is two weeks, Monday to Sunday, and the next release's branch is not started until the previous release has shipped. The roadmap in `main`'s README lists the planned releases and their sprint windows; it is kept up to date on `main` (see below), so it never disagrees with what shipped.
 
@@ -167,6 +167,6 @@ make readme-reconcile TAG=v4.2.1 PUSH=1   # ... or in one go: push it and open t
 
 ## The module path
 
-Since v4.1.0 `go.mod` declares `module github.com/dmartsapp/shint/v4`. Go requires the major version in the module path for v2 and above, so before that - with the path `github.com/dmartsapp/shint` and v4 tags - `go install github.com/dmartsapp/shint@v4.x` could never work. From v4.1.0, `go install github.com/dmartsapp/shint/v4@latest` (or `@v4.1.0`) does. The older tags, v4.0.0 to v4.0.4, keep the old path: a published tag is never changed, so they cannot be `go install`ed and never will be.
+Since v4.2.0 `go.mod` declares `module github.com/dmartsapp/shint/v4`. Go requires the major version in the module path for v2 and above, so before that - with the path `github.com/dmartsapp/shint` and v4 tags - `go install github.com/dmartsapp/shint@v4.x` could never work. From v4.2.0, `go install github.com/dmartsapp/shint/v4@latest` (or `@v4.2.0`) does. The older tags, v4.0.0 to v4.0.6, keep the old path: a published tag is never changed, so they cannot be `go install`ed and never will be.
 
 Changing the path was a breaking change for anyone importing the packages (`lib` and `lib/handlers`). Nobody does - shint is distributed as binaries and images - so it was judged safe (the decision is on the issue that tracked it). Every import inside the repository uses the new path. The next major version would need the next suffix, `/v5`.

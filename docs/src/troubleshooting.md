@@ -50,7 +50,7 @@ shint telnet google.com 443 -4
 
 `-4` resolves and checks only IPv4 addresses (`-6` does the reverse); see [IPv4 only, or IPv6 only](usage.md#ipv4-only-or-ipv6-only). shint also recognises these two errors on an IPv6 address and adds a hint to the error line - `(this system cannot use IPv6; use -4 to check IPv4 only)` - so you do not have to decode the errno.
 
-Before v4.1.0 there was no flag: the workaround was to pass the IPv4 address itself instead of the name.
+Before v4.2.0 there was no flag: the workaround was to pass the IPv4 address itself instead of the name.
 
 ## UDP says `open|filtered`
 

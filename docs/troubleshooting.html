@@ -49,7 +49,7 @@
 <p>That is real information about the machine, not a fault in the host you are checking. When IPv4 is all you care about, ask for exactly that:</p>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> telnet google.com 443 -4</code></pre></div>
 <p><code>-4</code> resolves and checks only IPv4 addresses (<code>-6</code> does the reverse); see <a href="usage.html#ipv4-only-or-ipv6-only">IPv4 only, or IPv6 only</a>. shint also recognises these two errors on an IPv6 address and adds a hint to the error line - <code>(this system cannot use IPv6; use -4 to check IPv4 only)</code> - so you do not have to decode the errno.</p>
-<p>Before v4.1.0 there was no flag: the workaround was to pass the IPv4 address itself instead of the name.</p>
+<p>Before v4.2.0 there was no flag: the workaround was to pass the IPv4 address itself instead of the name.</p>
 <h2 id="udp-says-open-filtered">UDP says <code>open|filtered</code><a class="anchor" href="#udp-says-open-filtered" aria-label="Link to this section">#</a></h2>
 <p>UDP gives no acknowledgement, so silence is ambiguous: the service may simply not reply to input it does not understand, or a firewall may be dropping the packet. Send a payload the service understands with <code>--data</code>. <code>closed</code> (the host explicitly said "port unreachable") is the only definite negative.</p>
 <h2 id="certificate-is-not-trusted-x509-certificate-signed-by-unknown-authority">"certificate is not trusted" / "x509: certificate signed by unknown authority"<a class="anchor" href="#certificate-is-not-trusted-x509-certificate-signed-by-unknown-authority" aria-label="Link to this section">#</a></h2>

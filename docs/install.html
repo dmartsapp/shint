@@ -54,7 +54,7 @@
 <p>A release binary prints the tag, the commit it was built from and the build time; a build from source prints just the version number:</p>
 <div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code>v4.0.2/1c4421137f2609ad420af60415c8e6fa1756da46/2026-09-20T05:34:40+0000</code></pre></div>
 <h3 id="verify-your-download">Verify your download<a class="anchor" href="#verify-your-download" aria-label="Link to this section">#</a></h3>
-<p>From v4.1.0 every binary comes with two ways to check it. Earlier releases have neither.</p>
+<p>From v4.2.0 every binary comes with two ways to check it. Earlier releases have neither.</p>
 <p><strong>A checksum</strong> catches a damaged or incomplete download. Each binary has a <code>.sha256</code> file next to it on the releases page. Download both into the same folder, <strong>keeping their original names</strong> (the checksum file names the file it belongs to), and check:</p>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">curl</span> <span class="tok-flag">-LO</span> https://github.com/dmartsapp/shint/releases/latest/download/shint.darwin.arm64
 <span class="tok-cmd">curl</span> <span class="tok-flag">-LO</span> https://github.com/dmartsapp/shint/releases/latest/download/shint.darwin.arm64.sha256
@@ -85,9 +85,9 @@
 <span class="tok-cmd">go</span> build <span class="tok-flag">-o</span> shint .          <span class="tok-com"># a binary for this machine</span>
 <span class="tok-cmd">make</span> linux-amd64             <span class="tok-com"># or any other target, into ./bin</span>
 <span class="tok-cmd">make</span> all-platforms           <span class="tok-com"># every release target</span></code></pre></div>
-<p>From v4.1.0 you can also let Go fetch and build it for you:</p>
+<p>From v4.2.0 you can also let Go fetch and build it for you:</p>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">go</span> install github.com/dmartsapp/shint/v4@latest       <span class="tok-com"># puts `shint` in $(go env GOPATH)/bin</span></code></pre></div>
-<div class="callout callout-note"><p class="callout-title">Releases before v4.1.0</p><p>The module path gained its <code>/v4</code> suffix in v4.1.0. Earlier tags (<code>v4.0.4</code> and older) were published without it, and a published tag is never changed, so <code>go install</code> cannot fetch them: for those, use the release binary or build from a clone.</p></div>
+<div class="callout callout-note"><p class="callout-title">Releases before v4.2.0</p><p>The module path gained its <code>/v4</code> suffix in v4.2.0. Earlier tags (<code>v4.0.6</code> and older) were published without it, and a published tag is never changed, so <code>go install</code> cannot fetch them: for those, use the release binary or build from a clone.</p></div>
 <h2 id="shell-completion">Shell completion<a class="anchor" href="#shell-completion" aria-label="Link to this section">#</a></h2>
 <p>shint can generate completion scripts for your shell:</p>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">source</span> &lt;(shint completion bash)                              <span class="tok-com"># bash</span>

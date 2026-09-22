@@ -65,7 +65,7 @@ v4.0.2/1c4421137f2609ad420af60415c8e6fa1756da46/2026-09-20T05:34:40+0000
 
 ### Verify your download
 
-From v4.1.0 every binary comes with two ways to check it. Earlier releases have neither.
+From v4.2.0 every binary comes with two ways to check it. Earlier releases have neither.
 
 **A checksum** catches a damaged or incomplete download. Each binary has a `.sha256` file next to it on the releases page. Download both into the same folder, **keeping their original names** (the checksum file names the file it belongs to), and check:
 
@@ -136,14 +136,14 @@ make linux-amd64             # or any other target, into ./bin
 make all-platforms           # every release target
 ```
 
-From v4.1.0 you can also let Go fetch and build it for you:
+From v4.2.0 you can also let Go fetch and build it for you:
 
 ```bash
 go install github.com/dmartsapp/shint/v4@latest       # puts `shint` in $(go env GOPATH)/bin
 ```
 
-:::note Releases before v4.1.0
-The module path gained its `/v4` suffix in v4.1.0. Earlier tags (`v4.0.4` and older) were published without it, and a published tag is never changed, so `go install` cannot fetch them: for those, use the release binary or build from a clone.
+:::note Releases before v4.2.0
+The module path gained its `/v4` suffix in v4.2.0. Earlier tags (`v4.0.6` and older) were published without it, and a published tag is never changed, so `go install` cannot fetch them: for those, use the release binary or build from a clone.
 :::
 
 ## Shell completion
