@@ -52,7 +52,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `rdns` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `reverse lookup`, `reverse lookup failed`, `done` |
 | `dns` | `server resolved`, `dns resolution failed`, `query`, `query failed`, `answer`, `authority`, `no server to ask`, `done` |
 | `cidr` | `subnet`, `done` |
-| `ip` | `interface`, `address`, `failed`, `done` |
+| `ip` | `interface`, `failed`, `done` |
 | `listen-tcp` | `listening`, `connection accepted`, `data received`, `connection closed`, `done` |
 | `listen-udp` | `listening`, `packet received`, `done` |
 | `listen-http` | `listening`, `request`, `request rejected`, `request incomplete`, `done` |
@@ -251,8 +251,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 
 | Field | Meaning |
 |---|---|
-| `name`, `index`, `state`, `flags`, `mtu`, `mac` | The interface. `state` is `up` or `down`; `flags` a list of words; `mac` is left out when the interface has none. |
-| `addresses` | A list - empty, never `null` - of `{address, prefix, prefix_length, family, kind}`, one per address (after `-4`/`-6`). |
+| `name`, `state`, `mtu`, `mac`, `flags` | The interface. `state` is `up` or `down`; `flags` a list of words; `mac` is left out when the interface has none. |
+| `ipv4`, `ipv6` | Its addresses of that family as plain strings with their prefix length (`"192.168.1.20/24"`): lists that are empty, never `null`, when it has none (or after `-4`/`-6`). |
 | `error` | Present only when the addresses of this interface could not be read. |
 
 ## Listener events

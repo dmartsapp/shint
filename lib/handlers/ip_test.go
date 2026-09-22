@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"net/netip"
 	"strings"
 	"testing"
 
@@ -39,7 +40,7 @@ var sampleInterfaces = []ifaceInfo{
 	{Name: "utun3", Index: 20, MTU: 1380, Flags: net.FlagPointToPoint | net.FlagMulticast},
 }
 
-func TestIPListsEveryInterfaceAndAddress(t *testing.T) {
+func TestIPShowsEverythingAboutAnInterfaceOnOneLine(t *testing.T) {
 	fakeInterfaces(t, sampleInterfaces, nil)
 	jsonOut := false
 	var ok bool
@@ -48,21 +49,21 @@ func TestIPListsEveryInterfaceAndAddress(t *testing.T) {
 		t.Errorf("IPHandler = false; output:\n%s", out)
 	}
 	for _, want := range []string{
-		"[ip] OK interface name=lo0 index=1 state=up flags=[loopback,multicast]",
-		"mtu=16384 addresses=2",
-		"name=en0 index=15 state=up flags=[broadcast,multicast] mtu=1500 mac=aa:bb:cc:dd:ee:ff addresses=4",
-		"name=utun3 index=20 state=down flags=[pointtopoint,multicast] mtu=1380 addresses=0",
-		"address interface=lo0 address=127.0.0.1 prefix=127.0.0.1/8 family=ipv4 kind=loopback",
-		"address interface=lo0 address=::1 prefix=::1/128 family=ipv6 kind=loopback",
-		"address interface=en0 address=192.168.1.20 prefix=192.168.1.20/24 family=ipv4 kind=private",
-		"address=fe80::1c2d:3e4f:5a6b:7c8d prefix=fe80::1c2d:3e4f:5a6b:7c8d/64 family=ipv6 kind=link-local",
-		"address=2001:db8::20 prefix=2001:db8::20/64 family=ipv6 kind=documentation",
-		"address=203.0.113.9 prefix=203.0.113.9/32 family=ipv4 kind=documentation",
+		"[ip] OK interface name=lo0 state=up ipv4=[127.0.0.1/8] ipv6=[::1/128] mtu=16384 flags=[loopback,multicast]\n",
+		"[ip] OK interface name=en0 state=up ipv4=[192.168.1.20/24,203.0.113.9/32] ipv6=[fe80::1c2d:3e4f:5a6b:7c8d/64,2001:db8::20/64] mac=aa:bb:cc:dd:ee:ff mtu=1500 flags=[broadcast,multicast]\n",
+		"[ip] OK interface name=utun3 state=down mtu=1380 flags=[pointtopoint,multicast]\n", // no address: no ipv4 or ipv6 field
 		"[ip] OK done interfaces=3 addresses=6",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
+	}
+	// one line per interface, and nothing else but the summary: no separate address lines
+	if lines := strings.Count(out, "\n"); lines != 4 {
+		t.Errorf("want 4 lines (3 interfaces and the summary), got %d:\n%s", lines, out)
+	}
+	if strings.Contains(out, "[ip] OK address ") || strings.Contains(out, "index=") || strings.Contains(out, "kind=") {
+		t.Errorf("the old layout is still there:\n%s", out)
 	}
 	if strings.Contains(out, "ERROR") {
 		t.Errorf("a clean listing printed an ERROR line:\n%s", out)
@@ -100,12 +101,12 @@ func TestIPFamilyChoiceFiltersAddresses(t *testing.T) {
 	useFamily(t, true, false)
 	jsonOut := false
 	out := captureStdout(t, func() { IPHandler(&jsonOut, "") })
-	if strings.Contains(out, "family=ipv6") || !strings.Contains(out, "family=ipv4") || !strings.Contains(out, "done interfaces=3 addresses=3") {
+	if strings.Contains(out, "ipv6=") || !strings.Contains(out, "ipv4=[192.168.1.20/24,203.0.113.9/32]") || !strings.Contains(out, "done interfaces=3 addresses=3") {
 		t.Errorf("-4 should list IPv4 addresses only (3):\n%s", out)
 	}
 	useFamily(t, false, true)
 	out = captureStdout(t, func() { IPHandler(&jsonOut, "") })
-	if strings.Contains(out, "family=ipv4") || !strings.Contains(out, "done interfaces=3 addresses=3") {
+	if strings.Contains(out, "ipv4=") || !strings.Contains(out, "ipv6=[::1/128]") || !strings.Contains(out, "done interfaces=3 addresses=3") {
 		t.Errorf("-6 should list IPv6 addresses only (3):\n%s", out)
 	}
 }
@@ -131,12 +132,53 @@ func TestIPJSONIsOneDocumentWithTheUsualSkeleton(t *testing.T) {
 		t.Errorf("module=%q dns_lookup=%s error=%q stats=%d", doc.ModuleName, doc.DNSLookup, doc.Error, len(doc.Stats))
 	}
 	en0 := doc.Stats[1]
-	if en0.Name != "en0" || en0.MAC != "aa:bb:cc:dd:ee:ff" || en0.State != "up" || len(en0.Addresses) != 4 || en0.Addresses[0].PrefixLength != 24 {
+	if en0.Name != "en0" || en0.MAC != "aa:bb:cc:dd:ee:ff" || en0.State != "up" || en0.MTU != 1500 ||
+		strings.Join(en0.IPv4, " ") != "192.168.1.20/24 203.0.113.9/32" || strings.Join(en0.IPv6, " ") != "fe80::1c2d:3e4f:5a6b:7c8d/64 2001:db8::20/64" {
 		t.Errorf("en0 = %+v", en0)
 	}
-	if doc.Stats[2].Addresses == nil || len(doc.Stats[2].Addresses) != 0 {
-		t.Errorf("an interface with no addresses must have an empty list, not null: %+v", doc.Stats[2])
+	if doc.Stats[2].IPv4 == nil || doc.Stats[2].IPv6 == nil || len(doc.Stats[2].IPv4)+len(doc.Stats[2].IPv6) != 0 {
+		t.Errorf("an interface with no addresses must have empty lists, not null: %+v", doc.Stats[2])
 	}
+}
+
+// Everything about an interface is in its own entry: the JSON has one object per interface,
+// and an interface's addresses are plain strings in it, with nothing nested below them.
+func TestIPJSONEntryIsFlat(t *testing.T) {
+	fakeInterfaces(t, sampleInterfaces, nil)
+	jsonOut := true
+	out := captureStdout(t, func() { IPHandler(&jsonOut, "en0") })
+	var doc struct {
+		Stats []map[string]any `json:"stats"`
+	}
+	if err := json.Unmarshal([]byte(out), &doc); err != nil || len(doc.Stats) != 1 {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	keys := make([]string, 0, len(doc.Stats[0]))
+	for k, v := range doc.Stats[0] {
+		keys = append(keys, k)
+		if list, ok := v.([]any); ok {
+			for _, item := range list {
+				if _, isString := item.(string); !isString {
+					t.Errorf("%s holds a %T, want strings only", k, item)
+				}
+			}
+		}
+	}
+	if want := "flags ipv4 ipv6 mac mtu name state"; strings.Join(sortedStrings(keys), " ") != want {
+		t.Errorf("keys = %v, want %s", sortedStrings(keys), want)
+	}
+}
+
+func sortedStrings(in []string) []string {
+	out := append([]string{}, in...)
+	for i := range out {
+		for j := i + 1; j < len(out); j++ {
+			if out[j] < out[i] {
+				out[i], out[j] = out[j], out[i]
+			}
+		}
+	}
+	return out
 }
 
 func TestIPJSONFailureIsStillOneDocument(t *testing.T) {
@@ -191,7 +233,7 @@ func TestIPTableErrorAndEmptyTable(t *testing.T) {
 }
 
 // The real interface table, once: whatever machine this runs on has at least one
-// interface, and every address it reports is a valid prefix with a known kind.
+// interface, and every address it reports is a valid prefix of the family it is listed under.
 func TestIPRealInterfaces(t *testing.T) {
 	jsonOut := true
 	var ok bool
@@ -209,9 +251,14 @@ func TestIPRealInterfaces(t *testing.T) {
 		t.Errorf("IPHandler = false on the real interface table:\n%s", out)
 	}
 	for _, st := range doc.Stats {
-		for _, a := range st.Addresses {
-			if a.Kind == "" || a.PrefixLength <= 0 || !strings.Contains(a.Prefix, "/") {
-				t.Errorf("interface %s: odd address %+v", st.Name, a)
+		for _, a := range st.IPv4 {
+			if p, err := netip.ParsePrefix(a); err != nil || !p.Addr().Is4() {
+				t.Errorf("interface %s: %q is not an IPv4 prefix (%v)", st.Name, a, err)
+			}
+		}
+		for _, a := range st.IPv6 {
+			if p, err := netip.ParsePrefix(a); err != nil || !p.Addr().Is6() {
+				t.Errorf("interface %s: %q is not an IPv6 prefix (%v)", st.Name, a, err)
 			}
 		}
 	}

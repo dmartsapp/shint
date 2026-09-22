@@ -282,32 +282,23 @@ type RDNSStats struct {
 	Error     string   `json:"error,omitempty"`
 }
 
-// IPStats is one network interface listed by "ip". State is "up" or "down"
-// (the interface's own administrative flag, not whether it has a carrier);
-// Flags are the operating system's flag names (broadcast, multicast, loopback,
-// point-to-point, running); MAC is empty for interfaces that have none
-// (loopback, tunnels). Error is set only when the addresses of an interface
-// could not be read.
+// IPStats is one network interface listed by "ip", everything about it in this one
+// entry. State is "up" or "down" (the interface's own administrative flag, not whether
+// it has a carrier); IPv4 and IPv6 are its addresses in CIDR notation as configured
+// ("192.168.1.20/24"), each an empty list - never null - when it has none or when -4/-6
+// leaves that family out; MAC is empty for interfaces that have none (loopback,
+// tunnels); Flags are the operating system's flag names (broadcast, multicast,
+// loopback, pointtopoint, running). Error is set only when the addresses of an
+// interface could not be read.
 type IPStats struct {
-	Name      string      `json:"name"`
-	Index     int         `json:"index"`
-	State     string      `json:"state"`
-	Flags     []string    `json:"flags"`
-	MTU       int         `json:"mtu"`
-	MAC       string      `json:"mac,omitempty"`
-	Addresses []IPAddress `json:"addresses"`
-	Error     string      `json:"error,omitempty"`
-}
-
-// IPAddress is one address on an interface: Prefix is the address with its
-// prefix length as configured ("192.168.1.20/24"), Kind what the address is
-// for (loopback, private, link-local, global, ...; see "cidr").
-type IPAddress struct {
-	Address      string `json:"address"`
-	Prefix       string `json:"prefix"`
-	PrefixLength int    `json:"prefix_length"`
-	Family       string `json:"family"`
-	Kind         string `json:"kind"`
+	Name  string   `json:"name"`
+	State string   `json:"state"`
+	IPv4  []string `json:"ipv4"`
+	IPv6  []string `json:"ipv6"`
+	MAC   string   `json:"mac,omitempty"`
+	MTU   int      `json:"mtu"`
+	Flags []string `json:"flags"`
+	Error string   `json:"error,omitempty"`
 }
 
 // DNSStats is one question asked by "dns": Name and Type are what was asked,

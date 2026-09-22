@@ -58,7 +58,7 @@ func flagNames(f net.Flags) []string {
 // -4/-6 family choice allows are listed. An address the net package returns in
 // a form that is not an IP network is skipped: there is nothing to say about it.
 func interfaceStats(info ifaceInfo) lib.IPStats {
-	stat := lib.IPStats{Name: info.Name, Index: info.Index, State: "down", Flags: flagNames(info.Flags), MTU: info.MTU, MAC: info.MAC, Addresses: []lib.IPAddress{}}
+	stat := lib.IPStats{Name: info.Name, State: "down", IPv4: []string{}, IPv6: []string{}, Flags: flagNames(info.Flags), MTU: info.MTU, MAC: info.MAC}
 	if info.Flags&net.FlagUp != 0 {
 		stat.State = "up"
 	}
@@ -82,23 +82,19 @@ func interfaceStats(info ifaceInfo) lib.IPStats {
 		if addr.Is4() && bits == 128 { // an IPv4 address carried with a 16-byte mask
 			ones -= 96
 		}
-		family := "ipv6"
+		cidr := fmt.Sprintf("%s/%d", addr, ones)
 		if addr.Is4() {
-			family = "ipv4"
+			stat.IPv4 = append(stat.IPv4, cidr)
+		} else {
+			stat.IPv6 = append(stat.IPv6, cidr)
 		}
-		stat.Addresses = append(stat.Addresses, lib.IPAddress{
-			Address:      addr.String(),
-			Prefix:       fmt.Sprintf("%s/%d", addr, ones),
-			PrefixLength: ones,
-			Family:       family,
-			Kind:         addressKind(addr),
-		})
 	}
 	return stat
 }
 
 // IPHandler lists this machine's network interfaces - or, given a name, that
-// one - with their state, MTU, hardware address and every address. It reads the
+// one - with their state, addresses, hardware address and MTU: one line, or one
+// JSON entry, per interface. It reads the
 // operating system's interface table and sends nothing, so it needs no
 // privileges and no network.
 //
@@ -132,7 +128,7 @@ func IPHandler(jsonoutput *bool, name string) (ok bool) {
 	addresses, unreadable := 0, 0
 	for _, info := range chosen {
 		st := interfaceStats(info)
-		addresses += len(st.Addresses)
+		addresses += len(st.IPv4) + len(st.IPv6)
 		if st.Error != "" {
 			unreadable++
 		}
@@ -163,18 +159,22 @@ func IPHandler(jsonoutput *bool, name string) (ok bool) {
 		return false
 	}
 	for _, st := range stats {
-		fields := []any{"name", st.Name, "index", st.Index, "state", st.State, "flags", "[" + strings.Join(st.Flags, ",") + "]", "mtu", st.MTU}
+		// everything about the interface on one line; a family it has no address in is left out
+		fields := []any{"name", st.Name, "state", st.State}
+		if len(st.IPv4) > 0 {
+			fields = append(fields, "ipv4", "["+strings.Join(st.IPv4, ",")+"]")
+		}
+		if len(st.IPv6) > 0 {
+			fields = append(fields, "ipv6", "["+strings.Join(st.IPv6, ",")+"]")
+		}
 		if st.MAC != "" {
 			fields = append(fields, "mac", st.MAC)
 		}
-		fields = append(fields, "addresses", len(st.Addresses))
+		fields = append(fields, "mtu", st.MTU, "flags", "["+strings.Join(st.Flags, ",")+"]")
 		if st.Error != "" {
 			fields = append(fields, "error", st.Error)
 		}
 		fmt.Println(lib.LogWithTimestamp(ipModule, "interface "+lib.Fields(fields...), st.Error != ""))
-		for _, a := range st.Addresses {
-			fmt.Println(lib.LogWithTimestamp(ipModule, "address "+lib.Fields("interface", st.Name, "address", a.Address, "prefix", a.Prefix, "family", a.Family, "kind", a.Kind), false))
-		}
 	}
 	fmt.Println(lib.LogWithTimestamp(ipModule, "done "+lib.Fields("interfaces", len(stats), "addresses", addresses, "total_time", time.Since(start)), false))
 	return failure == ""

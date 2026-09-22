@@ -98,8 +98,12 @@ add("E.no-authoritative-in-json-for-an-address", ["telnet", "127.0.0.1", E, "--d
 add("M.ip", ["ip"], rc=0, contains=["[ip] OK interface name=", "[ip] OK done interfaces="], group="M ip", max=10)
 add("M.ip-json", ["ip", "--json"], rc=0, group="M ip", max=10,
     check=lambda r: None if json.loads(r["out"])["stats"] else "the JSON lists no interfaces")
-add("M.ip-4-lists-no-ipv6", ["ip", "-4"], rc=0, absent=["family=ipv6"], group="M ip", max=10)
-add("M.ip-6-lists-no-ipv4", ["ip", "-6"], rc=0, absent=["family=ipv4"], group="M ip", max=10)
+add("M.ip-one-line-per-interface", ["ip"], rc=0, group="M ip", max=10, absent=["[ip] OK address ", "kind=", "index="],
+    check=lambda r: None if all(l.split("] ", 1)[1].startswith(("OK interface name=", "OK done interfaces=")) for l in r["out"].splitlines() if "[ip] " in l) else "a line that is neither an interface nor the summary")
+add("M.ip-json-is-flat", ["ip", "--json"], rc=0, group="M ip", max=10,
+    check=lambda r: None if all(set(s) <= {"name", "state", "ipv4", "ipv6", "mac", "mtu", "flags", "error"} and all(isinstance(a, str) for a in s["ipv4"] + s["ipv6"]) for s in json.loads(r["out"])["stats"]) else "an interface entry has a key or a nested value that it should not")
+add("M.ip-4-lists-no-ipv6", ["ip", "-4"], rc=0, absent=["ipv6="], group="M ip", max=10)
+add("M.ip-6-lists-no-ipv4", ["ip", "-6"], rc=0, absent=["ipv4="], group="M ip", max=10)
 add("M.ip-unknown-interface", ["ip", "no-such-interface0"], rc=1, contains=["no such interface no-such-interface0"], group="M ip", max=10)
 add("M.ip-unknown-interface-json", ["ip", "no-such-interface0", "--json"], rc=1, group="M ip", max=10,
     check=lambda r: None if "no such interface" in json.loads(r["out"])["error"] else "the JSON does not say why")
