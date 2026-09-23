@@ -1,0 +1,62 @@
+{
+  "commit": "87e0f784195b709e22aa260523a311d50d5871cc",
+  "created": "2026-09-23T21:51:07Z",
+  "host": {
+    "arch": "arm64",
+    "os": "darwin"
+  },
+  "log_sha256": "778b41a41c86e0b7558b798d768f1800adf0e592eb9a2af8e2dc7c528fa4ca3d",
+  "result": "pass",
+  "schema": 1,
+  "stages": [
+    {
+      "name": "gofmt",
+      "ok": true
+    },
+    {
+      "name": "go vet",
+      "ok": true
+    },
+    {
+      "detail": "3 packages ok",
+      "name": "go test -race",
+      "ok": true
+    },
+    {
+      "detail": "447 cases: 444 passed, 3 known issues, 0 skipped, 0 failed",
+      "name": "black-box battery",
+      "ok": true
+    },
+    {
+      "name": "golangci-lint",
+      "ok": true
+    },
+    {
+      "detail": "No vulnerabilities found",
+      "name": "govulncheck",
+      "ok": true
+    },
+    {
+      "name": "documentation",
+      "ok": true
+    },
+    {
+      "name": "workflows",
+      "ok": true
+    }
+  ],
+  "tools": {
+    "actionlint": "v1.7.12",
+    "go": "go version go1.27.1 darwin/arm64",
+    "golangci-lint": "golangci-lint has version 2.13.2 built with go1.27.1 from (unknown, modified: ?, mod sum: \"h1:bCyq3E",
+    "govulncheck": "Go: go1.27.1",
+    "python": "python 3.9.6"
+  },
+  "tree": "d1727848ddab2620c0122a658915c798ec7a2faf"
+}
+-----BEGIN SSH SIGNATURE-----
+U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgclolOqjbr3nEn+LK4YGC5PugC6
+sitc51ESQN1wxjCp4AAAALc2hpbnQtY2hlY2sAAAAAAAAABnNoYTUxMgAAAFMAAAALc3No
+LWVkMjU1MTkAAABAYIM/l9KyGh98TdBuITUe77r1Zpdymt6KU40t64R9C7t1RxEElGyxXw
+w9UdUlzSm0+ngzjsys15qLQYzcxNUlBg==
+-----END SSH SIGNATURE-----
