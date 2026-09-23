@@ -23,11 +23,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # cache: false - golangci-lint-action needs Go on PATH but keeps its own,
+      # separate cache (its "golangci-lint.cache-..." key below); the Go module
+      # and build cache below is what golang/govulncheck-action@v1 restores a
+      # second time internally, and a second restore into the paths this one
+      # already populated collided (thousands of `tar: ... Cannot open: File
+      # exists` lines, every release - same bug as vulncheck.yaml, found by
+      # reading this job's own log on the v4.2.1 tag run). This step still sets
+      # up the exact go.mod-pinned Go version for golangci-lint; it just leaves
+      # the module/build cache for govulncheck-action's own restore to fill.
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           check-latest: true
+          cache: false
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7

@@ -4,6 +4,10 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.2.2 - unreleased
+
+- **The other three release workflows had the same Go-module-cache collision v4.2.1 fixed in Vulnerability Check.** `build.yaml`, `docker-hub.yaml` and `ghcr.yaml` each run an explicit `Set up Go` step (needed by `golangci-lint-action`, which does not set up its own) immediately before `golang/govulncheck-action@v1`, which restores the same Go module and build cache a second time internally; the second restore collided with the first, the same `tar: ... Cannot open: File exists` noise as before. Confirmed against the real logs of all three workflows' runs on the v4.2.1 tag - the fix in v4.2.1 covered only the standalone Vulnerability Check workflow, not these. Unlike that fix, the explicit step cannot simply be removed here: `golangci-lint` still needs it for the exact `go.mod`-pinned Go version. Instead it now sets `cache: false`, so only `govulncheck-action`'s own restore touches the module/build cache; `golangci-lint-action` keeps its own separate cache (unaffected) and resolves any dependency not already on the runner as it would on any cache miss.
+
 ## v4.2.1 - 2026-09-23
 
 - **The Vulnerability Check workflow no longer fights itself over the Go module cache.** It had its own `Set up Go` step and `golang/govulncheck-action@v1` runs a second, separate one internally; both tried to restore the Go module and build cache into the same paths, the second collided with the first (thousands of `tar: ... Cannot open: File exists` lines in every release's log) and fell back to a cold install every time. The scan itself always ran for real and the report was genuine - this was wasted time and alarming-looking noise, not a false pass - but a passing run reads like a broken one when it is red with 27,000 lines of tar errors. Removed the redundant step; confirmed against a real run's log (the v4.2.0 tag). Needs a real tag push to confirm the fix itself, since workflows only run on tags.
