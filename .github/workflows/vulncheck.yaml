@@ -23,11 +23,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          check-latest: true
+      # No explicit "Set up Go" here: golang/govulncheck-action@v1 runs its own
+      # actions/setup-go internally (confirmed in a real run's log - a second,
+      # separate setup-go download and cache-restore). Adding another one here
+      # used to mean two independent cache restores into the same Go module and
+      # build cache paths; the second collided with the first (thousands of
+      # `tar: ... Cannot open: File exists` lines) and fell back to "Cache is not
+      # found" every time, so every release reinstalled govulncheck from
+      # scratch. The scan itself still ran and was still correct - the report
+      # file was real - but it never got the caching it was supposed to, and the
+      # noise made a passing run look broken. Confirmed against the real log of
+      # the v4.2.0 tag's run (35661949691); this fix still needs a real tag
+      # push to confirm, since workflows only truly run on tags.
 
       - name: Run vulnerability check
         id: govulncheck
