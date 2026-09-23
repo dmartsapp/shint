@@ -1,4 +1,10 @@
 ---
+
+:::html
+<meta name="google-site-verification" content="f8HZndbzPlmiY4bsjViQCpBxHRTPAp1wtew-RUsIJws" />
+:::
+
+---
 title: shint
 lead: One small tool for the network checks you run every day - connect, ping, request, scan, probe, look up, check a clock and listen - with the same clear output on every platform.
 description: shint is a single-binary network diagnostics tool - telnet-style port checks, ping, HTTP requests with timing, port scans, UDP probes, reverse DNS, NTP clock checks, Wake-on-LAN, a subnet calculator and local test listeners - with readable output, JSON, and proper exit codes.
