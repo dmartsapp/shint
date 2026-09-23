@@ -84,10 +84,10 @@ What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 
 | Build | Version reported by `shint --version` | Set by |
 |---|---|---|
-| `go build` from a clone | `4.2.0` | The default in `main.go` (bump it in the release commit) |
+| `go build` from a clone | `4.2.1` | The default in `main.go` (bump it in the release commit) |
 | `make <target>` | `<tag-or-dev>-<commit date as ddmmyyyyHHMMSS>` | `Makefile` (`git tag --contains`, `git show --format=%cd`) |
-| Release binary (CI) | `v4.2.0/<full commit sha>/<UTC build time>` | `build.yaml` (`-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT`) |
-| Docker image | `v4.2.0` | `Dockerfile` (`ARG VERSION`, passed as `VERSION=<tag>`; `dev` when built locally) |
+| Release binary (CI) | `v4.2.1/<full commit sha>/<UTC build time>` | `build.yaml` (`-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT`) |
+| Docker image | `v4.2.1` | `Dockerfile` (`ARG VERSION`, passed as `VERSION=<tag>`; `dev` when built locally) |
 
 So a release binary is traceable to an exact commit and moment, and a source build tells you which release it descends from.
 

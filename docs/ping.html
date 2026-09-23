@@ -16,7 +16,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.2.0</span>
+  <span class="version">v4.2.1</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -107,7 +107,7 @@ Latency: minimum: 0, average: 0, maximum: 0
 <ul><li>The size of each request's payload is <code>--payload</code> (default 4 bytes). It can be at most 1448 bytes, so an echo request never has to fragment; a larger or negative value is a usage error (exit status <code>2</code>) rather than being quietly changed.</li><li>Some networks block ICMP entirely. A failed ping does not always mean a host is down - try <a href="telnet.html"><code>telnet</code></a> against a port you know should be open.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="telnet.html"><span>Previous</span>telnet</a><a class="next" href="web.html"><span>Next</span>web</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/ping.md">Edit this page on GitHub</a><span>shint v4.2.0 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/ping.md">Edit this page on GitHub</a><span>shint v4.2.1 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#ping-the-local-machine">Ping the local machine</a></li><li class="toc3"><a href="#a-dual-stack-host">A dual-stack host</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc3"><a href="#a-host-that-does-not-answer">A host that does not answer</a></li><li class="toc2"><a href="#reading-the-results">Reading the results</a></li><li class="toc2"><a href="#permissions">Permissions</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
 </div>

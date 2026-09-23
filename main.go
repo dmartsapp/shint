@@ -30,7 +30,7 @@ var (
 	// the release workflow (tag/commit/time) and the Dockerfile each override
 	// it at link time with -ldflags "-X main.Version=...", so every kind of
 	// build reports something traceable. See docs/src/tech-release.md.
-	Version string = "4.2.0"
+	Version string = "4.2.1"
 )
 
 // Flag values, bound in init(). cobra parses the command line into these
