@@ -426,6 +426,7 @@ def render_page(p, pages, version):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{html.escape(page_title)}</title>
 <meta name="description" content="{desc}">
+<meta name="google-site-verification" content="f8HZndbzPlmiY4bsjViQCpBxHRTPAp1wtew-RUsIJws" />
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/style.css">
