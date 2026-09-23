@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net"
 	"strings"
 	"testing"
@@ -260,12 +261,16 @@ func TestUDPHandlerLogLevelFollowsWhetherTheProbeFailed(t *testing.T) {
 // A negative --payload used to crash the handler (strings.Repeat panics on a
 // negative count) and a huge one asked it for memory it could not have.
 func TestValidateUDPPayload(t *testing.T) {
+	// As large/small as int can safely hold on every platform shint builds for - 32-bit
+	// architectures (linux/arm) included, where a literal like 9223372036854775807 does not
+	// even compile. Plenty large enough to still be "clearly invalid" for what is tested here.
+	const hugePositive, hugeNegative = math.MaxInt32, math.MinInt32
 	for _, size := range []int{0, 1, 4, 1472, 8000, MaxUDPPayload} {
 		if err := ValidateUDPPayload(size, ""); err != nil {
 			t.Errorf("--payload %d: %v", size, err)
 		}
 	}
-	for _, size := range []int{-1, MaxUDPPayload + 1, 1000000000, 9223372036854775807, -9223372036854775808} {
+	for _, size := range []int{-1, MaxUDPPayload + 1, 1000000000, hugePositive, hugeNegative} {
 		err := ValidateUDPPayload(size, "")
 		if err == nil || !strings.Contains(err.Error(), "--payload for udp must be between 0 and 65507 bytes") {
 			t.Errorf("--payload %d: error = %v", size, err)

@@ -22,7 +22,7 @@ Every release publishes one binary per platform on the [releases page](https://g
 | Solaris | `shint.solaris.amd64` | (Go has no Solaris arm64 port) |
 | Android | (arm64 only) | `shint.android.arm64` |
 
-AIX gets a binary too - `shint.aix.ppc64` - which doesn't fit the table above: Go's AIX port only targets `ppc64` (IBM POWER), not amd64 or arm64. There is no Solaris SPARC binary for the same reason in reverse: Go's Solaris port only targets amd64, and has never had a SPARC port, on any Solaris release.
+Four more binaries don't fit the amd64/arm64 table above, each a single extra architecture rather than a whole platform: `shint.linux.arm` (32-bit, `GOARM=6` - older Raspberry Pi and a lot of embedded/IoT boards are still 32-bit; forward-compatible with ARMv7 hardware too) and `shint.linux.ppc64le` (IBM Power Linux) alongside the regular Linux binaries; `shint.aix.ppc64` (IBM POWER; Go's AIX port only targets `ppc64`, not amd64 or arm64); and `shint.illumos.amd64` (OmniOS, SmartOS and the rest of the illumos family - its own GOOS, distinct from Solaris, also amd64 only). There is no Solaris SPARC binary, for the same reason in reverse: Go's Solaris port only targets amd64, and has never had a SPARC port, on any Solaris release.
 
 Each binary is statically linked and about 10 MB. There is nothing else to install.
 

@@ -7,10 +7,10 @@ BUILDFLAGS=-buildvcs=true -trimpath $(LDFLAGS)
 MAKEFLAGS += --silent
 
 .PHONY: all all-platforms clean run \
-	linux darwin windows freebsd openbsd netbsd solaris android aix \
-	linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64 \
+	linux darwin windows freebsd openbsd netbsd solaris android aix illumos \
+	linux-amd64 linux-arm64 linux-arm linux-ppc64le darwin-amd64 darwin-arm64 windows-amd64 windows-arm64 \
 	freebsd-amd64 freebsd-arm64 openbsd-amd64 openbsd-arm64 netbsd-amd64 netbsd-arm64 \
-	solaris-amd64 android-arm64 aix-ppc64 no-dirty
+	solaris-amd64 android-arm64 aix-ppc64 illumos-amd64 no-dirty
 
 run:
 	CGO_ENABLED=0 go build -trimpath -ldflags "-X main.Version=$(VERSIONSTR)" -o $(BINARY) main.go
@@ -20,11 +20,14 @@ run:
 all: linux darwin windows
 
 # Every platform the CI release workflow builds.
-all-platforms: all freebsd openbsd netbsd solaris android aix
+all-platforms: all freebsd openbsd netbsd solaris android aix illumos
 
 windows: windows-amd64 windows-arm64
 
-linux: linux-amd64 linux-arm64
+# arm (32-bit, GOARM=6) covers the older boards a 64-bit-only build leaves out - Raspberry
+# Pi 1/Zero and a lot of embedded/IoT Linux are still 32-bit userlands; GOARM=6 keeps it
+# running on ARMv6 hardware too, forward-compatible with ARMv7. ppc64le is IBM Power Linux.
+linux: linux-amd64 linux-arm64 linux-arm linux-ppc64le
 
 darwin: darwin-amd64 darwin-arm64
 
@@ -45,6 +48,10 @@ android: android-arm64
 # Go only supports aix/ppc64 (IBM POWER); there is no aix/amd64 or aix/arm64 port.
 aix: aix-ppc64
 
+# illumos (OmniOS, SmartOS, ...) is its own GOOS, distinct from solaris - and, like solaris,
+# Go only supports it on amd64.
+illumos: illumos-amd64
+
 windows-arm64:
 	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o bin/$(BINARY).windows.arm64.exe $(BUILDFLAGS) main.go
 
@@ -56,6 +63,12 @@ linux-arm64:
 
 linux-amd64:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(BINARY).linux-amd64 $(BUILDFLAGS) main.go
+
+linux-arm:
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=6 go build -o bin/$(BINARY).linux-arm $(BUILDFLAGS) main.go
+
+linux-ppc64le:
+	CGO_ENABLED=0 GOOS=linux GOARCH=ppc64le go build -o bin/$(BINARY).linux-ppc64le $(BUILDFLAGS) main.go
 
 darwin-arm64:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/$(BINARY).darwin-arm64 $(BUILDFLAGS) main.go
@@ -89,6 +102,9 @@ android-arm64:
 
 aix-ppc64:
 	CGO_ENABLED=0 GOOS=aix GOARCH=ppc64 go build -o bin/$(BINARY).aix-ppc64 $(BUILDFLAGS) main.go
+
+illumos-amd64:
+	CGO_ENABLED=0 GOOS=illumos GOARCH=amd64 go build -o bin/$(BINARY).illumos-amd64 $(BUILDFLAGS) main.go
 
 clean:
 	rm -f bin/*
@@ -196,6 +212,11 @@ vet:
 	echo "==> go vet"
 	go vet ./...
 	for os in windows freebsd solaris; do echo "    go vet (GOOS=$$os)"; GOOS=$$os GOARCH=amd64 go vet ./... || exit 1; done
+	# Go's int is 32 bits here, unlike every other platform above (and unlike every other
+	# shint target except linux/arm itself): a boundary-test sentinel like math.MaxInt64
+	# does not even compile as an int on this one. Adding it once (issue: none yet filed;
+	# found by vetting a real release target for the first time) is what catches the next one.
+	echo "    go vet (GOOS=linux GOARCH=arm)"; GOOS=linux GOARCH=arm GOARM=6 go vet ./... || exit 1
 
 test: test-go test-battery
 

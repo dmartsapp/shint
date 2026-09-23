@@ -2,6 +2,7 @@ package lib
 
 import (
 	"context"
+	"math"
 	"net"
 	"strconv"
 	"testing"
@@ -272,6 +273,10 @@ func TestIsPortUpRespectsContextCancellation(t *testing.T) {
 
 func TestRequireRanges(t *testing.T) {
 	const day, dayMs = 86400, 86400000
+	// As large/small as int can safely hold on every platform shint builds for - 32-bit
+	// architectures (linux/arm) included, where a literal like 9223372036854775807 does not
+	// even compile. Plenty large enough to still be "clearly invalid" for what is tested here.
+	const hugePositive, hugeNegative = math.MaxInt32, math.MinInt32
 	if MaxTimeoutSeconds != day || MaxDelayMilliseconds != dayMs {
 		t.Fatalf("the limits are a day: %d s, %d ms", MaxTimeoutSeconds, MaxDelayMilliseconds)
 	}
@@ -282,10 +287,10 @@ func TestRequireRanges(t *testing.T) {
 		good []int
 		bad  []int
 	}{
-		{"RequireTimeout", RequireTimeout, []int{1, 5, 3600, day}, []int{0, -1, day + 1, 2147483648, 10000000000, 9223372036854775807, -9223372036854775808}},
-		{"RequireIdleTimeout", RequireIdleTimeout, []int{0, 1, day}, []int{-1, day + 1, 9223372036854775807}},
-		{"RequireDelay", RequireDelay, []int{0, 1, 1000, dayMs}, []int{-1, dayMs + 1, 9223372036854775807, -9223372036854775808}},
-		{"RequireNonNegative", func(v int) error { return RequireNonNegative("count", v) }, []int{0, 1, 9223372036854775807}, []int{-1, -9223372036854775808}},
+		{"RequireTimeout", RequireTimeout, []int{1, 5, 3600, day}, []int{0, -1, day + 1, hugePositive, hugeNegative}},
+		{"RequireIdleTimeout", RequireIdleTimeout, []int{0, 1, day}, []int{-1, day + 1, hugePositive}},
+		{"RequireDelay", RequireDelay, []int{0, 1, 1000, dayMs}, []int{-1, dayMs + 1, hugePositive, hugeNegative}},
+		{"RequireNonNegative", func(v int) error { return RequireNonNegative("count", v) }, []int{0, 1, hugePositive}, []int{-1, hugeNegative}},
 	}
 	for _, c := range cases {
 		for _, v := range c.good {
@@ -300,7 +305,7 @@ func TestRequireRanges(t *testing.T) {
 		}
 	}
 	// what the user reads
-	if got := RequireTimeout(10000000000).Error(); got != "--timeout must be between 1 and 86400 seconds (a day), got 10000000000" {
+	if got := RequireTimeout(hugePositive).Error(); got != "--timeout must be between 1 and 86400 seconds (a day), got 2147483647" {
 		t.Errorf("message: %q", got)
 	}
 	if got := RequireDelay(-1).Error(); got != "--delay must be between 0 and 86400000 milliseconds (a day), got -1" {

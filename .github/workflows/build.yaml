@@ -72,6 +72,17 @@ jobs:
           # rather than put in the os/arch lists above and excluded from the rest.
           - os: aix
             arch: ppc64
+          # illumos is its own GOOS, distinct from solaris; Go supports it on amd64 only.
+          - os: illumos
+            arch: amd64
+          # linux also gets 32-bit arm (older Raspberry Pi and a lot of embedded/IoT boards
+          # are still 32-bit; GOARM=6 for ARMv6 hardware, forward-compatible with ARMv7) and
+          # ppc64le (IBM Power Linux) - a third and fourth architecture on top of amd64/arm64.
+          - os: linux
+            arch: arm
+            goarm: 6
+          - os: linux
+            arch: ppc64le
 
     steps:
       - name: Checkout code
@@ -91,6 +102,7 @@ jobs:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
+          GOARM: ${{ matrix.goarm }}
         run: |
           mkdir -p bin
           DT=($(date +%Y-%m-%dT%H:%M:%S%z))
@@ -171,7 +183,7 @@ jobs:
           echo "| OS/Arch | Status |" >> release_notes.md
           echo "|---|---|" >> release_notes.md
 
-          for combo in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64 freebsd-amd64 freebsd-arm64 openbsd-amd64 openbsd-arm64 netbsd-amd64 netbsd-arm64 solaris-amd64 android-arm64 aix-ppc64; do
+          for combo in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 linux-arm linux-ppc64le windows-amd64 windows-arm64 freebsd-amd64 freebsd-arm64 openbsd-amd64 openbsd-arm64 netbsd-amd64 netbsd-arm64 solaris-amd64 android-arm64 aix-ppc64 illumos-amd64; do
             os=$(echo $combo | awk -F'-' '{print $1}')
             arch=$(echo $combo | awk -F'-' '{print $2}')
             binary_name="shint.$os.$arch"

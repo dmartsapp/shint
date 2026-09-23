@@ -201,7 +201,7 @@ gh run watch <id>                       # or wait for the Slack message - see Wa
 **Verify:**
 
 ```bash
-gh release view vX.Y.Z                                          # 30 assets: 15 binaries, 15 .sha256 files
+gh release view vX.Y.Z                                          # 36 assets: 18 binaries, 18 .sha256 files
 shasum -a 256 -c shint.darwin.arm64.sha256                      # or sha256sum -c on Linux
 gh attestation verify shint.darwin.arm64 --repo dmartsapp/shint
 ./shint.darwin.arm64 --version

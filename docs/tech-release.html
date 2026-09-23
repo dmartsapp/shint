@@ -123,7 +123,7 @@ $EDITOR CHANGELOG.md          <span class="tok-com"># finish and date the ## vX.
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">gh</span> run list <span class="tok-flag">--branch</span> vX.Y.Z <span class="tok-flag">--limit</span> 8   <span class="tok-com"># the five release workflows and the Slack notifier</span>
 <span class="tok-cmd">gh</span> run watch &lt;id&gt;                       <span class="tok-com"># or wait for the Slack message - see Watching a release</span></code></pre></div>
 <p><strong>Verify:</strong></p>
-<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">gh</span> release view vX.Y.Z                                          <span class="tok-com"># 30 assets: 15 binaries, 15 .sha256 files</span>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">gh</span> release view vX.Y.Z                                          <span class="tok-com"># 36 assets: 18 binaries, 18 .sha256 files</span>
 <span class="tok-cmd">shasum</span> <span class="tok-flag">-a</span> 256 <span class="tok-flag">-c</span> shint.darwin.arm64.sha256                      <span class="tok-com"># or sha256sum -c on Linux</span>
 <span class="tok-cmd">gh</span> attestation verify shint.darwin.arm64 <span class="tok-flag">--repo</span> dmartsapp/shint
 ./shint.darwin.arm64 <span class="tok-flag">--version</span></code></pre></div>
