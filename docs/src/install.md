@@ -22,6 +22,8 @@ Every release publishes one binary per platform on the [releases page](https://g
 | Solaris | `shint.solaris.amd64` | (Go has no Solaris arm64 port) |
 | Android | (arm64 only) | `shint.android.arm64` |
 
+AIX gets a binary too - `shint.aix.ppc64` - which doesn't fit the table above: Go's AIX port only targets `ppc64` (IBM POWER), not amd64 or arm64. There is no Solaris SPARC binary for the same reason in reverse: Go's Solaris port only targets amd64, and has never had a SPARC port, on any Solaris release.
+
 Each binary is statically linked and about 10 MB. There is nothing else to install.
 
 ### macOS and Linux

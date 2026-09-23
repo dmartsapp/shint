@@ -67,6 +67,11 @@ jobs:
           # small and statically linked.
           - os: android
             arch: amd64
+        include:
+          # aix only has a ppc64 port - neither amd64 nor arm64 - so it is added
+          # rather than put in the os/arch lists above and excluded from the rest.
+          - os: aix
+            arch: ppc64
 
     steps:
       - name: Checkout code
@@ -166,7 +171,7 @@ jobs:
           echo "| OS/Arch | Status |" >> release_notes.md
           echo "|---|---|" >> release_notes.md
 
-          for combo in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64 freebsd-amd64 freebsd-arm64 openbsd-amd64 openbsd-arm64 netbsd-amd64 netbsd-arm64 solaris-amd64 android-arm64; do
+          for combo in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64 windows-arm64 freebsd-amd64 freebsd-arm64 openbsd-amd64 openbsd-arm64 netbsd-amd64 netbsd-arm64 solaris-amd64 android-arm64 aix-ppc64; do
             os=$(echo $combo | awk -F'-' '{print $1}')
             arch=$(echo $combo | awk -F'-' '{print $2}')
             binary_name="shint.$os.$arch"

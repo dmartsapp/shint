@@ -7,10 +7,10 @@ BUILDFLAGS=-buildvcs=true -trimpath $(LDFLAGS)
 MAKEFLAGS += --silent
 
 .PHONY: all all-platforms clean run \
-	linux darwin windows freebsd openbsd netbsd solaris android \
+	linux darwin windows freebsd openbsd netbsd solaris android aix \
 	linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64 windows-arm64 \
 	freebsd-amd64 freebsd-arm64 openbsd-amd64 openbsd-arm64 netbsd-amd64 netbsd-arm64 \
-	solaris-amd64 android-arm64 no-dirty
+	solaris-amd64 android-arm64 aix-ppc64 no-dirty
 
 run:
 	CGO_ENABLED=0 go build -trimpath -ldflags "-X main.Version=$(VERSIONSTR)" -o $(BINARY) main.go
@@ -20,7 +20,7 @@ run:
 all: linux darwin windows
 
 # Every platform the CI release workflow builds.
-all-platforms: all freebsd openbsd netbsd solaris android
+all-platforms: all freebsd openbsd netbsd solaris android aix
 
 windows: windows-amd64 windows-arm64
 
@@ -41,6 +41,9 @@ solaris: solaris-amd64
 # which would defeat the point of a small static CGO_ENABLED=0 binary.
 # android/arm64 covers real devices (and Termux) and builds fine without it.
 android: android-arm64
+
+# Go only supports aix/ppc64 (IBM POWER); there is no aix/amd64 or aix/arm64 port.
+aix: aix-ppc64
 
 windows-arm64:
 	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o bin/$(BINARY).windows.arm64.exe $(BUILDFLAGS) main.go
@@ -83,6 +86,9 @@ solaris-amd64:
 
 android-arm64:
 	CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -o bin/$(BINARY).android-arm64 $(BUILDFLAGS) main.go
+
+aix-ppc64:
+	CGO_ENABLED=0 GOOS=aix GOARCH=ppc64 go build -o bin/$(BINARY).aix-ppc64 $(BUILDFLAGS) main.go
 
 clean:
 	rm -f bin/*
