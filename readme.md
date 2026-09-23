@@ -15,40 +15,106 @@
 
 **[Download](https://github.com/dmartsapp/shint/releases/latest)** &nbsp;|&nbsp; **[Documentation](https://dmartsapp.github.io/shint/)** &nbsp;|&nbsp; [Changelog](CHANGELOG.md) &nbsp;|&nbsp; [Discussions](https://github.com/dmartsapp/shint/discussions)
 
-## What is it?
+## Why shint?
 
-shint puts the small utilities you keep reaching for - checking whether a port is open, pinging a host, making a web request, scanning for open ports, probing a UDP service, looking up DNS, checking a clock, working out a subnet, and running a quick test server - into **one file** that works the same on Linux, macOS, Windows and more. Every command explains what it found in the same clear, readable format.
+shint puts the checks you reach for every day - is it up, can I connect, does it answer, what's open, what does DNS say - into **one file** that works the same on Linux, macOS, Windows and more.
 
-## Why use it?
+**We are not trying to replace `ping`, `telnet`, `curl`, `nmap`, `dig`, `nc` or the rest.** They have earned their place through decades of real, trusted use, and each one still does its own job better than almost anything else could. shint doesn't compete with them - it learns from them, and brings what makes each one great together, under one roof: **simplicity, ease of use, for everyone.**
 
-- **One tool instead of many.** `telnet`, `ping`, `curl`, `nmap`, `dig`, `nc` and `ntpdate` habits, without hunting for each one.
-- **Answers, not noise.** Every line says what was checked, whether it worked, and how long it took.
-- **Works everywhere.** A single download per platform, or a Docker image. Nothing else to install.
-- **Made for scripts.** Add `--json` for machine-readable output. Standard exit codes: `0` everything passed, `1` something failed, `2` you used it wrongly.
-- **Practise safely.** `shint listen` starts a test server on your own machine, so you can try things without touching anything real.
-- **Private.** No telemetry, no accounts, no configuration files.
+### The problem
+
+A real troubleshooting session reaches for several of them, in sequence, every time:
+
+```text
+ping           - is it up?
+  │
+telnet / nc    - can I connect?
+  │
+curl           - does it answer?
+  │
+nmap           - what else is open?
+  │
+dig, ntpdate, ip addr, ...   - and whichever of a dozen other tools this particular question needs
+  │
+a script to glue the answers together, because no two of them agree on how to talk to one
+```
+
+Nine tools, nine syntaxes, nine output formats - and the moment you want to feed an answer into a script or a CI pipeline, you're writing a parser for each one. shint's job is to be the one command you already know how to use, for all of it, before you reach for the others.
+
+### What we brought in, from each
+
+| From | What we kept | In shint |
+|---|---|---|
+| **ping** | ICMP reachability and latency, payload size, round-trip statistics | ✅ `shint ping` |
+| **telnet** / **nc** | "Can I open a TCP connection to this host and port?" | ✅ `shint telnet` |
+| **curl** | HTTP and HTTPS requests, headers and body, TLS and mutual TLS, where the time went | ✅ `shint web` |
+| **nmap** | TCP port scanning across a range | ✅ `shint nmap` |
+| **nc -u** | Raw UDP probing, exact byte payloads | ✅ `shint udp` |
+| **dig** | DNS lookups - A, AAAA, MX, TXT, NS and more, against any server | ✅ `shint dns` |
+| **dig -x** | Reverse DNS (PTR) lookups | ✅ `shint rdns` |
+| **ipcalc** / **sipcalc** | Subnet math: network, mask, range, size | ✅ `shint cidr` |
+| **ifconfig** / **ip addr** | This machine's interfaces and addresses | ✅ `shint ip` |
+| **ntpdate** / **sntp** | Clock offset against a time server | ✅ `shint ntp` |
+| **wakeonlan** | Wake-on-LAN magic packets | ✅ `shint wol` |
+| **nc -l** / `python -m http.server` | A local test server to check against | ✅ `shint listen` |
+
+### And underneath all of it
+
+Every one of those got this whether the original tool had it or not:
+
+- **One log line, every command:** `<time>: [module] OK|ERROR <message> key=value ...` - grep-able the same way, everywhere
+- **`--json` everywhere** - built in for scripts and pipelines, not bolted onto one command
+- **The same exit codes everywhere** - `0` passed, `1` failed, `2` you used it wrong
+- **One binary, no accounts, no telemetry, no config file** - the same on Linux, macOS and Windows
+
+That consistency is the actual thing shint adds. None of the tools above had a reason to agree with each other before, and it's what lets shint sit comfortably next to the automation and CI pipelines those older tools were never quite built for.
 
 ## See it work
 
-Can I reach this service - over IPv4 and IPv6?
+**We're not asking you to give up the tools you already trust - just to show you one that also speaks the language of scripts, CI and the automation growing up around them.**
 
-```
-$ shint telnet google.com 443
-Sun Sep 20 01:50:14 MDT 2026: [telnet] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=47.672458ms
-Sun Sep 20 01:50:15 MDT 2026: [telnet] OK connect ok host=2607:f8b0:400a:803::200e port=443 attempt=1/1 time=30.388833ms
-Sun Sep 20 01:50:16 MDT 2026: [telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=30.467459ms
+### Is it up, can I connect?
+
+```bash
+# the old way - two tools, two syntaxes, two output shapes
+ping -c 2 example.com
+telnet example.com 443
 ```
 
-Start a test web server, then call it:
+```text
+$ shint ping example.com --count 2
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK dns resolved host=example.com addresses=1 ips=[93.184.216.34] time=20.375µs
+Sun Sep 20 15:37:48 MDT 2026: [icmp] OK received reply for request #1 from 93.184.216.34 (ipv4) in 27ms bytes=4
+Sun Sep 20 15:37:49 MDT 2026: [icmp] OK received reply for request #2 from 93.184.216.34 (ipv4) in 28ms bytes=4
 
-```
-$ shint listen http 8080
-Sun Sep 20 01:50:18 MDT 2026: [listen-http] OK listening address=0.0.0.0:8080 max_requests=6
-Sun Sep 20 01:50:19 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:59313 bytes_received=97 bytes_sent=160 time_taken=504.375µs
+========================================= icmp STATISTICS =========================================
+Requests sent: 2, Response received: 2, Success: 100%
+Latency: minimum: 27ms, average: 27.5ms, maximum: 28ms
+Sun Sep 20 15:37:49 MDT 2026: [icmp] OK done packets_lost=0 stddev_ms=0.500 resolve_time=20.375µs total_time=1.021s
 
-$ shint web http://127.0.0.1:8080/
-Sun Sep 20 01:50:19 MDT 2026: [web] OK response url=http://127.0.0.1:8080/ status=200 bytes_sent=97 bytes_received=160 speed=50.92KB/s attempt=1/1 time=3.0685ms
+$ shint telnet example.com 443
+Sun Sep 20 01:50:14 MDT 2026: [telnet] OK dns resolved host=example.com addresses=1 ips=[93.184.216.34] time=25.109ms
+Sun Sep 20 01:50:15 MDT 2026: [telnet] OK connect ok host=93.184.216.34 port=443 attempt=1/1 time=30.467ms
 ```
+
+Same shape, both commands - and both answer with `--json` instead, the moment a script is what's actually asking.
+
+### A target to test against
+
+```bash
+# the old way
+nc -l 9002
+```
+
+```text
+$ shint listen tcp 9002 --echo --count 1
+Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK listening address=0.0.0.0:9002 max_connections=1 echo=true
+Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK connection accepted remote=127.0.0.1:59324 local=127.0.0.1:9002
+Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK data received remote=127.0.0.1:59324 bytes_received=12 bytes_sent=12 time_taken=28.708µs preview="hello shint"
+Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK done connections=1 bytes_received=12 bytes_sent=12 total_time=410.53875ms
+```
+
+`nc -l` still works exactly as it always has, and nothing here says otherwise. `shint listen` is there for when you also want a byte count, a timestamp and `--json` on the way out - built for the next tool in the pipeline, not just the person reading the terminal.
 
 ## Commands
 
