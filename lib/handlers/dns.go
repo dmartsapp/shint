@@ -11,6 +11,9 @@ import (
 	"io"
 	"net"
 	"net/netip"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -235,6 +238,131 @@ var systemDNSServers = func(ctx context.Context) ([]string, error) {
 		return nil, errors.New("no DNS servers are configured on this machine")
 	}
 	return append([]string(nil), found...), nil
+}
+
+// hostsFile is where the local hosts file lives. It is a variable so tests can
+// substitute a file of their own.
+var hostsFile = func() string {
+	if runtime.GOOS == "windows" {
+		root := os.Getenv("SystemRoot")
+		if root == "" {
+			root = `C:\Windows`
+		}
+		return filepath.Join(root, "System32", "drivers", "etc", "hosts")
+	}
+	return "/etc/hosts"
+}
+
+// lookupHosts looks up a host name in the system's hosts file. If the name is
+// "localhost", it guarantees loopback addresses (127.0.0.1 and ::1) even if
+// the hosts file has no entry for it or cannot be opened.
+func lookupHosts(name string) []net.IP {
+	clean := strings.TrimSuffix(name, ".")
+	var ips []net.IP
+	seen := map[string]bool{}
+	add := func(ip net.IP) {
+		key := ip.String()
+		if !seen[key] {
+			seen[key] = true
+			ips = append(ips, ip)
+		}
+	}
+
+	if path := hostsFile(); path != "" {
+		if data, err := os.ReadFile(path); err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if idx := strings.IndexByte(line, '#'); idx >= 0 {
+					line = strings.TrimSpace(line[:idx])
+				}
+				if line == "" {
+					continue
+				}
+				fields := strings.Fields(line)
+				if len(fields) < 2 {
+					continue
+				}
+				ip := net.ParseIP(fields[0])
+				if ip == nil {
+					continue
+				}
+				for _, h := range fields[1:] {
+					if strings.EqualFold(strings.TrimSuffix(h, "."), clean) {
+						add(ip)
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if strings.EqualFold(clean, "localhost") {
+		add(net.ParseIP("127.0.0.1"))
+		add(net.ParseIP("::1"))
+	}
+	return ips
+}
+
+// localDNSAnswer constructs a synthetic dnsAnswer for records found in the
+// local hosts file or loopback fallback.
+func localDNSAnswer(name string, qtype dnsmessage.Type, ips []net.IP, took time.Duration) dnsAnswer {
+	dnsName, err := dnsmessage.NewName(name)
+	if err != nil {
+		return dnsAnswer{Err: err}
+	}
+	msg := dnsmessage.Message{
+		Header: dnsmessage.Header{
+			Response:      true,
+			Authoritative: true,
+			RCode:         dnsmessage.RCodeSuccess,
+		},
+		Questions: []dnsmessage.Question{{
+			Name:  dnsName,
+			Type:  qtype,
+			Class: dnsmessage.ClassINET,
+		}},
+	}
+	for _, ip := range ips {
+		if !lib.FamilyAllows(ip) {
+			continue
+		}
+		switch qtype {
+		case dnsmessage.TypeA:
+			if ip4 := ip.To4(); ip4 != nil {
+				var a [4]byte
+				copy(a[:], ip4)
+				msg.Answers = append(msg.Answers, dnsmessage.Resource{
+					Header: dnsmessage.ResourceHeader{
+						Name:  dnsName,
+						Type:  dnsmessage.TypeA,
+						Class: dnsmessage.ClassINET,
+						TTL:   0,
+					},
+					Body: &dnsmessage.AResource{A: a},
+				})
+			}
+		case dnsmessage.TypeAAAA:
+			if ip.To4() == nil {
+				var aaaa [16]byte
+				copy(aaaa[:], ip.To16())
+				msg.Answers = append(msg.Answers, dnsmessage.Resource{
+					Header: dnsmessage.ResourceHeader{
+						Name:  dnsName,
+						Type:  dnsmessage.TypeAAAA,
+						Class: dnsmessage.ClassINET,
+						TTL:   0,
+					},
+					Body: &dnsmessage.AAAAResource{AAAA: aaaa},
+				})
+			}
+		}
+	}
+	return dnsAnswer{
+		Msg:       msg,
+		Server:    "hosts",
+		Transport: "file",
+		Took:      took,
+	}
 }
 
 // serverList turns the query's server choice into addresses to ask, in order:
@@ -650,8 +778,13 @@ func DNSHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 		return false
 	}
 
+	hostsIPs := []net.IP(nil)
+	if q.Server == "" && !q.Reverse {
+		hostsIPs = lookupHosts(q.Name)
+	}
+
 	servers, resolved, err := serverList(ctx, q, timeout)
-	if err != nil {
+	if err != nil && len(hostsIPs) == 0 {
 		if q.Server != "" {
 			return finishEarly("dns resolution failed "+lib.Fields("host", q.Server), err)
 		}
@@ -670,7 +803,12 @@ attempts:
 				break attempts
 			}
 			begin := time.Now()
-			a := queryServers(ctx, servers, q.Name, qtype, opt, time.Duration(timeout)*time.Second)
+			var a dnsAnswer
+			if len(hostsIPs) > 0 && (qtype == dnsmessage.TypeA || qtype == dnsmessage.TypeAAAA) {
+				a = localDNSAnswer(q.Name, qtype, hostsIPs, time.Since(begin))
+			} else {
+				a = queryServers(ctx, servers, q.Name, qtype, opt, time.Duration(timeout)*time.Second)
+			}
 			if a.Err != nil && ctx.Err() != nil {
 				break attempts // cut off by Ctrl+C: never finished, so it neither answered nor failed
 			}
