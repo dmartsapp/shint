@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -751,5 +754,195 @@ func TestSystemDNSServersFromTheRealResolver(t *testing.T) {
 		if _, _, err := net.SplitHostPort(s); err != nil {
 			t.Errorf("server %q is not host:port", s)
 		}
+	}
+}
+
+// ---- hosts file and localhost resolution (#64)
+
+func TestDNSLocalhostResolvesBothFamiliesWithoutNetwork(t *testing.T) {
+	q, err := ParseDNSArgs([]string{"localhost"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, out := runDNS(t, q, DNSOptions{}, 2, 1, false)
+	if !ok {
+		t.Errorf("DNSHandler(localhost) failed:\n%s", out)
+	}
+	mustContain(t, out,
+		"query name=localhost. type=A nameserver=hosts transport=file attempt=1/1 rcode=noerror flags=[qr,aa] answers=1",
+		"answer name=localhost. type=A ttl=0 data=127.0.0.1",
+		"query name=localhost. type=AAAA nameserver=hosts transport=file attempt=1/1 rcode=noerror flags=[qr,aa] answers=1",
+		"answer name=localhost. type=AAAA ttl=0 data=::1",
+		"done queries=2 answered=2",
+	)
+}
+
+func TestDNSLocalhostFollowsIPv4AndIPv6FamilyFlags(t *testing.T) {
+	// IPv4 only (-4)
+	useFamily(t, true, false)
+	q4, err := ParseDNSArgs([]string{"localhost"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok4, out4 := runDNS(t, q4, DNSOptions{}, 2, 1, false)
+	if !ok4 {
+		t.Errorf("DNSHandler(localhost, -4) failed:\n%s", out4)
+	}
+	mustContain(t, out4,
+		"query name=localhost. type=A nameserver=hosts transport=file",
+		"answer name=localhost. type=A ttl=0 data=127.0.0.1",
+		"done queries=1 answered=1",
+	)
+	if strings.Contains(out4, "type=AAAA") {
+		t.Errorf("-4 output contains AAAA query:\n%s", out4)
+	}
+
+	// IPv6 only (-6)
+	useFamily(t, false, true)
+	q6, err := ParseDNSArgs([]string{"localhost"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok6, out6 := runDNS(t, q6, DNSOptions{}, 2, 1, false)
+	if !ok6 {
+		t.Errorf("DNSHandler(localhost, -6) failed:\n%s", out6)
+	}
+	mustContain(t, out6,
+		"query name=localhost. type=AAAA nameserver=hosts transport=file",
+		"answer name=localhost. type=AAAA ttl=0 data=::1",
+		"done queries=1 answered=1",
+	)
+	if strings.Contains(out6, "type=A ") {
+		t.Errorf("-6 output contains A query:\n%s", out6)
+	}
+}
+
+func TestDNSCustomHostsFileResolution(t *testing.T) {
+	tmpDir := t.TempDir()
+	hostsPath := filepath.Join(tmpDir, "hosts")
+	content := []byte(strings.Join([]string{
+		"# comment line",
+		"192.0.2.55   dev.local  dev-alias.local # inline comment",
+		"2001:db8::55 dev.local",
+		"",
+	}, "\n"))
+	if err := os.WriteFile(hostsPath, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	old := hostsFile
+	hostsFile = func() string { return hostsPath }
+	t.Cleanup(func() { hostsFile = old })
+
+	// Forward lookup dev.local (dual-stack)
+	q, err := ParseDNSArgs([]string{"dev.local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, out := runDNS(t, q, DNSOptions{}, 2, 1, false)
+	if !ok {
+		t.Errorf("DNSHandler(dev.local) failed:\n%s", out)
+	}
+	mustContain(t, out,
+		"query name=dev.local. type=A nameserver=hosts transport=file",
+		"answer name=dev.local. type=A ttl=0 data=192.0.2.55",
+		"query name=dev.local. type=AAAA nameserver=hosts transport=file",
+		"answer name=dev.local. type=AAAA ttl=0 data=2001:db8::55",
+		"done queries=2 answered=2",
+	)
+
+	// Forward lookup alias dev-alias.local
+	qAlias, err := ParseDNSArgs([]string{"dev-alias.local", "A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	okAlias, outAlias := runDNS(t, qAlias, DNSOptions{}, 2, 1, false)
+	if !okAlias {
+		t.Errorf("DNSHandler(dev-alias.local) failed:\n%s", outAlias)
+	}
+	mustContain(t, outAlias,
+		"query name=dev-alias.local. type=A nameserver=hosts transport=file",
+		"answer name=dev-alias.local. type=A ttl=0 data=192.0.2.55",
+	)
+}
+
+func TestDNSExplicitServerNeverUsesHostsFallback(t *testing.T) {
+	f := startFakeDNS(t, func(r dnsRequest) [][]byte {
+		// Server intentionally returns NXDOMAIN for localhost
+		return [][]byte{reply(r, dnsmessage.RCodeNameError, nil, nil)}
+	})
+	q, err := ParseDNSArgs([]string{"localhost", "A", "@" + f.addr})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, out := runDNS(t, q, DNSOptions{}, 2, 1, false)
+	if ok {
+		t.Errorf("expected failed query with explicit @server returning NXDOMAIN, got ok=true")
+	}
+	mustContain(t, out,
+		"nameserver="+f.addr,
+		"transport=udp",
+		"rcode=nxdomain",
+		"no such domain (NXDOMAIN): localhost. does not exist",
+	)
+	if strings.Contains(out, "nameserver=hosts") {
+		t.Errorf("query with explicit @server used hosts fallback:\n%s", out)
+	}
+	reqs := f.requests()
+	if len(reqs) != 1 {
+		t.Fatalf("expected 1 wire request to fake server, got %d", len(reqs))
+	}
+}
+
+func TestDNSLocalhostSucceedsEvenWhenNoSystemDNSServers(t *testing.T) {
+	oldSys := systemDNSServers
+	systemDNSServers = func(context.Context) ([]string, error) {
+		return nil, errors.New("no DNS servers are configured on this machine")
+	}
+	t.Cleanup(func() { systemDNSServers = oldSys })
+
+	q, err := ParseDNSArgs([]string{"localhost", "A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, out := runDNS(t, q, DNSOptions{}, 2, 1, false)
+	if !ok {
+		t.Errorf("DNSHandler(localhost) failed when no system DNS servers configured:\n%s", out)
+	}
+	mustContain(t, out,
+		"query name=localhost. type=A nameserver=hosts transport=file",
+		"answer name=localhost. type=A ttl=0 data=127.0.0.1",
+		"done queries=1 answered=1",
+	)
+}
+
+func TestDNSLocalhostJSONOutput(t *testing.T) {
+	q, err := ParseDNSArgs([]string{"localhost", "A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, out := runDNS(t, q, DNSOptions{}, 2, 1, true)
+	if !ok {
+		t.Fatalf("DNSHandler(localhost, JSON) failed:\n%s", out)
+	}
+	var doc lib.LocalJSONOutput
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("json.Unmarshal: %v\n%s", err, out)
+	}
+	stats := doc.Stats.([]any)
+	if len(stats) != 1 {
+		t.Fatalf("expected 1 stat entry, got %d", len(stats))
+	}
+	m := stats[0].(map[string]any)
+	if m["nameserver"] != "hosts" || m["transport"] != "file" || m["rcode"] != "NOERROR" || m["success"] != true {
+		t.Errorf("unexpected stat JSON: %+v", m)
+	}
+	answers := m["answers"].([]any)
+	if len(answers) != 1 {
+		t.Fatalf("expected 1 answer, got %d", len(answers))
+	}
+	ans := answers[0].(map[string]any)
+	if ans["name"] != "localhost." || ans["type"] != "A" || ans["data"] != "127.0.0.1" {
+		t.Errorf("unexpected answer JSON: %+v", ans)
 	}
 }
