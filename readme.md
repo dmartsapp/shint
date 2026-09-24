@@ -21,8 +21,7 @@ A smaller gap noticed while investigating #64 but not yet filed as its own issue
 
 ## Other changes on the branch
 
-- **New flag: `--verbose`** - extra diagnostic lines about a command's internal steps (name resolution so far), to stderr, off by default. **Done** - [`d85073c`](https://github.com/dmartsapp/shint/commit/d85073c). See [Verbose](https://dmartsapp.github.io/shint/docs/usage.html#verbose).
-  - **Open question, not yet resolved**: the project's own semver policy (`docs/src/tech-release.md`: "Minor - a new capability, existing behaviour intact") would put a new flag like this in v4.3.0, not a patch release. Needs a decision before this branch is merged or tagged - either move `--verbose` to a v4.3.0 branch, or consciously accept it in this patch.
+None currently. `--verbose` was built here first, then moved to `release/v4.3.0` ([`e12584e`](https://github.com/dmartsapp/shint/commit/e12584e)) once it was noticed to be a new capability, not a fix - the project's own semver policy ("Minor: a new capability, existing behaviour intact") puts it in a minor release, not this patch. [`d85073c`](https://github.com/dmartsapp/shint/commit/d85073c) is reverted here ([`1046f8c`](https://github.com/dmartsapp/shint/commit/1046f8c)), not dropped from history.
 
 ## How README files work in this project
 
