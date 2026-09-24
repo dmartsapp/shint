@@ -5,6 +5,7 @@ import (
 	"math"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -169,6 +170,59 @@ func TestResolveNameToIPs(t *testing.T) {
 	}
 	if len(ips) == 0 {
 		t.Fatal("ResolveNameToIPs(localhost) returned no addresses")
+	}
+}
+
+func TestResolveNameLogsVerboseStartAndReturn(t *testing.T) {
+	buf := withVerbose(t, true)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if _, err := ResolveName(ctx, "localhost"); err != nil {
+		t.Fatalf("ResolveName(localhost) unexpected error: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "[resolve] VERBOSE starting host=localhost") {
+		t.Errorf("ResolveName verbose output = %q, missing the starting line", got)
+	}
+	if !strings.Contains(got, "[resolve] VERBOSE returned host=localhost") {
+		t.Errorf("ResolveName verbose output = %q, missing the returned line", got)
+	}
+}
+
+func TestResolveNameLogsVerboseFailure(t *testing.T) {
+	buf := withVerbose(t, true)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if _, err := ResolveName(ctx, "this-host-should-not-exist.invalid"); err == nil {
+		t.Fatal("ResolveName(invalid host) expected error, got nil")
+	}
+	if got := buf.String(); !strings.Contains(got, "[resolve] VERBOSE failed host=this-host-should-not-exist.invalid") {
+		t.Errorf("ResolveName verbose output = %q, missing the failed line", got)
+	}
+}
+
+func TestResolveNameSilentWithoutVerbose(t *testing.T) {
+	buf := withVerbose(t, false)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if _, err := ResolveName(ctx, "localhost"); err != nil {
+		t.Fatalf("ResolveName(localhost) unexpected error: %v", err)
+	}
+	if got := buf.String(); got != "" {
+		t.Errorf("ResolveName wrote verbose output %q while Verbose is false, want nothing", got)
+	}
+}
+
+func TestResolveNameToIPsLogsVerbose(t *testing.T) {
+	buf := withVerbose(t, true)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if _, err := ResolveNameToIPs(ctx, "localhost"); err != nil {
+		t.Fatalf("ResolveNameToIPs(localhost) unexpected error: %v", err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "[resolve] VERBOSE starting host=localhost") || !strings.Contains(got, "[resolve] VERBOSE returned host=localhost") {
+		t.Errorf("ResolveNameToIPs verbose output = %q, missing the expected lines", got)
 	}
 }
 

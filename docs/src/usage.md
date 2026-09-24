@@ -67,6 +67,7 @@ These are defined once, so they mean the same thing everywhere they apply:
 | `--json` | off | Print one machine-readable JSON document instead of log lines. |
 | `-4`, `--ipv4` | off | Resolve and check **IPv4 addresses only**. See [IPv4 only, or IPv6 only](#ipv4-only-or-ipv6-only). |
 | `-6`, `--ipv6` | off | Resolve and check **IPv6 addresses only**. |
+| `--verbose` | off | Print extra diagnostic lines about internal steps (a name resolving, ...) as they happen. See [Verbose](#verbose) below. |
 
 :::note A value that is not a wait is refused
 `--timeout` and `--delay` become a duration in nanoseconds, which silently overflows above about 292 years: `--timeout 10000000000` used to turn into a check that "timed out" at once. A day is far more than any check waits, so anything outside the ranges above - and a negative `--delay` or `--count` - is a [usage error](#exit-status): exit `2`, one line on stderr saying what the range is, nothing run.
@@ -79,6 +80,25 @@ These are defined once, so they mean the same thing everywhere they apply:
 :::note Every attempt waits first
 `--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr` and `ip` do no attempts, so they have no delay.)
 :::
+
+### Verbose
+
+`--verbose` prints extra lines about a command's internal steps while it runs - not the result, which is always printed regardless, but the steps that led to it:
+
+```bash
+shint rdns 127.0.0.1 --verbose
+```
+
+```text
+Wed Sep 23 23:08:11 MDT 2026: [resolve] VERBOSE starting host=127.0.0.1 family=ip
+Wed Sep 23 23:08:11 MDT 2026: [resolve] VERBOSE returned host=127.0.0.1 addresses=[127.0.0.1] time=104.125µs
+Wed Sep 23 23:08:12 MDT 2026: [rdns] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=383.458µs
+...
+```
+
+Verbose lines always go to **stderr**, never stdout, whether or not `--json` is set: `--json`'s output on stdout is exactly the same document with or without `--verbose`, so `shint ... --json --verbose | jq` still works, and a plain `shint ... --verbose > out.txt` keeps `out.txt` to the normal result lines. There is no separate flag to send verbose lines to a file - `2> file` already does that, and piggy-backing a second, shint-specific way to do the same thing would only be one more thing to remember.
+
+Not every command has something to add: verbose lines are about a shared internal step (name resolution, finding the authoritative name servers, ...), and a command with no such step - `cidr`, `ip` - has nothing to print, so `--verbose` is accepted everywhere but is a no-op there. Where a line is tagged `[resolve]` rather than the command's own name, it is because several commands share that step and it reads the same from all of them.
 
 ### IPv4 only, or IPv6 only
 

@@ -1,10 +1,23 @@
 package lib
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 	"time"
 )
+
+// withVerbose points verboseOut at a buffer and sets Verbose for the
+// duration of the test, restoring both after - the same swap-and-restore
+// shape family_test.go uses for NetworkType.
+func withVerbose(t *testing.T, v bool) *bytes.Buffer {
+	t.Helper()
+	oldOut, oldV := verboseOut, Verbose
+	buf := &bytes.Buffer{}
+	verboseOut, Verbose = buf, v
+	t.Cleanup(func() { verboseOut, Verbose = oldOut, oldV })
+	return buf
+}
 
 func TestLogWithTimestampOK(t *testing.T) {
 	line := LogWithTimestamp("telnet", "connect ok host=1.2.3.4", false)
@@ -88,5 +101,35 @@ func TestLogStatsPartialSuccess(t *testing.T) {
 	out := LogStats("nmap", stats, 4)
 	if !strings.Contains(out, "Success: 25%") {
 		t.Errorf("expected 25%% success line, got %q", out)
+	}
+}
+
+func TestLogVerboseWritesWhenEnabled(t *testing.T) {
+	buf := withVerbose(t, true)
+	LogVerbose("resolve", "starting host=example.com")
+	got := buf.String()
+	if !strings.Contains(got, "[resolve] VERBOSE starting host=example.com") {
+		t.Errorf("LogVerbose output = %q, missing the expected tag/message", got)
+	}
+}
+
+func TestLogVerboseSilentByDefault(t *testing.T) {
+	buf := withVerbose(t, false)
+	LogVerbose("resolve", "starting host=example.com")
+	if got := buf.String(); got != "" {
+		t.Errorf("LogVerbose wrote %q while Verbose is false, want nothing", got)
+	}
+}
+
+func TestSetVerboseAppliesTheFlag(t *testing.T) {
+	old := Verbose
+	t.Cleanup(func() { Verbose = old })
+	SetVerbose(true)
+	if !Verbose {
+		t.Error("SetVerbose(true) left Verbose false")
+	}
+	SetVerbose(false)
+	if Verbose {
+		t.Error("SetVerbose(false) left Verbose true")
 	}
 }

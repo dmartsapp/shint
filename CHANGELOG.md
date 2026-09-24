@@ -4,6 +4,10 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.3.0 - unreleased
+
+- **New flag: `--verbose` prints extra diagnostic lines about a command's internal steps (a name resolving, ...) as they happen.** It is global, like `--json`, but not every command has something to add - a shared step with nothing to narrate (`cidr`, `ip`, which do no attempts) makes it a no-op there. Lines always go to stderr, never stdout, whether or not `--json` is set, so `shint ... --json --verbose | jq` is unaffected and there is no separate flag to send them to a file - `2> file` already does that. First step instrumented: name resolution, tagged `[resolve]` rather than the command's own name since every command that resolves a host shares it. See [Verbose](https://dmartsapp.github.io/shint/docs/usage.html#verbose).
+
 ## v4.2.1 - 2026-09-23
 
 - **The Vulnerability Check workflow no longer fights itself over the Go module cache.** It had its own `Set up Go` step and `golang/govulncheck-action@v1` runs a second, separate one internally; both tried to restore the Go module and build cache into the same paths, the second collided with the first (thousands of `tar: ... Cannot open: File exists` lines in every release's log) and fell back to a cold install every time. The scan itself always ran for real and the report was genuine - this was wasted time and alarming-looking noise, not a false pass - but a passing run reads like a broken one when it is red with 27,000 lines of tar errors. Removed the redundant step; confirmed against a real run's log (the v4.2.0 tag). Needs a real tag push to confirm the fix itself, since workflows only run on tags.
