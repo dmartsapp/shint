@@ -14,7 +14,7 @@
 | Issue | State |
 |---|---|
 | The other three release workflows (`build.yaml`, `docker-hub.yaml`, `ghcr.yaml`) had the same Go-module-cache collision v4.2.1 fixed only in the standalone Vulnerability Check workflow | **Done** - [`b49bde5`](https://github.com/dmartsapp/shint/commit/b49bde5) |
-| [#64](https://github.com/dmartsapp/shint/issues/64) `dns`: a forward query never checks `/etc/hosts`, so `shint dns localhost` NXDOMAINs | Not started |
+| [#64](https://github.com/dmartsapp/shint/issues/64) `dns`: a forward query never checks `/etc/hosts`, so `shint dns localhost` NXDOMAINs | **Done** - external contribution by [@littfed](https://github.com/littfed), [PR #66](https://github.com/dmartsapp/shint/pull/66) ([`f16d63f`](https://github.com/dmartsapp/shint/commit/f16d63f), merged as [`62b199c`](https://github.com/dmartsapp/shint/commit/62b199c)). Reviewed and verified before merging (full diff read, all new + existing tests run including `-race`, the 447-case battery, `golangci-lint`/`govulncheck`, and a manual check of the real binary against the original bug); docs/changelog were not part of the PR and still need adding |
 | [#65](https://github.com/dmartsapp/shint/issues/65) `rdns` (and every command via `lib.ResolveName`): a name on multiple `/etc/hosts` lines may only resolve its first address | Not started - needs a real repro from the reporting machine first (see the issue) before a fix is targeted |
 
 A smaller gap noticed while investigating #64 but not yet filed as its own issue: `dns <name> PTR` for a non-IP name sends a literal, near-always-empty wire query instead of being rejected the way a non-PTR type is rejected for a literal IP address. Fold into #64's fix, or file separately - not yet decided.
