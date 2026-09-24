@@ -35,7 +35,8 @@ The [shared flags](usage.md#flags-shared-by-every-command) apply: `--timeout` is
 ## Which server answers
 
 - **With `@server`**, that server (a name is resolved first; if it has several addresses they are tried in order).
-- **Without it**, the servers your system is configured with, **in order**: the first that answers is used, and a server that does not answer (no reply in time, connection refused) is skipped, with the reason written on the line (`skipped=...`). That is what a resolver does, and what `dig` does. Any answer counts - `NXDOMAIN` from the first server is an answer, not a reason to try the second.
+- **Without it**, before sending queries over the network, **forward lookups check the local hosts file** (and the built-in fallback for `localhost` to `127.0.0.1` and `::1`). If a matching record exists, it is answered immediately with `nameserver=hosts` and `transport=file` (flags `[qr,aa]`, TTL 0) without network traffic, allowing local and offline resolution.
+- If no hosts record matches (or for reverse PTR lookups), the servers your system is configured with are asked **in order**: the first that answers is used, and a server that does not answer (no reply in time, connection refused) is skipped, with the reason written on the line (`skipped=...`). That is what a resolver does, and what `dig` does. Any answer counts - `NXDOMAIN` from the first server is an answer, not a reason to try the second.
 
 The system's servers are found by asking Go's own resolver which ones it would use, so the list is right on every platform, including Windows where there is no `/etc/resolv.conf`.
 
