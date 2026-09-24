@@ -1,112 +1,69 @@
-# shint
+# shint v4.2.0 - released 2026-09-21
 
-**that SHIt Network Tool** - the network checks you run every day, in one small program.
+> **This page describes the `release/v4.2.0` branch only**: what the release delivered, the bugs it fixed, and what changed on the branch. It is a record of that release, added after the tag and not part of it. It is **never merged into `main`**, whose README tracks every milestone and release in one place: **[README on main](https://github.com/dmartsapp/shint/blob/main/readme.md)**.
 
-[![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-**[Download](https://github.com/dmartsapp/shint/releases/latest)** &nbsp;|&nbsp; **[Documentation](https://dmartsapp.github.io/shint/)** &nbsp;|&nbsp; [Changelog](CHANGELOG.md)
-
-## What is it?
-
-shint puts the small utilities you keep reaching for - checking whether a port is open, pinging a host, making a web request, scanning for open ports, probing a UDP service, and running a quick test server - into **one file** that works the same on Linux, macOS, Windows and more. Every command explains what it found in the same clear, readable format.
-
-## Why use it?
-
-- **One tool instead of five.** `telnet`, `ping`, `curl`, `nmap` and `nc` habits, without hunting for each one.
-- **Answers, not noise.** Every line says what was checked, whether it worked, and how long it took.
-- **Works everywhere.** A single download per platform, or a Docker image. Nothing else to install.
-- **Made for scripts.** Add `--json` for machine-readable output. Standard exit codes: `0` everything passed, `1` something failed, `2` you used it wrongly.
-- **Practise safely.** `shint listen` starts a test server on your own machine, so you can try things without touching anything real.
-- **Private.** No telemetry, no accounts, no configuration files.
-
-## See it work
-
-Can I reach this service - over IPv4 and IPv6?
-
-```
-$ shint telnet google.com 443
-Sun Sep 20 01:50:14 MDT 2026: [telnet] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=47.672458ms
-Sun Sep 20 01:50:15 MDT 2026: [telnet] OK connect ok host=2607:f8b0:400a:803::200e port=443 attempt=1/1 time=30.388833ms
-Sun Sep 20 01:50:16 MDT 2026: [telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=30.467459ms
-```
-
-Start a test web server, then call it:
-
-```
-$ shint listen http 8080
-Sun Sep 20 01:50:18 MDT 2026: [listen-http] OK listening address=0.0.0.0:8080 max_requests=6
-Sun Sep 20 01:50:19 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:59313 bytes_received=97 bytes_sent=160 time_taken=504.375µs
-
-$ shint web http://127.0.0.1:8080/
-Sun Sep 20 01:50:19 MDT 2026: [web] OK response url=http://127.0.0.1:8080/ status=200 bytes_sent=97 bytes_received=160 speed=50.92KB/s attempt=1/1 time=3.0685ms
-```
-
-## Commands
-
-| Command | What it answers |
+| | |
 |---|---|
-| `shint telnet <host> <port>` | Can I open a TCP connection to this host and port? |
-| `shint ping <host>` | Is this host reachable, and how fast does it answer? |
-| `shint web <url>` | What does this URL return? (HTTP and HTTPS, headers, bodies, TLS, mutual TLS) |
-| `shint nmap <host> --from 1 --to 1024` | Which TCP ports are open? |
-| `shint udp <host> <port>` | Does this UDP service answer? |
-| `shint listen tcp\|udp\|http <port>` | Run a local test server to check against. |
+| Release | [v4.2.0](https://github.com/dmartsapp/shint/releases/tag/v4.2.0), tag on [`0b7a671`](https://github.com/dmartsapp/shint/commit/0b7a671), 2026-09-21 |
+| Kind | Minor - two sprints' worth, folded into one release: `release/v4.1.0`'s work was merged into this branch and **v4.1.0 was never tagged on its own** |
+| Milestones | [v4.1.0](https://github.com/dmartsapp/shint/milestone/1) and [v4.2.0](https://github.com/dmartsapp/shint/milestone/3), both closed |
+| Everything that differs from the previous release | [v4.0.6...v4.2.0](https://github.com/dmartsapp/shint/compare/v4.0.6...v4.2.0) |
+| Documentation | [CHANGELOG.md](CHANGELOG.md) (the `v4.2.0` and `v4.1.0` sections) and `docs/src/` |
 
-## Install
+## New commands and features
 
-Download the file for your platform from the [latest release](https://github.com/dmartsapp/shint/releases/latest), make it executable, and run it:
+**Shipped in v4.1.0** (superseded before its own tag; the work is real, the release number is not):
 
-```
-chmod +x shint.linux.amd64
-./shint.linux.amd64 --version
-```
+| Target | Delivered in |
+|---|---|
+| `ntp <server>` - check this machine's clock against an NTP server | [`9fe6294`](https://github.com/dmartsapp/shint/commit/9fe6294) (Issue #19) |
+| `wol <mac>` - send a Wake-on-LAN magic packet | [`9fe6294`](https://github.com/dmartsapp/shint/commit/9fe6294) (Issue #18) |
+| `rdns <ip-or-host>` - reverse DNS lookup | [`fca06fc`](https://github.com/dmartsapp/shint/commit/fca06fc) (Issue #16) |
+| `cidr <prefix>...` - offline subnet calculator | [`9fe6294`](https://github.com/dmartsapp/shint/commit/9fe6294) (Issue #17) |
+| `-4`/`--ipv4` and `-6`/`--ipv6` - check one address family only | [`dd7b2e5`](https://github.com/dmartsapp/shint/commit/dd7b2e5) (Issue #23) |
+| `web --timing` - DNS/connect/TLS/wait/download breakdown, per redirect hop | [`04b1cb2`](https://github.com/dmartsapp/shint/commit/04b1cb2) (Issue #20) |
+| `Ctrl+C` shows the summary on `ntp`, `rdns` and `wol` too | [`4f0596a`](https://github.com/dmartsapp/shint/commit/4f0596a) (Issue #24) |
+| Module path `github.com/dmartsapp/shint/v4`, so `go install .../v4@latest` works | [`e7c9900`](https://github.com/dmartsapp/shint/commit/e7c9900) (Issue #15) |
+| SHA-256 checksum and signed build attestation for every release binary | [`c33657f`](https://github.com/dmartsapp/shint/commit/c33657f) |
 
-Or use Docker:
+**New in v4.2.0 itself:**
 
-```
-docker run --rm farhansabbir/shint:latest telnet example.com 443
-```
+| Target | Delivered in |
+|---|---|
+| `ip` - this machine's network interfaces and addresses | [`c1ce7c7`](https://github.com/dmartsapp/shint/commit/c1ce7c7) (Issue #42) |
+| `dns <name> [type] [@server]` - DNS lookups, like `dig`, in shint's format | [`47dd568`](https://github.com/dmartsapp/shint/commit/47dd568) (Issue #43) |
+| Every command that resolves a name shows who runs its DNS (`dns authoritative ...`) | [`1c14005`](https://github.com/dmartsapp/shint/commit/1c14005) (Issue #44) |
+| `udp --hex` sends exact bytes, for binary probes | [`b228df5`](https://github.com/dmartsapp/shint/commit/b228df5) (Issue #46) |
 
-Step-by-step instructions for every platform, building from source and shell completion are in the **[installation guide](https://dmartsapp.github.io/shint/docs/install.html)**.
+## Bugs fixed
 
-## Learn more
+Mostly what the black-box test battery (added in v4.0.6) found, still open at the start of this branch:
 
-- **[Using shint](https://dmartsapp.github.io/shint/docs/usage.html)** - the flags every command shares, output formats and exit codes
-- **[Cookbook](https://dmartsapp.github.io/shint/docs/cookbook.html)** - ready-made recipes
-- **[Troubleshooting](https://dmartsapp.github.io/shint/docs/troubleshooting.html)** - the common surprises, explained
-- **[Technical documentation](https://dmartsapp.github.io/shint/docs/tech-architecture.html)** - architecture, every source file, CI/CD, releases and testing
+| Bug | Fix |
+|---|---|
+| `udp --payload -1` (or a huge value) crashed with a stack trace; `--timeout`/`--delay` silently overflowed | [`2d16da1`](https://github.com/dmartsapp/shint/commit/2d16da1) (Issues #29, #30) |
+| `listen`/`completion` printed the help page and exited `0` for an unknown subcommand; `listen --count -1` was accepted as "unlimited" | [`2d16da1`](https://github.com/dmartsapp/shint/commit/2d16da1) (Issue #33) |
+| `udp` logged a closed probe as `OK`; `ping` logged a send error as `OK` - both while exiting `1` | [`2d16da1`](https://github.com/dmartsapp/shint/commit/2d16da1) (Issue #32) |
+| `--count N --delay 0` opened a socket per attempt, so a low file-descriptor limit failed attempts that had nothing wrong | [`81833ed`](https://github.com/dmartsapp/shint/commit/81833ed) (Issue #31) |
+| `web` held the whole response body in memory (662 MB peak for a 300 MB download) | [`ed7c7dd`](https://github.com/dmartsapp/shint/commit/ed7c7dd) (Issue #28) |
+| `listen http` never logged or counted a request it could not serve (garbage, a stalled body) | [`e885952`](https://github.com/dmartsapp/shint/commit/e885952) (Issues #34, #35) |
+| `web` mishandled a URL without a scheme, and `listen tcp` logged one line per 4 KB read instead of per burst | [`f8decf6`](https://github.com/dmartsapp/shint/commit/f8decf6) (Issues #38, #39) |
+| The listener/`udp` reply preview could garble the terminal on unsafe bytes | [`130c73a`](https://github.com/dmartsapp/shint/commit/130c73a) (Issue #22) |
+| `cidr` error messages leaked `net/netip`'s internal wording instead of naming the cause | [`73c520f`](https://github.com/dmartsapp/shint/commit/73c520f) |
+| The tests did not compile on Windows (`syscall.Kill`); `make vet` did not check other operating systems | [`5c032c8`](https://github.com/dmartsapp/shint/commit/5c032c8) (Issue #13) |
 
-## Roadmap
+Documented rather than changed: `web` never uses a proxy, and `--timeout` has no effect on `listen udp` (Issues #36, #40) - both in [`f8decf6`](https://github.com/dmartsapp/shint/commit/f8decf6).
 
-shint ships **one release every two weeks, one at a time**. Here is what is planned. Dates are targets, and the plan may change as we learn what is most useful.
+## Other changes on the branch
 
-| Release | Sprint | What is coming |
-|---|---|---|
-| **v4.0.4** | Released Sep 20 | Fixes: `ping --timeout` now works and `ping` shows the payload size on every reply, clearer `udp` help, documentation fixes. Releases now build only from a version tag on `main` |
-| **v4.1.0** | Oct 5 - Oct 18 | `web --timing` (where the time went: DNS, connect, TLS, first byte, download), `wol` (wake a machine on your network), `cidr` (subnet calculator), `ntp` (check your clock against a time server). Verified downloads: SHA-256 checksums and signed build attestations for every binary |
-| **v4.2.0** | Oct 19 - Nov 1 | `ip` (your interfaces and addresses), `dns` (lookups like `dig`), authoritative name servers shown whenever shint resolves a name, banner grabbing in `telnet`, `udp --hex` for binary payloads |
-| **v4.3.0** | Nov 2 - Nov 15 | `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names |
-| **v4.4.0** | Nov 16 - Nov 29 | `ip route` (routing table and default gateway), richer `ping`: sub-millisecond timings, and "unreachable" replies told apart from timeouts |
-| **v4.5.0** | Nov 30 - Dec 13 | `speed` (measure throughput between two of your machines) |
-| **v4.5.x** | After Dec 13 | Patch releases only: fixes, no new features. A lot has changed since v4.0, and this is the time to check it |
-| **v5.0.0** | Not scheduled | The next major release, for the changes that would break what works today - see [What will break in v5.0.0](#what-will-break-in-v500) |
-| **Later** | | Package managers such as Homebrew |
+- **`listen tcp` was removed, then restored.** [`82543df`](https://github.com/dmartsapp/shint/commit/82543df) removed it as a breaking-change exploration; [`12072f4`](https://github.com/dmartsapp/shint/commit/12072f4) reverted that. It stays in the 4.x line; its removal is parked for v5.0.0 as Issue #48, documented on `main`'s README.
+- **Release integrity and process**, from the v4.1.0 side of the branch: the `Check` workflow running `make check` after every merge to `main` ([`f656b08`](https://github.com/dmartsapp/shint/commit/f656b08)), the release created with `softprops/action-gh-release@v3` ([`aa53ff3`](https://github.com/dmartsapp/shint/commit/aa53ff3), Issue #12), a release branch's README scoped to that branch and `make release-check` as the release-day preflight ([`954b278`](https://github.com/dmartsapp/shint/commit/954b278)), and CI-failure issues carrying the real run URL ([`f656b08`](https://github.com/dmartsapp/shint/commit/f656b08)).
+- **The tool's expansion is now "Simple Host INspection Toolkit"** ([`f656b08`](https://github.com/dmartsapp/shint/commit/f656b08)) - the name, binary, repository, image and every URL are unchanged.
+- Docs for every new command, the module-path change, and web timing ([`060fd20`](https://github.com/dmartsapp/shint/commit/060fd20)).
+- The version bump, the dated changelogs (both v4.1.0's and v4.2.0's) and the docs version examples are in the release commit [`e28b859`](https://github.com/dmartsapp/shint/commit/e28b859).
 
-The plan runs to v4.5.0. After it there are no more minor releases - only patches - until v5.0.0.
+## How README files work in this project
 
-Everything on the list keeps shint's ground rules: one small file, nothing to configure, and **never any need for administrator or root privileges**. Have an idea, or want something moved up? [Open an issue](https://github.com/dmartsapp/shint/issues).
-
-### What will break in v5.0.0
-
-A change that would break scripts on purpose - taking a command or a flag away, changing what one means - does not go into a v4.x release. It waits for the next major release, v5.0.0, which has no date yet. What is planned for it so far:
-
-- **`shint listen tcp` is removed.** `shint listen` keeps `listen http` and `listen udp`. `listen http` also accepts a plain TCP connection, so it is the target for a `telnet` or `nmap` port check (a connection that sends nothing is accepted and not logged). `--echo` becomes a `listen udp` flag only; today `listen http` accepts it and ignores it. If you script `shint listen tcp <port>`, switch to `shint listen http <port>` - or to `nc -l <port>` if you want a listener that shows raw bytes. **Until v5.0.0, `listen tcp` keeps working.**
-
-## Privacy
-
-shint collects nothing. The only network traffic is what a check itself needs - DNS queries, TCP and UDP connections, ICMP packets and the HTTP requests you ask for - sent to the addresses you name.
-
-## License
-
-[MIT](LICENSE) &copy; Farhan Sabbir Siddique
+- A **release branch's README** (this page) covers that branch alone: its milestone targets, its bugs, its changes and diffs. It is updated as the branch moves.
+- **`main`'s README** covers the whole project: all milestones, the releases, the install and usage overview. It shows the latest release dynamically (the release badge and download link point at "latest"), so a release needs no edit to it. Changes to it are made on `main`, in their own commits, never brought in from a branch.
+- So before a release branch is merged, its `readme.md` is put back to `main`'s (`make release-check` verifies that), and the fast-forward changes nothing in `main`'s README. Details: [Releases and tagging](https://dmartsapp.github.io/shint/docs/tech-release.html).
