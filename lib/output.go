@@ -2,8 +2,6 @@ package lib
 
 import (
 	"fmt"
-	"io"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -406,41 +404,4 @@ func LogStats(modulename string, stats []time.Duration, iterations int) string {
 		return header + "Requests sent: " + strconv.Itoa(iterations) + ", Response received: " + strconv.Itoa(len(stats)) + ", Success: " + strconv.Itoa(len(stats)*100/iterations) + "%\nLatency: minimum: " + min.String() + ", average: " + avg.String() + ", maximum: " + max.String()
 	}
 	return header + "Requests sent: " + strconv.Itoa(iterations) + ", Response received: 0\nLatency: minimum: 0, average: 0, maximum: 0"
-}
-
-// Verbose enables extra diagnostic lines about what a command's shared
-// internal steps are doing while they run - not the result, which is always
-// printed regardless, but the steps that led to it (a name resolving, the
-// authoritative servers being found, ...). It is off by default; set once at
-// startup with SetVerbose, the same way NetworkType is set once with
-// SetIPFamily, so a shared lib function (ResolveName and the like) can act on
-// it without every caller threading a flag down to it by hand.
-//
-// Verbose lines are for a human reading text-mode output: --json is
-// unaffected (see LogVerbose), and a command may choose not to add any -
-// nothing requires it. What each one shows, if anything, is decided per call
-// site as it is added, not applied uniformly.
-var Verbose = false
-
-// verboseOut is where LogVerbose writes; a var, like lookupAddr in rdns.go, so
-// a test can substitute a buffer instead of touching the real stderr.
-var verboseOut io.Writer = os.Stderr
-
-// SetVerbose applies the --verbose flag.
-func SetVerbose(v bool) {
-	Verbose = v
-}
-
-// LogVerbose writes a verbose diagnostic line to stderr - never stdout, so it
-// cannot land in a result a script might be reading even outside --json, and
-// never needs a file-target flag: `2> file` already does that job. It is a
-// no-op unless Verbose is set, so a call site does not need its own "if
-// Verbose" guard first. module names the internal step (e.g. "resolve"), not
-// necessarily the command the user typed - several commands share the same
-// underlying step and the line should read the same from all of them.
-func LogVerbose(module, message string) {
-	if !Verbose {
-		return
-	}
-	_, _ = fmt.Fprintf(verboseOut, "%s: [%s] VERBOSE %s\n", time.Now().Format(DATETIMEFORMAT), module, message)
 }

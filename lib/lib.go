@@ -14,7 +14,6 @@ import (
 	"slices"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -30,18 +29,11 @@ const (
 // alike (see NetworkType). ctx bounds the lookup; callers derive it from
 // --timeout, and never from anything wider than the lookup itself.
 func ResolveName(ctx context.Context, name string) ([]string, error) {
-	LogVerbose("resolve", "starting "+Fields("host", name, "family", NetworkType))
-	start := time.Now()
 	var resolver net.Resolver
 	ipaddresses, err := resolver.LookupIP(ctx, NetworkType, name)
 	var addresses = make([]string, 0)
 	for _, address := range ipaddresses {
 		addresses = append(addresses, address.String())
-	}
-	if err != nil {
-		LogVerbose("resolve", "failed "+Fields("host", name, "time", time.Since(start), "error", err.Error()))
-	} else {
-		LogVerbose("resolve", "returned "+Fields("host", name, "addresses", "["+strings.Join(addresses, ",")+"]", "time", time.Since(start)))
 	}
 	return addresses, err
 }
@@ -49,20 +41,8 @@ func ResolveName(ctx context.Context, name string) ([]string, error) {
 // ResolveNameToIPs is ResolveName returning parsed net.IP values, for callers
 // that need the addresses themselves rather than their text.
 func ResolveNameToIPs(ctx context.Context, name string) ([]net.IP, error) {
-	LogVerbose("resolve", "starting "+Fields("host", name, "family", NetworkType))
-	start := time.Now()
 	var resolver net.Resolver
-	addresses, err := resolver.LookupIP(ctx, NetworkType, name)
-	if err != nil {
-		LogVerbose("resolve", "failed "+Fields("host", name, "time", time.Since(start), "error", err.Error()))
-	} else {
-		strs := make([]string, len(addresses))
-		for i, a := range addresses {
-			strs[i] = a.String()
-		}
-		LogVerbose("resolve", "returned "+Fields("host", name, "addresses", "["+strings.Join(strs, ",")+"]", "time", time.Since(start)))
-	}
-	return addresses, err
+	return resolver.LookupIP(ctx, NetworkType, name)
 }
 
 // GetMinAvgMax returns the smallest, mean and largest of stats. stats must not
