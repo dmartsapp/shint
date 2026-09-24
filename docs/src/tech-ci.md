@@ -289,3 +289,7 @@ The Makefile is the single place these are defined; see [Testing](tech-testing.m
 - **It does not run on branches or pull requests**, so problems surface after a merge or at tag time. (`main` does not pick up workflow runs from other branches either: a workflow file on a branch does nothing until it is merged, and even then only a `vX.Y.Z` tag on `main` can start it.)
 - **It does not accept just any tag.** A tag that is not `vX.Y.Z`, or is on a commit that is not on `main`, is refused by the [guard](#the-release-tag-guard) before anything is built.
 - **It cannot un-publish.** A tag push that fails halfway can leave a partial release or images; see the recovery notes in [Releases and tagging](tech-release.md#when-a-release-goes-wrong).
+
+## Backup mirror
+
+The repository is mirrored to a second, currently private git host, kept in sync automatically and independently of anything in this document - no workflow here pushes to it, and nothing about the CI/CD pipeline above depends on it existing. It exists purely so the source and its full history survive an outage or loss of access to the primary repository; it is not a second place to file issues, open pull requests, or expect any of the automation described on this page.
