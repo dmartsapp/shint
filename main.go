@@ -46,6 +46,7 @@ var (
 	jsonoutput   bool
 	ipv4Only     bool
 	ipv6Only     bool
+	verbose      bool
 
 	// nmap
 	fromport int
@@ -606,6 +607,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&jsonoutput, "json", false, "Flag option to output only in JSON format")
 	rootCmd.PersistentFlags().BoolVarP(&ipv4Only, "ipv4", "4", false, "Resolve and check IPv4 addresses only (a host with both kinds is normally checked over both)")
 	rootCmd.PersistentFlags().BoolVarP(&ipv6Only, "ipv6", "6", false, "Resolve and check IPv6 addresses only")
+	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Print extra diagnostic lines about internal steps (name resolution, ...) to stderr as they happen; --json is unaffected. Not every command has something to add.")
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) { lib.SetVerbose(verbose) }
 
 	webCmd.Flags().StringVarP(&httpmethod, "method", "X", "GET", "HTTP method to use (GET, POST, PUT, DELETE)")
 	webCmd.Flags().StringVarP(&httpdata, "payload", "P", "", "HTTP payload data to send")
