@@ -16,7 +16,7 @@ Includes:
 - [x] every target and bug below is done, or moved to a later milestone
 - [x] the changelog has an entry for every change a user would notice
 - [x] `Summary:` above says what this release is, in plain language
-- [ ] a clean rehearsal: `make release DRY_RUN=1`
+- [x] a clean rehearsal: `make release DRY_RUN=1` - passed on 2026-09-26 (every check, release-check, the stamped commit and README row inspected)
 
 ## Targets
 
