@@ -60,6 +60,12 @@ new_repo otherrow
 new_repo nopage
   git rm -q releases/v1.2.3.md; git commit -qm "no page"
                              expect "a missing working page is refused"               1 "FAIL  releases/v1.2.3.md is missing"
+new_repo linked
+  roadmap '| [**v1.2.3**](releases/v1.2.3.md) | Released Feb 2 | new things |' > readme.md; git commit -q -a --amend --no-edit
+                             expect "a linked Roadmap row counts"                     0 "release-check: all passed"
+new_repo leftover
+  printf 'x\n' > branch_readme.md; git add branch_readme.md; git commit -q --amend --no-edit
+                             expect "a branch_readme.md left behind is refused"       1 "FAIL  branch_readme.md is still here"
 new_repo dots
   sed -i.bak 's/Released Feb 2/Feb 1 - Feb 14/; s/^| \*\*v1\.2\.2\*\* | Released Jan 1 | old |$/| **v1x2x3** | Released Feb 2 | x |/' readme.md; rm -f readme.md.bak; git commit -qam "readme"
                              expect "the version's dots are matched literally"       1 "FAIL  readme.md's Roadmap has no 'Released' row"

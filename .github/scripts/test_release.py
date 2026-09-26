@@ -117,10 +117,10 @@ class Fixture(unittest.TestCase):
         """release/v4.3.0 started, with a Summary and a changelog entry, committed."""
         rc, out = self.release("start", "4.3.0")
         self.assertEqual(rc, 0, out)
-        page = self.read("releases/v4.3.0.md").replace("Summary:\n", "Summary: %s\n" % summary)
+        page = self.read("branch_readme.md").replace("Summary:\n", "Summary: %s\n" % summary).replace("- [ ] ", "- [x] ")
         if includes:
             page = page.replace("Includes:\n", "Includes: %s\n" % includes)
-        self.put(self.work, "releases/v4.3.0.md", page)
+        self.put(self.work, "branch_readme.md", page)
         cl = self.read("CHANGELOG.md").replace("## v4.3.0 - unreleased\n\n", "## v4.3.0 - unreleased\n\n- **`tls` is new.** It checks certificates.\n\n")
         self.put(self.work, "CHANGELOG.md", cl)
         self.git(self.work, "commit", "-q", "-am", "feat: tls")
@@ -134,11 +134,29 @@ class Start(Fixture):
         self.assertEqual(self.git(self.work, "rev-parse", "--abbrev-ref", "HEAD"), "release/v4.3.0")
         self.assertIsNotNone(self.origin_ref("refs/heads/release/v4.3.0"))
         self.assertIn("## v4.3.0 - unreleased\n\n## v4.2.2 - 2026-09-26", self.read("CHANGELOG.md"))
-        page = self.read("releases/v4.3.0.md")
+        page = self.read("branch_readme.md")
         self.assertTrue(page.startswith("# shint v4.3.0 - work in progress"), page[:60])
         self.assertRegex(page, r"(?m)^Summary:$")
+        self.assertRegex(page, r"(?m)^## To do\n\n- \[ \] ")
         self.assertIn("after the v4.2.2 tag", page)
+        self.assertFalse(os.path.exists(os.path.join(self.work, "releases", "v4.3.0.md")))
         self.assertEqual(self.git(self.work, "log", "-1", "--format=%s"), "release: start v4.3.0")
+        # main's README on origin: the row links to the branch's page, and the branch has it too
+        link = "| [**v4.3.0**](https://github.com/dmartsapp/shint/blob/release/v4.3.0/branch_readme.md) | Nov 2 - Nov 15 |"
+        main_readme = subprocess.run(["git", "show", "main:readme.md"], cwd=self.origin, capture_output=True, text=True).stdout
+        self.assertIn(link, main_readme)
+        self.assertIn(link, self.read("readme.md"))
+        self.assertEqual(self.origin_ref("refs/heads/main"), self.git(self.work, "rev-parse", "HEAD~1"))
+
+    def test_a_release_with_no_roadmap_row_gets_an_in_progress_one(self):
+        rc, out = self.release("start", "4.2.3")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("| [**v4.2.3**](https://github.com/dmartsapp/shint/blob/release/v4.2.3/branch_readme.md) | In progress | In progress - see its working page. |",
+                      self.read("readme.md"))
+        lines = self.read("readme.md").split("\n")
+        at = lambda v: next(i for i, l in enumerate(lines) if "**%s**" % v in l)
+        self.assertLess(at("v4.2.2"), at("v4.2.3"))
+        self.assertLess(at("v4.2.3"), at("v4.3.0"))
 
     def test_it_refuses_an_existing_branch_and_a_bad_version(self):
         self.assertEqual(self.release("start", "4.3.0")[0], 0)
@@ -159,7 +177,7 @@ class Refusals(Fixture):
 
     def test_no_summary(self):
         self.ready(summary="")
-        self.put(self.work, "releases/v4.3.0.md", re.sub(r"(?m)^Summary:.*$", "Summary:", self.read("releases/v4.3.0.md")))
+        self.put(self.work, "branch_readme.md", re.sub(r"(?m)^Summary:.*$", "Summary:", self.read("branch_readme.md")))
         self.git(self.work, "commit", "-q", "-am", "x")
         rc, out = self.release()
         self.assertEqual(rc, 1)
@@ -167,7 +185,7 @@ class Refusals(Fixture):
 
     def test_an_empty_changelog_section(self):
         self.release("start", "4.3.0")
-        self.put(self.work, "releases/v4.3.0.md", self.read("releases/v4.3.0.md").replace("Summary:\n", "Summary: s\n"))
+        self.put(self.work, "branch_readme.md", self.read("branch_readme.md").replace("Summary:\n", "Summary: s\n"))
         self.git(self.work, "commit", "-q", "-am", "x")
         rc, out = self.release()
         self.assertEqual(rc, 1)
@@ -180,6 +198,18 @@ class Refusals(Fixture):
         rc, out = self.release()
         self.assertEqual(rc, 1)
         self.assertIn("never typed", out)
+
+    def test_an_unchecked_to_do(self):
+        self.ready()
+        self.put(self.work, "branch_readme.md", self.read("branch_readme.md").replace(
+            "- [x] the changelog has an entry", "- [ ] the changelog has an entry"))
+        self.git(self.work, "commit", "-q", "-am", "x")
+        head = self.git(self.work, "rev-parse", "HEAD")
+        rc, out = self.release()
+        self.assertEqual(rc, 1)
+        self.assertIn("1 to-do item(s) in branch_readme.md are still open", out)
+        self.assertIn("- [ ] the changelog has an entry", out)
+        self.assertEqual(self.git(self.work, "rev-parse", "HEAD"), head)
 
     def test_an_uncommitted_change(self):
         self.ready()
@@ -203,11 +233,13 @@ class Release(Fixture):
         self.assertIn('Version string = "4.3.0"', self.read("main.go"))
         self.assertIn("## v4.3.0 - 2026-11-15", self.read("CHANGELOG.md"))
         self.assertTrue(self.read("releases/v4.3.0.md").startswith("# shint v4.3.0 - released 2026-11-15"))
-        # main's README: only the roadmap row, from the Summary
-        self.assertIn("| **v4.3.0** | Released Nov 15 | `tls` checks certificates |", self.read("readme.md"))
+        self.assertFalse(os.path.exists(os.path.join(self.work, "branch_readme.md")))
+        self.assertIn("- [x] every target and bug below is done", self.read("releases/v4.3.0.md"))
+        # main's README: only the roadmap row, from the Summary, linking to the record
+        self.assertIn("| [**v4.3.0**](releases/v4.3.0.md) | Released Nov 15 | `tls` checks certificates |", self.read("readme.md"))
         diff = self.git(self.work, "diff", "-U0", before_main, "HEAD", "--", "readme.md")
         changed = [l for l in diff.splitlines() if l[:1] in "+-" and not l.startswith(("+++", "---"))]
-        self.assertTrue(changed and all(re.match(r"^[-+]\| \*\*v\d+\.\d+\.(\d+|x)\*\* \|", l) for l in changed), changed)
+        self.assertTrue(changed and all(re.match(r"^[-+]\| \[?\*\*v\d+\.\d+\.(\d+|x)\*\*(\]\([^)]*\))? \|", l) for l in changed), changed)
         # the messages
         msg = self.git(self.work, "log", "-1", "--format=%B")
         self.assertTrue(msg.startswith("release: `tls` checks certificates (v4.3.0)"), msg[:80])
@@ -221,6 +253,7 @@ class Release(Fixture):
 
     def test_main_that_moved_is_merged_in(self):
         self.ready()
+        self.git(self.seed, "pull", "-q", "--ff-only", "origin", "main")   # release-start pushed the README link
         self.put(self.seed, "other.txt", "main moved\n")
         self.git(self.seed, "add", "other.txt")
         self.git(self.seed, "commit", "-q", "-m", "docs: something on main")
@@ -234,6 +267,7 @@ class Release(Fixture):
 
     def test_a_conflict_with_main_stops_and_changes_nothing(self):
         start = self.ready()
+        self.git(self.seed, "pull", "-q", "--ff-only", "origin", "main")
         self.put(self.seed, "main.go", 'package main\n\nvar (\n\tVersion string = "4.2.9"\n)\n')
         self.git(self.seed, "commit", "-q", "-am", "main: a clashing change")
         self.git(self.seed, "push", "-q", "origin", "main")
@@ -303,6 +337,15 @@ class Release(Fixture):
         self.assertEqual(rc, 0, out)
         self.assertRegex(self.read("readme.md"), r"(?m)^\| \*\*v4\.4\.0\*\* \| Shipped in v4\.3\.0 \|")
         self.assertIn("Includes v4.4.0", self.git(self.work, "log", "-1", "--format=%B"))
+
+    def test_a_branch_started_before_branch_readme_still_releases(self):
+        self.ready()
+        os.makedirs(os.path.join(self.work, "releases"), exist_ok=True)
+        self.git(self.work, "mv", "branch_readme.md", "releases/v4.3.0.md")
+        self.git(self.work, "commit", "-q", "-m", "the old layout")
+        rc, out = self.release()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("| [**v4.3.0**](releases/v4.3.0.md) | Released Nov 15 |", self.read("readme.md"))
 
     def test_a_dry_run_pushes_nothing_and_leaves_the_branch_alone(self):
         head = self.ready()

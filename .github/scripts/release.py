@@ -5,20 +5,24 @@
     make release                        python3 .github/scripts/release.py
     make release DRY_RUN=1              python3 .github/scripts/release.py --dry-run
 
-`start` (on a clean checkout): creates release/vX.Y.Z from origin/main with
-"## vX.Y.Z - unreleased" in CHANGELOG.md and the branch's working page releases/vX.Y.Z.md,
-commits and pushes. The working page is where the release's scope, bugs and changes are
-kept, and its "Summary:" line is what main's README roadmap will say about the release.
+`start` (on a clean checkout): points main's README roadmap row for the release at the
+branch's working page (adding an "In progress" row if it has none) and pushes main; then
+creates release/vX.Y.Z from it with "## vX.Y.Z - unreleased" in CHANGELOG.md and the working
+page branch_readme.md, commits and pushes. The working page is where the release's scope,
+bugs, changes and to-dos are kept; its "Summary:" line is what main's README roadmap will
+say about the release.
 
 Without a subcommand, on release/vX.Y.Z, on release day:
 
   prepare - local, nothing pushed
     1. preflight: a clean tree, the tag free, the changelog section has entries,
-       releases/vX.Y.Z.md has a Summary; the milestone's open issues are listed
+       branch_readme.md has a Summary and nothing unchecked under "To do"; the
+       milestone's open issues are listed
     2. origin/main merged in if it moved (a conflict stops here)
-    3. stamped: the version from the branch name and today's date from the clock - never
-       typed - into main.go, the changelog heading and the working page's title; main's
-       README roadmap row from the Summary (readme-reconcile.py --summary); the site rebuilt
+    3. stamped: branch_readme.md moved to releases/vX.Y.Z.md (the record on main); the
+       version from the branch name and today's date from the clock - never typed - into
+       main.go, the changelog heading and the page's title; main's README roadmap row from
+       the Summary (readme-reconcile.py --summary), linking to the record; the site rebuilt
     4. the release commit, its message generated from the changelog
     5. make attest (make check, signed, on this exact commit), make test-live, and
        release-check; a failure undoes the release commit and stops
@@ -157,10 +161,15 @@ def bullets(body):
 
 
 def working_page(version):
-    path = "releases/v%s.md" % version
+    """(path, summary, includes, unchecked to-dos). The page is branch_readme.md while the
+    release is in flight; the release commit moves it to releases/vX.Y.Z.md (which is also
+    where a branch started before branch_readme.md keeps it)."""
+    path = "branch_readme.md"
     if not os.path.exists(path):
-        raise Stop("%s is missing: it is the branch's working page, and its Summary line is main's "
-                   "README roadmap row (make release-start creates it)" % path)
+        path = "releases/v%s.md" % version
+    if not os.path.exists(path):
+        raise Stop("branch_readme.md is missing: it is the branch's working page, and its Summary line is main's "
+                   "README roadmap row (make release-start creates it)")
     text = read(path)
     m = re.search(r"^Summary:[ \t]*(.*)$", text, re.M)
     summary = m.group(1).strip() if m else ""
@@ -172,7 +181,9 @@ def working_page(version):
     for t in includes:
         if not TAG_RE.match(t) or t == "v" + version:
             raise Stop("%s: 'Includes:' lists other releases folded into this one, like v4.4.0; got %r" % (path, t))
-    return path, summary, includes
+    todo = re.search(r"^## To do[ \t]*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+    unchecked = re.findall(r"^\s*[-*] \[ \] (.+)$", todo.group(1), re.M) if todo else []
+    return path, summary, includes, unchecked
 
 
 def is_release_commit(version, ref="HEAD"):
@@ -207,13 +218,19 @@ PAGE = """# shint {tag} - work in progress
 Summary:
 Includes:
 
-> The working page for `release/{tag}`: what the release is meant to deliver, the bugs it fixes and what changed. **`Summary:`** is the one plain-language line main's README roadmap will show for this release; **`Includes:`** names releases folded into this one (like `v4.4.0`), if any. `make release` reads both, and this file merges into `main` with the release as its record.
+> The working page for `release/{tag}`: what the release is meant to deliver, the bugs it fixes, what changed, and what is left to do - kept up to date as the branch moves. **`Summary:`** is the one plain-language line main's README roadmap will show for this release; **`Includes:`** names releases folded into this one (like `v4.4.0`), if any. `make release` reads both, refuses to publish while anything under **To do** is unchecked, and moves this file to `releases/{tag}.md` in the release commit, where it stays on `main` as the release's record. Main's roadmap row links here in the meantime.
 
 | | |
 |---|---|
 | Milestone | {milestone} |
 | Built on | `main`, after the {previous} tag |
 | Everything that differs from main | [main...release/{tag}](https://github.com/{repo}/compare/main...release/{tag}) |
+
+## To do
+
+- [ ] every target and bug below is done, or moved to a later milestone
+- [ ] the changelog has an entry for every change a user would notice
+- [ ] `Summary:` above says what this release is, in plain language
 
 ## Targets
 
@@ -229,6 +246,43 @@ Includes:
 """
 
 
+BRANCH_PAGE = "branch_readme.md"
+
+
+def reconcile_module():
+    """readme-reconcile.py, imported: its Roadmap table reader."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("readme_reconcile", ".github/scripts/readme-reconcile.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def link_row(tag, target, new_text=None):
+    """Point main's roadmap row for tag at target: [**vX.Y.Z**](target). With new_text, a
+    release that has no row gets one ('In progress'), in version order. Returns True if
+    readme.md changed."""
+    rr = reconcile_module()
+    text = read("readme.md")
+    lines = text.split("\n")
+    table = rr.Table(lines, "## Roadmap")
+    version = tuple(int(x) for x in tag[1:].split("."))
+    cell = "[**%s**](%s)" % (tag, target)
+    row = next((r for r in table.rows if rr.version_of(r[0]) == version), None)
+    if row is None:
+        if new_text is None:
+            return False
+        key = lambda v: rr.LATER if v is None else v
+        pos = next((i for i, r in enumerate(table.rows) if key(rr.version_of(r[0])) > version), len(table.rows))
+        table.rows.insert(pos, [cell, "In progress", new_text])
+    elif row[0] == cell:
+        return False
+    else:
+        row[0] = cell
+    write("readme.md", "\n".join(table.render(lines)))
+    return True
+
+
 def start(version):
     if not VERSION_RE.match(version):
         raise Stop("VERSION must look like 4.4.0, got %r" % version)
@@ -241,7 +295,18 @@ def start(version):
         raise Stop("%s already exists" % branch)
     if local_tag(tag) or remote_tag(tag):
         raise Stop("the tag %s already exists" % tag)
-    git("switch", "-q", "-c", branch, "origin/main")
+
+    # main's README: the release's roadmap row links to the branch's working page
+    git("switch", "-q", "--detach", "origin/main")
+    page_url = "https://github.com/%s/blob/%s/%s" % (REPO, branch, BRANCH_PAGE)
+    if link_row(tag, page_url, new_text="In progress - see its working page."):
+        git("add", "readme.md")
+        git("commit", "-q", "-m", "docs: README - %s's roadmap row links to its working page" % tag)
+        git("push", "-q", "origin", "HEAD:refs/heads/main")
+        if ok("git", "merge-base", "--is-ancestor", "refs/heads/main", "HEAD"):
+            git("update-ref", "refs/heads/main", git("rev-parse", "HEAD"))
+        say("main's README: the %s row links to %s" % (tag, page_url))
+    git("switch", "-q", "-c", branch)
 
     text = read("CHANGELOG.md")
     if changelog_section(version, text)[0] is None:
@@ -258,15 +323,13 @@ def start(version):
         milestone = "[%s](https://github.com/%s/milestone/%s)%s" % (tag, REPO, ms["number"], due)
     else:
         milestone = "%s (no milestone found - create it: gh api repos/%s/milestones -f title=%s)" % (tag, REPO, tag)
-    os.makedirs("releases", exist_ok=True)
-    page = "releases/%s.md" % tag
-    if not os.path.exists(page):
-        write(page, PAGE.format(tag=tag, milestone=milestone, previous=previous, repo=REPO))
-    git("add", "CHANGELOG.md", page)
+    if not os.path.exists(BRANCH_PAGE):
+        write(BRANCH_PAGE, PAGE.format(tag=tag, milestone=milestone, previous=previous, repo=REPO))
+    git("add", "CHANGELOG.md", BRANCH_PAGE)
     git("commit", "-q", "-m", "release: start %s" % tag)
     git("push", "-q", "-u", "origin", branch)
-    say("created and pushed %s: fill in %s (Summary, targets, bugs) as the sprint goes, and the" % (branch, page))
-    say("'## %s - unreleased' section of CHANGELOG.md; on release day, run: make release" % tag)
+    say("created and pushed %s: keep %s (Summary, To do, targets, bugs) up to date as the sprint goes," % (branch, BRANCH_PAGE))
+    say("and the '## %s - unreleased' section of CHANGELOG.md; on release day, run: make release" % tag)
 
 
 # --- prepare ------------------------------------------------------------------------------
@@ -321,6 +384,12 @@ def prepare(version, summary, includes, page, day):
     say("main.go: Version = \"%s\"" % version)
     stamp("CHANGELOG.md", r"^## %s - unreleased$" % re.escape(tag), "## %s - %s" % (tag, day), "the '%s - unreleased' heading" % tag)
     say("CHANGELOG.md: ## %s - %s" % (tag, day))
+    record = "releases/%s.md" % tag
+    if page != record:
+        os.makedirs("releases", exist_ok=True)
+        git("mv", page, record)
+        say("%s -> %s (the release's record on main)" % (page, record))
+        page = record
     stamp(page, r"^# .*$", "# shint %s - released %s" % (tag, day), "the title")
     say("%s: released %s" % (page, day))
 
@@ -342,6 +411,8 @@ def prepare(version, summary, includes, page, day):
     for line in report.splitlines():
         if line.startswith("- "):
             say("readme.md " + line)
+    if link_row(tag, "releases/%s.md" % tag):
+        say("readme.md: the %s row links to releases/%s.md" % (tag, tag))
 
     docs = os.environ.get("RELEASE_DOCS_CMD", "python3 docs/build.py")
     if not shell(docs):
@@ -606,7 +677,7 @@ def release(dry_run):
     if not dry_run:
         git("fetch", "-q", "origin", "--tags")
         run(os.environ.get("GH", "gh"), "auth", "status")
-    page, summary, includes = working_page(version)
+    page, summary, includes, unchecked = working_page(version)
 
     if remote_tag(tag):                       # published: only the pipeline and the checks are left
         publish(version, summary, includes)
@@ -628,6 +699,9 @@ def release(dry_run):
                        "make release, never typed" % (tag, day))
         if not bullets(body):
             raise Stop("CHANGELOG.md's '## %s - unreleased' section has no entries yet" % tag)
+        if unchecked:
+            raise Stop("%d to-do item(s) in %s are still open:\n%s\nCheck them off (- [x]) when they are done, or move "
+                       "them to an issue, commit, and run make release again" % (len(unchecked), page, "\n".join("    - [ ] " + u for u in unchecked)))
         if local_tag(tag) or remote_tag(tag):
             raise Stop("the tag %s already exists" % tag)
         base = prepare(version, summary, includes, page, today())

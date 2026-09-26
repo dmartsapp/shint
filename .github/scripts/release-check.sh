@@ -12,8 +12,8 @@
 #   * readme.md differs from main's only in the Roadmap table's rows, and this
 #     release's row says Released: the release commit writes main's roadmap row and
 #     nothing else in main's README (see docs/src/tech-release.md)
-#   * releases/vX.Y.Z.md exists: the branch's working page, which merges into main as
-#     the release's record
+#   * releases/vX.Y.Z.md exists and branch_readme.md does not: the release commit moves
+#     the branch's working page there, and it merges into main as the release's record
 #   * CHANGELOG.md's newest section is X.Y.Z and dated, not "unreleased"
 #   * the tip commit is the release commit (its message carries the full changelog)
 #   * no commit on the branch carries a Co-Authored-By trailer or a
@@ -48,10 +48,11 @@ if [ -z "$(git status --porcelain)" ]; then pass "working tree is clean"; else f
 
 if git merge-base --is-ancestor "$base" HEAD; then pass "the branch is on top of $base (a fast-forward merge is possible)"; else fail "the branch is not on top of $base - rebase it: git rebase $base"; fi
 
-other_lines="$(git diff -U0 "$base" -- readme.md | grep -E '^[-+]' | grep -v -E '^(\+\+\+|---) ' | grep -v -E '^[-+]\| \*\*v[0-9]+\.[0-9]+\.([0-9]+|x)\*\* \|' || true)"
+other_lines="$(git diff -U0 "$base" -- readme.md | grep -E '^[-+]' | grep -v -E '^(\+\+\+|---) ' | grep -v -E '^[-+]\| \[?\*\*v[0-9]+\.[0-9]+\.([0-9]+|x)\*\*(\]\([^)]*\))? \|' || true)"
 if [ -z "$other_lines" ]; then pass "readme.md differs from $base's only in Roadmap rows"; else fail "readme.md changes more than $base's Roadmap rows - the release commit writes only its row (first other line: $(head -n1 <<<"$other_lines" | cut -c1-80))"; fi
-if grep -q -E "^\| \*\*v${version//./\\.}\*\* \| Released " readme.md; then pass "readme.md's Roadmap says v$version is Released"; else fail "readme.md's Roadmap has no 'Released' row for v$version - make release writes it from releases/v$version.md's Summary"; fi
-if [ -f "releases/v$version.md" ]; then pass "releases/v$version.md exists"; else fail "releases/v$version.md is missing - the branch's working page (make release-start creates it)"; fi
+if grep -q -E "^\| \[?\*\*v${version//./\\.}\*\*(\]\([^)]*\))? \| Released " readme.md; then pass "readme.md's Roadmap says v$version is Released"; else fail "readme.md's Roadmap has no 'Released' row for v$version - make release writes it from releases/v$version.md's Summary"; fi
+if [ -f "releases/v$version.md" ]; then pass "releases/v$version.md exists"; else fail "releases/v$version.md is missing - the release commit moves branch_readme.md there"; fi
+if [ ! -e branch_readme.md ]; then pass "no branch_readme.md left (it became releases/v$version.md)"; else fail "branch_readme.md is still here - the release commit moves it to releases/v$version.md, so main never has one"; fi
 
 heading="$(grep -m1 '^## v' CHANGELOG.md || true)"
 if [[ "$heading" =~ ^##\ v${version//./\\.}\ -\ [0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then

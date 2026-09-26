@@ -19,7 +19,7 @@ nav: Source reference
 | `.dockerignore`, `.gitignore` | What stays out of the Docker build context and out of git (`bin/`, `*.json`, `.DS_Store`). |
 | `basic_module_test.sh` | Live-internet smoke test: builds the binary and runs one check per command against real hosts. Run it with `make test-live`. |
 | `CHANGELOG.md` | The release history; also rendered as the [Changelog](changelog.md) page. |
-| `readme.md` | The short introduction that GitHub shows on the front page. On `main` it is the project README (all milestones and releases); on a release branch it is a working page for that branch alone and is never merged into `main` (see [Releases and tagging](tech-release.md#branches-and-cadence)). |
+| `readme.md` | The short introduction that GitHub shows on the front page. On `main` it is the project README (all milestones and releases); a release branch's copy is `main`'s (release branches up to v4.2.2 kept a working page of their own here) - see [Releases and tagging](tech-release.md#branches-and-cadence). |
 | `LICENSE` | MIT. |
 | `index.html`, `.nojekyll` | Make GitHub Pages serve the site under `docs/` as plain static files (see [This documentation](tech-docs.md)). |
 
@@ -139,7 +139,8 @@ nav: Source reference
 | `.github/scripts/test-release-check.sh` | Tests for it, in throw-away git repositories. |
 | `.github/scripts/release.py` | `make release-start` and `make release`: starts a release branch with its changelog heading and working page, and on release day stamps, checks, commits and - after one confirmation - pushes `main`, waits for Check, tags and verifies the release; resumable ([Making a release](tech-release.md#making-a-release)). |
 | `.github/scripts/test_release.py` | Tests for it, end to end: a bare origin, a clone, the real reconcile and release-check scripts, and a fake `gh`. |
-| `releases/vX.Y.Z.md` | A release's working page on its branch, and its record on `main` once it ships; `Summary:` becomes its roadmap row. See [`releases/`](https://github.com/dmartsapp/shint/tree/main/releases). |
+| `branch_readme.md` | On a release branch only: its working page - targets, bugs, changes, the **To do** list, and the `Summary:` that becomes the release's roadmap row. `make release` refuses to publish while a to-do is unchecked and moves it to `releases/vX.Y.Z.md`. |
+| `releases/vX.Y.Z.md` | A release's record on `main`: its working page, as it was when it shipped. See [`releases/`](https://github.com/dmartsapp/shint/tree/main/releases). |
 | `.github/scripts/write-checksums.sh` | Writes `<binary>.sha256` next to each release binary and verifies it. |
 | `.github/scripts/test-write-checksums.sh` | Offline tests for it: format, an independent hash, the platform's own verifier, tampering. |
 | `.github/scripts/write-ci-failure-issue.sh` | Writes the body of the issue a failed check files, with the real run URL. |

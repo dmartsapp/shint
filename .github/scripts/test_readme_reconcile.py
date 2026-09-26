@@ -276,6 +276,23 @@ class ReleaseCommit(unittest.TestCase):
         self.assertEqual(row(new, "v4.1.5"), "| **v4.1.5** | Shipped in v4.2.0 | Folded into v4.2.0. |")
 
 
+class LinkedRows(unittest.TestCase):
+    """A row's version can link to its tracking page: [**vX.Y.Z**](page)."""
+
+    def test_a_linked_row_is_read_and_keeps_its_link(self):
+        text = OLD.replace("| **v4.2.0** | Oct 19 - Nov 1 | ip, dns |",
+                           "| [**v4.2.0**](https://github.com/dmartsapp/shint/blob/release/v4.2.0/branch_readme.md) | Oct 19 - Nov 1 | ip, dns |")
+        new, _, _ = run(text=text, only_tag="v4.2.0", summary="ip and dns shipped.")
+        self.assertIn("| [**v4.2.0**](https://github.com/dmartsapp/shint/blob/release/v4.2.0/branch_readme.md) | Released Sep 21 | ip and dns shipped. |", new)
+        self.assertNotIn("| **v4.2.0** |", new)      # not added a second time
+
+    def test_version_of_reads_both_forms(self):
+        for cell in ("**v4.2.0**", "[**v4.2.0**](releases/v4.2.0.md)", " [**v4.2.0**](https://x/y.md) "):
+            with self.subTest(cell=cell):
+                self.assertEqual(rr.version_of(cell), (4, 2, 0))
+        self.assertIsNone(rr.version_of("[v4.2.0](x.md)"))
+
+
 class Invariants(unittest.TestCase):
     def test_the_expansion_badges_donate_button_and_support_line_come_back(self):
         new, changes, _ = run()
