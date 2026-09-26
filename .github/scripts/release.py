@@ -699,7 +699,7 @@ def release(dry_run):
                        "make release, never typed" % (tag, day))
         if not bullets(body):
             raise Stop("CHANGELOG.md's '## %s - unreleased' section has no entries yet" % tag)
-        if unchecked:
+        if unchecked and not dry_run:
             raise Stop("%d to-do item(s) in %s are still open:\n%s\nCheck them off (- [x]) when they are done, or move "
                        "them to an issue, commit, and run make release again" % (len(unchecked), page, "\n".join("    - [ ] " + u for u in unchecked)))
         if local_tag(tag) or remote_tag(tag):
@@ -709,6 +709,8 @@ def release(dry_run):
 
     summary_card(version, summary, includes, issues)
     if dry_run:
+        for u in unchecked:
+            say("OPEN TO-DO (a real make release stops on it): - [ ] " + u)
         step("rehearsal done - nothing was pushed")
         say("the release commit is in %s (rm -rf it when you are done looking)" % os.getcwd())
         return

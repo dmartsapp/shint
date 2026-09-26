@@ -65,7 +65,7 @@ Before release day, fill in the working page's **`Summary:`** line - one plain-l
 make release DRY_RUN=1
 ```
 
-It runs everything up to the question in a throw-away clone, with pushing disabled, and prints what would be published. Read it; the last lines say where the clone is, to look at or delete.
+It runs everything up to the question in a throw-away clone, with pushing disabled, and prints what would be published - and, instead of stopping on them, the to-dos that are still open (a real `make release` stops on those). Read it; the last lines say where the clone is, to look at or delete.
 
 ### Step 4 - release (the last day of the sprint window)
 

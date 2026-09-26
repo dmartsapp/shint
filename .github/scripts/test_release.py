@@ -338,6 +338,20 @@ class Release(Fixture):
         self.assertRegex(self.read("readme.md"), r"(?m)^\| \*\*v4\.4\.0\*\* \| Shipped in v4\.3\.0 \|")
         self.assertIn("Includes v4.4.0", self.git(self.work, "log", "-1", "--format=%B"))
 
+    def test_a_rehearsal_reports_open_to_dos_instead_of_stopping(self):
+        self.ready()
+        self.put(self.work, "branch_readme.md", self.read("branch_readme.md").replace(
+            "## To do\n", "## To do\n\n- [ ] a clean rehearsal\n"))
+        self.git(self.work, "commit", "-q", "-am", "x")
+        rc, out = self.release("--dry-run")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("OPEN TO-DO (a real make release stops on it): - [ ] a clean rehearsal", out)
+        where = re.search(r"release commit is in (\S+)", out).group(1)
+        shutil.rmtree(where, ignore_errors=True)
+        rc, out = self.release()
+        self.assertEqual(rc, 1)
+        self.assertIn("still open", out)
+
     def test_a_branch_started_before_branch_readme_still_releases(self):
         self.ready()
         os.makedirs(os.path.join(self.work, "releases"), exist_ok=True)
