@@ -34,6 +34,10 @@ Options:
   --changelog FILE   default: CHANGELOG.md
   --tags-file FILE   lines of "vX.Y.Z YYYY-MM-DD" instead of asking git
   --tag vX.Y.Z       reconcile only this tag (default: every tag newer than the table's oldest row)
+  --summary TEXT     with --tag: the row's text is TEXT - the release's own one-line summary
+                     (releases/vX.Y.Z.md), replacing a plan's wording without a warning
+  --folded vA.B.C,.. with --tag: releases folded into this one; their rows become
+                     "Shipped in vX.Y.Z" (make release reads them from releases/vX.Y.Z.md)
   --milestones FILE  milestones JSON, for sprint windows and "ahead of schedule" notes
   --help-file FILE   the output of `shint --help`, for the Commands table
   --report FILE      write the changes and warnings as Markdown (a pull request body)
@@ -75,7 +79,8 @@ SPRINT_DAYS = 14          # a sprint window is the two weeks that end on the mil
 LATER = 10 ** 9
 X = 10 ** 6               # "v4.5.x" sorts after every numbered v4.5.N
 
-ROW_VERSION = re.compile(r"^\*\*v(\d+)\.(\d+)\.(\d+|x)\*\*$")
+# a row's version: **v4.2.0**, or linked to its tracking page: [**v4.2.0**](releases/v4.2.0.md)
+ROW_VERSION = re.compile(r"^\[?\*\*v(\d+)\.(\d+)\.(\d+|x)\*\*(?:\]\([^)\s]*\))?$")
 FOLDED = re.compile(r"^Shipped in (v\d+\.\d+\.\d+)$")   # a release that never came out on its own
 TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
 
@@ -241,14 +246,14 @@ def read_commands(path):
 
 # --- the reconciliation ---------------------------------------------------------------
 
-def reconcile(text, tags, changelog, milestones=None, commands=None, only_tag=None):
-    """Return (new text, changes, warnings)."""
+def reconcile(text, tags, changelog, milestones=None, commands=None, only_tag=None, summary=None, folded=()):
+    """Return (new text, changes, warnings). summary and folded apply to only_tag's release."""
     changes, warnings = [], []
     lines = text.split("\n")
 
     ensure_tagline(lines, changes, warnings)
     ensure_badges(lines, changes)
-    lines = reconcile_roadmap(lines, tags, changelog, milestones or {}, only_tag, changes, warnings)
+    lines = reconcile_roadmap(lines, tags, changelog, milestones or {}, only_tag, changes, warnings, summary, folded)
     if commands:
         lines = reconcile_commands(lines, commands, changes)
     ensure_support_line(lines, changes)
@@ -299,7 +304,7 @@ def sprint_text(due):
     return "%s - %s" % (nice(due - datetime.timedelta(days=SPRINT_DAYS - 1)), nice(due))
 
 
-def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, warnings):
+def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, warnings, summary=None, folded=()):
     table = Table(lines, "## Roadmap")
     if len(table.header) != 3:
         raise Unreadable("the Roadmap table should have three columns (Release, Sprint, What it brings)")
@@ -336,17 +341,22 @@ def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, war
         want = "Released " + nice(day)
         i = index_of(version)
         entry = changelog.get(name)
+        own = summary if summary and name == only_tag else None   # the release's own words win
         if entry and entry["date"] and parse_day(entry["date"]) != day:
             warnings.append("%s: the changelog is dated %s but the tag is dated %s (the README follows the tag)." % (name, entry["date"], day.isoformat()))
         if i is None:
-            summary = (entry or {}).get("summary") or "See the [changelog](CHANGELOG.md)."
-            insert(version, ["**%s**" % name, want, cell_text(summary)])
+            text = own or (entry or {}).get("summary") or "See the [changelog](CHANGELOG.md)."
+            insert(version, ["**%s**" % name, want, cell_text(text)])
             touched.add(version)
             changes.append("Row added for **%s**: %s." % (name, want))
             if not entry:
                 warnings.append("%s has no section in CHANGELOG.md, so its row only points there." % name)
             continue
         row = table.rows[i]
+        if own and row[2] != cell_text(own):
+            changes.append("**%s**: the row's text is the release's summary." % name)
+            row[2] = cell_text(own)
+            touched.add(version)
         if row[1] == want:
             continue
         was = row[1]
@@ -356,8 +366,20 @@ def reconcile_roadmap(lines, tags, changelog, milestones, only_tag, changes, war
             changes.append("**%s**: the date was corrected (%s -> %s)." % (name, was, want))
         else:
             changes.append("**%s** is marked %s (it was planned for %s)." % (name, want, was))
-            if entry and entry["summary"]:
+            if entry and entry["summary"] and not own:
                 warnings.append("**%s**: the row's text was written as a plan. The changelog says: \"%s\" Edit the row if what shipped differs (something planned may have moved to a later release)." % (name, entry["summary"]))
+
+    # releases folded into this one never come out on their own
+    for name in folded:
+        version = tuple(int(x) for x in TAG.match(name).groups())
+        want = "Shipped in %s" % only_tag
+        i = index_of(version)
+        if i is None:
+            insert(version, ["**%s**" % name, want, cell_text("Folded into %s." % only_tag)])
+            changes.append("Row added for **%s**: %s." % (name, want))
+        elif table.rows[i][1] != want:
+            changes.append("**%s** is marked %s (it was planned for %s)." % (name, want, table.rows[i][1]))
+            table.rows[i][1] = want
 
     # planned rows follow their milestones' sprint windows
     for row in table.rows:
@@ -437,6 +459,8 @@ def main(argv=None):
     ap.add_argument("--changelog", default="CHANGELOG.md")
     ap.add_argument("--tags-file")
     ap.add_argument("--tag")
+    ap.add_argument("--summary")
+    ap.add_argument("--folded", default="")
     ap.add_argument("--milestones")
     ap.add_argument("--help-file")
     ap.add_argument("--report")
@@ -445,13 +469,21 @@ def main(argv=None):
     try:
         if a.tag and not TAG.match(a.tag):
             raise Unreadable("--tag must look like v1.2.3, got %r" % a.tag)
+        folded = [f.strip() for f in a.folded.split(",") if f.strip()]
+        if (a.summary is not None or folded) and not a.tag:
+            raise Unreadable("--summary and --folded belong to one release: give --tag too")
+        if a.summary is not None and not a.summary.strip():
+            raise Unreadable("--summary is empty")
+        for f in folded:
+            if not TAG.match(f) or f == a.tag:
+                raise Unreadable("--folded takes other releases' tags, like v4.4.0; got %r" % f)
         text = read_text(a.readme)
         tags = read_tags_file(a.tags_file) if a.tags_file else read_git_tags()
         new, changes, warnings = reconcile(
             text, tags, read_changelog(a.changelog),
             read_milestones(a.milestones) if a.milestones else None,
             read_commands(a.help_file) if a.help_file else None,
-            a.tag)
+            a.tag, a.summary.strip() if a.summary else None, folded)
     except (Unreadable, OSError) as e:
         print("readme-reconcile: %s" % e, file=sys.stderr)
         return 2

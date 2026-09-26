@@ -89,8 +89,22 @@ func TestManyAttemptsAtOnceWithFewDescriptors(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			args := append(c.args, "--count", strconv.Itoa(attempts), "--delay", "0", "--timeout", "20")
 			code, out := runShintWithDescriptors(t, limit, args...)
-			if got := strings.Count(out, c.ok); code != 0 || got != attempts || strings.Contains(out, "too many open files") {
-				t.Errorf("exit %d, %d of %d attempts succeeded, 'too many open files' seen: %v", code, got, attempts, strings.Contains(out, "too many open files"))
+			// What this test is about: no attempt may fail for want of a descriptor.
+			// Two other failures are the machine's, not shint's (issue #78): a full
+			// accept queue ("connection refused" - macOS refuses a burst it cannot
+			// queue) and no free local port ("can't assign requested address" -
+			// every one of them still in TIME_WAIT from earlier runs). A few of those
+			// are allowed, as long as the exit status admits them.
+			got := strings.Count(out, c.ok)
+			refused := strings.Count(out, "connection refused")
+			noPort := strings.Count(out, "can't assign requested address")
+			emfile := strings.Contains(out, "too many open files")
+			if emfile || got+refused+noPort != attempts || (code == 0) != (refused+noPort == 0) {
+				t.Errorf("exit %d, %d of %d attempts succeeded, %d refused, %d with no free local port, 'too many open files' seen: %v",
+					code, got, attempts, refused, noPort, emfile)
+			} else if refused+noPort > attempts/10 {
+				t.Errorf("%d of %d attempts failed for the machine's reasons (%d refused by a full accept queue, %d with no free local port) - "+
+					"too many to test anything; if it is the ports, wait half a minute for TIME_WAIT to clear and run it again", refused+noPort, attempts, refused, noPort)
 			}
 		})
 	}

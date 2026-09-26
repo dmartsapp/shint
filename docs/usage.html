@@ -16,7 +16,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.2.2</span>
+  <span class="version">v4.2.3</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -70,7 +70,7 @@ Flags:
   -v, --version       version for shint
 
 Use "shint <span class="tok-mod">[command]</span> --help" for more information about a command.</code></pre></div>
-<p><code>shint &lt;command&gt; --help</code> shows the details for one command, and <code>shint --version</code> prints the version.</p>
+<p><code>shint &lt;command&gt; --help</code> shows the details for one command, and <code>shint --version</code> prints the version, with the Go version and the platform it was built for.</p>
 <h2 id="flags-shared-by-every-command">Flags shared by every command<a class="anchor" href="#flags-shared-by-every-command" aria-label="Link to this section">#</a></h2>
 <p>These are defined once, so they mean the same thing everywhere they apply:</p>
 <div class="tablewrap"><table><thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td><code>--count N</code></td><td><code>1</code></td><td>How many times to repeat the check. For <code>listen</code>, the number of connections, packets or requests to accept before exiting (default <code>0</code>: keep going until Ctrl+C).</td></tr><tr><td><code>--timeout S</code></td><td><code>5</code></td><td>Seconds to wait, from 1 to 86400 (a day) - see <a href="#what-timeout-limits">what it limits</a> below. For <code>listen</code>, the idle time before a quiet connection is closed, 0 to 86400 (<code>0</code>: never).</td></tr><tr><td><code>--delay MS</code></td><td><code>1000</code></td><td>Milliseconds to pause before each attempt, from 0 to 86400000 (a day). Use <code>--delay 0</code> for back-to-back checks.</td></tr><tr><td><code>--throttle</code></td><td>off</td><td>Wait a random 0-10 seconds between attempts instead of a fixed <code>--delay</code>, to imitate uneven traffic.</td></tr><tr><td><code>--payload N</code></td><td><code>4</code></td><td>Filler payload size in bytes for <code>ping</code> and <code>udp</code> (ignored by <code>udp</code> when <code>--data</code> or <code>--hex</code> gives the payload). (On <code>web</code>, <code>-P</code> is the request <em>body</em> instead.)</td></tr><tr><td><code>--json</code></td><td>off</td><td>Print one machine-readable JSON document instead of log lines.</td></tr><tr><td><code>-4</code>, <code>--ipv4</code></td><td>off</td><td>Resolve and check <strong>IPv4 addresses only</strong>. See <a href="#ipv4-only-or-ipv6-only">IPv4 only, or IPv6 only</a>.</td></tr><tr><td><code>-6</code>, <code>--ipv6</code></td><td>off</td><td>Resolve and check <strong>IPv6 addresses only</strong>.</td></tr><tr><td><code>--verbose</code></td><td>off</td><td>Print extra diagnostic lines about internal steps (a name resolving, ...) as they happen. See <a href="#verbose">Verbose</a> below.</td></tr></tbody></table></div>
@@ -171,7 +171,7 @@ Latency: minimum: 1.131208ms, average: 1.814008ms, maximum: 2.678917ms
 <p>Pick a command: <a href="telnet.html">telnet</a>, <a href="ping.html">ping</a>, <a href="web.html">web</a>, <a href="nmap.html">nmap</a>, <a href="udp.html">udp</a> or <a href="listen.html">listen</a> - or browse the <a href="cookbook.html">cookbook</a>.</p>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="install.html"><span>Previous</span>Install</a><a class="next" href="telnet.html"><span>Next</span>telnet</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/usage.md">Edit this page on GitHub</a><span>shint v4.2.2 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/usage.md">Edit this page on GitHub</a><span>shint v4.2.3 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#the-shape-of-a-command">The shape of a command</a></li><li class="toc2"><a href="#flags-shared-by-every-command">Flags shared by every command</a></li><li class="toc3"><a href="#verbose">Verbose</a></li><li class="toc3"><a href="#ipv4-only-or-ipv6-only">IPv4 only, or IPv6 only</a></li><li class="toc3"><a href="#what-timeout-limits">What --timeout limits</a></li><li class="toc2"><a href="#reading-the-output">Reading the output</a></li><li class="toc3"><a href="#who-runs-the-dns-for-this-name">Who runs the DNS for this name</a></li><li class="toc2"><a href="#json-output">JSON output</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#stopping-early">Stopping early</a></li><li class="toc2"><a href="#next">Next</a></li></ul></aside>
 </div>

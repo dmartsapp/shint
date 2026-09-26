@@ -59,11 +59,13 @@ Move `shint.exe` into a folder that is on your `PATH` to run it as `shint` from 
 shint --version
 ```
 
-A release binary prints the tag, the commit it was built from and the build time; a build from source prints just the version number:
+A release binary prints the tag, the commit it was built from and the build time, then - in brackets, the way `go version` writes them - the Go version it was built with and the platform it was built for; a build from source prints the version number and the same brackets:
 
 ```text
-v4.0.2/1c4421137f2609ad420af60415c8e6fa1756da46/2026-09-20T05:34:40+0000
+v{{version}}/1c4421137f2609ad420af60415c8e6fa1756da46/2026-09-20T05:34:40+0000 (go1.27.1 darwin/arm64)
 ```
+
+(Before v4.2.3 there were no brackets.)
 
 ### Verify your download
 
@@ -117,7 +119,7 @@ docker run --rm farhansabbir/shint:latest nmap example.com --from 1 --to 1024 --
 | Docker Hub | `docker.io/farhansabbir/shint` |
 | GitHub Container Registry | `ghcr.io/dmartsapp/shint` |
 
-Tags: `latest`, the full version (`4.2.2` and `v4.2.2`), and rolling `4.2` and `4`. Pin a full version in anything you care about.
+Tags: `latest`, the full version (`{{version}}` and `v{{version}}`), and rolling `{{minor}}` and `{{major}}`. Pin a full version in anything you care about.
 
 The listen commands need their port published so you can reach them from outside the container:
 

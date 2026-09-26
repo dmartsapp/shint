@@ -349,10 +349,23 @@ def changelog_page():
     return intro + text
 
 
-def collect_pages():
+_TOKEN_RE = re.compile(r"(\\?)\{\{(version|minor|major)\}\}")
+
+
+def fill_tokens(text, version):
+    """The current release in a docs page, from main.go's Version, so an example never goes
+    stale and a release edits no page: {{version}} -> 4.2.2, {{minor}} -> 4.2, {{major}} -> 4.
+    A backslash keeps one literal: \\{{version}} -> {{version}}. Other {{...}} are left alone."""
+    parts = version.split(".")
+    values = {"version": version, "minor": ".".join(parts[:2]), "major": parts[0]}
+    return _TOKEN_RE.sub(lambda m: m.group(0)[1:] if m.group(1) else values[m.group(2)], text)
+
+
+def collect_pages(version=None):
+    version = version or read_version()
     pages = []
     for path in sorted(SRC.glob("*.md")):
-        pages.append((path.stem, path.read_text(), "docs/src/%s.md" % path.stem))
+        pages.append((path.stem, fill_tokens(path.read_text(), version), "docs/src/%s.md" % path.stem))
     if (ROOT / "CHANGELOG.md").exists():
         pages.append(("changelog", changelog_page(), "CHANGELOG.md"))
     out = []
@@ -547,7 +560,7 @@ def check_site_urls(sources, rendered):
 def main():
     check = "--check" in sys.argv[1:]
     version = read_version()
-    pages = collect_pages()
+    pages = collect_pages(version)
     rendered = {"%s.html" % p["slug"]: render_page(p, pages, version) for p in pages}
 
     problems = check_links(rendered) + check_site_urls(site_url_sources(), rendered)

@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,6 +52,23 @@ func runShint(t *testing.T, args ...string) (code int, stdout, stderr string) {
 		t.Fatalf("could not run shint %v: %v", args, err)
 	}
 	return code, out.String(), errb.String()
+}
+
+// --version and -v print the version, then the Go toolchain and the platform
+// the binary was built for, in go version's own words (issue #77). The version
+// stays the first word: the battery and make release's check of a downloaded
+// binary read only that.
+func TestVersionShowsTheGoToolchainAndPlatform(t *testing.T) {
+	want := Version + " (" + runtime.Version() + " " + runtime.GOOS + "/" + runtime.GOARCH + ")\n"
+	for _, flag := range []string{"--version", "-v"} {
+		code, stdout, stderr := runShint(t, flag)
+		if code != 0 || stdout != want || stderr != "" {
+			t.Errorf("shint %s = exit %d, stdout %q, stderr %q; want exit 0, %q", flag, code, stdout, stderr, want)
+		}
+		if first := strings.Fields(stdout); len(first) == 0 || first[0] != Version {
+			t.Errorf("shint %s: the first word is not the version %q: %q", flag, Version, stdout)
+		}
+	}
 }
 
 // A URL without a scheme is fetched over https://, and when the server behind it

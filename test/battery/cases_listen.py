@@ -336,10 +336,22 @@ def fd_pressure():
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             proc.kill()
+    # What this case is about: no attempt may fail for want of a descriptor. Two other
+    # failures are the machine's, not shint's (issue #78): a full accept queue ("connection
+    # refused" - macOS refuses a burst it cannot queue) and no free local port ("can't
+    # assign requested address" - every one still in TIME_WAIT from earlier runs). A few
+    # of those are allowed, as long as the exit status admits them.
     problems = []
     ok, failed = out.count("connect ok"), out.count("connect failed")
-    if rc != 0 or failed or ok != 1500:
-        problems.append("exit %r, %d of 1500 attempts connected, %d failed (%s)" % (rc, ok, failed, out[out.find("connect failed"):][:120].strip() if failed else ""))
+    refused, no_port = out.count("connection refused"), out.count("can't assign requested address")
+    if ("too many open files" in out or ok + failed != 1500 or failed != refused + no_port
+            or (rc == 0) != (failed == 0)):
+        problems.append("exit %r, %d of 1500 attempts connected, %d failed: %d refused, %d with no free local port (%s)"
+                        % (rc, ok, failed, refused, no_port, out[out.find("connect failed"):][:120].strip() if failed else ""))
+    elif failed > 150:
+        problems.append("%d of 1500 attempts failed for the machine's reasons (%d refused by a full accept queue, %d with no "
+                        "free local port) - too many to test anything; if it is the ports, wait half a minute for TIME_WAIT "
+                        "to clear and run it again" % (failed, refused, no_port))
     return problems
 
 

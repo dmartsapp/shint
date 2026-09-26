@@ -129,7 +129,7 @@ ACTIONLINT ?= actionlint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.13.2
 
-.PHONY: help check check-quick attest hooks test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-check readme-reconcile
+.PHONY: help check check-quick attest hooks test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-start release release-check readme-reconcile
 
 help:
 	echo "make check       fmt, vet, race tests, black-box battery, lint, vulncheck, docs and workflow checks (no network)"
@@ -138,6 +138,8 @@ help:
 	echo "make check-quick the short subset CI runs when that status exists: fmt, vet, quick tests, CLI battery groups, vulncheck, docs"
 	echo "make test-live   smoke test against real hosts (needs the internet and ICMP)"
 	echo "make test-full   check + test-live"
+	echo "make release-start VERSION=X.Y.Z   start release/vX.Y.Z from main: its changelog heading and its working page releases/vX.Y.Z.md"
+	echo "make release         on release/vX.Y.Z, on release day: stamp, check, commit, then (after one yes) push main, wait for Check, tag, verify (DRY_RUN=1 rehearses)"
 	echo "make release-check   on a release branch, after the release commit: is it safe to fast-forward main and tag?"
 	echo "make readme-reconcile   after a release: a branch readme/main-<tag> with main's README brought up to date (TAG=vX.Y.Z, PUSH=1 to push and open the pull request)"
 	echo "make test        the Go tests (race detector), then the black-box battery in test/battery"
@@ -265,6 +267,7 @@ workflows:
 	bash .github/scripts/test-write-ci-failure-issue.sh
 	bash .github/scripts/test-write-checksums.sh
 	bash .github/scripts/test-release-check.sh
+	python3 .github/scripts/test_release.py
 	python3 .github/scripts/test_notify_slack.py
 	python3 .github/scripts/test_readme_reconcile.py
 	bash .github/scripts/test-readme-release.sh
@@ -287,10 +290,24 @@ test-live:
 	echo "==> live smoke test"
 	bash basic_module_test.sh
 
-# Release day preflight, on the release branch after the release commit: the
-# branch is on top of main, main's readme.md is untouched (a release branch's
-# README never reaches main), the version, changelog and release commit agree,
-# and the tag is free. Not part of `check`: it only makes sense on a finished
-# release branch. See docs/src/tech-release.md.
+# Start a release: release/vX.Y.Z from origin/main, with "## vX.Y.Z - unreleased" in
+# CHANGELOG.md and the branch's working page releases/vX.Y.Z.md, committed and pushed.
+#   make release-start VERSION=4.4.0
+release-start:
+	python3 .github/scripts/release.py start "$(VERSION)"
+
+# Release day, on release/vX.Y.Z: merge main if it moved; stamp the version and today's
+# date; main's README roadmap row from releases/vX.Y.Z.md's Summary; the release commit;
+# make attest, make test-live, release-check. Then, after one "yes": push main, wait for
+# Check, tag, watch the pipeline, verify a binary, close the milestone. Re-run it after
+# any failure and it carries on. DRY_RUN=1 rehearses the local part in a throw-away clone.
+# See docs/src/tech-release.md.
+release:
+	python3 .github/scripts/release.py $(if $(DRY_RUN),--dry-run,)
+
+# Release day preflight, run by make release after the release commit: the branch is
+# on top of main, readme.md changes only main's Roadmap rows (and says this release is
+# Released), releases/vX.Y.Z.md exists, the version, changelog and release commit agree,
+# and the tag is free. See docs/src/tech-release.md.
 release-check:
 	bash .github/scripts/release-check.sh
