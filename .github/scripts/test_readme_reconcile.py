@@ -115,8 +115,8 @@ def changelog():
         os.unlink(f.name)
 
 
-def run(text=OLD, tags=TAGS, milestones=None, commands=None, only_tag=None):
-    return rr.reconcile(text, tags, changelog(), milestones, commands, only_tag)
+def run(text=OLD, tags=TAGS, milestones=None, commands=None, only_tag=None, summary=None, folded=()):
+    return rr.reconcile(text, tags, changelog(), milestones, commands, only_tag, summary, folded)
 
 
 def row(text, version):
@@ -235,6 +235,45 @@ class Roadmap(unittest.TestCase):
         new, _, warnings = rr.reconcile(OLD, TAGS, cl)
         self.assertIn("Released Sep 21", row(new, "v4.2.0"))
         self.assertTrue(any("changelog is dated 2026-09-22 but the tag is dated 2026-09-21" in w for w in warnings))
+
+
+class ReleaseCommit(unittest.TestCase):
+    """--summary and --folded: make release writes main's row in the release commit."""
+
+    def test_the_summary_replaces_the_plan_text_without_a_warning(self):
+        new, changes, warnings = run(only_tag="v4.2.0", summary="ip and dns shipped.")
+        self.assertEqual(row(new, "v4.2.0"), "| **v4.2.0** | Released Sep 21 | ip and dns shipped. |")
+        self.assertFalse(any(w.startswith("**v4.2.0**") for w in warnings), warnings)   # no "written as a plan"
+        self.assertTrue(any("v4.2.0" in c and "summary" in c for c in changes), changes)
+
+    def test_a_new_row_takes_the_summary_and_a_pipe_is_escaped(self):
+        tags = dict(TAGS, **{"v4.2.1": D(2026, 10, 2)})
+        new, _, _ = run(tags=tags, only_tag="v4.2.1", summary="dns reads a|b")
+        self.assertEqual(row(new, "v4.2.1"), "| **v4.2.1** | Released Oct 2 | dns reads a\\|b |")
+
+    def test_it_is_idempotent_with_a_summary(self):
+        once, _, _ = run(only_tag="v4.2.0", summary="ip and dns shipped.")
+        twice, changes, _ = run(text=once, only_tag="v4.2.0", summary="ip and dns shipped.")
+        self.assertEqual(once, twice)
+        self.assertEqual(changes, [])
+
+    def test_the_summary_only_touches_its_own_release(self):
+        tags = dict(TAGS, **{"v4.2.1": D(2026, 10, 2)})
+        new, _, _ = run(tags=tags, only_tag="v4.2.0", summary="ip and dns shipped.")
+        self.assertIsNone(row(new, "v4.2.1"))
+        self.assertEqual(row(new, "v4.3.0"), "| **v4.3.0** | Nov 2 - Nov 15 | tls |")
+
+    def test_a_folded_release_is_shipped_in_this_one_and_not_flagged(self):
+        new, changes, warnings = run(only_tag="v4.2.0", summary="ip and dns shipped.", folded=("v4.1.0",))
+        self.assertEqual(row(new, "v4.1.0"), "| **v4.1.0** | Shipped in v4.2.0 | web --timing, wol |")
+        self.assertFalse(any("v4.1.0" in w for w in warnings), warnings)
+        again, changes2, _ = run(text=new, only_tag="v4.2.0", summary="ip and dns shipped.", folded=("v4.1.0",))
+        self.assertEqual(new, again)
+        self.assertEqual(changes2, [])
+
+    def test_a_folded_release_with_no_row_gets_one(self):
+        new, _, _ = run(only_tag="v4.2.0", summary="ip and dns shipped.", folded=("v4.1.5",))
+        self.assertEqual(row(new, "v4.1.5"), "| **v4.1.5** | Shipped in v4.2.0 | Folded into v4.2.0. |")
 
 
 class Invariants(unittest.TestCase):
@@ -363,6 +402,20 @@ class CommandLine(unittest.TestCase):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             rc = rr.main(["--readme", self.readme, "--changelog", self.changelog, "--tags-file", self.tags] + list(args))
         return rc, out.getvalue(), err.getvalue()
+
+    def test_summary_and_folded_need_a_tag_and_proper_values(self):
+        for args in (["--summary", "x"], ["--folded", "v4.1.0"], ["--tag", "v4.2.0", "--summary", "  "],
+                     ["--tag", "v4.2.0", "--folded", "4.1"], ["--tag", "v4.2.0", "--folded", "v4.2.0"]):
+            with self.subTest(args=args):
+                rc, _, err = self.main(*args)
+                self.assertEqual(rc, 2, err)
+        self.assertEqual(get(self.readme), OLD)
+
+    def test_summary_on_the_command_line(self):
+        rc, _, _ = self.main("--tag", "v4.2.0", "--summary", "ip and dns shipped.", "--folded", "v4.1.0")
+        self.assertEqual(rc, 0)
+        self.assertIn("| **v4.2.0** | Released Sep 21 | ip and dns shipped. |", get(self.readme))
+        self.assertIn("| **v4.1.0** | Shipped in v4.2.0 |", get(self.readme))
 
     def test_it_writes_the_readme_and_a_report(self):
         report = os.path.join(self.dir, "report.md")
