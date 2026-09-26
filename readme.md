@@ -5,9 +5,9 @@
 | | |
 |---|---|
 | Milestone | [v4.3.0](https://github.com/dmartsapp/shint/milestone/4) - due Nov 15 |
-| Built on | `main`, after the v4.2.1 tag, with v4.2.2's fixes cherry-picked ([below](#carried-over-from-v422)) |
+| Built on | `main`, after the v4.2.1 tag; `main` merged in after the v4.2.2 tag ([`88e4904`](https://github.com/dmartsapp/shint/commit/88e4904)) |
 | Everything that differs from main | [main...release/v4.3.0](https://github.com/dmartsapp/shint/compare/main...release/v4.3.0) |
-| Documentation | [CHANGELOG.md](CHANGELOG.md) (the `v4.3.0 - unreleased` section; `v4.2.2 - unreleased` below it until v4.2.2 ships) and `docs/src/` |
+| Documentation | [CHANGELOG.md](CHANGELOG.md) (the `v4.3.0 - unreleased` section) and `docs/src/` |
 
 ## Milestone targets
 
@@ -21,7 +21,7 @@
 
 ## Carried over from v4.2.2
 
-v4.2.2 is not released yet. Its changes are cherry-picked here so this branch is built and tested with them; once v4.2.2 ships, `main` is brought into this branch and they become `main`'s own commits.
+Before v4.2.2 shipped, its changes were cherry-picked here so this branch was built and tested with them. v4.2.2 is released now (2026-09-26) and `main` is merged in ([`88e4904`](https://github.com/dmartsapp/shint/commit/88e4904)), so these are `main`'s own changes; the table stays as a record of the picks. The CI row did not actually fix the collision - see [#75](https://github.com/dmartsapp/shint/issues/75) below.
 
 | Change | On `release/v4.2.2` | Here |
 |---|---|---|
@@ -37,7 +37,10 @@ v4.2.2 is not released yet. Its changes are cherry-picked here so this branch is
 
 ## Bugs
 
-None found on this branch yet.
+| Issue | State |
+|---|---|
+| [#75](https://github.com/dmartsapp/shint/issues/75) Release workflows: v4.2.2's cache-collision fix did not work - `golang/govulncheck-action` still restores its cache over the modules `golangci-lint` downloaded (about 1590 `tar: ... Cannot open: File exists` lines per workflow on the v4.2.2 tag) | Not started - the fix is in the issue; confirmed only on the next tag's logs. The v4.3.0 changelog should also correct v4.2.2's claim |
+| [#65](https://github.com/dmartsapp/shint/issues/65) `rdns` (and every command via `lib.ResolveName`): a name on several hosts-file lines may resolve to its first address only | Not started - moved from v4.2.2; still needs a repro from the machine that showed it |
 
 ## How README files work in this project
 
