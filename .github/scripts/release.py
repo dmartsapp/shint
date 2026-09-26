@@ -57,6 +57,11 @@ import sys
 import tempfile
 import time
 
+# Importing readme-reconcile.py (for its Roadmap table) must not leave a __pycache__ in the
+# working tree: a Python without a cache prefix (Linux, Homebrew) writes one next to the
+# source, and an untracked file makes the tree "dirty" for the next step.
+sys.dont_write_bytecode = True
+
 REPO = os.environ.get("GH_REPO", "dmartsapp/shint")
 TAG_RE = re.compile(r"^v\d+\.\d+\.\d+$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -287,8 +292,9 @@ def start(version):
     if not VERSION_RE.match(version):
         raise Stop("VERSION must look like 4.4.0, got %r" % version)
     tag, branch = "v" + version, "release/v" + version
-    if git("status", "--porcelain"):
-        raise Stop("the working tree has uncommitted changes")
+    dirty = git("status", "--porcelain")
+    if dirty:
+        raise Stop("the working tree has uncommitted changes:\n%s" % "\n".join("    " + l for l in dirty.splitlines()[:10]))
     step("start %s" % branch)
     git("fetch", "-q", "origin", "--tags")
     if ok("git", "rev-parse", "-q", "--verify", "refs/heads/" + branch) or git("ls-remote", "--heads", "origin", branch):
@@ -673,8 +679,9 @@ def release(dry_run):
         step("rehearsal in %s - nothing will be pushed" % where)
     version = branch_version()
     tag = "v" + version
-    if git("status", "--porcelain"):
-        raise Stop("the working tree has uncommitted changes")
+    dirty = git("status", "--porcelain")
+    if dirty:
+        raise Stop("the working tree has uncommitted changes:\n%s" % "\n".join("    " + l for l in dirty.splitlines()[:10]))
     if not dry_run:
         git("fetch", "-q", "origin", "--tags")
         run(os.environ.get("GH", "gh"), "auth", "status")
