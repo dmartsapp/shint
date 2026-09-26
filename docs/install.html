@@ -53,8 +53,9 @@
 <p>Move <code>shint.exe</code> into a folder that is on your <code>PATH</code> to run it as <code>shint</code> from anywhere.</p>
 <h3 id="check-it-works">Check it works<a class="anchor" href="#check-it-works" aria-label="Link to this section">#</a></h3>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> <span class="tok-flag">--version</span></code></pre></div>
-<p>A release binary prints the tag, the commit it was built from and the build time; a build from source prints just the version number:</p>
-<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code>v4.0.2/1c4421137f2609ad420af60415c8e6fa1756da46/2026-09-20T05:34:40+0000</code></pre></div>
+<p>A release binary prints the tag, the commit it was built from and the build time, then - in brackets, the way <code>go version</code> writes them - the Go version it was built with and the platform it was built for; a build from source prints the version number and the same brackets:</p>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code>v4.2.2/1c4421137f2609ad420af60415c8e6fa1756da46/2026-09-20T05:34:40+0000 (go1.27.1 darwin/arm64)</code></pre></div>
+<p>(Before v4.2.3 there were no brackets.)</p>
 <h3 id="verify-your-download">Verify your download<a class="anchor" href="#verify-your-download" aria-label="Link to this section">#</a></h3>
 <p>From v4.2.0 every binary comes with two ways to check it. Earlier releases have neither.</p>
 <p><strong>A checksum</strong> catches a damaged or incomplete download. Each binary has a <code>.sha256</code> file next to it on the releases page. Download both into the same folder, <strong>keeping their original names</strong> (the checksum file names the file it belongs to), and check:</p>

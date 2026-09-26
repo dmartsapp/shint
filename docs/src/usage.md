@@ -51,7 +51,7 @@ Flags:
 
 Use "shint [command] --help" for more information about a command.
 ```
-`shint <command> --help` shows the details for one command, and `shint --version` prints the version.
+`shint <command> --help` shows the details for one command, and `shint --version` prints the version, with the Go version and the platform it was built for.
 
 ## Flags shared by every command
 

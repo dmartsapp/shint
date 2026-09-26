@@ -6,6 +6,8 @@ Releases before v3.0.0 predate this file; see the [GitHub releases](https://gith
 
 ## v4.2.3 - unreleased
 
+- **`shint --version` (and `-v`) also says which Go it was built with, and for which platform** - in brackets after the version, the way `go version` writes them: `v4.2.3/<commit>/<build time> (go1.27.1 linux/amd64)`, or `4.2.3 (go1.27.1 darwin/arm64)` from source. Worth including in a problem report: a behaviour can differ between Go releases. The version is still the first word, so anything that reads only that is unaffected; **a script that compares the whole line will notice** the new part. See [Install](https://dmartsapp.github.io/shint/docs/install.html#check-it-works). (Issue #77)
+
 ## v4.2.2 - 2026-09-26
 
 - **`shint dns` checks the hosts file and localhost before sending forward queries onto the wire.** Forward lookups (`A` and `AAAA`) without an explicit `@server` now consult `/etc/hosts` (and the built-in loopback fallback for `localhost` to `127.0.0.1` and `::1`), answering with `nameserver=hosts transport=file` when a local match exists. This aligns `shint dns` with the rest of the toolkit (`telnet`, `ping`, `web`, `rdns`), preventing unexpected `NXDOMAIN` failures when resolving `localhost` or local development hosts offline. Other record types, reverse PTR lookups and any query with an `@server` still go to DNS, so naming a server (`shint dns localhost @1.1.1.1`) is how to see what DNS itself says about a name that is in the hosts file. (Issue #64, PR #66)

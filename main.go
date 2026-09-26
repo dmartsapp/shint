@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -26,12 +27,20 @@ import (
 
 var (
 	// Version is what `shint --version` prints. The default is the release
-	// this source describes (bump it in the release commit); the Makefile,
+	// this source describes (make release stamps it); the Makefile,
 	// the release workflow (tag/commit/time) and the Dockerfile each override
 	// it at link time with -ldflags "-X main.Version=...", so every kind of
 	// build reports something traceable. See docs/src/tech-release.md.
 	Version string = "4.2.2"
 )
+
+// versionLine is what `shint --version` and `-v` print: the version, then the
+// Go toolchain the binary was built with and the platform it was built for, in
+// `go version`'s own words - "v4.2.3/<commit>/<time> (go1.27.1 linux/amd64)".
+// The version stays the first word, so anything that reads only that still works.
+func versionLine() string {
+	return fmt.Sprintf("%s (%s %s/%s)", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+}
 
 // Flag values, bound in init(). cobra parses the command line into these
 // package-level variables before a command's Run function is called.
@@ -642,7 +651,7 @@ func init() {
 	listenCmd.AddCommand(listenTCPCmd, listenUDPCmd, listenHTTPCmd)
 
 	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
-	rootCmd.Version = Version
+	rootCmd.Version = versionLine()
 }
 
 // main registers the commands (here rather than in init(), so the command

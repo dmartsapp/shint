@@ -188,7 +188,7 @@ What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 | Release binary (CI) | `v{{version}}/<full commit sha>/<UTC build time>` | `build.yaml` (`-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT`) |
 | Docker image | `v{{version}}` | `Dockerfile` (`ARG VERSION`, passed as `VERSION=<tag>`; `dev` when built locally) |
 
-So a release binary is traceable to an exact commit and moment, and a source build tells you which release it descends from.
+`--version` prints that string, then the Go toolchain the binary was built with and its platform, in brackets, as `go version` writes them: `v{{version}}/<full commit sha>/<UTC build time> (go1.27.1 linux/amd64)` (since v4.2.3). So a release binary is traceable to an exact commit, moment and toolchain, and a source build tells you which release it descends from.
 
 **The documentation never hard-codes the current version.** A page that shows it - an install example, a tag list - writes `\{{version}}` (`{{version}}`), `\{{minor}}` (`{{minor}}`) or `\{{major}}` (`{{major}}`), and `docs/build.py` fills them in from `main.go`, so a release edits no page. A backslash keeps one literally: `\\{{version}}`.
 
