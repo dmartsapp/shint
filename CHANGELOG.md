@@ -4,6 +4,8 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.2.3 - unreleased
+
 ## v4.2.2 - 2026-09-26
 
 - **`shint dns` checks the hosts file and localhost before sending forward queries onto the wire.** Forward lookups (`A` and `AAAA`) without an explicit `@server` now consult `/etc/hosts` (and the built-in loopback fallback for `localhost` to `127.0.0.1` and `::1`), answering with `nameserver=hosts transport=file` when a local match exists. This aligns `shint dns` with the rest of the toolkit (`telnet`, `ping`, `web`, `rdns`), preventing unexpected `NXDOMAIN` failures when resolving `localhost` or local development hosts offline. Other record types, reverse PTR lookups and any query with an `@server` still go to DNS, so naming a server (`shint dns localhost @1.1.1.1`) is how to see what DNS itself says about a name that is in the hosts file. (Issue #64, PR #66)
