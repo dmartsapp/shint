@@ -31,7 +31,7 @@ var (
 	// the release workflow (tag/commit/time) and the Dockerfile each override
 	// it at link time with -ldflags "-X main.Version=...", so every kind of
 	// build reports something traceable. See docs/src/tech-release.md.
-	Version string = "4.2.2"
+	Version string = "4.2.3"
 )
 
 // versionLine is what `shint --version` and `-v` print: the version, then the
