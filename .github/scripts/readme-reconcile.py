@@ -79,7 +79,8 @@ SPRINT_DAYS = 14          # a sprint window is the two weeks that end on the mil
 LATER = 10 ** 9
 X = 10 ** 6               # "v4.5.x" sorts after every numbered v4.5.N
 
-ROW_VERSION = re.compile(r"^\*\*v(\d+)\.(\d+)\.(\d+|x)\*\*$")
+# a row's version: **v4.2.0**, or linked to its tracking page: [**v4.2.0**](releases/v4.2.0.md)
+ROW_VERSION = re.compile(r"^\[?\*\*v(\d+)\.(\d+)\.(\d+|x)\*\*(?:\]\([^)\s]*\))?$")
 FOLDED = re.compile(r"^Shipped in (v\d+\.\d+\.\d+)$")   # a release that never came out on its own
 TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
 

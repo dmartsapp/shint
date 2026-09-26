@@ -47,7 +47,7 @@ git switch main && git pull --ff-only
 make release-start VERSION=4.4.0
 ```
 
-You are now on `release/v4.4.0`, already pushed. It has two new things: a `## v4.4.0 - unreleased` heading at the top of `CHANGELOG.md`, and the working page [`releases/v4.4.0.md`](https://github.com/dmartsapp/shint/tree/main/releases), made from a template with the milestone's link and due date.
+You are now on `release/v4.4.0`, already pushed. It has two new things: a `## v4.4.0 - unreleased` heading at the top of `CHANGELOG.md`, and the branch's working page, **`branch_readme.md`**, made from a template with the milestone's link and due date and a **To do** checklist. First, the command also points v4.4.0's row in the roadmap of `main`'s README at that page (adding an `In progress` row if the release has none) and pushes `main`, so anyone reading the README can follow the release as it is built.
 
 ### Step 2 - do the work (during the sprint)
 
@@ -55,7 +55,7 @@ On `release/v4.4.0`, for every change:
 
 1. **Commit and push it** (`git push`). A push to a release branch starts no workflow, so push as often as you like.
 2. **Add its changelog entry** under `## v4.4.0 - unreleased` in `CHANGELOG.md`: one bullet, its first sentence in bold, saying what changed for users (and, in bold, if it is something a script could notice). Leave the heading as `unreleased` - the date is stamped on release day, never typed.
-3. **Keep the working page current**: `releases/v4.4.0.md`'s targets, bugs and other changes, with their issues and commits.
+3. **Keep the working page current**: `branch_readme.md`'s targets, bugs and other changes, with their issues and commits, and its **To do** list - add what is left to do, check items off (`- [x]`) as they are done. `make release` will not publish while an item is unchecked: an item that will not make it goes to an issue on a later milestone instead.
 
 Before release day, fill in the working page's **`Summary:`** line - one plain-language sentence about the release, which becomes its row in the roadmap of `main`'s README - and **`Includes:`** if another release is folded into this one (for example `Includes: v4.5.0`). If `main` gets commits of its own meanwhile, do nothing: `make release` merges them in.
 
@@ -97,7 +97,8 @@ It prints `release: STOPPED - ` and the reason. Fix what it says and run `make r
 | It stopped at | What it means | What to do |
 |---|---|---|
 | `the working tree has uncommitted changes` | Something is not committed | Commit it (or `git stash`), then `make release` |
-| `has no 'Summary:' line` | The working page has no summary | Write the `Summary:` line in `releases/v4.4.0.md`, commit, `make release` |
+| `has no 'Summary:' line` | The working page has no summary | Write the `Summary:` line in `branch_readme.md`, commit, `make release` |
+| `to-do item(s) in branch_readme.md are still open` | Something on the **To do** list is not checked off | Finish it and check it off (`- [x]`), or move it to an issue on a later milestone and remove it; commit, `make release` |
 | `has no entries yet`, or `says '...', not 'unreleased'` | The changelog section is empty, or its heading was dated by hand | Add the entries / put the heading back to `## v4.4.0 - unreleased`, commit, `make release` |
 | `does not merge cleanly` | `main` moved and conflicts with the branch | `git merge origin/main`, resolve, `git commit`, `make release` |
 | `failed. The release commit was taken back off` | `make attest`, `make test-live` or `make release-check` failed | Nothing was pushed and the branch is as it was. Fix, commit, `make release` |
@@ -107,15 +108,15 @@ It prints `release: STOPPED - ` and the reason. Fix what it says and run `make r
 
 ### Step 6 - afterwards
 
-Nothing. `main`'s README already shows the release, `releases/v4.4.0.md` is on `main` as its record, and the milestone is closed. The release branch can stay: it is history. The next sprint starts again at step 1.
+Nothing. `main`'s README already shows the release, its row links to `releases/v4.4.0.md` - the working page, moved there by the release commit - which is on `main` as the release's record, and the milestone is closed. The release branch can stay: it is history. The next sprint starts again at step 1.
 
 ### What `make release` does, stage by stage
 
 | Stage | What happens | Reversible? |
 |---|---|---|
-| Preflight | A clean tree; the tag is free; the changelog section has entries and still says `unreleased`; the working page has a `Summary:`. The milestone's open issues are listed. | - |
+| Preflight | A clean tree; the tag is free; the changelog section has entries and still says `unreleased`; the working page has a `Summary:` and nothing unchecked under **To do**. The milestone's open issues are listed. | - |
 | Main | If `origin/main` moved since the branch was cut, it is merged in. A conflict stops here. | yes |
-| Stamp | The version from the branch name and **today's date from the clock** go into `main.go`, the changelog heading and the working page's title; the release's roadmap row goes into `readme.md` (`readme-reconcile.py --summary`); the site is rebuilt (`docs/build.py`). | yes |
+| Stamp | `branch_readme.md` moves to `releases/vX.Y.Z.md`; the version from the branch name and **today's date from the clock** go into `main.go`, the changelog heading and the page's title; the release's roadmap row goes into `readme.md` (`readme-reconcile.py --summary`), now linking to the record; the site is rebuilt (`docs/build.py`). | yes |
 | Release commit | Its message is generated from the changelog (see [Commit messages](#commit-messages)). | yes |
 | Checks | [`make attest`](tech-ci.md#the-signed-local-check-report) - the whole `make check`, signed and attached to **this exact commit** - then `make test-live`, then `make release-check`. A failure takes the release commit back off the branch. | yes |
 | **Publish v4.4.0? [y/N]** | The summary of what is about to go out. The one question. | - |
@@ -152,9 +153,9 @@ Tags up to `v2.2.6` predate the current process, and the list contains a run of 
 
 **Ready is not published.** Finishing early does not mean shipping early: finished work waits on its branch, and the release happens on the last day of the sprint window. That keeps the cadence predictable for users, and keeps `main` - which the documentation site deploys from, and whose `main.go` gives the site its version - in step with what is actually published. An urgent fix does not have to wait for its window; it is released as soon as it is ready.
 
-**The working page is `releases/vX.Y.Z.md`.** A release branch keeps what it is for - the milestone's targets, the bugs it fixes, what changed - in [`releases/vX.Y.Z.md`](https://github.com/dmartsapp/shint/tree/main/releases), updated as the branch moves. Two lines in it are read by `make release`: **`Summary:`**, one plain-language sentence that becomes the release's row in the roadmap of `main`'s README, and **`Includes:`**, releases folded into this one, if any. The file merges into `main` with the release and stays there as its record. (Up to v4.2.2 the working page was the branch's own `readme.md`; those branches still have it, and v4.2.2's record is also in `releases/`.)
+**The working page is `branch_readme.md`.** A release branch keeps what it is for - the milestone's targets, the bugs it fixes, what changed, and a **To do** checklist - in `branch_readme.md` at its root, updated as the branch moves, alongside the milestone's issues: the page is the branch-level tracking, the issues the project-level one. Two lines in it are read by `make release`: **`Summary:`**, one plain-language sentence that becomes the release's row in the roadmap of `main`'s README, and **`Includes:`**, releases folded into this one, if any; and it will not publish while a to-do is unchecked. The release commit moves the file to [`releases/vX.Y.Z.md`](https://github.com/dmartsapp/shint/tree/main/releases), so it merges into `main` as the release's record and `main` never has a `branch_readme.md`. (Up to v4.2.2 the working page was the branch's own `readme.md`; those branches still have it, and v4.2.2's record is also in `releases/`.)
 
-**`main`'s README is written on `main`, with one exception.** It is the project README - every milestone (the roadmap), the releases, the install and usage overview - and it shows the latest release dynamically (the release badge and the download link point at "latest"). A release branch never changes it, except that **the release commit writes the release's own roadmap row** (from `Summary:`), so the README is right the moment `main` has the release. Anything else in it is a README-only commit on `main`.
+**`main`'s README is written on `main`, with one exception.** It is the project README - every milestone (the roadmap), the releases, the install and usage overview - and it shows the latest release dynamically (the release badge and the download link point at "latest"). Each release's row links to its tracking page: `make release-start` points it at the branch's `branch_readme.md` (live, while the release is built), and the release commit writes the row - from `Summary:` - pointing at `releases/vX.Y.Z.md`, so the README is right the moment `main` has the release. A release branch changes nothing else in it: anything else is a README-only commit on `main`, which is also where small corrections go after a release, without a new one.
 
 What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 
