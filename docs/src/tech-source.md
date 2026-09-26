@@ -27,7 +27,7 @@ nav: Source reference
 
 | Symbol | What it is |
 |---|---|
-| `Version` | The version string. `"4.2.2"` for a source build; overridden with `-ldflags "-X main.Version=..."` by the Makefile, the release workflow and the Dockerfile (see [Releases and tagging](tech-release.md#how-the-version-string-gets-into-the-binary)). |
+| `Version` | The version string. `"{{version}}"` for a source build; overridden with `-ldflags "-X main.Version=..."` by the Makefile, the release workflow and the Dockerfile (see [Releases and tagging](tech-release.md#how-the-version-string-gets-into-the-binary)). |
 | flag variables (`iterations`, `timeout`, ...) | Package-level variables bound to flags in `init()`. Shared flags live on the root command as *persistent* flags. |
 | `exitOK`, `exitFailure`, `exitUsage`, `exitCode` | The exit-status scheme (0 / 1 / 2) and the value `main` exits with. |
 | `usage(msg)` | Prints a usage error to stderr and records status 2. |
@@ -134,8 +134,11 @@ nav: Source reference
 | `.github/scripts/test_readme_reconcile.py` | Its tests, on README fixtures (35 of them). |
 | `.github/scripts/readme-release.sh` | `make readme-reconcile`: branches `readme/main-<tag>` off `main`, runs the script, commits, and with `PUSH=1` pushes and opens the pull request. |
 | `.github/scripts/test-readme-release.sh` | Tests for it, in throw-away git repositories with a fake `gh`. |
-| `.github/scripts/release-check.sh` | `make release-check`: the release-day preflight on a release branch (on top of `main`, `readme.md` equal to `main`'s, version, changelog, release commit, no attribution trailers, tag free). |
+| `.github/scripts/release-check.sh` | `make release-check`, run by `make release` after the release commit: on top of `main`, `readme.md` changing only `main`'s Roadmap rows (with this release's row Released), `releases/vX.Y.Z.md` present, the version, dated changelog and release-commit message agreeing, no attribution trailers, the tag free. |
 | `.github/scripts/test-release-check.sh` | Tests for it, in throw-away git repositories. |
+| `.github/scripts/release.py` | `make release-start` and `make release`: starts a release branch with its changelog heading and working page, and on release day stamps, checks, commits and - after one confirmation - pushes `main`, waits for Check, tags and verifies the release; resumable ([Making a release](tech-release.md#making-a-release)). |
+| `.github/scripts/test_release.py` | Tests for it, end to end: a bare origin, a clone, the real reconcile and release-check scripts, and a fake `gh`. |
+| `releases/vX.Y.Z.md` | A release's working page on its branch, and its record on `main` once it ships; `Summary:` becomes its roadmap row. See [`releases/`](https://github.com/dmartsapp/shint/tree/main/releases). |
 | `.github/scripts/write-checksums.sh` | Writes `<binary>.sha256` next to each release binary and verifies it. |
 | `.github/scripts/test-write-checksums.sh` | Offline tests for it: format, an independent hash, the platform's own verifier, tampering. |
 | `.github/scripts/write-ci-failure-issue.sh` | Writes the body of the issue a failed check files, with the real run URL. |
