@@ -817,6 +817,46 @@ func TestDNSLocalhostFollowsIPv4AndIPv6FamilyFlags(t *testing.T) {
 	}
 }
 
+func TestDNSHostsAnswersAnExplicitTypeWhateverTheFamily(t *testing.T) {
+	// -4/-6 pick the default types and the servers, not the answer: a server
+	// asked over IPv4 for AAAA still answers with AAAA records.
+	for _, c := range []struct {
+		v4, v6    bool
+		typ, data string
+	}{{true, false, "AAAA", "::1"}, {false, true, "A", "127.0.0.1"}} {
+		useFamily(t, c.v4, c.v6)
+		q, err := ParseDNSArgs([]string{"localhost", c.typ})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ok, out := runDNS(t, q, DNSOptions{}, 2, 1, false)
+		if !ok {
+			t.Errorf("DNSHandler(localhost %s, -4=%v -6=%v) failed:\n%s", c.typ, c.v4, c.v6, out)
+		}
+		mustContain(t, out, "answer name=localhost. type="+c.typ+" ttl=0 data="+c.data)
+	}
+}
+
+func TestDNSHostsNameOfAnotherTypeStillNeedsAServer(t *testing.T) {
+	// The hosts file answers only A and AAAA; asking for anything else with no
+	// server to ask fails the way it did before the hosts file was consulted.
+	oldSys := systemDNSServers
+	systemDNSServers = func(context.Context) ([]string, error) {
+		return nil, errors.New("no DNS servers are configured on this machine")
+	}
+	t.Cleanup(func() { systemDNSServers = oldSys })
+
+	q, err := ParseDNSArgs([]string{"localhost", "MX"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, out := runDNS(t, q, DNSOptions{}, 2, 1, false)
+	if ok {
+		t.Errorf("DNSHandler(localhost MX) with no server succeeded:\n%s", out)
+	}
+	mustContain(t, out, "no server to ask", "no DNS servers are configured on this machine")
+}
+
 func TestDNSCustomHostsFileResolution(t *testing.T) {
 	tmpDir := t.TempDir()
 	hostsPath := filepath.Join(tmpDir, "hosts")
