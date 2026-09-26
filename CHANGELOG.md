@@ -7,6 +7,7 @@ Releases before v3.0.0 predate this file; see the [GitHub releases](https://gith
 ## v4.2.3 - unreleased
 
 - **`shint --version` (and `-v`) also says which Go it was built with, and for which platform** - in brackets after the version, the way `go version` writes them: `v4.2.3/<commit>/<build time> (go1.27.1 linux/amd64)`, or `4.2.3 (go1.27.1 darwin/arm64)` from source. Worth including in a problem report: a behaviour can differ between Go releases. The version is still the first word, so anything that reads only that is unaffected; **a script that compares the whole line will notice** the new part. See [Install](https://dmartsapp.github.io/shint/docs/install.html#check-it-works). (Issue #77)
+- Release process: **a release branch's working page is `branch_readme.md`**, with a **To do** checklist that `make release` will not publish past while anything is unchecked; the release commit moves it to `releases/vX.Y.Z.md`, the release's record on `main`. Each release in the roadmap of the README now links to its page - the live working page while it is being built, its record once it has shipped. (Issue #76)
 
 ## v4.2.2 - 2026-09-26
 
