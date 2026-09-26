@@ -271,6 +271,7 @@ class Release(Fixture):
         self.assertTrue(tagmsg.startswith("v4.3.0: `tls` checks certificates"), tagmsg[:80])
         self.assertIn("**`tls` is new.**", tagmsg)
         self.assertIn("v4.3.0 is released", out)
+        self.assertIn("README    | [**v4.3.0**](releases/v4.3.0.md) | Released Nov 15 |", out)   # the summary card shows the row
 
     def test_main_that_moved_is_merged_in(self):
         self.ready()

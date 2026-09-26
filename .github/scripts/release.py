@@ -485,7 +485,8 @@ def summary_card(version, summary, includes, issues):
     say("summary   %s" % summary)
     if includes:
         say("includes  %s (their roadmap rows say 'Shipped in %s')" % (", ".join(includes), tag))
-    row = next((l for l in read("readme.md").splitlines() if l.startswith("| **%s** |" % tag)), "(none)")
+    row = next((l for l in read("readme.md").splitlines()
+                if re.match(r"^\| \[?\*\*%s\*\*(\]\([^)]*\))? \|" % re.escape(tag), l)), "(none)")
     say("README    %s" % row)
     say("changes   %s" % git("diff", "--shortstat", "origin/main", "HEAD"))
     for b in bullets(body):
