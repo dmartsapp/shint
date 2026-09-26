@@ -19,6 +19,29 @@ def rendered_site():
     return {"%s.html" % p["slug"]: build.render_page(p, pages, version) for p in pages}
 
 
+class Tokens(unittest.TestCase):
+    """fill_tokens: the current release in a page, from main.go's Version."""
+
+    def test_the_three_tokens(self):
+        self.assertEqual(build.fill_tokens("{{version}} {{minor}} {{major}}", "4.3.0"), "4.3.0 4.3 4")
+
+    def test_a_backslash_keeps_one_literal(self):
+        self.assertEqual(build.fill_tokens(r"\{{version}} is {{version}}", "4.3.0"), "{{version}} is 4.3.0")
+
+    def test_other_braces_are_left_alone(self):
+        for text in ("${{ github.ref_name }}", "{{ version }}", "{{foo}}", "{version}"):
+            with self.subTest(text=text):
+                self.assertEqual(build.fill_tokens(text, "4.3.0"), text)
+
+    def test_every_page_is_filled_in_except_its_escaped_tokens(self):
+        for src in sorted(build.SRC.glob("*.md")):
+            raw = src.read_text()
+            out = build.fill_tokens(raw, "9.8.7")
+            for name in ("version", "minor", "major"):
+                with self.subTest(page=src.name, token=name):
+                    self.assertEqual(out.count("{{%s}}" % name), raw.count("\\{{%s}}" % name))
+
+
 class SiteUrlCheck(unittest.TestCase):
     """check_site_urls: absolute URLs of the published site must name files that exist."""
 
