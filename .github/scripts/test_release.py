@@ -50,6 +50,27 @@ ENV = {
 }
 
 
+# The Roadmap rows the tests start from. The rest of the README - tagline, badges, support
+# line, which readme-reconcile.py puts back if they are missing - is main's real one, but the
+# table is fixed, so the tests do not depend on how far the real roadmap has got.
+ROADMAP = """| Release | Sprint | What it brings |
+|---|---|---|
+| **v4.2.1** | Released Sep 23 | Fixes |
+| [**v4.2.2**](releases/v4.2.2.md) | Released Sep 26 | `dns` reads the hosts file |
+| **v4.3.0** | Nov 2 - Nov 15 | `tls` (certificate chain and expiry checks) |
+| **v4.4.0** | Nov 16 - Nov 29 | `ip route` |
+| **v4.5.x** | After Dec 13 | Patch releases only |
+| **v5.0.0** | Not scheduled | The next major release |"""
+
+
+def fixture_readme():
+    lines = open(os.path.join(TOP, "readme.md")).read().split("\n")
+    h = lines.index("## Roadmap")
+    start = next(i for i in range(h, len(lines)) if lines[i].startswith("|"))
+    end = next(i for i in range(start, len(lines)) if not lines[i].startswith("|"))
+    return "\n".join(lines[:start] + ROADMAP.split("\n") + lines[end:])
+
+
 class Fixture(unittest.TestCase):
     """A bare origin with main (and a v4.2.2 tag), cloned into work/."""
 
@@ -70,7 +91,7 @@ class Fixture(unittest.TestCase):
         os.makedirs(os.path.join(seed, ".github", "scripts"))
         self.put(seed, "main.go", 'package main\n\nvar (\n\tVersion string = "4.2.2"\n)\n')
         self.put(seed, "CHANGELOG.md", "# Changelog\n\nThe intro.\n\n## v4.2.2 - 2026-09-26\n\n- **An old fix.** Text.\n")
-        shutil.copy(os.path.join(TOP, "readme.md"), os.path.join(seed, "readme.md"))
+        self.put(seed, "readme.md", fixture_readme())
         for s in ("readme-reconcile.py", "release-check.sh"):
             shutil.copy(os.path.join(HERE, s), os.path.join(seed, ".github", "scripts", s))
         self.git(seed, "init", "-q", "-b", "main")
