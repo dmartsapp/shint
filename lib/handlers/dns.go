@@ -322,10 +322,9 @@ func localDNSAnswer(name string, qtype dnsmessage.Type, ips []net.IP, took time.
 			Class: dnsmessage.ClassINET,
 		}},
 	}
+	// No -4/-6 filter here: those pick the default types and the servers, not the
+	// answer, and the type below already keeps each address to its own record.
 	for _, ip := range ips {
-		if !lib.FamilyAllows(ip) {
-			continue
-		}
 		switch qtype {
 		case dnsmessage.TypeA:
 			if ip4 := ip.To4(); ip4 != nil {
@@ -783,8 +782,16 @@ func DNSHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 		hostsIPs = lookupHosts(q.Name)
 	}
 
+	// The hosts file answers only A and AAAA; any other type still needs a server.
+	hostsAnswersAll := len(hostsIPs) > 0
+	for _, qtype := range q.Types {
+		if qtype != dnsmessage.TypeA && qtype != dnsmessage.TypeAAAA {
+			hostsAnswersAll = false
+		}
+	}
+
 	servers, resolved, err := serverList(ctx, q, timeout)
-	if err != nil && len(hostsIPs) == 0 {
+	if err != nil && !hostsAnswersAll {
 		if q.Server != "" {
 			return finishEarly("dns resolution failed "+lib.Fields("host", q.Server), err)
 		}
