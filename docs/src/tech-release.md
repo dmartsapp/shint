@@ -84,10 +84,10 @@ What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 
 | Build | Version reported by `shint --version` | Set by |
 |---|---|---|
-| `go build` from a clone | `4.2.1` | The default in `main.go` (bump it in the release commit) |
+| `go build` from a clone | `4.2.2` | The default in `main.go` (bump it in the release commit) |
 | `make <target>` | `<tag-or-dev>-<commit date as ddmmyyyyHHMMSS>` | `Makefile` (`git tag --contains`, `git show --format=%cd`) |
-| Release binary (CI) | `v4.2.1/<full commit sha>/<UTC build time>` | `build.yaml` (`-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT`) |
-| Docker image | `v4.2.1` | `Dockerfile` (`ARG VERSION`, passed as `VERSION=<tag>`; `dev` when built locally) |
+| Release binary (CI) | `v4.2.2/<full commit sha>/<UTC build time>` | `build.yaml` (`-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT`) |
+| Docker image | `v4.2.2` | `Dockerfile` (`ARG VERSION`, passed as `VERSION=<tag>`; `dev` when built locally) |
 
 So a release binary is traceable to an exact commit and moment, and a source build tells you which release it descends from.
 
@@ -228,9 +228,9 @@ It **warns and never guesses** about what it cannot know, and the warnings are w
 **By hand**, on any machine with the repository:
 
 ```bash
-make readme-reconcile TAG=v4.2.1          # a branch readme/main-v4.2.1 off origin/main, one commit, nothing pushed
+make readme-reconcile TAG=v4.2.2          # a branch readme/main-v4.2.2 off origin/main, one commit, nothing pushed
 git diff origin/main                       # read it, and the warnings the command printed
-make readme-reconcile TAG=v4.2.1 PUSH=1   # ... or in one go: push it and open the pull request
+make readme-reconcile TAG=v4.2.2 PUSH=1   # ... or in one go: push it and open the pull request
 ```
 
 **Automatically**, the `README Reconcile` workflow ([CI/CD](tech-ci.md#readme-reconcile)) does this after every release tag. The workflow does not commit to `main` (the script can, for a clean reconcile only, when asked - see below - and the workflow does not ask): it pushes `readme/main-vX.Y.Z` and opens a pull request (or, where the repository does not let Actions open pull requests, an issue that links the branch). Read the diff and the warnings, fix the wording they point at, and merge. `TAG` only names the branch: every release the README does not yet show is reconciled, so if two releases come out close together the newer proposal contains the older.
