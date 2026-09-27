@@ -135,8 +135,12 @@ Tests say whether shint is right; profiling says how fast and how lean it is, **
 make profile                              # .profiling/dev/<git describe>/<time>/ - yours; git ignores it
 make profile PROFILE_ARGS=--quick         # the machine, the scenarios and the binary size only (under a minute)
 make profile TAG=v4.4.0                   # .profiling/v4.4.0/<time>/ - what make release runs
-make profile-compare A=v4.3.0 B=v4.4.0    # two runs side by side: a tag's latest run, or a run's folder
+make profile-compare A=v4.3.0 B=v4.4.0    # two builds side by side, on the same machine (MACHINE=<id> to pick it)
+make profile-history                      # every scenario across this machine's builds, with a trend (METRIC=cpu|rss, LAST=6)
+make profile-machines                     # every machine that has measured something, and what it is
 ```
+
+**The history, drawn:** the [Performance](tech-performance.md) page charts every scenario over the builds, for one machine at a time, and compares any two builds - with a change smaller than the runs' own spread marked as noise. `make profile-history` and `make profile-compare` print the same from the command line.
 
 **Every release is profiled.** `make release` runs `make profile TAG=vX.Y.Z` on the stamped tree just before the release commit, and the run goes into that commit - a profile cannot be part of the commit it measured, so it measures the tree the commit is made from. It adds about five minutes, and `make release-check` refuses a release commit without it. Releases from v4.0.0 to v4.2.3 were measured after the fact from their published binaries (`profile.py --backfill`): scenarios and sizes only.
 
