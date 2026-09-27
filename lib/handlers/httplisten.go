@@ -210,7 +210,11 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 				if ex != nil {
 					ex.fail("incomplete", r.Method, r.URL.Path, 0, "the client did not finish sending the request: "+shortErr(err), since)
 				}
-				return
+				// Not a plain return: net/http answers "200 OK" for a handler that
+				// wrote nothing, and a client that stopped sending but is still
+				// reading would get it (issue #84). Aborting closes the connection
+				// with nothing written; net/http does not log this panic.
+				panic(http.ErrAbortHandler)
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Connection", "close")

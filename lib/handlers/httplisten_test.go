@@ -358,6 +358,31 @@ func TestHTTPListenerReportsARequestWhoseBodyNeverCompletes(t *testing.T) {
 	}
 }
 
+// A client that stops sending halfway through a body but keeps reading must get
+// nothing back either. It used to get net/http's own "200 OK" with an empty body:
+// the handler returned without answering, and net/http answers for a handler that
+// did not. With a read timeout that was usually hidden by the write deadline having
+// passed too, which made the JSON test below fail only now and then (issue #84).
+func TestHTTPListenerAnswersNothingToAClientThatStoppedSending(t *testing.T) {
+	var reply string
+	out := runHTTPListener(t, 1, 0, false, func(port int) {
+		conn, err := net.Dial("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = conn.Close() }()
+		_ = conn.SetDeadline(time.Now().Add(8 * time.Second))
+		_, _ = conn.Write([]byte("POST /up HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\nshort"))
+		_ = conn.(*net.TCPConn).CloseWrite() // done sending, still reading
+		b, _ := io.ReadAll(conn)
+		reply = string(b)
+	})
+	if reply != "" {
+		t.Errorf("nothing is owed to a client that stopped sending, got %q", reply)
+	}
+	mustContain(t, out, "[listen-http] ERROR request incomplete method=POST path=/up ", "bytes_received=57 bytes_sent=0 ", "the client did not finish sending the request", "done requests=1 ")
+}
+
 // Framing that cannot be parsed - discovered by the handler, while it reads the body -
 // is answered 400 and reported like the requests net/http rejects itself.
 func TestHTTPListenerAnswersA400ForABodyItCannotParse(t *testing.T) {
