@@ -242,6 +242,7 @@ td code { white-space: nowrap; }
 .perf-delta.better { color: var(--tip); font-weight: 600; }
 .perf-delta.worse { color: var(--warn); font-weight: 600; }
 .perf-delta.same { color: var(--muted); }
+.perf-failed { color: var(--warn); }
 .perf-note { font-size: .82rem; color: var(--muted); }
 .perf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px; }
 .perf-chart { min-width: 0; padding: 10px 12px 4px; border: 1px solid var(--border); border-radius: 12px; }

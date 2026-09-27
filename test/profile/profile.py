@@ -295,11 +295,17 @@ def maxrss_bytes(ru):
     return ru.ru_maxrss if sys.platform == "darwin" else ru.ru_maxrss * 1024   # Linux reports KiB
 
 
+FAILED_MARKS = ("] ERROR ", '"success": false', '"success":false')
+
+
 def measure(argv, env=None, timeout=180, during=None):
-    """Run once; the process's own wall time, CPU time and peak memory (wait4), and exit code.
-    during, if given, runs in this thread while the process does (the listen scenario's clients)."""
+    """Run once; the process's own wall time, CPU time and peak memory (wait4), its exit code, and
+    whether it failed: a non-zero exit, or an ERROR line or a "success": false in its output - releases
+    before v4.0.3 exit 0 whatever happened, so the exit code alone cannot tell. during, if given, runs
+    in this thread while the process does (the listen scenario's clients)."""
+    out = tempfile.TemporaryFile()
     t0 = time.perf_counter()
-    p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.DEVNULL,
                          env=dict(os.environ, **(env or {})))
     killer = threading.Timer(timeout, p.kill)
     killer.start()
@@ -311,9 +317,12 @@ def measure(argv, env=None, timeout=180, during=None):
         killer.cancel()
     wall = time.perf_counter() - t0
     p.returncode = os.waitstatus_to_exitcode(status)
+    out.seek(0)
+    text = out.read().decode("utf-8", "replace")
+    out.close()
     return {"wall_ms": wall * 1000, "user_ms": ru.ru_utime * 1000, "sys_ms": ru.ru_stime * 1000,
             "cpu_ms": (ru.ru_utime + ru.ru_stime) * 1000, "max_rss_mib": maxrss_bytes(ru) / 1048576,
-            "exit": p.returncode}
+            "exit": p.returncode, "failed": p.returncode != 0 or any(m in text for m in FAILED_MARKS)}
 
 
 def free_port():
@@ -366,7 +375,8 @@ def scenario_argv(binary, args, ports):
 
 def scenario_entry(what, shown, runs):
     exits = [r["exit"] for r in runs]
-    return {"what": what, "args": shown, "available": True, "repeat": len(runs), "ok": all(e == 0 for e in exits),
+    failed = sum(1 for r in runs if r.get("failed"))
+    return {"what": what, "args": shown, "available": True, "repeat": len(runs), "ok": failed == 0, "failed_runs": failed,
             "exit_codes": exits, "wall_ms": stats([r["wall_ms"] for r in runs]), "cpu_ms": stats([r["cpu_ms"] for r in runs]),
             "user_ms": stats([r["user_ms"] for r in runs]), "sys_ms": stats([r["sys_ms"] for r in runs]),
             "max_rss_mib": stats([r["max_rss_mib"] for r in runs])}
@@ -392,6 +402,7 @@ def run_interleaved(binaries, ports, repeat_scale=1.0, only=None, log=True):
             if log:
                 say("  %-12s n/a (no such command)" % name)
             continue
+        settle(limit=2000)      # the previous scenario's closed connections hold local ports (issue #78)
         n = max(1, int(round(repeat * repeat_scale)))
         runs = {l: [] for l in have}
         for i in range(n + 1):                                  # round 0 is a warm-up, not kept
@@ -408,9 +419,10 @@ def run_interleaved(binaries, ports, repeat_scale=1.0, only=None, log=True):
             if len(labels) == 1:
                 say("  %-12s wall %8.1f ms   cpu %8.1f ms   peak %6.1f MiB%s" % (
                     name, e["wall_ms"]["median"], e["cpu_ms"]["median"], e["max_rss_mib"]["median"],
-                    "" if e["ok"] else "   (exit %s)" % sorted(set(e["exit_codes"]))))
+                    "" if e["ok"] else "   FAILED %d of %d runs" % (e["failed_runs"], e["repeat"])))
             else:
-                say("  %-12s wall ms: %s" % (name, "  ".join("%s %s" % (l, fmt(results[l][name]["wall_ms"]["median"])) for l in have)))
+                say("  %-12s wall ms: %s" % (name, "  ".join("%s %s%s" % (l, fmt(results[l][name]["wall_ms"]["median"]),
+                                                                       "" if results[l][name]["ok"] else " FAILED") for l in have)))
     return results
 
 
@@ -857,10 +869,11 @@ def history(wanted=None, metric="wall", last=None, dev=False):
     lines.append("%-12s" % "scenario" + "".join("%*s" % (width, r["tag"] + ("*" if r.get("kind") == "backfill" else "")) for r in builds)
                  + "   trend" + " " * max(0, len(builds) - 5) + "  first->last")
 
-    def row(name, values, first_last_noisy=False):
+    def row(name, values, first_last_noisy=False, failed=None):
         known = [v for v in values if v is not None]
         delta = change(known[0], known[-1]) if len(known) > 1 else ""
-        lines.append("%-12s" % name + "".join("%*s" % (width, fmt(v)) for v in values)
+        failed = failed or [False] * len(values)
+        lines.append("%-12s" % name + "".join("%*s" % (width, fmt(v) + ("!" if bad else "")) for v, bad in zip(values, failed))
                      + "   %-*s  %s%s" % (max(5, len(values)), spark(values), delta, " ~" if first_last_noisy and delta else ""))
 
     for name in names:
@@ -871,7 +884,7 @@ def history(wanted=None, metric="wall", last=None, dev=False):
             values.append(sc[key]["median"] if ok else None)
             stats_.append(sc if ok else None)
         known = [s for s in stats_ if s]
-        row(name, values, len(known) > 1 and noisy(known[0], known[-1], key))
+        row(name, values, len(known) > 1 and noisy(known[0], known[-1], key), [bool(s) and not s.get("ok", True) for s in stats_])
     lines.append("")
     row("load 1m", [r.get("machine", {}).get("load_1m_start") for r in builds])
     row("binary MiB", [r.get("binary", {}).get("host_size_bytes", 0) / 2 ** 20 or None for r in builds])
@@ -880,6 +893,7 @@ def history(wanted=None, metric="wall", last=None, dev=False):
         if any(v is not None for v in vals):
             row(label_, vals)
     lines.append("")
+    lines.append("! : some runs failed (an error, not a timing) - see the run's summary.json")
     lines.append("~ : the first-to-last change is smaller than the runs' own spread (noise). load 1m: the machine's load when the")
     lines.append("run started - a busy machine is slower for every scenario. Other machines: make profile-machines")
     return "\n".join(lines)
@@ -952,7 +966,9 @@ def compare_summaries(a, b):
         for key in ("wall_ms", "cpu_ms", "max_rss_mib"):
             va, vb = sa[key]["median"], sb[key]["median"]
             cols.append((va, vb, change(va, vb) + (" ~" if noisy(sa, sb, key) else "")))
-        lines.append("%-12s %12.1f %12.1f %9s   %10.1f %10.1f %9s   %10.1f %9.1f %9s" % ((name,) + tuple(x for c in cols for x in c)))
+        failed = [x["tag"] for x, s in ((a, sa), (b, sb)) if not s.get("ok", True)]
+        lines.append("%-12s %12.1f %12.1f %9s   %10.1f %10.1f %9s   %10.1f %9.1f %9s" % ((name,) + tuple(x for c in cols for x in c))
+                     + ("   FAILED in " + ", ".join(failed) if failed else ""))
     ba, bb = a.get("binary", {}), b.get("binary", {})
     lines.append("")
     lines.append("binary (this platform): %s -> %s bytes %s" % (ba.get("host_size_bytes"), bb.get("host_size_bytes"),

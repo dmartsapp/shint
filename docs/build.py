@@ -371,6 +371,8 @@ def performance_data(base=None):
                 continue
             run["s"][name] = {k: [round(sc[key][f], 2) for f in ("median", "min", "max")]
                               for k, key in (("w", "wall_ms"), ("c", "cpu_ms"), ("r", "max_rss_mib"))}
+            if not sc.get("ok", True):
+                run["s"][name]["failed"] = True
         runs.append(run)
         cpu = m.get("cpu", {})
         machines[mid] = {"label": m.get("label", ""), "model": m.get("model", ""), "cpu": cpu.get("model", ""),
@@ -399,7 +401,8 @@ def performance_html(data):
         head = "".join("<th>%s</th>" % html.escape(r["tag"]) for r in builds)
         rows = []
         for name, _ in data["scenarios"]:
-            cells = "".join("<td>%s</td>" % ("%.1f" % r["s"][name]["w"][0] if name in r["s"] else "n/a") for r in builds)
+            cells = "".join("<td>%s</td>" % (("%.1f" % r["s"][name]["w"][0]) + (" (failed)" if r["s"][name].get("failed") else "")
+                                             if name in r["s"] else "n/a") for r in builds)
             rows.append("<tr><td><code>%s</code></td>%s</tr>" % (html.escape(name), cells))
         table = ('<p>Wall time in milliseconds (median), machine <code>%s</code>.</p><div class="tablewrap"><table>'
                  '<thead><tr><th>scenario</th>%s</tr></thead><tbody>%s</tbody></table></div>' % (html.escape(mid), head, "".join(rows)))

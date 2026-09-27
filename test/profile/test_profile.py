@@ -72,8 +72,14 @@ class Scenarios(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
+    def test_a_failure_is_seen_in_the_output_too(self):
+        self.assertTrue(P.measure(["/bin/sh", "-c", "echo 'x: [web] ERROR response'"])["failed"])     # exit 0, as before v4.0.3
+        self.assertTrue(P.measure(["/bin/sh", "-c", "echo '{\"success\": false}'"])["failed"])
+        self.assertFalse(P.measure(["/bin/sh", "-c", "echo 'x: [web] OK response'"])["failed"])
+
     def test_measure_reports_the_exit_code_and_the_process_resources(self):
         r = P.measure(["/bin/sh", "-c", "exit 3"])
+        self.assertTrue(r["failed"])
         self.assertEqual(r["exit"], 3)
         self.assertGreater(r["wall_ms"], 0)
         self.assertGreater(r["max_rss_mib"], 0)
@@ -192,6 +198,15 @@ class Compare(unittest.TestCase):
         self.assertNotIn("v4.0.0", m2)
         with self.assertRaises(SystemExit):
             P.history("m")                                  # ambiguous: m1 and m2
+
+    def test_a_failed_scenario_is_marked_not_charted_as_a_result(self):
+        s = summary("v4.0.0", "m1", 10.0, 1.0, 1)
+        s["scenarios"]["web"]["ok"] = False
+        self.run_(s)
+        self.run_(summary("v4.1.0", "m1", 10.0, 1.0, 1))
+        self.assertRegex(P.history(), re.compile(r"^web +10\.0! +10\.0", re.M))
+        self.assertRegex(P.compare("v4.0.0", "v4.1.0", "m1"), re.compile(r"^web .*FAILED in v4\.0\.0$", re.M))
+
 
     def test_dev_runs_only_when_asked(self):
         self.run_(summary("v4.0.0", "m1", 10.0, 1.0, 1))
