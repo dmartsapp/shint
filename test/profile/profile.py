@@ -645,7 +645,7 @@ def compare(ref_a, ref_b):
     elif ma.get("power") != mb.get("power"):
         lines.append("note: power source differs (%s, %s)" % (ma.get("power"), mb.get("power")))
     lines.append("")
-    lines.append("%-12s %12s %12s %8s   %10s %10s %8s   %9s %9s %8s" % ("scenario", "wall ms", "", "", "cpu ms", "", "", "peak MiB", "", ""))
+    lines.append("%-12s %12s %12s %8s   %10s %10s %8s   %10s %9s %8s" % ("scenario", "wall ms A", "B", "change", "cpu ms A", "B", "change", "peak MiB A", "B", "change"))
     for name, *_ in SCENARIOS:
         sa, sb = a.get("scenarios", {}).get(name), b.get("scenarios", {}).get(name)
         if not sa or not sb or not sa.get("available") or not sb.get("available"):
@@ -655,7 +655,7 @@ def compare(ref_a, ref_b):
         for key in ("wall_ms", "cpu_ms", "max_rss_mib"):
             va, vb = sa[key]["median"], sb[key]["median"]
             cols.append((va, vb, change(va, vb)))
-        lines.append("%-12s %12.1f %12.1f %8s   %10.1f %10.1f %8s   %9.1f %9.1f %8s" % ((name,) + tuple(x for c in cols for x in c)))
+        lines.append("%-12s %12.1f %12.1f %8s   %10.1f %10.1f %8s   %10.1f %9.1f %8s" % ((name,) + tuple(x for c in cols for x in c)))
     ba, bb = a.get("binary", {}), b.get("binary", {})
     lines.append("")
     lines.append("binary (this platform): %s -> %s bytes %s" % (ba.get("host_size_bytes"), bb.get("host_size_bytes"),
