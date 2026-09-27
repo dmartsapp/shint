@@ -8,7 +8,7 @@ Includes:
 | | |
 |---|---|
 | Milestone | [v4.3.0](https://github.com/dmartsapp/shint/milestone/4) - due Nov 15 |
-| Built on | `main`, after the v4.2.1 tag; `main` merged in after the v4.2.2 tag ([`88e4904`](https://github.com/dmartsapp/shint/commit/88e4904)) after the v4.2.3 tag ([`31f831f`](https://github.com/dmartsapp/shint/commit/31f831f)), and since for `main`'s docs and tooling - latest [`eb41dbd`](https://github.com/dmartsapp/shint/commit/eb41dbd): the profiling tooling and the Performance page |
+| Built on | `main`, after the v4.2.1 tag; `main` merged in after the v4.2.2 tag ([`88e4904`](https://github.com/dmartsapp/shint/commit/88e4904)) after the v4.2.3 tag ([`31f831f`](https://github.com/dmartsapp/shint/commit/31f831f)), and since for `main`'s docs and tooling - latest [`0377625`](https://github.com/dmartsapp/shint/commit/0377625): the profiling tooling, the Performance page and two machines' history |
 | Everything that differs from main | [main...release/v4.3.0](https://github.com/dmartsapp/shint/compare/main...release/v4.3.0) |
 | Documentation | [CHANGELOG.md](CHANGELOG.md) (the `v4.3.0 - unreleased` section) and `docs/src/` |
 
