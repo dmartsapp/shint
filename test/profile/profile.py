@@ -34,6 +34,7 @@ Standard library only, like the battery.
 """
 import argparse
 import datetime
+import glob
 import hashlib
 import json
 import os
@@ -613,21 +614,88 @@ def backfill(tags):
             shutil.rmtree(work, ignore_errors=True)
 
 
-# --- comparing ----------------------------------------------------------------------------
+# --- reading the history ------------------------------------------------------------------
 
-def resolve(ref):
-    """A run folder, a summary.json, or a tag (its latest run, a release's before a dev one)."""
-    if os.path.isfile(ref):
-        return ref
-    if os.path.isfile(os.path.join(ref, "summary.json")):
-        return os.path.join(ref, "summary.json")
-    for base in (OUT, os.path.join(OUT, "dev")):
-        d = os.path.join(base, ref)
-        if os.path.isdir(d):
-            runs = sorted(r for r in os.listdir(d) if os.path.isfile(os.path.join(d, r, "summary.json")))
-            if runs:
-                return os.path.join(d, runs[-1], "summary.json")
-    raise SystemExit("compare: no profiling run found for %r" % ref)
+METRICS = {"wall": ("wall_ms", "ms", "wall time"), "cpu": ("cpu_ms", "ms", "CPU time"), "rss": ("max_rss_mib", "MiB", "peak memory")}
+SPARKS = "▁▂▃▄▅▆▇█"
+
+
+def version_key(tag):
+    m = re.match(r"^v(\d+)\.(\d+)\.(\d+)", tag or "")
+    return tuple(int(x) for x in m.groups()) if m else (10 ** 9,)
+
+
+def load_runs(dev=False):
+    """Every run's summary, with its folder in "_path": the committed ones (releases and
+    backfills), and with dev=True your own too - in version order, then time order."""
+    patterns = [os.path.join(OUT, "v*", "*", "summary.json")]
+    if dev:
+        patterns.append(os.path.join(OUT, "dev", "*", "*", "summary.json"))
+    runs = []
+    for pattern in patterns:
+        for f in glob.glob(pattern):
+            try:
+                with open(f) as fh:
+                    s = json.load(fh)
+            except (OSError, ValueError):
+                continue
+            s["_path"] = os.path.dirname(f)
+            runs.append(s)
+    runs.sort(key=lambda s: (version_key(s.get("tag")), s.get("run_at", "")))
+    return runs
+
+
+def machine_of(run):
+    return run.get("machine", {}).get("id", "?")
+
+
+def latest_per_build(runs, mid):
+    """Machine mid's runs, one per build (its latest), in version order."""
+    out = {}
+    for r in runs:
+        if machine_of(r) == mid:
+            out.pop(r["tag"], None)
+            out[r["tag"]] = r
+    return sorted(out.values(), key=lambda r: version_key(r["tag"]))
+
+
+def pick_machine(runs, wanted=None):
+    """The machine asked for; else this one, if it has runs; else the one with the most runs."""
+    ids = [machine_of(r) for r in runs]
+    if wanted:
+        match = sorted({i for i in ids if i.startswith(wanted)})
+        if len(match) != 1:
+            raise SystemExit("no single machine matches %r (machines: %s)" % (wanted, ", ".join(sorted(set(ids)))))
+        return match[0]
+    here = machine()["id"]
+    if here in ids:
+        return here
+    return max(sorted(set(ids)), key=ids.count)
+
+
+def describe_machine(run):
+    m = run.get("machine", {})
+    cpu = m.get("cpu", {})
+    cores = "%s cores" % cpu.get("logical_cores", "?")
+    if cpu.get("performance_cores"):
+        cores += " (%s+%s)" % (cpu["performance_cores"], cpu.get("efficiency_cores", 0))
+    parts = [m.get("label"), m.get("model"), cpu.get("model"), cores,
+             "%.0f GiB" % (m["memory_bytes"] / 2 ** 30) if m.get("memory_bytes") else "", m.get("os_version") or m.get("os")]
+    return ", ".join(x for x in parts if x)
+
+
+def fmt(v):
+    if v is None:
+        return "n/a"
+    return "%.0f" % v if abs(v) >= 100 else "%.1f" % v if abs(v) >= 10 else "%.2f" % v
+
+
+def spark(values):
+    known = [v for v in values if v is not None]
+    if not known:
+        return ""
+    lo, hi = min(known), max(known)
+    return "".join(" " if v is None else SPARKS[0 if hi == lo else int((v - lo) / (hi - lo) * (len(SPARKS) - 1))] for v in values)
 
 
 def change(a, b):
@@ -636,17 +704,118 @@ def change(a, b):
     return "%+.1f%%" % ((b - a) / a * 100)
 
 
-def compare(ref_a, ref_b):
-    a, b = (json.load(open(resolve(r))) for r in (ref_a, ref_b))
+def noisy(sa, sb, key):
+    """True when the change between two runs is smaller than either run's own spread (max - min)."""
+    try:
+        a, b = sa[key], sb[key]
+        d = abs(b["median"] - a["median"]) / a["median"]
+        return d <= max((a["max"] - a["min"]) / a["median"], (b["max"] - b["min"]) / b["median"])
+    except (KeyError, TypeError, ZeroDivisionError):
+        return False
+
+
+def history(wanted=None, metric="wall", last=None, dev=False):
+    """Every scenario across one machine's builds, with a trend and the first-to-last change."""
+    runs = load_runs(dev)
+    if not runs:
+        return "no profiling runs in %s" % os.path.relpath(OUT, REPO)
+    mid = pick_machine(runs, wanted)
+    builds = latest_per_build(runs, mid)
+    if last:
+        builds = builds[-last:]
+    key, unit, label = METRICS[metric]
+    names = []
+    for r in builds:
+        names += [n for n in r.get("scenarios", {}) if n not in names]
+    width = max(8, max(len(r["tag"]) for r in builds) + 1)
+    lines = ["machine %s: %s" % (mid, describe_machine(builds[-1])),
+             "%s (%s, median) over %d build%s%s" % (label, unit, len(builds), "" if len(builds) == 1 else "s",
+                                                   "; * = measured later from the published binary" if any(r.get("kind") == "backfill" for r in builds) else ""),
+             ""]
+    lines.append("%-12s" % "scenario" + "".join("%*s" % (width, r["tag"] + ("*" if r.get("kind") == "backfill" else "")) for r in builds)
+                 + "   trend" + " " * max(0, len(builds) - 5) + "  first->last")
+
+    def row(name, values, first_last_noisy=False):
+        known = [v for v in values if v is not None]
+        delta = change(known[0], known[-1]) if len(known) > 1 else ""
+        lines.append("%-12s" % name + "".join("%*s" % (width, fmt(v)) for v in values)
+                     + "   %-*s  %s%s" % (max(5, len(values)), spark(values), delta, " ~" if first_last_noisy and delta else ""))
+
+    for name in names:
+        values, stats_ = [], []
+        for r in builds:
+            sc = r.get("scenarios", {}).get(name)
+            ok = sc and sc.get("available")
+            values.append(sc[key]["median"] if ok else None)
+            stats_.append(sc if ok else None)
+        known = [s for s in stats_ if s]
+        row(name, values, len(known) > 1 and noisy(known[0], known[-1], key))
+    lines.append("")
+    row("binary MiB", [r.get("binary", {}).get("host_size_bytes", 0) / 2 ** 20 or None for r in builds])
+    for k, label_ in (("go_tests", "go test s"), ("battery", "battery s")):
+        vals = [(r.get(k) or {}).get("wall_seconds") for r in builds]
+        if any(v is not None for v in vals):
+            row(label_, vals)
+    lines.append("")
+    lines.append("~ : the first-to-last change is smaller than the runs' own spread (noise). Other machines: make profile-machines")
+    return "\n".join(lines)
+
+
+def machines_table(dev=False):
+    runs = load_runs(dev)
+    if not runs:
+        return "no profiling runs in %s" % os.path.relpath(OUT, REPO)
+    here = machine()["id"]
+    lines = []
+    for mid in sorted({machine_of(r) for r in runs}, key=lambda i: (i != here, i)):
+        mine = [r for r in runs if machine_of(r) == mid]
+        builds = latest_per_build(runs, mid)
+        lines.append("%s%s  %d run%s, %d build%s (%s .. %s), last %s" % (
+            mid, "  (this machine)" if mid == here else "", len(mine), "" if len(mine) == 1 else "s",
+            len(builds), "" if len(builds) == 1 else "s", builds[0]["tag"], builds[-1]["tag"], mine[-1].get("run_at", "")[:10]))
+        lines.append("    " + describe_machine(mine[-1]))
+    return "\n".join(lines)
+
+
+def resolve(ref, mid=None):
+    """A run folder, a summary.json, or a tag: its latest run - on machine mid, if given."""
+    if os.path.isfile(ref):
+        return ref
+    if os.path.isfile(os.path.join(ref, "summary.json")):
+        return os.path.join(ref, "summary.json")
+    runs = [r for r in load_runs(dev=True) if r.get("tag") == ref and (mid is None or machine_of(r) == mid)]
+    if runs:
+        return os.path.join(runs[-1]["_path"], "summary.json")
+    raise SystemExit("compare: no profiling run found for %r%s" % (ref, " on machine %s" % mid if mid else ""))
+
+
+def compare(ref_a, ref_b, wanted=None):
+    """Two runs side by side. Two tags are compared on the same machine: the one asked for, or
+    this one when both builds have run on it; failing that, each tag's latest run."""
+    mid = None
+    if wanted:
+        mid = pick_machine(load_runs(dev=True), wanted)
+    else:
+        here = machine()["id"]
+        try:
+            resolve(ref_a, here), resolve(ref_b, here)
+            mid = here
+        except SystemExit:
+            mid = None
+    with open(resolve(ref_a, mid)) as fa, open(resolve(ref_b, mid)) as fb:
+        a, b = json.load(fa), json.load(fb)
     lines = ["%s (%s, %s)  ->  %s (%s, %s)" % (a["tag"], a["kind"], a["run_at"], b["tag"], b["kind"], b["run_at"])]
     ma, mb = a.get("machine", {}), b.get("machine", {})
     if ma.get("id") != mb.get("id"):
         lines.append("WARNING: different machines (%s, %s) - the timings are not comparable, only the sizes are" % (ma.get("id"), mb.get("id")))
-    elif ma.get("power") != mb.get("power"):
-        lines.append("note: power source differs (%s, %s)" % (ma.get("power"), mb.get("power")))
+    else:
+        lines.append("machine %s: %s" % (ma.get("id"), describe_machine(b)))
+        if ma.get("power") != mb.get("power"):
+            lines.append("note: power source differs (%s, %s)" % (ma.get("power"), mb.get("power")))
     lines.append("")
-    lines.append("%-12s %12s %12s %8s   %10s %10s %8s   %10s %9s %8s" % ("scenario", "wall ms A", "B", "change", "cpu ms A", "B", "change", "peak MiB A", "B", "change"))
-    for name, *_ in SCENARIOS:
+    lines.append("%-12s %12s %12s %9s   %10s %10s %9s   %10s %9s %9s" % ("scenario", "wall ms A", "B", "change", "cpu ms A", "B", "change", "peak MiB A", "B", "change"))
+    names = list(a.get("scenarios", {})) + [n for n in b.get("scenarios", {}) if n not in a.get("scenarios", {})]
+    for name in names:
         sa, sb = a.get("scenarios", {}).get(name), b.get("scenarios", {}).get(name)
         if not sa or not sb or not sa.get("available") or not sb.get("available"):
             lines.append("%-12s %s" % (name, "n/a in " + ", ".join(x["tag"] for x, s in ((a, sa), (b, sb)) if not s or not s.get("available"))))
@@ -654,8 +823,8 @@ def compare(ref_a, ref_b):
         cols = []
         for key in ("wall_ms", "cpu_ms", "max_rss_mib"):
             va, vb = sa[key]["median"], sb[key]["median"]
-            cols.append((va, vb, change(va, vb)))
-        lines.append("%-12s %12.1f %12.1f %8s   %10.1f %10.1f %8s   %10.1f %9.1f %8s" % ((name,) + tuple(x for c in cols for x in c)))
+            cols.append((va, vb, change(va, vb) + (" ~" if noisy(sa, sb, key) else "")))
+        lines.append("%-12s %12.1f %12.1f %9s   %10.1f %10.1f %9s   %10.1f %9.1f %9s" % ((name,) + tuple(x for c in cols for x in c)))
     ba, bb = a.get("binary", {}), b.get("binary", {})
     lines.append("")
     lines.append("binary (this platform): %s -> %s bytes %s" % (ba.get("host_size_bytes"), bb.get("host_size_bytes"),
@@ -664,6 +833,8 @@ def compare(ref_a, ref_b):
         if a.get(key) and b.get(key):
             lines.append("%s: %s s -> %s s %s" % (label, a[key]["wall_seconds"], b[key]["wall_seconds"],
                                                   change(a[key]["wall_seconds"], b[key]["wall_seconds"])))
+    lines.append("")
+    lines.append("~ : smaller than the runs' own spread (noise)")
     return "\n".join(lines)
 
 
@@ -673,9 +844,21 @@ def main(argv):
     ap.add_argument("--quick", action="store_true", help="the machine, the scenarios and the binary size only")
     ap.add_argument("--backfill", nargs="+", metavar="TAG", help="measure these releases' published binaries instead of this tree")
     ap.add_argument("--compare", nargs=2, metavar=("A", "B"), help="compare two runs (a tag, a run folder or a summary.json)")
+    ap.add_argument("--history", action="store_true", help="every scenario across one machine's builds, with a trend")
+    ap.add_argument("--machines", action="store_true", help="every machine that has profiling runs")
+    ap.add_argument("--machine", help="the machine (its id, or the start of it) for --history and --compare; default: this one")
+    ap.add_argument("--metric", choices=sorted(METRICS), default="wall", help="for --history: wall, cpu or rss (default wall)")
+    ap.add_argument("--last", type=int, help="for --history: only the last N builds")
+    ap.add_argument("--dev", action="store_true", help="for --history and --machines: include your own runs in .profiling/dev/")
     a = ap.parse_args(argv)
     if a.compare:
-        print(compare(*a.compare))
+        print(compare(a.compare[0], a.compare[1], a.machine))
+        return 0
+    if a.history:
+        print(history(a.machine, a.metric, a.last, a.dev))
+        return 0
+    if a.machines:
+        print(machines_table(a.dev))
         return 0
     if a.backfill:
         backfill(a.backfill)

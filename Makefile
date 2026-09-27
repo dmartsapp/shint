@@ -129,7 +129,7 @@ ACTIONLINT ?= actionlint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.13.2
 
-.PHONY: help check check-quick attest hooks test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-start release release-check readme-reconcile profile profile-compare
+.PHONY: help check check-quick attest hooks test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-start release release-check readme-reconcile profile profile-compare profile-history profile-machines
 
 help:
 	echo "make check       fmt, vet, race tests, black-box battery, lint, vulncheck, docs and workflow checks (no network)"
@@ -142,7 +142,9 @@ help:
 	echo "make release         on release/vX.Y.Z, on release day: stamp, check, commit, then (after one yes) push main, wait for Check, tag, verify (DRY_RUN=1 rehearses)"
 	echo "make release-check   on a release branch, after the release commit: is it safe to fast-forward main and tag?"
 	echo "make profile     runtime stats and profiles of this tree's build, and the machine they ran on, in .profiling/ (TAG=vX.Y.Z for a release's; PROFILE_ARGS=--quick for the scenarios only)"
-	echo "make profile-compare A=v4.2.3 B=v4.3.0   two profiling runs side by side (a tag's latest run, or a run's folder)"
+	echo "make profile-compare A=v4.2.3 B=v4.3.0   two builds side by side, on the same machine (MACHINE=<id> to pick one)"
+	echo "make profile-history   every scenario across this machine's builds, with a trend (METRIC=wall|cpu|rss, LAST=N, MACHINE=<id>)"
+	echo "make profile-machines  every machine that has profiling runs, and what it is"
 	echo "make readme-reconcile   after a release: a branch readme/main-<tag> with main's README brought up to date (TAG=vX.Y.Z, PUSH=1 to push and open the pull request)"
 	echo "make test        the Go tests (race detector), then the black-box battery in test/battery"
 	echo "make test-go     just the Go tests, with the race detector"
@@ -286,13 +288,22 @@ workflows:
 #   make profile                    .profiling/dev/<git describe>/<time>/ - yours; git ignores it
 #   make profile TAG=v4.3.0         .profiling/v4.3.0/<time>/ - make release runs this and commits it
 #   make profile PROFILE_ARGS=--quick     the machine, the scenarios and the binary size only
-#   make profile-compare A=v4.2.3 B=v4.3.0
+#   make profile-compare A=v4.2.3 B=v4.3.0    two builds, on the same machine (MACHINE=<id> to pick it)
+#   make profile-history [METRIC=wall|cpu|rss] [LAST=N] [MACHINE=<id>]
+#   make profile-machines
+# The docs site's Performance page draws the same history (docs/build.py reads .profiling/).
 PROFILE_ARGS ?=
 profile:
 	python3 test/profile/profile.py $(if $(TAG),--tag $(TAG),) $(PROFILE_ARGS)
 
 profile-compare:
-	python3 test/profile/profile.py --compare "$(A)" "$(B)"
+	python3 test/profile/profile.py --compare "$(A)" "$(B)" $(if $(MACHINE),--machine $(MACHINE),)
+
+profile-history:
+	python3 test/profile/profile.py --history $(if $(MACHINE),--machine $(MACHINE),) $(if $(METRIC),--metric $(METRIC),) $(if $(LAST),--last $(LAST),)
+
+profile-machines:
+	python3 test/profile/profile.py --machines
 
 # After a release: a branch off main with its README reconciled with the release tags,
 # the changelog, the milestones and the binary's --help (see docs: Releases and tagging).

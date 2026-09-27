@@ -24,13 +24,14 @@ exit 0
 """
 
 
-def summary(tag, machine_id, wall, rss, size, kind="release", available=True):
-    s = {"schema": 1, "tag": tag, "kind": kind, "run_at": "2026-09-27T00:00:00+00:00",
-         "machine": {"id": machine_id, "power": "ac"}, "binary": {"host_size_bytes": size},
-         "scenarios": {}}
+def summary(tag, machine_id, wall, rss, size, kind="release", available=True, at="2026-09-27T00:00:00+00:00"):
+    s = {"schema": 1, "tag": tag, "kind": kind, "run_at": at,
+         "machine": {"id": machine_id, "power": "ac", "model": "Model-" + machine_id, "cpu": {"logical_cores": 8}},
+         "binary": {"host_size_bytes": size}, "scenarios": {}}
     for name, *_ in P.SCENARIOS:
-        s["scenarios"][name] = {"available": available, "wall_ms": {"median": wall}, "cpu_ms": {"median": wall},
-                                "max_rss_mib": {"median": rss}}
+        s["scenarios"][name] = {"available": available, "wall_ms": {"median": wall, "min": wall * .99, "max": wall * 1.01},
+                                "cpu_ms": {"median": wall, "min": wall * .99, "max": wall * 1.01},
+                                "max_rss_mib": {"median": rss, "min": rss, "max": rss}}
     return s
 
 
@@ -94,9 +95,18 @@ class Scenarios(unittest.TestCase):
 class Compare(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="test-profile-")
+        self.old_out, P.OUT = P.OUT, os.path.join(self.tmp, ".profiling")
 
     def tearDown(self):
+        P.OUT = self.old_out
         shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def run_(self, s, stamp=None, dev=False):
+        self.n = getattr(self, "n", 0) + 1
+        d = os.path.join(P.OUT, "dev" if dev else "", s["tag"], stamp or "2026-09-27T0000%02dZ" % self.n)
+        os.makedirs(d)
+        with open(os.path.join(d, "summary.json"), "w") as f:
+            json.dump(s, f)
 
     def write(self, name, s):
         d = os.path.join(self.tmp, name)
@@ -126,19 +136,60 @@ class Compare(unittest.TestCase):
         self.assertRegex(P.compare(a, b), re.compile(r"^dns +n/a in v4\.0\.0$", re.M))
 
     def test_a_tag_resolves_to_its_latest_run(self):
-        old = P.OUT
-        P.OUT = self.tmp
-        try:
-            for stamp, wall in (("2026-09-01T000000Z", 1.0), ("2026-09-02T000000Z", 2.0)):
-                d = os.path.join(self.tmp, "v4.2.3", stamp)
-                os.makedirs(d)
-                with open(os.path.join(d, "summary.json"), "w") as f:
-                    json.dump(summary("v4.2.3", "m1", wall, 1.0, 1), f)
-            self.assertTrue(P.resolve("v4.2.3").endswith("2026-09-02T000000Z/summary.json"))
-            with self.assertRaises(SystemExit):
-                P.resolve("v9.9.9")
-        finally:
-            P.OUT = old
+        self.run_(summary("v4.2.3", "m1", 1.0, 1.0, 1, at="2026-09-01T00:00:00+00:00"), "2026-09-01T000000Z")
+        self.run_(summary("v4.2.3", "m1", 2.0, 1.0, 1, at="2026-09-02T00:00:00+00:00"), "2026-09-02T000000Z")
+        self.assertTrue(P.resolve("v4.2.3").endswith("2026-09-02T000000Z/summary.json"))
+        with self.assertRaises(SystemExit):
+            P.resolve("v9.9.9")
+
+    def test_two_tags_are_compared_on_the_same_machine(self):
+        self.run_(summary("v4.0.0", "m1", 10.0, 1.0, 1, at="2026-09-01T00:00:00+00:00"), "2026-09-01T000000Z")
+        self.run_(summary("v4.0.0", "m2", 99.0, 1.0, 1, at="2026-09-02T00:00:00+00:00"), "2026-09-02T000000Z")
+        self.run_(summary("v4.1.0", "m1", 20.0, 1.0, 1))
+        self.assertNotIn("WARNING", P.compare("v4.0.0", "v4.1.0", "m1"))
+        self.assertIn("+100.0%", P.compare("v4.0.0", "v4.1.0", "m1"))
+        # neither build ran on this machine and none is named: each tag's latest run, and a warning
+        self.assertIn("WARNING: different machines", P.compare("v4.0.0", "v4.1.0"))
+
+    def test_history_of_one_machine(self):
+        self.run_(summary("v4.0.0", "m1", 10.0, 1.0, 1000, kind="backfill"))
+        self.run_(summary("v4.10.0", "m1", 20.0, 1.0, 1100))
+        self.run_(summary("v4.9.0", "m1", 15.0, 1.0, 1050))
+        self.run_(summary("v4.9.0", "m2", 5.0, 1.0, 1050))
+        out = P.history()                                   # this machine has no runs: the busiest one
+        self.assertIn("machine m1: Model-m1", out)
+        self.assertRegex(out, r"scenario +v4\.0\.0\* +v4\.9\.0 +v4\.10\.0")   # version order, * = backfill
+        self.assertRegex(out, re.compile(r"^startup +10\.0 +15\.0 +20\.0 +\S+ +\+100\.0%$", re.M))
+        self.assertRegex(out, re.compile(r"^binary MiB .*\+10\.0%$", re.M))
+        self.assertIn("v4.10.0", P.history(last=1))
+        self.assertNotIn("v4.9.0", P.history(last=1))
+        m2 = P.history("m2")
+        self.assertIn("machine m2", m2)
+        self.assertNotIn("v4.0.0", m2)
+        with self.assertRaises(SystemExit):
+            P.history("m")                                  # ambiguous: m1 and m2
+
+    def test_dev_runs_only_when_asked(self):
+        self.run_(summary("v4.0.0", "m1", 10.0, 1.0, 1))
+        self.run_(summary("v4.0.0-3-gabc", "m1", 12.0, 1.0, 1, kind="dev"), dev=True)
+        self.assertNotIn("gabc", P.history())
+        self.assertIn("v4.0.0-3-gabc", P.history(dev=True))
+
+    def test_machines_table(self):
+        self.run_(summary("v4.0.0", "m1", 10.0, 1.0, 1))
+        self.run_(summary("v4.1.0", "m1", 10.0, 1.0, 1))
+        self.run_(summary("v4.1.0", "m2", 10.0, 1.0, 1))
+        out = P.machines_table()
+        self.assertIn("m1  2 runs, 2 builds (v4.0.0 .. v4.1.0)", out)
+        self.assertIn("m2  1 run, 1 build (v4.1.0 .. v4.1.0)", out)
+        self.assertIn("Model-m2, 8 cores", out)
+
+    def test_spark_and_noise(self):
+        self.assertEqual(P.spark([1, None, 3]), "\u2581 \u2588")
+        self.assertEqual(P.spark([None]), "")
+        a = {"w": {"median": 10, "min": 8, "max": 12}}
+        self.assertTrue(P.noisy(a, {"w": {"median": 11, "min": 11, "max": 11}}, "w"))
+        self.assertFalse(P.noisy(a, {"w": {"median": 20, "min": 20, "max": 20}}, "w"))
 
 
 if __name__ == "__main__":
