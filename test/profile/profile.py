@@ -416,8 +416,13 @@ def go_test_profiles(run_dir, work):
     return made
 
 
+COMMAND_PROFILE_RUNS = 10
+
+
 def command_profiles(run_dir, work, ports):
-    """With the `profiling` hook: the binary's own CPU and memory profile in each scenario."""
+    """With the `profiling` hook: the binary's own CPU and memory profile in each scenario.
+    A run of a few milliseconds gives the CPU profiler (100 samples a second) almost nothing,
+    so each scenario runs COMMAND_PROFILE_RUNS times and the profiles are merged."""
     binary = os.path.join(work, "shint-profiling")
     if not go_build(binary, tags="profiling"):
         return []
@@ -425,14 +430,28 @@ def command_profiles(run_dir, work, ports):
     for name, args, _, _ in SCENARIOS:
         if name in ("startup", "help", "cidr", "ip") or not available(binary, args or ["listen"]):
             continue
-        cpu = os.path.join(run_dir, "cmd-cpu-%s.pprof" % name)
-        mem = os.path.join(run_dir, "cmd-mem-%s.pprof" % name)
-        argv, during = scenario_argv(binary, args, ports)
-        measure(argv, env={"SHINT_CPUPROFILE": cpu, "SHINT_MEMPROFILE": mem}, during=during)
-        for prof, extra in ((cpu, ()), (mem, ("-sample_index=alloc_space",))):
-            if os.path.exists(prof):
-                pprof_top(binary, prof, prof.replace(".pprof", ".top.txt"), extra)
-                made.append(os.path.basename(prof))
+        parts = {"cpu": [], "mem": []}
+        for i in range(COMMAND_PROFILE_RUNS):
+            cpu = os.path.join(work, "%s-cpu-%d.pprof" % (name, i))
+            mem = os.path.join(work, "%s-mem-%d.pprof" % (name, i))
+            argv, during = scenario_argv(binary, args, ports)
+            measure(argv, env={"SHINT_CPUPROFILE": cpu, "SHINT_MEMPROFILE": mem}, during=during,
+                    timeout=60 if during else 180)
+            for kind, path in (("cpu", cpu), ("mem", mem)):
+                if os.path.exists(path) and os.path.getsize(path):
+                    parts[kind].append(path)
+        for kind, extra in (("cpu", ()), ("mem", ("-sample_index=alloc_space",))):
+            if not parts[kind]:
+                continue
+            merged = os.path.join(run_dir, "cmd-%s-%s.pprof" % (kind, name))
+            with open(merged, "wb") as f:
+                r = subprocess.run(["go", "tool", "pprof", "-proto", binary] + parts[kind], cwd=REPO, stdout=f,
+                                   stderr=subprocess.DEVNULL)
+            if r.returncode != 0 or not os.path.getsize(merged):
+                os.remove(merged)
+                continue
+            pprof_top(binary, merged, merged.replace(".pprof", ".top.txt"), extra)
+            made.append(os.path.basename(merged))
     return made
 
 
