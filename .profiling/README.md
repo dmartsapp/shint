@@ -21,6 +21,7 @@ How fast and how lean each shint release is, measured the same way every time, s
 make profile-history                       # this machine: every scenario across its builds, with a trend
 make profile-machines                      # every machine that has measured something
 make profile-compare A=v4.2.3 B=v4.3.0     # two builds, on the same machine
+make profile-ab A=v4.2.3 B=HEAD            # head to head, now, interleaved - the fairest comparison
 go tool pprof -http=: .profiling/v4.3.0/<time>/cmd-cpu-web.pprof
 ```
 

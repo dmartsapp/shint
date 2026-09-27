@@ -59,7 +59,7 @@ class Performance(unittest.TestCase):
         d.mkdir(parents=True)
         (d / "summary.json").write_text(json.dumps({
             "tag": tag, "kind": "release", "run_at": "2026-09-27T00:00:00+00:00",
-            "machine": {"id": mid, "label": label, "cpu": {"model": "cpu", "logical_cores": 8}},
+            "machine": {"id": mid, "label": label, "cpu": {"model": "cpu", "logical_cores": 8}, "load_1m_start": 2.5},
             "binary": {"host_size_bytes": 1000},
             "scenarios": {"startup": {"available": True, "what": "start",
                                       "wall_ms": {"median": wall, "min": wall, "max": wall},
@@ -74,6 +74,7 @@ class Performance(unittest.TestCase):
         d = build.performance_data(self.tmp)
         self.assertEqual([r["tag"] for r in d["runs"]], ["v4.9.0", "v4.10.0"])
         self.assertEqual(d["runs"][0]["s"]["startup"]["w"], [2, 2, 2])
+        self.assertEqual(d["runs"][0]["load"], 2.5)
         self.assertNotIn("dns", d["runs"][0]["s"])                      # not available in that build
         self.assertEqual([s[0] for s in d["scenarios"]], ["startup", "dns"])
         self.assertEqual(set(d["machines"]), {"m1"})

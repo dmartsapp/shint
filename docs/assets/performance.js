@@ -117,7 +117,8 @@
     return el("div", {}, [
       el("h3", { text: METRICS[state.metric][0] + " (" + unit + "): " + state.a + " \u2192 " + state.b }),
       el("div", { class: "tablewrap" }, [el("table", { class: "perf-table" }, [head, body])]),
-      el("p", { class: "perf-note", text: "Medians. Lower is better. ~ marks a change smaller than the runs' own spread (their max - min), i.e. noise." })
+      el("p", { class: "perf-note", text: "Medians. Lower is better. ~ marks a change smaller than the runs' own spread (their max - min), i.e. noise." +
+        (A.load != null && B.load != null ? " The machine's load when each run started: " + A.load + " and " + B.load + " - a busy machine is slower for every scenario." : "") })
     ]);
   }
 
@@ -151,7 +152,7 @@
         style: "stroke:var(--accent);stroke-width:2;fill:" + (p.kind === "backfill" ? "var(--bg)" : "var(--accent)") });
       var tip = sv("title", {});
       tip.textContent = p.tag + (p.kind === "backfill" ? " (backfill)" : "") + ": " + fmt(p.v[0]) + " " + unit +
-        " (" + fmt(p.v[1]) + " to " + fmt(p.v[2]) + ")";
+        " (" + fmt(p.v[1]) + " to " + fmt(p.v[2]) + ")" + (p.load != null ? ", load " + p.load : "");
       c.appendChild(tip);
       svg.appendChild(c);
       // every step-th build, and the last one - anchored at its end so it stays inside the chart
@@ -168,7 +169,7 @@
     var bs = builds(state.machine), unit = METRICS[state.metric][1], grid = el("div", { class: "perf-grid" });
     D.scenarios.forEach(function (s) {
       var pts = [];
-      bs.forEach(function (r) { if (r.s[s[0]]) pts.push({ tag: r.tag, kind: r.kind, v: r.s[s[0]][state.metric] }); });
+      bs.forEach(function (r) { if (r.s[s[0]]) pts.push({ tag: r.tag, kind: r.kind, load: r.load, v: r.s[s[0]][state.metric] }); });
       if (pts.length) grid.appendChild(chart(s[0], s[1] + " \u00b7 " + METRICS[state.metric][0].toLowerCase() + ", " + unit, pts, unit));
     });
     var size = bs.filter(function (r) { return r.size; }).map(function (r) { var v = mib(r.size); return { tag: r.tag, kind: r.kind, v: [v, v, v] }; });

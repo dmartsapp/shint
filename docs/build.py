@@ -361,7 +361,7 @@ def performance_data(base=None):
         m = s.get("machine", {})
         mid = m.get("id", "?")
         run = {"tag": s.get("tag", f.parent.parent.name), "kind": s.get("kind", ""), "at": s.get("run_at", ""),
-               "machine": mid, "power": m.get("power", ""), "size": s.get("binary", {}).get("host_size_bytes"),
+               "machine": mid, "power": m.get("power", ""), "load": m.get("load_1m_start"), "size": s.get("binary", {}).get("host_size_bytes"),
                "go_tests": (s.get("go_tests") or {}).get("wall_seconds"), "battery": (s.get("battery") or {}).get("wall_seconds"),
                "s": {}}
         for name, sc in s.get("scenarios", {}).items():
