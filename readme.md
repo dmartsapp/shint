@@ -174,7 +174,7 @@ shint ships **one release every two weeks, one at a time**. Here is what has shi
 | [**v4.2.1**](https://github.com/dmartsapp/shint/blob/release/v4.2.1/readme.md) | Released Sep 23 | Release binaries now cover AIX, illumos, and 32-bit and Power Linux (18 binaries in all); `dns`'s JSON field `server` is renamed `nameserver`, `ip` prints one line and one flat object per interface, and the Vulnerability Check workflow no longer fights itself over the Go module cache |
 | [**v4.2.2**](releases/v4.2.2.md) | Released Sep 26 | `dns` answers names from your hosts file first, like every other shint command, so `shint dns localhost` works - contributed by [@littfed](https://github.com/littfed) |
 | [**v4.2.3**](releases/v4.2.3.md) | Released Sep 26 | `shint --version` also shows the Go version it was built with, and for which platform |
-| [**v4.3.0**](https://github.com/dmartsapp/shint/blob/release/v4.3.0/branch_readme.md) | Nov 2 - Nov 15 | `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names, banner grabbing in `telnet` |
+| [**v4.3.0**](https://github.com/dmartsapp/shint/blob/release/v4.3.0/branch_readme.md) | Nov 2 - Nov 15 | `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names |
 | **v4.4.0** | Nov 16 - Nov 29 | `ip route` (routing table and default gateway), richer `ping`: sub-millisecond timings, and "unreachable" replies told apart from timeouts |
 | **v4.5.0** | Nov 30 - Dec 13 | `speed` (measure throughput between two of your machines) |
 | **v4.5.x** | After Dec 13 | Patch releases only: fixes, no new features. A lot has changed since v4.0, and this is the time to check it |

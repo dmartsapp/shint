@@ -146,3 +146,4 @@ Each attempt is one entry in `stats`; failed attempts have `"success": false` an
 - `--timeout` applies to each connection attempt (and to the DNS lookup), not to the whole run.
 - With `--count N`, N attempts are made against **every** address, one after another, each preceded by `--delay`.
 - The default `--delay 1000` means a single check takes about a second; use `--delay 0` for an immediate answer.
+- **It never reads what the server sends**, so a service that greets you (SSH, SMTP, FTP) is not asked for its banner. That is deliberate - see [No banner grabbing in telnet](tech-design.md#no-banner-grabbing-in-telnet). `nc host port` shows a greeting; `web`, `dns` and `ntp` check those services in their own protocol.
