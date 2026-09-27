@@ -297,6 +297,27 @@ def maxrss_bytes(ru):
 
 FAILED_MARKS = ("] ERROR ", '"success": false', '"success":false')
 
+# On Linux a process's peak memory (ru_maxrss) survives exec: a child forked from this script
+# starts as a copy of it and "peaks" at this script's size (57 MiB with the servers running), not
+# shint's. So on Linux each run is started by a fresh, tiny interpreter that forks and execs shint,
+# times it from fork to exit and reports the child's own usage on a pipe - its peak then starts from
+# the wrapper's ~6 MiB, below anything shint uses. (macOS starts the count afresh at exec.)
+_WRAPPER = """import os, sys, time
+w = int(sys.argv[1])
+t0 = time.perf_counter()
+pid = os.fork()
+if pid == 0:
+    try:
+        os.execvp(sys.argv[2], sys.argv[2:])
+    finally:
+        os._exit(127)
+_, status, ru = os.wait4(pid, 0)
+wall = time.perf_counter() - t0
+import json
+os.write(w, json.dumps([wall, ru.ru_utime, ru.ru_stime, ru.ru_maxrss, os.waitstatus_to_exitcode(status)]).encode())
+"""
+WRAP = sys.platform.startswith("linux")
+
 
 def measure(argv, env=None, timeout=180, during=None):
     """Run once; the process's own wall time, CPU time and peak memory (wait4), its exit code, and
@@ -304,25 +325,45 @@ def measure(argv, env=None, timeout=180, during=None):
     before v4.0.3 exit 0 whatever happened, so the exit code alone cannot tell. during, if given, runs
     in this thread while the process does (the listen scenario's clients)."""
     out = tempfile.TemporaryFile()
-    t0 = time.perf_counter()
-    p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.DEVNULL,
-                         env=dict(os.environ, **(env or {})))
-    killer = threading.Timer(timeout, p.kill)
+    env = dict(os.environ, **(env or {}))
+    if WRAP:
+        r, w = os.pipe()
+        p = subprocess.Popen([sys.executable, "-S", "-c", _WRAPPER, str(w)] + list(argv), stdin=subprocess.DEVNULL,
+                             stdout=out, stderr=subprocess.DEVNULL, env=env, pass_fds=(w,), start_new_session=True)
+        os.close(w)
+        killer = threading.Timer(timeout, lambda: os.killpg(p.pid, 9))
+    else:
+        t0 = time.perf_counter()
+        p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.DEVNULL, env=env)
+        killer = threading.Timer(timeout, p.kill)
     killer.start()
     try:
         if during:
             during()
-        _, status, ru = os.wait4(p.pid, 0)
+        if WRAP:
+            with os.fdopen(r, "rb") as f:
+                report = f.read()
+            p.wait()
+        else:
+            _, status, ru = os.wait4(p.pid, 0)
     finally:
         killer.cancel()
-    wall = time.perf_counter() - t0
-    p.returncode = os.waitstatus_to_exitcode(status)
+    if WRAP:
+        try:
+            wall, utime, stime, rss_kib, code = json.loads(report or b"null")
+        except (TypeError, ValueError):
+            wall, utime, stime, rss_kib, code = 0.0, 0.0, 0.0, 0, p.returncode or -1
+        rss = rss_kib * 1024
+    else:
+        wall = time.perf_counter() - t0
+        p.returncode = code = os.waitstatus_to_exitcode(status)
+        utime, stime, rss = ru.ru_utime, ru.ru_stime, maxrss_bytes(ru)
     out.seek(0)
     text = out.read().decode("utf-8", "replace")
     out.close()
-    return {"wall_ms": wall * 1000, "user_ms": ru.ru_utime * 1000, "sys_ms": ru.ru_stime * 1000,
-            "cpu_ms": (ru.ru_utime + ru.ru_stime) * 1000, "max_rss_mib": maxrss_bytes(ru) / 1048576,
-            "exit": p.returncode, "failed": p.returncode != 0 or any(m in text for m in FAILED_MARKS)}
+    return {"wall_ms": wall * 1000, "user_ms": utime * 1000, "sys_ms": stime * 1000,
+            "cpu_ms": (utime + stime) * 1000, "max_rss_mib": rss / 1048576,
+            "exit": code, "failed": code != 0 or any(m in text for m in FAILED_MARKS)}
 
 
 def free_port():
