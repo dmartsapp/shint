@@ -88,6 +88,17 @@ What is left is SSH, SMTP, FTP, POP3, IMAP and a few databases. `nc host port` a
 
 So `telnet` stays what its name promises: can a connection be opened, from here, to that address and port, and how long did it take. Naming the service behind an open port is `nmap`'s job. Its service names (planned for v4.3.0) come from the port number; if they ever need evidence rather than convention, reading a banner there is where to reconsider it.
 
+### No iSCSI checks
+
+Proposed for v4.5.0 as [#82](https://github.com/dmartsapp/shint/issues/82), alongside the Fibre Channel checks (#81), and dropped on 2026-09-26, before any of it was built. The idea was to check iSCSI storage from the client side: ask a portal which targets it offers, and ask the disks behind a target whether they are ready.
+
+Every one of those checks is an iSCSI **login**, even the discovery that only lists targets. A login is not a probe but an event on the storage system. Storage arrays log it, their access lists and CHAP secrets decide whether it is allowed, and it creates a session. Getting the session's identity wrong is worse than a failed check. A login that reuses the initiator name and session ID of a session that is already open is, by the protocol's rules, a *reinstatement*: the target closes the existing session, so a health check could cut a production server off from its disks. That is more involvement with production storage than a simple inspection toolkit should have, however carefully it is written.
+
+What remains without a login is either already here or not iSCSI:
+
+- **Is the portal reachable?** `shint telnet <portal> 3260` - a connection, nothing sent.
+- **Is this host's own session up?** The host's iSCSI tooling (`iscsiadm -m session`) reports it. The kernel also publishes each session's state in files any user can read, so shint could show it without a login; that part is not planned either, and is the one piece to reconsider alongside the Fibre Channel checks (#81), which read the same kind of state.
+
 ## Output stability and known quirks
 
 JSON keys are a contract (see [Command-line design](tech-cli.md#the-output-contract)). Three historical quirks are kept for compatibility rather than fixed, and are documented so nobody is surprised: `timeout_ms` holds seconds; `ping` reports milliseconds where the rest report microseconds; and `ping`'s `from_port`/`to_port` hold `7`, the echo port, which means nothing for ICMP.
