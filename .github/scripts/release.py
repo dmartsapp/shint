@@ -23,15 +23,17 @@ Without a subcommand, on release/vX.Y.Z, on release day:
        version from the branch name and today's date from the clock - never typed - into
        main.go, the changelog heading and the page's title; main's README roadmap row from
        the Summary (readme-reconcile.py --summary), linking to the record; the site rebuilt
-    4. the release commit, its message generated from the changelog
-    5. make attest (make check, signed, on this exact commit), make test-live, and
+    4. make profile TAG=vX.Y.Z on the stamped tree: the release's runtime stats and profiles,
+       and the machine they were measured on, in .profiling/vX.Y.Z/<time>/ (test/profile)
+    5. the release commit, its message generated from the changelog, the profile in it
+    6. make attest (make check, signed, on this exact commit), make test-live, and
        release-check; a failure undoes the release commit and stops
   "Publish vX.Y.Z? [y/N]"
   publish
-    6. main fast-forwarded to the release commit and pushed; then the wait for Check on
+    7. main fast-forwarded to the release commit and pushed; then the wait for Check on
        that commit - a red Check stops here, and nothing is tagged
-    7. the annotated tag (its message from the changelog), pushed: the release pipeline
-    8. the release workflows watched, the assets counted, this machine's binary downloaded
+    8. the annotated tag (its message from the changelog), pushed: the release pipeline
+    9. the release workflows watched, the assets counted, this machine's binary downloaded
        and its checksum, attestation and --version checked, the milestone closed
 
 Every step recognises work already done, so after a failure (or a "no" at the prompt) the
@@ -41,7 +43,7 @@ clone with pushing disabled, and leaves the clone for you to look at.
 Environment, all optional: NO_ATTEST=1 (make check instead of make attest: Check on main
 then runs the whole suite), SKIP_LIVE=1 (no make test-live), RELEASE_YES=1 (answer the
 prompt yes). For the tests only: RELEASE_TODAY, RELEASE_CHECK_CMD, RELEASE_LIVE_CMD,
-RELEASE_DOCS_CMD, RELEASE_POLL, RELEASE_VERIFY_BINARY=0, GH.
+RELEASE_DOCS_CMD, RELEASE_PROFILE_CMD ({tag} is replaced), RELEASE_POLL, RELEASE_VERIFY_BINARY=0, GH.
 
 Standard library only, like docs/build.py.
 """
@@ -424,6 +426,8 @@ def prepare(version, summary, includes, page, day):
     if not shell(docs):
         raise Stop("rebuilding the site failed (%s)" % docs)
 
+    profile(tag, base)
+
     step("the release commit")
     _, body = changelog_section(version)
     git("add", "-A")
@@ -434,6 +438,30 @@ def prepare(version, summary, includes, page, day):
     commit(message)
     say("%s %s" % (git("rev-parse", "--short", "HEAD"), git("log", "-1", "--format=%s")))
     return base
+
+
+def profile(tag, base):
+    """make profile TAG=vX.Y.Z on the stamped tree, so the release commit carries its runtime stats.
+    The profile measures the tree it is about to be committed from: a profile cannot be part of
+    the commit it measured, so it runs just before. A failure undoes the stamping."""
+    step("profile %s" % tag)
+    where = os.path.join(".profiling", tag)
+    existed = os.path.isdir(where)
+    cmd = os.environ.get("RELEASE_PROFILE_CMD", "make profile TAG={tag}").replace("{tag}", tag)
+
+    def undo(why):
+        git("reset", "-q", "--hard", base)
+        if not existed:
+            shutil.rmtree(where, ignore_errors=True)
+        raise Stop("%s. The stamping was undone (the branch is at %s, as before); fix it and run make release "
+                   "again." % (why, base[:10]))
+
+    if not shell(cmd):
+        undo("`%s` failed" % cmd)
+    runs = sorted(d for d in (os.listdir(where) if os.path.isdir(where) else []) if os.path.isfile(os.path.join(where, d, "summary.json")))
+    if not runs:
+        undo("`%s` wrote no run under %s/" % (cmd, where))
+    say("%s/%s: this release's runtime stats, going into the release commit" % (where, runs[-1]))
 
 
 def commit(message):

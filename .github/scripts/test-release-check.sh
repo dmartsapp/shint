@@ -30,6 +30,7 @@ new_repo() {
   sed -i.bak 's/1\.2\.2"/1.2.3"/' main.go && rm -f main.go.bak
   printf '# Changelog\n\n## v1.2.3 - 2026-02-02\n\n- new\n\n## v1.2.2 - 2026-01-01\n\n- old\n' > CHANGELOG.md
   roadmap '| **v1.2.3** | Released Feb 2 | new things |' > readme.md
+  mkdir -p .profiling/v1.2.3/2026-02-02T000000Z && printf '{}\n' > .profiling/v1.2.3/2026-02-02T000000Z/summary.json
   git add -A && git commit -q -m "release: new things (v1.2.3)
 
 Full changelog for v1.2.3
@@ -63,6 +64,9 @@ new_repo nopage
 new_repo linked
   roadmap '| [**v1.2.3**](releases/v1.2.3.md) | Released Feb 2 | new things |' > readme.md; git commit -q -a --amend --no-edit
                              expect "a linked Roadmap row counts"                     0 "release-check: all passed"
+new_repo noprofile
+  git rm -rq .profiling; git commit -q --amend --no-edit
+                             expect "a release without a profiling run is refused"   1 "FAIL  .profiling/v1.2.3/ has no profiling run"
 new_repo leftover
   printf 'x\n' > branch_readme.md; git add branch_readme.md; git commit -q --amend --no-edit
                              expect "a branch_readme.md left behind is refused"       1 "FAIL  branch_readme.md is still here"
