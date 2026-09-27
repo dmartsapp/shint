@@ -68,6 +68,26 @@ UDP has no handshake, so `probeUDP` uses a *connected* UDP socket and reads the 
 
 `listen http` answers `{"status":"ok"}` on `/` and 404 elsewhere, for any method, and does nothing else. It makes no attempt to interpret requests, so it is a *fixed point* to measure against: the same request always gets the same response, byte for byte. On shutdown it flushes the response and waits (`Server.Shutdown` plus a short grace period) so the process cannot exit a beat before the operating system has sent the last response - a real race that once produced `curl: (52) Empty reply from server` on the final request.
 
+## What shint does not do, and why
+
+Some features were planned and then dropped. Each is recorded here with its reasons, so the question does not have to be argued again from scratch - and so it can be reopened on the same terms if the reasons stop holding.
+
+### No banner grabbing in telnet
+
+Planned for v4.3.0 as [#45](https://github.com/dmartsapp/shint/issues/45) and dropped on 2026-09-26, before any of it was built. `telnet --banner` would have shown what a server sends first (SSH, SMTP and FTP greet the client), and `--send TEXT`/`--expect TEXT` would have turned a line written after connecting, and the reply to it, into a pass/fail check.
+
+The gap it would have filled is real: a connection that opens does not prove the service behind it works, because a load balancer, a proxy or a Kubernetes Service can accept connections with nothing healthy behind them. But the services where that matters most already have a command that checks them end to end, in their own protocol:
+
+- **HTTP**: `web` - the status, the bytes and the timing of a real request.
+- **DNS and NTP**: `dns` and `ntp`.
+- **TLS**: a TLS server sends nothing until the client starts the handshake, so there is no banner to read. Checking a TLS service means doing the handshake, which is a command of its own (`tls`, planned for v4.3.0).
+
+What is left is SSH, SMTP, FTP, POP3, IMAP and a few databases. `nc host port` already shows their greeting, and a real health check of one of them belongs to that service's own tooling.
+
+`--send`/`--expect` is where the cost was. One flag becomes a small protocol scripter: SMTP wants `\r\n` line endings, a binary protocol would need a `--hex` like `udp`'s, and an exchange with more than one step (`EHLO`, then `QUIT`) does not fit one send and one expect. Each of those is the next feature request, and together they are a lot to maintain for a *simple* inspection toolkit.
+
+So `telnet` stays what its name promises: can a connection be opened, from here, to that address and port, and how long did it take. Naming the service behind an open port is `nmap`'s job. Its service names (planned for v4.3.0) come from the port number; if they ever need evidence rather than convention, reading a banner there is where to reconsider it.
+
 ## Output stability and known quirks
 
 JSON keys are a contract (see [Command-line design](tech-cli.md#the-output-contract)). Three historical quirks are kept for compatibility rather than fixed, and are documented so nobody is surprised: `timeout_ms` holds seconds; `ping` reports milliseconds where the rest report microseconds; and `ping`'s `from_port`/`to_port` hold `7`, the echo port, which means nothing for ICMP.
