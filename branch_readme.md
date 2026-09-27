@@ -35,6 +35,7 @@ Includes:
 |---|---|
 | [#75](https://github.com/dmartsapp/shint/issues/75) Release workflows: v4.2.2's cache-collision fix did not work - `golang/govulncheck-action` still restores its cache over the modules `golangci-lint` downloaded (about 1590 `tar: ... Cannot open: File exists` lines per workflow on the v4.2.2 tag) | Not started - the fix is in the issue; confirmed only on the next tag's logs. The v4.3.0 changelog should also correct v4.2.2's claim |
 | [#65](https://github.com/dmartsapp/shint/issues/65) `rdns` (and every command via `lib.ResolveName`): a name on several hosts-file lines may resolve to its first address only | Not started - moved from v4.2.2; still needs a repro from the machine that showed it |
+| [#84](https://github.com/dmartsapp/shint/issues/84) `listen http`: a client that stopped sending mid-body still got net/http's `200 OK`, while the listener logged "incomplete, nothing answered" - since v4.2.0; found when it made Check on `main` fail now and then ([#83](https://github.com/dmartsapp/shint/issues/83)) | Done - [`7943de4`](https://github.com/dmartsapp/shint/commit/7943de4): the handler aborts, so nothing is written; a new test reproduces it every time |
 
 ## Dropped
 
