@@ -14,6 +14,8 @@
 #     nothing else in main's README (see docs/src/tech-release.md)
 #   * releases/vX.Y.Z.md exists and branch_readme.md does not: the release commit moves
 #     the branch's working page there, and it merges into main as the release's record
+#   * .profiling/vX.Y.Z/ has a run (a summary.json): make release profiles the stamped tree
+#     and commits the result with the release, as the history of how shint performs
 #   * CHANGELOG.md's newest section is X.Y.Z and dated, not "unreleased"
 #   * the tip commit is the release commit (its message carries the full changelog)
 #   * no commit on the branch carries a Co-Authored-By trailer or a
@@ -52,6 +54,8 @@ other_lines="$(git diff -U0 "$base" -- readme.md | grep -E '^[-+]' | grep -v -E 
 if [ -z "$other_lines" ]; then pass "readme.md differs from $base's only in Roadmap rows"; else fail "readme.md changes more than $base's Roadmap rows - the release commit writes only its row (first other line: $(head -n1 <<<"$other_lines" | cut -c1-80))"; fi
 if grep -q -E "^\| \[?\*\*v${version//./\\.}\*\*(\]\([^)]*\))? \| Released " readme.md; then pass "readme.md's Roadmap says v$version is Released"; else fail "readme.md's Roadmap has no 'Released' row for v$version - make release writes it from releases/v$version.md's Summary"; fi
 if [ -f "releases/v$version.md" ]; then pass "releases/v$version.md exists"; else fail "releases/v$version.md is missing - the release commit moves branch_readme.md there"; fi
+profiles="$(git ls-files ".profiling/v$version" | grep -c '/summary\.json$' || true)"
+if [ "${profiles:-0}" -gt 0 ]; then pass ".profiling/v$version/ has a profiling run"; else fail ".profiling/v$version/ has no profiling run - make release runs make profile TAG=v$version before the release commit"; fi
 if [ ! -e branch_readme.md ]; then pass "no branch_readme.md left (it became releases/v$version.md)"; else fail "branch_readme.md is still here - the release commit moves it to releases/v$version.md, so main never has one"; fi
 
 heading="$(grep -m1 '^## v' CHANGELOG.md || true)"

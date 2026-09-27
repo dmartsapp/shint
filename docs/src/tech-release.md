@@ -76,7 +76,7 @@ make release
 
 What you will see, in order:
 
-1. **`==> main`, `==> stamp`, `==> the release commit`** - `main` merged in if it moved; the version, today's date and the README row stamped; the release commit made. Seconds.
+1. **`==> main`, `==> stamp`, `==> profile`, `==> the release commit`** - `main` merged in if it moved; the version, today's date and the README row stamped; the stamped tree [profiled](tech-testing.md#profiling) into `.profiling/v4.4.0/`; the release commit made, with the profile in it. About five minutes, nearly all of it the profile.
 2. **`==> checks on the release commit`** - `make attest` (the whole `make check`, signed), `make test-live` and `make release-check`. A few minutes; this is where it may ask for your SSH key's passphrase.
 3. **`==> ready to publish v4.4.0`** - the commit, the date, the summary, the README row, the changelog's entries, and any issues still open on the milestone. Then the question:
 
@@ -101,6 +101,7 @@ It prints `release: STOPPED - ` and the reason. Fix what it says and run `make r
 | `to-do item(s) in branch_readme.md are still open` | Something on the **To do** list is not checked off | Finish it and check it off (`- [x]`), or move it to an issue on a later milestone and remove it; commit, `make release` |
 | `has no entries yet`, or `says '...', not 'unreleased'` | The changelog section is empty, or its heading was dated by hand | Add the entries / put the heading back to `## v4.4.0 - unreleased`, commit, `make release` |
 | `does not merge cleanly` | `main` moved and conflicts with the branch | `git merge origin/main`, resolve, `git commit`, `make release` |
+| `The stamping was undone` | `make profile` failed, or wrote no run | Nothing was committed or pushed, and the branch is as it was. Fix, commit, `make release` |
 | `failed. The release commit was taken back off` | `make attest`, `make test-live` or `make release-check` failed | Nothing was pushed and the branch is as it was. Fix, commit, `make release` |
 | You answered anything but `y` | - | Nothing was pushed. `make release` again when ready (it asks again), or take the release commit off with the `git reset` it printed |
 | `Check on main ended 'failure'` | `main` has the release commit, but no tag exists | A flake: `gh run rerun <run-id>` (the id is in the message), then `make release`. A real problem: fix it forward on `main`, and tag the fix by hand ([When a release goes wrong](#when-a-release-goes-wrong)) |
@@ -117,7 +118,8 @@ Nothing. `main`'s README already shows the release, its row links to `releases/v
 | Preflight | A clean tree; the tag is free; the changelog section has entries and still says `unreleased`; the working page has a `Summary:` and nothing unchecked under **To do**. The milestone's open issues are listed. | - |
 | Main | If `origin/main` moved since the branch was cut, it is merged in. A conflict stops here. | yes |
 | Stamp | `branch_readme.md` moves to `releases/vX.Y.Z.md`; the version from the branch name and **today's date from the clock** go into `main.go`, the changelog heading and the page's title; the release's roadmap row goes into `readme.md` (`readme-reconcile.py --summary`), now linking to the record; the site is rebuilt (`docs/build.py`). | yes |
-| Release commit | Its message is generated from the changelog (see [Commit messages](#commit-messages)). | yes |
+| Profile | `make profile TAG=vX.Y.Z` on the stamped tree: runtime stats, profiles and the machine they were measured on, into `.profiling/vX.Y.Z/<time>/` ([Profiling](tech-testing.md#profiling)). A failure undoes the stamping. | yes |
+| Release commit | Its message is generated from the changelog (see [Commit messages](#commit-messages)); the profile is part of it. | yes |
 | Checks | [`make attest`](tech-ci.md#the-signed-local-check-report) - the whole `make check`, signed and attached to **this exact commit** - then `make test-live`, then `make release-check`. A failure takes the release commit back off the branch. | yes |
 | **Publish v4.4.0? [y/N]** | The summary of what is about to go out. The one question. | - |
 | Main | `main` is fast-forwarded to the release commit and pushed; then the wait for [Check](tech-ci.md#check-after-a-merge-to-main) on that commit. A red Check stops here: nothing is tagged. | a commit on `main` stays, but nothing is published |
@@ -129,7 +131,7 @@ Nothing. `main`'s README already shows the release, its row links to `releases/v
 **Options:** `NO_ATTEST=1` uses `make check` instead of `make attest` (Check on `main` then runs the whole suite, about three and a half minutes); `SKIP_LIVE=1` leaves out the live smoke test; `RELEASE_YES=1` answers the question for you - for automation only.
 
 :::note Doing it by hand
-`.github/scripts/release.py` is the reference for the order. By hand, the same release is: merge `origin/main` into the branch if it moved; set `Version` in `main.go`; date the changelog heading with today's date; run `python3 .github/scripts/readme-reconcile.py --tags-file <every tag and its date, plus the new one> --tag vX.Y.Z --summary "<Summary>"`; `python3 docs/build.py`; commit with the generated message; `make attest`; `make release-check`; push `main`; wait for Check; `git tag -a vX.Y.Z`; `git push origin refs/tags/vX.Y.Z`.
+`.github/scripts/release.py` is the reference for the order. By hand, the same release is: merge `origin/main` into the branch if it moved; set `Version` in `main.go`; date the changelog heading with today's date; run `python3 .github/scripts/readme-reconcile.py --tags-file <every tag and its date, plus the new one> --tag vX.Y.Z --summary "<Summary>"`; `python3 docs/build.py`; `make profile TAG=vX.Y.Z`; commit everything, `.profiling/` included, with the generated message; `make attest`; `make release-check`; push `main`; wait for Check; `git tag -a vX.Y.Z`; `git push origin refs/tags/vX.Y.Z`.
 :::
 
 ## Tag format

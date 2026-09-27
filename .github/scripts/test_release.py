@@ -47,6 +47,7 @@ ENV = {
     "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
     "RELEASE_TODAY": "2026-11-15", "RELEASE_CHECK_CMD": "true", "RELEASE_LIVE_CMD": "true",
     "RELEASE_DOCS_CMD": "true", "RELEASE_POLL": "0", "RELEASE_VERIFY_BINARY": "0", "RELEASE_YES": "1",
+    "RELEASE_PROFILE_CMD": "mkdir -p .profiling/{tag}/2026-11-15T000000Z && echo '{\"tag\": \"{tag}\"}' > .profiling/{tag}/2026-11-15T000000Z/summary.json",
 }
 
 
@@ -256,6 +257,8 @@ class Release(Fixture):
         self.assertTrue(self.read("releases/v4.3.0.md").startswith("# shint v4.3.0 - released 2026-11-15"))
         self.assertFalse(os.path.exists(os.path.join(self.work, "branch_readme.md")))
         self.assertIn("- [x] every target and bug below is done", self.read("releases/v4.3.0.md"))
+        # the profile of the stamped tree is in the release commit
+        self.assertEqual(self.git(self.work, "ls-files", ".profiling"), ".profiling/v4.3.0/2026-11-15T000000Z/summary.json")
         # main's README: only the roadmap row, from the Summary, linking to the record
         self.assertIn("| [**v4.3.0**](releases/v4.3.0.md) | Released Nov 15 | `tls` checks certificates |", self.read("readme.md"))
         diff = self.git(self.work, "diff", "-U0", before_main, "HEAD", "--", "readme.md")
@@ -304,6 +307,22 @@ class Release(Fixture):
         self.assertEqual(self.git(self.work, "status", "--porcelain"), "")
         self.assertEqual(self.origin_ref("refs/heads/main"), before)
         self.assertNotEqual(start, None)
+
+    def test_a_failing_profile_undoes_the_stamping_and_a_rerun_carries_on(self):
+        start = self.ready()
+        rc, out = self.release(RELEASE_PROFILE_CMD="mkdir -p .profiling/{tag}/x && false")
+        self.assertEqual(rc, 1)
+        self.assertIn("The stamping was undone", out)
+        self.assertEqual(self.git(self.work, "rev-parse", "HEAD"), start)
+        self.assertEqual(self.git(self.work, "status", "--porcelain", "--untracked-files=all"), "")
+        self.assertIn("## v4.3.0 - unreleased", self.read("CHANGELOG.md"))
+        self.assertTrue(os.path.exists(os.path.join(self.work, "branch_readme.md")))
+        rc, out = self.release(RELEASE_PROFILE_CMD="true")      # it ran, but wrote nothing
+        self.assertEqual(rc, 1)
+        self.assertIn("wrote no run under .profiling/v4.3.0/", out)
+        self.assertEqual(self.git(self.work, "rev-parse", "HEAD"), start)
+        rc, out = self.release()                                # fixed: the same command goes all the way
+        self.assertEqual(rc, 0, out)
 
     def test_failing_checks_take_the_release_commit_back_off(self):
         start = self.ready()

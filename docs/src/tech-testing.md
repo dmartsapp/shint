@@ -30,6 +30,7 @@ There are 174 top-level Go tests: 135 in `lib/handlers`, 31 in `lib` and 8 end-t
 | `make fmt-check`, `vet`, `lint`, `vuln`, `docs-check`, `workflows` | One step of `make check` on its own | as above |
 | `make attest` | `make check`, then signs a report of it with your SSH key and attaches it to the commit as a git note, so the Check workflow on `main` runs the short subset instead of everything ([the signed local check report](tech-ci.md#the-signed-local-check-report)) | as above, an SSH key listed in `.github/allowed_signers` |
 | `make hooks` | Installs the `pre-push` hook: pushing `main` or a release tag with no valid signed report runs `make attest` first | git |
+| `make profile` | Runtime stats and profiles of this tree's build, and the machine they ran on ([Profiling](#profiling)); `make release` runs it for every release | Go, python3 |
 | `make check-quick` | What CI runs when that receipt exists: `gofmt`, `go vet` (this OS only), `go test` for the CLI tests and `lib`, the battery's command-line groups A to D, `govulncheck`, the docs check | Go, python3 |
 
 `make check` takes about a minute and a half (the Go tests about 15 s cold, the battery about a minute). The first thing it does is check that the tools are installed and prints the install command for any that are not: `golangci-lint` (it must be **v2.13.2**, the version CI pins - a different version is refused), `govulncheck`, `actionlint`, and `python3`. A tool that is not on `PATH` can be named: `make check GOLANGCI_LINT=/path/to/golangci-lint`.
@@ -119,6 +120,32 @@ Each invocation is judged against rules that hold for every command - no panic, 
 ## The live smoke test
 
 `make test-live` (which runs `basic_module_test.sh`) builds the binary and runs one check per command against real hosts (`google.com`, `httpbin.org`, `8.8.8.8`), asserting on exit status *and* an expected string in the output - including that `ping` shows its payload size. It needs the internet and ICMP, so it is not part of `make check` or `go test`; `make test-full` includes it, and it should pass before a release. It counts failures and continues rather than stopping at the first.
+
+## Profiling
+
+Tests say whether shint is right; profiling says how fast and how lean it is, **release after release**. `make profile` builds this tree's binary with the release flags and records, in `.profiling/`:
+
+- **The machine it ran on**, first: the operating system and its version, the architecture, the CPU model and its cores (performance and efficiency cores on Apple silicon), memory, the hardware model, whether it ran on mains or battery power, the load before and after, the Go and Python versions, and an id. The id is a hash of the hardware's own identifier (`IOPlatformUUID` on macOS, `/etc/machine-id` on Linux), so runs can be grouped by machine without the public history naming it; set `SHINT_PROFILE_MACHINE` to add a label of your own.
+- **Scenarios**: shint run as a user runs it, against the battery's loopback servers - startup, `--help`, 100 `telnet` connects (and with `--json`), 50 small `web` requests, one 300 MB download, 100 `udp` probes, a 2000-port `nmap`, 10 pings, 20 `dns` queries, `cidr`, `ip`, and `listen http` serving 300 requests from 8 clients. Each is run several times after an unmeasured warm-up, and records the process's wall time, CPU time (user and system) and peak memory - median, mean, minimum, maximum and spread.
+- **The binary's size** for every release platform, built here with the release flags.
+- **The tests' time**: each Go package and the slowest tests (`go test -json`, without the race detector), and the battery's time per group and its slowest cases.
+- **Profiles** (`pprof`) of the `lib` and `lib/handlers` tests' CPU and memory - and, in a tree with the `profiling` build tag's hook, of the binary itself in each scenario. Each profile has a `.top.txt` next to it: the functions that took the most, readable without any tools. For the full picture, `go tool pprof -http=: <profile>`.
+
+```bash
+make profile                              # .profiling/dev/<git describe>/<time>/ - yours; git ignores it
+make profile PROFILE_ARGS=--quick         # the machine, the scenarios and the binary size only (under a minute)
+make profile TAG=v4.4.0                   # .profiling/v4.4.0/<time>/ - what make release runs
+make profile-compare A=v4.3.0 B=v4.4.0    # two runs side by side: a tag's latest run, or a run's folder
+```
+
+**Every release is profiled.** `make release` runs `make profile TAG=vX.Y.Z` on the stamped tree just before the release commit, and the run goes into that commit - a profile cannot be part of the commit it measured, so it measures the tree the commit is made from. It adds about five minutes, and `make release-check` refuses a release commit without it. Releases from v4.0.0 to v4.2.3 were measured after the fact from their published binaries (`profile.py --backfill`): scenarios and sizes only.
+
+Two things to keep in mind when reading the history:
+
+- **Only runs on the same machine are comparable**, and only roughly across operating-system updates or on battery power. `make profile-compare` says so when the machines differ; the binary sizes compare anywhere.
+- **shint reports what it measured itself** - its own processes' time and memory, from the operating system's accounting of each one. It does not read the system's performance counters, which measure other things at other points.
+
+The run ends by waiting (up to 90 seconds) for the connections it closed to leave `TIME_WAIT`, so a check started straight after it - as `make release` does - does not run out of local ports.
 
 ## The release-tag guard
 
