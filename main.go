@@ -657,6 +657,11 @@ func init() {
 	rootCmd.Version = versionLine()
 }
 
+// stopProfiling writes out the profiles a run was asked for, just before the process
+// exits. It does nothing unless the binary was built with -tags profiling (profiling.go),
+// as make profile builds it; release binaries are built without the tag.
+var stopProfiling = func() {}
+
 // main registers the commands (here rather than in init(), so the command
 // variables above are fully initialised first), runs cobra, and exits with the
 // status the chosen command recorded - see the exit-status notes above.
@@ -675,7 +680,9 @@ func main() {
 	// error Execute returns is a usage error - the Run functions never return
 	// one; they report through usage() and finish() instead.
 	if err := rootCmd.Execute(); err != nil {
+		stopProfiling()
 		os.Exit(exitUsage)
 	}
+	stopProfiling()
 	os.Exit(exitCode)
 }

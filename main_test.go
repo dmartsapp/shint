@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -52,6 +53,44 @@ func runShint(t *testing.T, args ...string) (code int, stdout, stderr string) {
 		t.Fatalf("could not run shint %v: %v", args, err)
 	}
 	return code, out.String(), errb.String()
+}
+
+// make profile builds shint with -tags profiling and asks each run for a CPU and a
+// memory profile (test/profile/profile.py). A build with the tag writes both; any
+// other build - the release binaries, and this test binary - ignores the variables.
+func TestProfilesOnlyFromAProfilingBuild(t *testing.T) {
+	dir := t.TempDir()
+	cpu, mem := filepath.Join(dir, "cpu.pprof"), filepath.Join(dir, "mem.pprof")
+	profileEnv := []string{"SHINT_CPUPROFILE=" + cpu, "SHINT_MEMPROFILE=" + mem}
+
+	cmd := exec.Command(os.Args[0], "cidr", "10.0.0.0/8")
+	cmd.Env = append(append(os.Environ(), "SHINT_TEST_RUN_MAIN=1"), profileEnv...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("shint cidr: %v\n%s", err, out)
+	}
+	for _, p := range []string{cpu, mem} {
+		if _, err := os.Stat(p); err == nil {
+			t.Errorf("a build without -tags profiling wrote %s", filepath.Base(p))
+		}
+	}
+
+	bin := filepath.Join(dir, "shint-profiling")
+	build := exec.Command("go", "build", "-tags", "profiling", "-o", bin, ".")
+	build.Env = append(os.Environ(), "CGO_ENABLED=0")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build -tags profiling: %v\n%s", err, out)
+	}
+	for _, args := range [][]string{{"cidr", "10.0.0.0/8"}, {"cidr", "not-a-prefix"}} { // exit 0, and a usage error
+		cmd = exec.Command(bin, args...)
+		cmd.Env = append(os.Environ(), profileEnv...)
+		_ = cmd.Run()
+		for _, p := range []string{cpu, mem} {
+			if st, err := os.Stat(p); err != nil || st.Size() == 0 {
+				t.Errorf("shint %v with -tags profiling: no %s (%v)", args, filepath.Base(p), err)
+			}
+			_ = os.Remove(p)
+		}
+	}
 }
 
 // --version and -v print the version, then the Go toolchain and the platform
