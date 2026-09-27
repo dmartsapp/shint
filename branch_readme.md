@@ -1,6 +1,6 @@
 # shint v4.3.0 - work in progress
 
-Summary: `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names, banner grabbing in `telnet`
+Summary: `tls` (certificate chain and expiry checks), `nmap` upgrades: port lists, subnet sweeps, service names
 Includes:
 
 > The working page for `release/v4.3.0`: what the release is meant to deliver, the bugs it fixes, what changed, and what is left to do - kept up to date as the branch moves. **`Summary:`** is the one plain-language line main's README roadmap will show for this release; **`Includes:`** names releases folded into this one (like `v4.4.0`), if any. `make release` reads both, refuses to publish while anything under **To do** is unchecked, and moves this file to `releases/v4.3.0.md` in the release commit, where it stays on `main` as the release's record. Main's roadmap row links here in the meantime.
@@ -26,7 +26,6 @@ Includes:
 |---|---|---|
 | `tls`/`cert` - certificate chain, expiry, SANs, protocol/cipher, `--warn-days N` | - | Not started |
 | `nmap` upgrades: `--ports 22,80,443` lists, CIDR/multi-host sweeps, service names | - | Not started |
-| `telnet` banner grabbing, `--send`/`--expect` | [#45](https://github.com/dmartsapp/shint/issues/45) | Not started |
 | `web -k`: the "TLS verification disabled" warning logs at `ERROR` while exit status is 0 | [#37](https://github.com/dmartsapp/shint/issues/37) | Not started - fits naturally with the `tls` work |
 | SBOM (`syft`) + a preserved vulnerability report (`govulncheck`'s existing scan, plus `grype` for the container images specifically), for both binaries and images | [#71](https://github.com/dmartsapp/shint/issues/71) | Not started - touches `build.yaml`, `docker-hub.yaml`, `ghcr.yaml`, `vulncheck.yaml` together |
 
@@ -36,6 +35,12 @@ Includes:
 |---|---|
 | [#75](https://github.com/dmartsapp/shint/issues/75) Release workflows: v4.2.2's cache-collision fix did not work - `golang/govulncheck-action` still restores its cache over the modules `golangci-lint` downloaded (about 1590 `tar: ... Cannot open: File exists` lines per workflow on the v4.2.2 tag) | Not started - the fix is in the issue; confirmed only on the next tag's logs. The v4.3.0 changelog should also correct v4.2.2's claim |
 | [#65](https://github.com/dmartsapp/shint/issues/65) `rdns` (and every command via `lib.ResolveName`): a name on several hosts-file lines may resolve to its first address only | Not started - moved from v4.2.2; still needs a repro from the machine that showed it |
+
+## Dropped
+
+| Target | Issue | Why |
+|---|---|---|
+| `telnet` banner grabbing, `--send`/`--expect` | [#45](https://github.com/dmartsapp/shint/issues/45), closed as not planned | Dropped 2026-09-26, before any of it was built. The services where "the port opens, but does the service work?" matters most are already checked end to end in their own protocol (`web`, `dns`, `ntp`, and `tls` for TLS, which has no banner to read); `nc host port` shows the greeting of the rest; and `--send`/`--expect` would grow into a protocol scripter (line endings, binary payloads, multi-step exchanges). Naming the service on an open port stays with `nmap`. The full reasoning: [No banner grabbing in telnet](https://dmartsapp.github.io/shint/docs/tech-design.html#no-banner-grabbing-in-telnet). |
 
 ## Other changes
 
