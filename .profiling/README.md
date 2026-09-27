@@ -18,6 +18,10 @@ How fast and how lean each shint release is, measured the same way every time, s
 - **What is measured** is shint's own processes, from the operating system's accounting of each one: wall time, CPU time and peak memory. The operating system's own disk and network counters measure other things, and are not used.
 
 ```bash
-make profile-compare A=v4.2.3 B=v4.3.0     # a tag's latest run, or a run's folder
+make profile-history                       # this machine: every scenario across its builds, with a trend
+make profile-machines                      # every machine that has measured something
+make profile-compare A=v4.2.3 B=v4.3.0     # two builds, on the same machine
 go tool pprof -http=: .profiling/v4.3.0/<time>/cmd-cpu-web.pprof
 ```
+
+Drawn as charts on the docs site: [Performance](https://dmartsapp.github.io/shint/docs/tech-performance.html).

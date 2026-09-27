@@ -3,7 +3,7 @@ title: This documentation
 lead: How the documentation site is built, hosted and maintained - and how to add or change a page.
 description: How the shint documentation site is structured, built with docs/build.py, and published with GitHub Pages.
 section: Technical
-order: 8
+order: 9
 nav: This documentation
 ---
 
@@ -84,6 +84,7 @@ The page title is drawn from the header, so the body starts at `##`. The Markdow
 | a fenced block with `bash`, `text`, `json`, `yaml`, `go`, `dockerfile` or `makefile` | A code block with a label, copy button and light syntax colouring; `text` colours log lines (`OK` green, `ERROR` red) |
 | `:::note Title` ... `:::` (also `tip`, `warning`) | A callout box |
 | `:::html` ... `:::` | Raw HTML, for the home-page cards and the diagrams |
+| `:::performance` ... `:::` | The [Performance](tech-performance.md) page's charts: `build.py` reads every committed run in `.profiling/` (never `dev/`) and embeds it as JSON, which `assets/performance.js` draws, with a plain table for readers without JavaScript. A new run changes the page, so it is rebuilt like any other |
 
 ### Adding a page
 

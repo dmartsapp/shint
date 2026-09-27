@@ -117,8 +117,8 @@ Nothing. `main`'s README already shows the release, its row links to `releases/v
 |---|---|---|
 | Preflight | A clean tree; the tag is free; the changelog section has entries and still says `unreleased`; the working page has a `Summary:` and nothing unchecked under **To do**. The milestone's open issues are listed. | - |
 | Main | If `origin/main` moved since the branch was cut, it is merged in. A conflict stops here. | yes |
-| Stamp | `branch_readme.md` moves to `releases/vX.Y.Z.md`; the version from the branch name and **today's date from the clock** go into `main.go`, the changelog heading and the page's title; the release's roadmap row goes into `readme.md` (`readme-reconcile.py --summary`), now linking to the record; the site is rebuilt (`docs/build.py`). | yes |
-| Profile | `make profile TAG=vX.Y.Z` on the stamped tree: runtime stats, profiles and the machine they were measured on, into `.profiling/vX.Y.Z/<time>/` ([Profiling](tech-testing.md#profiling)). A failure undoes the stamping. | yes |
+| Stamp | `branch_readme.md` moves to `releases/vX.Y.Z.md`; the version from the branch name and **today's date from the clock** go into `main.go`, the changelog heading and the page's title; the release's roadmap row goes into `readme.md` (`readme-reconcile.py --summary`), now linking to the record. | yes |
+| Profile | `make profile TAG=vX.Y.Z` on the stamped tree: runtime stats, profiles and the machine they were measured on, into `.profiling/vX.Y.Z/<time>/` ([Profiling](tech-testing.md#profiling)). A failure undoes the stamping. Then the site is rebuilt (`docs/build.py`), its [Performance](tech-performance.md) page now including this release. | yes |
 | Release commit | Its message is generated from the changelog (see [Commit messages](#commit-messages)); the profile is part of it. | yes |
 | Checks | [`make attest`](tech-ci.md#the-signed-local-check-report) - the whole `make check`, signed and attached to **this exact commit** - then `make test-live`, then `make release-check`. A failure takes the release commit back off the branch. | yes |
 | **Publish v4.4.0? [y/N]** | The summary of what is about to go out. The one question. | - |

@@ -229,6 +229,27 @@ td code { white-space: nowrap; }
 .pager .next { text-align: right; margin-left: auto; }
 .pagefoot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; max-width: 800px; margin-top: 38px; padding-top: 18px; border-top: 1px solid var(--border); font-size: .85rem; color: var(--muted); }
 
+/* ---------- the Performance page (assets/performance.js) ---------- */
+.perf-controls { display: flex; flex-wrap: wrap; gap: 12px 16px; margin: 8px 0 18px; }
+.perf-controls label { display: flex; flex-direction: column; gap: 4px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.perf-controls select { font: inherit; font-size: .9rem; font-weight: 400; max-width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+.perf-card { margin: 0 0 22px; padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-soft); }
+.perf-card dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 18px; margin: 0; font-size: .9rem; }
+.perf-card dt { color: var(--muted); }
+.perf-card dd { margin: 0; overflow-wrap: anywhere; }
+.perf-table td, .perf-table th { white-space: nowrap; }
+.perf-table td:not(:first-child), .perf-table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.perf-delta.better { color: var(--tip); font-weight: 600; }
+.perf-delta.worse { color: var(--warn); font-weight: 600; }
+.perf-delta.same { color: var(--muted); }
+.perf-note { font-size: .82rem; color: var(--muted); }
+.perf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px; }
+.perf-chart { min-width: 0; padding: 10px 12px 4px; border: 1px solid var(--border); border-radius: 12px; }
+.perf-chart h4 { margin: 0; font-size: .92rem; font-family: var(--mono); }
+.perf-chart p { margin: 2px 0 4px; font-size: .78rem; color: var(--muted); }
+.perf-chart svg { display: block; width: 100%; height: auto; }
+@media (max-width: 480px) { .perf-table td, .perf-table th { padding-left: 7px; padding-right: 7px; } }
+
 /* ---------- responsive ---------- */
 @media (max-width: 1240px) {
   .layout { grid-template-columns: 260px minmax(0, 1fr); }

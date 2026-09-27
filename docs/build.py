@@ -17,9 +17,11 @@ The Markdown dialect is a small, deliberate subset (see docs/src/tech-docs.md):
     ```bash / text / json     fenced code, with light syntax colouring
     :::note Title  ...  :::   callouts: note, tip, warning
     :::html ... :::           raw HTML passthrough (diagrams, cards)
+    :::performance            the Performance page's charts, from .profiling/ (performance_html)
     **bold** *italic* `code` [link](page.md#anchor)   inline
 """
 import html
+import json
 import re
 import sys
 from pathlib import Path
@@ -249,6 +251,8 @@ def render_blocks(lines, headings, used_ids):
             i += 1
             if kind == "html":
                 out.append("\n".join(inner))
+            elif kind == "performance":
+                out.append(performance_html(performance_data()))
             elif kind in CALLOUT_TITLES:
                 body = render_blocks(inner, [], used_ids)
                 out.append('<div class="callout callout-%s"><p class="callout-title">%s</p>%s</div>'
@@ -329,6 +333,80 @@ def parse_page(text):
     headings = []
     body = render_blocks(text.splitlines(), headings, set())
     return meta, body, headings
+
+
+# --------------------------------------------------------------------------
+# The Performance page: make profile's history in .profiling/, drawn by assets/performance.js
+# --------------------------------------------------------------------------
+
+PROFILING = ROOT / ".profiling"
+_TAG_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+
+
+def _version_key(tag):
+    m = _TAG_RE.match(tag or "")
+    return tuple(int(x) for x in m.groups()) if m else (10 ** 9,)
+
+
+def performance_data(base=None):
+    """Every committed profiling run (.profiling/vX.Y.Z/<time>/summary.json - never dev/, which
+    is each person's own), cut down to what the page draws: per scenario the median, minimum and
+    maximum of wall time, CPU time and peak memory; the binary's size; the tests' times; and each
+    machine's description. Runs are in version order, then in time order."""
+    base = base or PROFILING
+    runs, machines = [], {}
+    scenarios = []
+    for f in sorted(base.glob("v*/*/summary.json")):
+        s = json.loads(f.read_text())
+        m = s.get("machine", {})
+        mid = m.get("id", "?")
+        run = {"tag": s.get("tag", f.parent.parent.name), "kind": s.get("kind", ""), "at": s.get("run_at", ""),
+               "machine": mid, "power": m.get("power", ""), "size": s.get("binary", {}).get("host_size_bytes"),
+               "go_tests": (s.get("go_tests") or {}).get("wall_seconds"), "battery": (s.get("battery") or {}).get("wall_seconds"),
+               "s": {}}
+        for name, sc in s.get("scenarios", {}).items():
+            if name not in [x[0] for x in scenarios]:
+                scenarios.append((name, sc.get("what", "")))
+            if not sc.get("available"):
+                continue
+            run["s"][name] = {k: [round(sc[key][f], 2) for f in ("median", "min", "max")]
+                              for k, key in (("w", "wall_ms"), ("c", "cpu_ms"), ("r", "max_rss_mib"))}
+        runs.append(run)
+        cpu = m.get("cpu", {})
+        machines[mid] = {"label": m.get("label", ""), "model": m.get("model", ""), "cpu": cpu.get("model", ""),
+                         "cores": cpu.get("logical_cores"), "physical": cpu.get("physical_cores"),
+                         "performance": cpu.get("performance_cores"), "efficiency": cpu.get("efficiency_cores"),
+                         "memory": m.get("memory_bytes"), "os": m.get("os_version") or m.get("os", ""),
+                         "arch": m.get("arch", ""), "go": m.get("go", "")}
+    runs.sort(key=lambda r: (_version_key(r["tag"]), r["at"]))
+    return {"scenarios": scenarios, "machines": machines, "runs": runs}
+
+
+def performance_html(data):
+    """The page's data, and a plain table for readers without JavaScript: wall time per
+    scenario for the machine with the most runs, over its builds."""
+    counts = {}
+    for r in data["runs"]:
+        counts[r["machine"]] = counts.get(r["machine"], 0) + 1
+    table = "<p>No profiling runs yet.</p>"
+    if counts:
+        mid = sorted(counts, key=lambda k: (-counts[k], k))[0]
+        latest = {}
+        for r in data["runs"]:
+            if r["machine"] == mid:
+                latest[r["tag"]] = r
+        builds = list(latest.values())
+        head = "".join("<th>%s</th>" % html.escape(r["tag"]) for r in builds)
+        rows = []
+        for name, _ in data["scenarios"]:
+            cells = "".join("<td>%s</td>" % ("%.1f" % r["s"][name]["w"][0] if name in r["s"] else "n/a") for r in builds)
+            rows.append("<tr><td><code>%s</code></td>%s</tr>" % (html.escape(name), cells))
+        table = ('<p>Wall time in milliseconds (median), machine <code>%s</code>.</p><div class="tablewrap"><table>'
+                 '<thead><tr><th>scenario</th>%s</tr></thead><tbody>%s</tbody></table></div>' % (html.escape(mid), head, "".join(rows)))
+    payload = json.dumps(data, separators=(",", ":"), sort_keys=True).replace("</", "<\\/")
+    return ('<div class="perf" id="perf"><noscript>%s</noscript></div>\n'
+            '<script type="application/json" id="perf-data">%s</script>\n'
+            '<script src="assets/performance.js" defer></script>' % (table, payload))
 
 
 # --------------------------------------------------------------------------

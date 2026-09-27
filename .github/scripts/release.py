@@ -22,9 +22,10 @@ Without a subcommand, on release/vX.Y.Z, on release day:
     3. stamped: branch_readme.md moved to releases/vX.Y.Z.md (the record on main); the
        version from the branch name and today's date from the clock - never typed - into
        main.go, the changelog heading and the page's title; main's README roadmap row from
-       the Summary (readme-reconcile.py --summary), linking to the record; the site rebuilt
+       the Summary (readme-reconcile.py --summary), linking to the record
     4. make profile TAG=vX.Y.Z on the stamped tree: the release's runtime stats and profiles,
-       and the machine they were measured on, in .profiling/vX.Y.Z/<time>/ (test/profile)
+       and the machine they were measured on, in .profiling/vX.Y.Z/<time>/ (test/profile); then
+       the site rebuilt, its Performance page drawing .profiling/ with this release in it
     5. the release commit, its message generated from the changelog, the profile in it
     6. make attest (make check, signed, on this exact commit), make test-live, and
        release-check; a failure undoes the release commit and stops
@@ -422,11 +423,11 @@ def prepare(version, summary, includes, page, day):
     if link_row(tag, "releases/%s.md" % tag):
         say("readme.md: the %s row links to releases/%s.md" % (tag, tag))
 
+    profile(tag, base)                         # before the site: its Performance page draws .profiling/
+
     docs = os.environ.get("RELEASE_DOCS_CMD", "python3 docs/build.py")
     if not shell(docs):
         raise Stop("rebuilding the site failed (%s)" % docs)
-
-    profile(tag, base)
 
     step("the release commit")
     _, body = changelog_section(version)
