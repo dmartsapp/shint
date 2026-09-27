@@ -138,7 +138,10 @@ make profile TAG=v4.4.0                   # .profiling/v4.4.0/<time>/ - what mak
 make profile-compare A=v4.3.0 B=v4.4.0    # two builds side by side, on the same machine (MACHINE=<id> to pick it)
 make profile-history                      # every scenario across this machine's builds, with a trend (METRIC=cpu|rss, LAST=6)
 make profile-machines                     # every machine that has measured something, and what it is
+make profile-ab A=v4.2.3 B=HEAD           # two builds head to head, now, interleaved on this machine
 ```
+
+**Interleaved, because a machine drifts.** Measured one after another, a machine slows down or speeds up over minutes - it warms up, other programs come and go - and the drift lands on whichever build ran later: a first backfill showed v4.2.3 30 to 45% slower than v4.0.6 on the short scenarios, which measured side by side are within 3%. So several builds are measured round by round, each round running every build once in a rotating order, and the drift falls on all of them alike. The backfill works this way, and so does `make profile-ab`, which takes two builds - a release tag (its published binary), `HEAD` (this tree, built) or a binary's path - and measures them head to head, now: the fairest comparison there is, and the one to trust for an optimization. A release's own run is necessarily measured on its own day, so comparing it with the history is a first look, not proof.
 
 **The history, drawn:** the [Performance](tech-performance.md) page charts every scenario over the builds, for one machine at a time, and compares any two builds - with a change smaller than the runs' own spread marked as noise. `make profile-history` and `make profile-compare` print the same from the command line.
 
@@ -149,7 +152,7 @@ Two things to keep in mind when reading the history:
 - **Only runs on the same machine are comparable**, and only roughly across operating-system updates or on battery power. `make profile-compare` says so when the machines differ; the binary sizes compare anywhere.
 - **shint reports what it measured itself** - its own processes' time and memory, from the operating system's accounting of each one. It does not read the system's performance counters, which measure other things at other points.
 
-The run ends by waiting (up to 90 seconds) for the connections it closed to leave `TIME_WAIT`, so a check started straight after it - as `make release` does - does not run out of local ports.
+**A quiet machine, and its load on record.** Other work competing for the processor makes every scenario slower, and the 1-minute load average also carries the minute before - a build, another program. So a run first waits (up to 90 seconds) for the load to fall to 30% of the cores, and records the load it started at; `make profile-history`, `make profile-compare` and the Performance page show it next to the timings, and a run that started on a busy machine says so. The run ends by waiting (up to 90 seconds) for the connections it closed to leave `TIME_WAIT`, so a check started straight after it - as `make release` does - does not run out of local ports.
 
 ## The release-tag guard
 

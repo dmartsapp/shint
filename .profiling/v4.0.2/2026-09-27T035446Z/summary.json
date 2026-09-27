@@ -2,7 +2,7 @@
  "schema": 1,
  "tag": "v4.0.2",
  "kind": "backfill",
- "run_at": "2026-09-27T02:08:02+00:00",
+ "run_at": "2026-09-27T03:54:46+00:00",
  "source": {
   "release": "https://github.com/dmartsapp/shint/releases/tag/v4.0.2",
   "published_at": "2026-09-20T05:35:27Z",
@@ -26,11 +26,12 @@
   },
   "memory_bytes": 34359738368,
   "power": "ac",
-  "load_1m_start": 12.94,
+  "load_1m_start": 1.68,
   "go": "go1.27.1",
   "python": "3.9.6",
   "id": "3aaf2b6d7782",
-  "load_1m_end": 12.94
+  "quiet_wait_seconds": 0.0,
+  "load_1m_end": 2.91
  },
  "binary": {
   "host_size_bytes": 9844146,
@@ -51,9 +52,6 @@
    "windows/arm64": 9695744
   }
  },
- "notes": [
-  "measured after the fact from the released binary: scenarios and sizes only - no tests, battery or profiles"
- ],
  "scenarios": {
   "startup": {
    "what": "process start to exit: the floor under every command",
@@ -63,6 +61,7 @@
    "available": true,
    "repeat": 20,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
@@ -86,43 +85,43 @@
     0
    ],
    "wall_ms": {
-    "median": 6.81,
-    "mean": 6.755,
-    "min": 6.018,
-    "max": 7.59,
-    "stdev": 0.451,
+    "median": 7.002,
+    "mean": 7.18,
+    "min": 6.425,
+    "max": 8.85,
+    "stdev": 0.59,
     "n": 20
    },
    "cpu_ms": {
-    "median": 5.103,
-    "mean": 5.036,
-    "min": 4.479,
-    "max": 5.45,
-    "stdev": 0.293,
+    "median": 5.165,
+    "mean": 5.284,
+    "min": 4.789,
+    "max": 6.489,
+    "stdev": 0.456,
     "n": 20
    },
    "user_ms": {
-    "median": 2.809,
-    "mean": 2.784,
-    "min": 2.515,
-    "max": 3.045,
-    "stdev": 0.155,
+    "median": 2.828,
+    "mean": 2.867,
+    "min": 2.647,
+    "max": 3.568,
+    "stdev": 0.205,
     "n": 20
    },
    "sys_ms": {
-    "median": 2.271,
-    "mean": 2.252,
-    "min": 1.963,
-    "max": 2.669,
-    "stdev": 0.19,
+    "median": 2.365,
+    "mean": 2.417,
+    "min": 2.118,
+    "max": 3.161,
+    "stdev": 0.278,
     "n": 20
    },
    "max_rss_mib": {
-    "median": 11.547,
-    "mean": 11.541,
-    "min": 11.344,
-    "max": 11.641,
-    "stdev": 0.079,
+    "median": 11.609,
+    "mean": 11.551,
+    "min": 11.359,
+    "max": 11.688,
+    "stdev": 0.103,
     "n": 20
    }
   },
@@ -134,6 +133,7 @@
    "available": true,
    "repeat": 10,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
@@ -147,43 +147,43 @@
     0
    ],
    "wall_ms": {
-    "median": 6.124,
-    "mean": 6.128,
-    "min": 5.969,
-    "max": 6.303,
-    "stdev": 0.105,
+    "median": 7.539,
+    "mean": 7.478,
+    "min": 6.639,
+    "max": 8.303,
+    "stdev": 0.513,
     "n": 10
    },
    "cpu_ms": {
-    "median": 4.515,
-    "mean": 4.52,
-    "min": 4.403,
-    "max": 4.616,
-    "stdev": 0.073,
+    "median": 5.642,
+    "mean": 5.599,
+    "min": 4.967,
+    "max": 6.25,
+    "stdev": 0.424,
     "n": 10
    },
    "user_ms": {
-    "median": 2.534,
-    "mean": 2.54,
-    "min": 2.493,
-    "max": 2.602,
-    "stdev": 0.034,
+    "median": 2.926,
+    "mean": 2.939,
+    "min": 2.719,
+    "max": 3.201,
+    "stdev": 0.15,
     "n": 10
    },
    "sys_ms": {
-    "median": 1.998,
-    "mean": 1.98,
-    "min": 1.91,
-    "max": 2.045,
-    "stdev": 0.047,
+    "median": 2.733,
+    "mean": 2.66,
+    "min": 2.197,
+    "max": 3.049,
+    "stdev": 0.288,
     "n": 10
    },
    "max_rss_mib": {
-    "median": 11.086,
-    "mean": 11.077,
-    "min": 10.922,
-    "max": 11.188,
-    "stdev": 0.078,
+    "median": 11.141,
+    "mean": 11.117,
+    "min": 10.891,
+    "max": 11.266,
+    "stdev": 0.113,
     "n": 10
    }
   },
@@ -201,6 +201,7 @@
    "available": true,
    "repeat": 5,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
@@ -209,43 +210,43 @@
     0
    ],
    "wall_ms": {
-    "median": 10.998,
-    "mean": 11.156,
-    "min": 10.929,
-    "max": 11.55,
-    "stdev": 0.276,
+    "median": 10.279,
+    "mean": 10.392,
+    "min": 9.677,
+    "max": 11.46,
+    "stdev": 0.664,
     "n": 5
    },
    "cpu_ms": {
-    "median": 19.257,
-    "mean": 18.961,
-    "min": 16.464,
-    "max": 21.82,
-    "stdev": 2.004,
+    "median": 20.902,
+    "mean": 20.283,
+    "min": 17.487,
+    "max": 22.257,
+    "stdev": 1.889,
     "n": 5
    },
    "user_ms": {
-    "median": 5.567,
-    "mean": 5.525,
-    "min": 5.34,
-    "max": 5.611,
-    "stdev": 0.112,
+    "median": 5.656,
+    "mean": 5.611,
+    "min": 5.379,
+    "max": 5.749,
+    "stdev": 0.141,
     "n": 5
    },
    "sys_ms": {
-    "median": 13.849,
-    "mean": 13.436,
-    "min": 10.897,
-    "max": 16.209,
-    "stdev": 1.988,
+    "median": 15.153,
+    "mean": 14.672,
+    "min": 12.108,
+    "max": 16.58,
+    "stdev": 1.767,
     "n": 5
    },
    "max_rss_mib": {
-    "median": 14.922,
-    "mean": 14.925,
-    "min": 14.906,
-    "max": 14.953,
-    "stdev": 0.02,
+    "median": 14.781,
+    "mean": 14.822,
+    "min": 14.766,
+    "max": 15.016,
+    "stdev": 0.109,
     "n": 5
    }
   },
@@ -264,6 +265,7 @@
    "available": true,
    "repeat": 5,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
@@ -272,43 +274,43 @@
     0
    ],
    "wall_ms": {
-    "median": 10.642,
-    "mean": 10.734,
-    "min": 10.088,
-    "max": 11.503,
-    "stdev": 0.523,
+    "median": 10.796,
+    "mean": 10.544,
+    "min": 9.844,
+    "max": 11.107,
+    "stdev": 0.618,
     "n": 5
    },
    "cpu_ms": {
-    "median": 20.506,
-    "mean": 18.728,
-    "min": 14.881,
-    "max": 21.36,
-    "stdev": 3.204,
+    "median": 19.726,
+    "mean": 19.421,
+    "min": 18.138,
+    "max": 20.068,
+    "stdev": 0.816,
     "n": 5
    },
    "user_ms": {
-    "median": 5.427,
-    "mean": 5.41,
-    "min": 5.203,
-    "max": 5.636,
-    "stdev": 0.186,
+    "median": 5.298,
+    "mean": 5.3,
+    "min": 5.24,
+    "max": 5.342,
+    "stdev": 0.04,
     "n": 5
    },
    "sys_ms": {
-    "median": 15.079,
-    "mean": 13.317,
-    "min": 9.678,
-    "max": 15.82,
-    "stdev": 3.029,
+    "median": 14.384,
+    "mean": 14.12,
+    "min": 12.898,
+    "max": 14.77,
+    "stdev": 0.794,
     "n": 5
    },
    "max_rss_mib": {
-    "median": 15.406,
-    "mean": 15.428,
-    "min": 15.344,
-    "max": 15.547,
-    "stdev": 0.081,
+    "median": 15.625,
+    "mean": 15.622,
+    "min": 15.547,
+    "max": 15.688,
+    "stdev": 0.051,
     "n": 5
    }
   },
@@ -325,6 +327,7 @@
    "available": true,
    "repeat": 5,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
@@ -333,43 +336,43 @@
     0
    ],
    "wall_ms": {
-    "median": 16.307,
-    "mean": 16.507,
-    "min": 16.002,
-    "max": 17.328,
-    "stdev": 0.509,
+    "median": 14.882,
+    "mean": 14.909,
+    "min": 14.774,
+    "max": 15.011,
+    "stdev": 0.101,
     "n": 5
    },
    "cpu_ms": {
-    "median": 17.158,
-    "mean": 17.022,
-    "min": 15.987,
-    "max": 17.751,
-    "stdev": 0.73,
+    "median": 16.992,
+    "mean": 17.085,
+    "min": 16.739,
+    "max": 17.543,
+    "stdev": 0.307,
     "n": 5
    },
    "user_ms": {
-    "median": 7.227,
-    "mean": 7.112,
-    "min": 6.783,
-    "max": 7.377,
-    "stdev": 0.263,
+    "median": 7.143,
+    "mean": 7.119,
+    "min": 7.026,
+    "max": 7.173,
+    "stdev": 0.059,
     "n": 5
    },
    "sys_ms": {
-    "median": 9.931,
-    "mean": 9.91,
-    "min": 9.204,
-    "max": 10.46,
-    "stdev": 0.484,
+    "median": 9.911,
+    "mean": 9.965,
+    "min": 9.639,
+    "max": 10.388,
+    "stdev": 0.283,
     "n": 5
    },
    "max_rss_mib": {
-    "median": 17.062,
-    "mean": 17.066,
-    "min": 16.922,
-    "max": 17.172,
-    "stdev": 0.098,
+    "median": 17.125,
+    "mean": 17.166,
+    "min": 17.078,
+    "max": 17.266,
+    "stdev": 0.086,
     "n": 5
    }
   },
@@ -388,49 +391,50 @@
    "available": true,
    "repeat": 3,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
     0
    ],
    "wall_ms": {
-    "median": 183.157,
-    "mean": 191.141,
-    "min": 159.312,
-    "max": 230.954,
-    "stdev": 36.482,
+    "median": 115.964,
+    "mean": 116.499,
+    "min": 114.976,
+    "max": 118.558,
+    "stdev": 1.85,
     "n": 3
    },
    "cpu_ms": {
-    "median": 183.221,
-    "mean": 195.471,
-    "min": 182.829,
-    "max": 220.363,
-    "stdev": 21.558,
+    "median": 157.143,
+    "mean": 157.115,
+    "min": 154.174,
+    "max": 160.029,
+    "stdev": 2.928,
     "n": 3
    },
    "user_ms": {
-    "median": 47.574,
-    "mean": 48.0,
-    "min": 41.913,
-    "max": 54.513,
-    "stdev": 6.311,
+    "median": 57.958,
+    "mean": 57.488,
+    "min": 56.341,
+    "max": 58.166,
+    "stdev": 0.999,
     "n": 3
    },
    "sys_ms": {
-    "median": 141.308,
-    "mean": 147.471,
-    "min": 135.255,
-    "max": 165.85,
-    "stdev": 16.202,
+    "median": 100.802,
+    "mean": 99.627,
+    "min": 96.216,
+    "max": 101.863,
+    "stdev": 3.001,
     "n": 3
    },
    "max_rss_mib": {
-    "median": 789.359,
-    "mean": 789.312,
-    "min": 789.172,
-    "max": 789.406,
-    "stdev": 0.124,
+    "median": 631.188,
+    "mean": 631.182,
+    "min": 631.094,
+    "max": 631.266,
+    "stdev": 0.086,
     "n": 3
    }
   },
@@ -448,6 +452,7 @@
    "available": true,
    "repeat": 5,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
@@ -456,43 +461,43 @@
     0
    ],
    "wall_ms": {
-    "median": 25.439,
-    "mean": 50.799,
-    "min": 22.479,
-    "max": 99.707,
-    "stdev": 37.75,
+    "median": 13.092,
+    "mean": 12.88,
+    "min": 10.273,
+    "max": 15.392,
+    "stdev": 2.059,
     "n": 5
    },
    "cpu_ms": {
-    "median": 14.724,
-    "mean": 14.092,
-    "min": 12.415,
-    "max": 15.605,
-    "stdev": 1.356,
+    "median": 20.285,
+    "mean": 21.321,
+    "min": 19.693,
+    "max": 25.831,
+    "stdev": 2.58,
     "n": 5
    },
    "user_ms": {
-    "median": 5.43,
-    "mean": 5.337,
-    "min": 5.034,
-    "max": 5.545,
-    "stdev": 0.232,
+    "median": 5.601,
+    "mean": 5.674,
+    "min": 5.522,
+    "max": 6.008,
+    "stdev": 0.194,
     "n": 5
    },
    "sys_ms": {
-    "median": 9.179,
-    "mean": 8.755,
-    "min": 7.381,
-    "max": 10.079,
-    "stdev": 1.135,
+    "median": 14.618,
+    "mean": 15.647,
+    "min": 14.143,
+    "max": 19.823,
+    "stdev": 2.396,
     "n": 5
    },
    "max_rss_mib": {
-    "median": 14.172,
-    "mean": 14.244,
-    "min": 14.062,
-    "max": 14.562,
-    "stdev": 0.19,
+    "median": 15.438,
+    "mean": 15.497,
+    "min": 15.328,
+    "max": 15.875,
+    "stdev": 0.22,
     "n": 5
    }
   },
@@ -511,49 +516,50 @@
    "available": true,
    "repeat": 3,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
     0
    ],
    "wall_ms": {
-    "median": 42.219,
-    "mean": 41.742,
-    "min": 37.935,
-    "max": 45.072,
-    "stdev": 3.592,
+    "median": 32.856,
+    "mean": 32.781,
+    "min": 31.994,
+    "max": 33.494,
+    "stdev": 0.753,
     "n": 3
    },
    "cpu_ms": {
-    "median": 160.588,
-    "mean": 157.681,
-    "min": 150.609,
-    "max": 161.845,
-    "stdev": 6.156,
+    "median": 201.705,
+    "mean": 200.957,
+    "min": 192.314,
+    "max": 208.851,
+    "stdev": 8.294,
     "n": 3
    },
    "user_ms": {
-    "median": 34.388,
-    "mean": 35.106,
-    "min": 33.706,
-    "max": 37.223,
-    "stdev": 1.865,
+    "median": 33.535,
+    "mean": 32.933,
+    "min": 31.645,
+    "max": 33.62,
+    "stdev": 1.117,
     "n": 3
    },
    "sys_ms": {
-    "median": 126.882,
-    "mean": 122.575,
-    "min": 113.386,
-    "max": 127.457,
-    "stdev": 7.963,
+    "median": 168.085,
+    "mean": 168.023,
+    "min": 160.669,
+    "max": 175.316,
+    "stdev": 7.324,
     "n": 3
    },
    "max_rss_mib": {
-    "median": 21.156,
-    "mean": 21.339,
-    "min": 20.969,
-    "max": 21.891,
-    "stdev": 0.487,
+    "median": 21.5,
+    "mean": 21.49,
+    "min": 21.375,
+    "max": 21.594,
+    "stdev": 0.11,
     "n": 3
    }
   },
@@ -572,49 +578,50 @@
    "available": true,
    "repeat": 3,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
     0
    ],
    "wall_ms": {
-    "median": 8.359,
-    "mean": 8.421,
-    "min": 8.245,
-    "max": 8.659,
-    "stdev": 0.214,
+    "median": 7.679,
+    "mean": 7.671,
+    "min": 7.419,
+    "max": 7.916,
+    "stdev": 0.248,
     "n": 3
    },
    "cpu_ms": {
-    "median": 7.027,
-    "mean": 6.88,
-    "min": 6.568,
-    "max": 7.045,
-    "stdev": 0.27,
+    "median": 6.062,
+    "mean": 6.209,
+    "min": 5.851,
+    "max": 6.713,
+    "stdev": 0.449,
     "n": 3
    },
    "user_ms": {
-    "median": 3.358,
-    "mean": 3.375,
-    "min": 3.326,
-    "max": 3.441,
-    "stdev": 0.059,
+    "median": 3.013,
+    "mean": 3.03,
+    "min": 2.948,
+    "max": 3.128,
+    "stdev": 0.091,
     "n": 3
    },
    "sys_ms": {
-    "median": 3.586,
-    "mean": 3.505,
-    "min": 3.242,
-    "max": 3.687,
-    "stdev": 0.233,
+    "median": 3.049,
+    "mean": 3.179,
+    "min": 2.903,
+    "max": 3.585,
+    "stdev": 0.359,
     "n": 3
    },
    "max_rss_mib": {
-    "median": 12.344,
-    "mean": 12.245,
-    "min": 12.031,
-    "max": 12.359,
-    "stdev": 0.185,
+    "median": 12.172,
+    "mean": 12.167,
+    "min": 12.047,
+    "max": 12.281,
+    "stdev": 0.117,
     "n": 3
    }
   },
@@ -662,56 +669,61 @@
    "available": true,
    "repeat": 3,
    "ok": true,
+   "failed_runs": 0,
    "exit_codes": [
     0,
     0,
     0
    ],
    "wall_ms": {
-    "median": 319.974,
-    "mean": 321.868,
-    "min": 315.952,
-    "max": 329.678,
-    "stdev": 7.056,
+    "median": 334.855,
+    "mean": 334.802,
+    "min": 333.075,
+    "max": 336.475,
+    "stdev": 1.701,
     "n": 3
    },
    "cpu_ms": {
-    "median": 38.49,
-    "mean": 37.511,
-    "min": 33.401,
-    "max": 40.641,
-    "stdev": 3.718,
+    "median": 70.26,
+    "mean": 68.493,
+    "min": 62.861,
+    "max": 72.359,
+    "stdev": 4.989,
     "n": 3
    },
    "user_ms": {
-    "median": 16.004,
-    "mean": 15.867,
-    "min": 15.361,
-    "max": 16.235,
-    "stdev": 0.453,
+    "median": 24.137,
+    "mean": 23.959,
+    "min": 22.658,
+    "max": 25.082,
+    "stdev": 1.222,
     "n": 3
    },
    "sys_ms": {
-    "median": 22.255,
-    "mean": 21.644,
-    "min": 18.04,
-    "max": 24.637,
-    "stdev": 3.341,
+    "median": 45.178,
+    "mean": 44.534,
+    "min": 40.203,
+    "max": 48.222,
+    "stdev": 4.048,
     "n": 3
    },
    "max_rss_mib": {
-    "median": 15.891,
-    "mean": 15.932,
-    "min": 15.75,
+    "median": 16.141,
+    "mean": 16.021,
+    "min": 15.766,
     "max": 16.156,
-    "stdev": 0.206,
+    "stdev": 0.221,
     "n": 3
    }
   }
  },
  "settle": {
-  "time_wait_after": 7,
-  "waited_seconds": 30.3
+  "time_wait_after": 9,
+  "waited_seconds": 30.8
  },
- "duration_seconds": 33.7
+ "duration_seconds": 156.7,
+ "notes": [
+  "measured after the fact from the released binary: scenarios and sizes only - no tests, battery or profiles",
+  "measured interleaved with v4.0.0, v4.0.1, v4.0.3, v4.0.4, v4.0.5, v4.0.6, v4.2.0, v4.2.1, v4.2.2, v4.2.3, round by round, so drift during the run falls on all of them alike"
+ ]
 }

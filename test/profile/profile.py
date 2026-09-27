@@ -28,7 +28,9 @@ not the operating system's performance counters, which count differently.
 
 --quick records only the machine, the scenarios and the host binary's size. After a run the
 script waits (up to 90 s) for the machine's TIME_WAIT sockets to drain, so a check started
-straight after it does not run out of local ports (issue #78).
+straight after it does not run out of local ports (issue #78). Before measuring, it waits (up to
+90 s) for the 1-minute load to fall to 30% of the cores, so every run starts from a comparably
+quiet machine; the load it started at is recorded, and a run that started busy says so.
 
 Standard library only, like the battery.
 """
@@ -48,6 +50,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.request
 
 sys.dont_write_bytecode = True
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -189,6 +192,31 @@ def machine():
     return m
 
 
+QUIET_LIMIT = float(os.environ.get("SHINT_PROFILE_QUIET_WAIT", "90"))
+
+
+def wait_for_quiet(cores, limit=None, share=0.3):
+    """Wait (up to `limit` seconds) until the 1-minute load is at most `share` of the cores, so
+    every run starts from a comparably quiet machine: the load average also carries whatever ran in
+    the minute before - a build, the previous scenario, another program. Returns the seconds waited."""
+    if not hasattr(os, "getloadavg"):
+        return 0.0
+    limit = QUIET_LIMIT if limit is None else limit
+    t0, target = time.time(), max(1.0, (cores or 1) * share)
+    while os.getloadavg()[0] > target and time.time() - t0 < limit:
+        time.sleep(3)
+    return round(time.time() - t0, 1)
+
+
+def busy_note(m):
+    """A note when the machine was already busy - its 1-minute load above half its cores -
+    because other work competing for the processor makes every timing slower and noisier."""
+    load, cores = m.get("load_1m_start"), (m.get("cpu") or {}).get("logical_cores") or 1
+    if load is not None and load > cores / 2:
+        return "the machine was busy at the start (1-minute load %.1f on %d cores): the timings are slower and noisier than on a quiet machine" % (load, cores)
+    return ""
+
+
 def _glob_dirs(base, prefixes):
     try:
         return [os.path.join(base, d) for d in os.listdir(base) if d.startswith(prefixes)]
@@ -267,25 +295,75 @@ def maxrss_bytes(ru):
     return ru.ru_maxrss if sys.platform == "darwin" else ru.ru_maxrss * 1024   # Linux reports KiB
 
 
+FAILED_MARKS = ("] ERROR ", '"success": false', '"success":false')
+
+# On Linux a process's peak memory (ru_maxrss) survives exec: a child forked from this script
+# starts as a copy of it and "peaks" at this script's size (57 MiB with the servers running), not
+# shint's. So on Linux each run is started by a fresh, tiny interpreter that forks and execs shint,
+# times it from fork to exit and reports the child's own usage on a pipe - its peak then starts from
+# the wrapper's ~6 MiB, below anything shint uses. (macOS starts the count afresh at exec.)
+_WRAPPER = """import os, sys, time
+w = int(sys.argv[1])
+t0 = time.perf_counter()
+pid = os.fork()
+if pid == 0:
+    try:
+        os.execvp(sys.argv[2], sys.argv[2:])
+    finally:
+        os._exit(127)
+_, status, ru = os.wait4(pid, 0)
+wall = time.perf_counter() - t0
+import json
+os.write(w, json.dumps([wall, ru.ru_utime, ru.ru_stime, ru.ru_maxrss, os.waitstatus_to_exitcode(status)]).encode())
+"""
+WRAP = sys.platform.startswith("linux")
+
+
 def measure(argv, env=None, timeout=180, during=None):
-    """Run once; the process's own wall time, CPU time and peak memory (wait4), and exit code.
-    during, if given, runs in this thread while the process does (the listen scenario's clients)."""
-    t0 = time.perf_counter()
-    p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         env=dict(os.environ, **(env or {})))
-    killer = threading.Timer(timeout, p.kill)
+    """Run once; the process's own wall time, CPU time and peak memory (wait4), its exit code, and
+    whether it failed: a non-zero exit, or an ERROR line or a "success": false in its output - releases
+    before v4.0.3 exit 0 whatever happened, so the exit code alone cannot tell. during, if given, runs
+    in this thread while the process does (the listen scenario's clients)."""
+    out = tempfile.TemporaryFile()
+    env = dict(os.environ, **(env or {}))
+    if WRAP:
+        r, w = os.pipe()
+        p = subprocess.Popen([sys.executable, "-S", "-c", _WRAPPER, str(w)] + list(argv), stdin=subprocess.DEVNULL,
+                             stdout=out, stderr=subprocess.DEVNULL, env=env, pass_fds=(w,), start_new_session=True)
+        os.close(w)
+        killer = threading.Timer(timeout, lambda: os.killpg(p.pid, 9))
+    else:
+        t0 = time.perf_counter()
+        p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.DEVNULL, env=env)
+        killer = threading.Timer(timeout, p.kill)
     killer.start()
     try:
         if during:
             during()
-        _, status, ru = os.wait4(p.pid, 0)
+        if WRAP:
+            with os.fdopen(r, "rb") as f:
+                report = f.read()
+            p.wait()
+        else:
+            _, status, ru = os.wait4(p.pid, 0)
     finally:
         killer.cancel()
-    wall = time.perf_counter() - t0
-    p.returncode = os.waitstatus_to_exitcode(status)
-    return {"wall_ms": wall * 1000, "user_ms": ru.ru_utime * 1000, "sys_ms": ru.ru_stime * 1000,
-            "cpu_ms": (ru.ru_utime + ru.ru_stime) * 1000, "max_rss_mib": maxrss_bytes(ru) / 1048576,
-            "exit": p.returncode}
+    if WRAP:
+        try:
+            wall, utime, stime, rss_kib, code = json.loads(report or b"null")
+        except (TypeError, ValueError):
+            wall, utime, stime, rss_kib, code = 0.0, 0.0, 0.0, 0, p.returncode or -1
+        rss = rss_kib * 1024
+    else:
+        wall = time.perf_counter() - t0
+        p.returncode = code = os.waitstatus_to_exitcode(status)
+        utime, stime, rss = ru.ru_utime, ru.ru_stime, maxrss_bytes(ru)
+    out.seek(0)
+    text = out.read().decode("utf-8", "replace")
+    out.close()
+    return {"wall_ms": wall * 1000, "user_ms": utime * 1000, "sys_ms": stime * 1000,
+            "cpu_ms": (utime + stime) * 1000, "max_rss_mib": rss / 1048576,
+            "exit": code, "failed": code != 0 or any(m in text for m in FAILED_MARKS)}
 
 
 def free_port():
@@ -336,36 +414,61 @@ def scenario_argv(binary, args, ports):
     return [binary] + [a.format(**ports) for a in args], None
 
 
-def run_scenarios(binary, ports, repeat_scale=1.0, only=None, log=True):
-    results = {}
+def scenario_entry(what, shown, runs):
+    exits = [r["exit"] for r in runs]
+    failed = sum(1 for r in runs if r.get("failed"))
+    return {"what": what, "args": shown, "available": True, "repeat": len(runs), "ok": failed == 0, "failed_runs": failed,
+            "exit_codes": exits, "wall_ms": stats([r["wall_ms"] for r in runs]), "cpu_ms": stats([r["cpu_ms"] for r in runs]),
+            "user_ms": stats([r["user_ms"] for r in runs]), "sys_ms": stats([r["sys_ms"] for r in runs]),
+            "max_rss_mib": stats([r["max_rss_mib"] for r in runs])}
+
+
+def run_interleaved(binaries, ports, repeat_scale=1.0, only=None, log=True):
+    """Every scenario for one or more binaries: {label: {scenario: entry}}. With several, each
+    round runs every binary once, in an order that rotates from round to round, so whatever
+    drifts while the rounds run - the machine warming up, other work coming and going - falls on
+    every binary alike. (Measured one after another, it does not: a backfill once showed v4.2.3
+    30-45% slower than v4.0.6 on short scenarios, which measured side by side are within 3%.)"""
+    labels = list(binaries)
+    results = {l: {} for l in labels}
     for name, args, repeat, what in SCENARIOS:
         if only and name not in only:
             continue
-        entry = {"what": what, "args": ["listen", "http", "<port>", "--count", str(LISTEN_REQUESTS)] if args is None else args}
-        if not available(binary, args or ["listen"]):
-            entry["available"] = False
-            results[name] = entry
+        shown = ["listen", "http", "<port>", "--count", str(LISTEN_REQUESTS)] if args is None else args
+        have = [l for l in labels if available(binaries[l], args or ["listen"])]
+        for l in labels:
+            if l not in have:
+                results[l][name] = {"what": what, "args": shown, "available": False}
+        if not have:
             if log:
-                say("  %-12s n/a (this version has no such command)" % name)
+                say("  %-12s n/a (no such command)" % name)
             continue
+        settle(limit=2000)      # the previous scenario's closed connections hold local ports (issue #78)
         n = max(1, int(round(repeat * repeat_scale)))
-        runs = []
-        for i in range(n + 1):                                  # the first is a warm-up, not kept
-            argv, during = scenario_argv(binary, args, ports)
-            r = measure(argv, during=during, timeout=60 if during else 180)
-            if i:
-                runs.append(r)
-        exits = [r["exit"] for r in runs]
-        entry.update(available=True, repeat=n, ok=all(e == 0 for e in exits), exit_codes=exits,
-                     wall_ms=stats([r["wall_ms"] for r in runs]), cpu_ms=stats([r["cpu_ms"] for r in runs]),
-                     user_ms=stats([r["user_ms"] for r in runs]), sys_ms=stats([r["sys_ms"] for r in runs]),
-                     max_rss_mib=stats([r["max_rss_mib"] for r in runs]))
-        results[name] = entry
+        runs = {l: [] for l in have}
+        for i in range(n + 1):                                  # round 0 is a warm-up, not kept
+            k = i % len(have)
+            for l in have[k:] + have[:k]:
+                argv, during = scenario_argv(binaries[l], args, ports)
+                r = measure(argv, during=during, timeout=60 if during else 180)
+                if i:
+                    runs[l].append(r)
+        for l in have:
+            results[l][name] = scenario_entry(what, shown, runs[l])
         if log:
-            say("  %-12s wall %8.1f ms   cpu %8.1f ms   peak %6.1f MiB%s" % (
-                name, entry["wall_ms"]["median"], entry["cpu_ms"]["median"], entry["max_rss_mib"]["median"],
-                "" if entry["ok"] else "   (exit %s)" % sorted(set(exits))))
+            e = results[have[0]][name]
+            if len(labels) == 1:
+                say("  %-12s wall %8.1f ms   cpu %8.1f ms   peak %6.1f MiB%s" % (
+                    name, e["wall_ms"]["median"], e["cpu_ms"]["median"], e["max_rss_mib"]["median"],
+                    "" if e["ok"] else "   FAILED %d of %d runs" % (e["failed_runs"], e["repeat"])))
+            else:
+                say("  %-12s wall ms: %s" % (name, "  ".join("%s %s%s" % (l, fmt(results[l][name]["wall_ms"]["median"]),
+                                                                       "" if results[l][name]["ok"] else " FAILED") for l in have)))
     return results
+
+
+def run_scenarios(binary, ports, repeat_scale=1.0, only=None, log=True):
+    return run_interleaved({"this": binary}, ports, repeat_scale, only, log)["this"]
 
 
 # --- tests and profiles -------------------------------------------------------------------
@@ -528,11 +631,18 @@ def profile_tree(tag, quick):
     tag = tag or source["describe"] or "unknown"
     run_dir = run_dir_for(tag, kind)
     say("profile: %s -> %s" % (tag, os.path.relpath(run_dir, REPO)))
+    mach = machine()
+    say("  waiting for a quiet machine (1-minute load at most 30%% of %s cores, up to 90 s) ..." % mach["cpu"]["logical_cores"])
+    mach["quiet_wait_seconds"] = wait_for_quiet(mach["cpu"]["logical_cores"])
+    mach["load_1m_start"] = round(os.getloadavg()[0], 2) if hasattr(os, "getloadavg") else None
     summary = {"schema": SCHEMA, "tag": tag, "kind": kind, "run_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-               "source": source, "machine": machine(), "notes": []}
+               "source": source, "machine": mach, "notes": []}
     say("  machine %s: %s, %s, %s cores, %s GiB, power %s" % (
         summary["machine"]["id"], summary["machine"]["os_version"], summary["machine"]["cpu"]["model"],
         summary["machine"]["cpu"]["logical_cores"], round((summary["machine"]["memory_bytes"] or 0) / 2**30, 1), summary["machine"]["power"]))
+    if busy_note(summary["machine"]):
+        summary["notes"].append(busy_note(summary["machine"]))
+        say("  NOTE: " + busy_note(summary["machine"]))
     work = tempfile.mkdtemp(prefix="shint-profile-")
     try:
         host = os.path.join(work, "shint")
@@ -569,49 +679,114 @@ def profile_tree(tag, quick):
     return run_dir
 
 
-def backfill(tags):
-    """Released binaries for this machine's platform, downloaded and measured with the same scenarios."""
+def host_asset():
     goos = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
     goarch = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64", "amd64": "amd64"}.get(platform.machine().lower())
     if not goos or not goarch:
-        raise SystemExit("backfill: no release binary for this platform")
-    asset = "shint.%s.%s" % (goos, goarch)
-    mach = machine()
-    ports = start_servers()
-    for tag in tags:
-        work = tempfile.mkdtemp(prefix="shint-backfill-")
-        try:
-            gh = subprocess.run(["gh", "release", "download", tag, "-R", REPO_SLUG, "-p", asset, "-D", work],
-                                capture_output=True, text=True)
-            binary = os.path.join(work, asset)
-            if gh.returncode != 0 or not os.path.exists(binary):
-                say("backfill %s: no %s asset (%s)" % (tag, asset, gh.stderr.strip()[:120]))
-                continue
-            os.chmod(binary, 0o755)
-            info = json.loads(out_of("gh", "api", "repos/%s/releases/tags/%s" % (REPO_SLUG, tag)) or "{}")
+        raise SystemExit("no release binary for this platform (%s/%s)" % (platform.system(), platform.machine()))
+    return "shint.%s.%s" % (goos, goarch)
+
+
+def github(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "shint-profile", "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.read()
+
+
+def release_binary(tag, work):
+    """A release's binary for this machine, from its public download URL (no gh needed)."""
+    asset = host_asset()
+    dest = os.path.join(work, tag, asset)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "wb") as f:
+        f.write(github("https://github.com/%s/releases/download/%s/%s" % (REPO_SLUG, tag, asset)))
+    os.chmod(dest, 0o755)
+    return dest
+
+
+def backfill(tags):
+    """Released binaries for this machine's platform, downloaded and measured with the same
+    scenarios - all of them interleaved, round by round (see run_interleaved)."""
+    asset = host_asset()
+    work = tempfile.mkdtemp(prefix="shint-backfill-")
+    try:
+        bins, infos = {}, {}
+        for tag in tags:
+            try:
+                bins[tag] = release_binary(tag, work)
+                infos[tag] = json.loads(github("https://api.github.com/repos/%s/releases/tags/%s" % (REPO_SLUG, tag)))
+            except (OSError, ValueError) as e:
+                say("backfill %s: no %s (%s)" % (tag, asset, e))
+                bins.pop(tag, None)
+        if not bins:
+            raise SystemExit("backfill: nothing to measure")
+        mach = machine()
+        say("backfill: %d releases (%s), interleaved; machine %s" % (len(bins), " ".join(bins), mach["id"]))
+        mach["quiet_wait_seconds"] = wait_for_quiet(mach["cpu"]["logical_cores"])
+        mach["load_1m_start"] = round(os.getloadavg()[0], 2)
+        note = busy_note(mach)
+        if note:
+            say("  NOTE: " + note)
+        ports = start_servers()
+        t0 = time.time()
+        at = datetime.datetime.now(datetime.timezone.utc)
+        results = run_interleaved(bins, ports)
+        mach["load_1m_end"] = round(os.getloadavg()[0], 2)
+        settled = settle()
+        for tag, binary in bins.items():
+            info = infos.get(tag, {})
             sizes = {}
             for a in info.get("assets", []):
                 m = re.match(r"^shint\.([a-z0-9]+)\.([a-z0-9]+)(?:\.exe)?$", a["name"])
                 if m:
                     sizes["%s/%s" % (m.group(1), m.group(2))] = a["size"]
-            run_dir = run_dir_for(tag, "backfill")
-            say("backfill %s -> %s" % (tag, os.path.relpath(run_dir, REPO)))
-            t0 = time.time()
-            summary = {"schema": SCHEMA, "tag": tag, "kind": "backfill",
-                       "run_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+            summary = {"schema": SCHEMA, "tag": tag, "kind": "backfill", "run_at": at.isoformat(timespec="seconds"),
                        "source": {"release": info.get("html_url", ""), "published_at": info.get("published_at", ""),
                                   "asset": asset, "sha256": hashlib.sha256(open(binary, "rb").read()).hexdigest(),
                                   "version_output": out_of(binary, "--version", cwd=None)},
-                       "machine": dict(mach, load_1m_start=round(os.getloadavg()[0], 2)),
-                       "binary": {"host_size_bytes": os.path.getsize(binary), "platform_sizes": sizes},
-                       "notes": ["measured after the fact from the released binary: scenarios and sizes only - no tests, battery or profiles"]}
-            summary["scenarios"] = run_scenarios(binary, ports)
-            summary["machine"]["load_1m_end"] = round(os.getloadavg()[0], 2)
-            summary["settle"] = settle()
-            summary["duration_seconds"] = round(time.time() - t0, 1)
-            write_summary(run_dir, summary)
-        finally:
-            shutil.rmtree(work, ignore_errors=True)
+                       "machine": dict(mach), "binary": {"host_size_bytes": os.path.getsize(binary), "platform_sizes": sizes},
+                       "scenarios": results[tag], "settle": settled, "duration_seconds": round(time.time() - t0, 1),
+                       "notes": ["measured after the fact from the released binary: scenarios and sizes only - no tests, battery or profiles",
+                                 "measured interleaved with %s, round by round, so drift during the run falls on all of them alike"
+                                 % ", ".join(x for x in bins if x != tag) if len(bins) > 1 else "measured on its own"] + ([note] if note else [])}
+            write_summary(run_dir_for(tag, "backfill", at), summary)
+            say("  wrote .profiling/%s/%s" % (tag, utc_stamp(at)))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def ab(ref_a, ref_b, only=None, repeat_scale=2.0):
+    """Two builds head to head, now, on this machine, interleaved: the fairest comparison there
+    is. A ref is a release tag (its published binary), HEAD (this tree, built), or a binary's path."""
+    work = tempfile.mkdtemp(prefix="shint-ab-")
+    try:
+        def binary(ref):
+            if os.path.isfile(ref):
+                return ref, os.path.basename(ref)
+            if ref in ("HEAD", ".", "tree"):
+                dest = os.path.join(work, "tree", "shint")
+                os.makedirs(os.path.dirname(dest))
+                if not go_build(dest):
+                    raise SystemExit("ab: this tree does not build")
+                return dest, "HEAD(%s)" % (out_of("git", "describe", "--tags", "--always", "--dirty") or "tree")
+            if re.match(r"^v\d+\.\d+\.\d+$", ref):
+                return release_binary(ref, work), ref
+            raise SystemExit("ab: %r is not a release tag, HEAD or a binary" % ref)
+        (pa, la), (pb, lb) = binary(ref_a), binary(ref_b)
+        if la == lb:
+            la, lb = la + "(A)", lb + "(B)"
+        mach = machine()
+        say("ab: %s vs %s, interleaved, on machine %s" % (la, lb, mach["id"]))
+        mach["quiet_wait_seconds"] = wait_for_quiet(mach["cpu"]["logical_cores"])
+        mach["load_1m_start"] = round(os.getloadavg()[0], 2)
+        res = run_interleaved({la: pa, lb: pb}, start_servers(), repeat_scale, only)
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+        a, b = ({"tag": l, "kind": "ab", "run_at": now, "machine": mach, "binary": {"host_size_bytes": os.path.getsize(path)},
+                 "scenarios": res[l]} for l, path in ((la, pa), (lb, pb)))
+        settle()
+        return compare_summaries(a, b)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 # --- reading the history ------------------------------------------------------------------
@@ -735,10 +910,11 @@ def history(wanted=None, metric="wall", last=None, dev=False):
     lines.append("%-12s" % "scenario" + "".join("%*s" % (width, r["tag"] + ("*" if r.get("kind") == "backfill" else "")) for r in builds)
                  + "   trend" + " " * max(0, len(builds) - 5) + "  first->last")
 
-    def row(name, values, first_last_noisy=False):
+    def row(name, values, first_last_noisy=False, failed=None):
         known = [v for v in values if v is not None]
         delta = change(known[0], known[-1]) if len(known) > 1 else ""
-        lines.append("%-12s" % name + "".join("%*s" % (width, fmt(v)) for v in values)
+        failed = failed or [False] * len(values)
+        lines.append("%-12s" % name + "".join("%*s" % (width, fmt(v) + ("!" if bad else "")) for v, bad in zip(values, failed))
                      + "   %-*s  %s%s" % (max(5, len(values)), spark(values), delta, " ~" if first_last_noisy and delta else ""))
 
     for name in names:
@@ -749,15 +925,18 @@ def history(wanted=None, metric="wall", last=None, dev=False):
             values.append(sc[key]["median"] if ok else None)
             stats_.append(sc if ok else None)
         known = [s for s in stats_ if s]
-        row(name, values, len(known) > 1 and noisy(known[0], known[-1], key))
+        row(name, values, len(known) > 1 and noisy(known[0], known[-1], key), [bool(s) and not s.get("ok", True) for s in stats_])
     lines.append("")
+    row("load 1m", [r.get("machine", {}).get("load_1m_start") for r in builds])
     row("binary MiB", [r.get("binary", {}).get("host_size_bytes", 0) / 2 ** 20 or None for r in builds])
     for k, label_ in (("go_tests", "go test s"), ("battery", "battery s")):
         vals = [(r.get(k) or {}).get("wall_seconds") for r in builds]
         if any(v is not None for v in vals):
             row(label_, vals)
     lines.append("")
-    lines.append("~ : the first-to-last change is smaller than the runs' own spread (noise). Other machines: make profile-machines")
+    lines.append("! : some runs failed (an error, not a timing) - see the run's summary.json")
+    lines.append("~ : the first-to-last change is smaller than the runs' own spread (noise). load 1m: the machine's load when the")
+    lines.append("run started - a busy machine is slower for every scenario. Other machines: make profile-machines")
     return "\n".join(lines)
 
 
@@ -803,7 +982,10 @@ def compare(ref_a, ref_b, wanted=None):
         except SystemExit:
             mid = None
     with open(resolve(ref_a, mid)) as fa, open(resolve(ref_b, mid)) as fb:
-        a, b = json.load(fa), json.load(fb)
+        return compare_summaries(json.load(fa), json.load(fb))
+
+
+def compare_summaries(a, b):
     lines = ["%s (%s, %s)  ->  %s (%s, %s)" % (a["tag"], a["kind"], a["run_at"], b["tag"], b["kind"], b["run_at"])]
     ma, mb = a.get("machine", {}), b.get("machine", {})
     if ma.get("id") != mb.get("id"):
@@ -812,6 +994,7 @@ def compare(ref_a, ref_b, wanted=None):
         lines.append("machine %s: %s" % (ma.get("id"), describe_machine(b)))
         if ma.get("power") != mb.get("power"):
             lines.append("note: power source differs (%s, %s)" % (ma.get("power"), mb.get("power")))
+        lines.append("load (1 min) at the start: %s, %s - a busy machine is slower for every scenario" % (ma.get("load_1m_start"), mb.get("load_1m_start")))
     lines.append("")
     lines.append("%-12s %12s %12s %9s   %10s %10s %9s   %10s %9s %9s" % ("scenario", "wall ms A", "B", "change", "cpu ms A", "B", "change", "peak MiB A", "B", "change"))
     names = list(a.get("scenarios", {})) + [n for n in b.get("scenarios", {}) if n not in a.get("scenarios", {})]
@@ -824,7 +1007,9 @@ def compare(ref_a, ref_b, wanted=None):
         for key in ("wall_ms", "cpu_ms", "max_rss_mib"):
             va, vb = sa[key]["median"], sb[key]["median"]
             cols.append((va, vb, change(va, vb) + (" ~" if noisy(sa, sb, key) else "")))
-        lines.append("%-12s %12.1f %12.1f %9s   %10.1f %10.1f %9s   %10.1f %9.1f %9s" % ((name,) + tuple(x for c in cols for x in c)))
+        failed = [x["tag"] for x, s in ((a, sa), (b, sb)) if not s.get("ok", True)]
+        lines.append("%-12s %12.1f %12.1f %9s   %10.1f %10.1f %9s   %10.1f %9.1f %9s" % ((name,) + tuple(x for c in cols for x in c))
+                     + ("   FAILED in " + ", ".join(failed) if failed else ""))
     ba, bb = a.get("binary", {}), b.get("binary", {})
     lines.append("")
     lines.append("binary (this platform): %s -> %s bytes %s" % (ba.get("host_size_bytes"), bb.get("host_size_bytes"),
@@ -850,9 +1035,14 @@ def main(argv):
     ap.add_argument("--metric", choices=sorted(METRICS), default="wall", help="for --history: wall, cpu or rss (default wall)")
     ap.add_argument("--last", type=int, help="for --history: only the last N builds")
     ap.add_argument("--dev", action="store_true", help="for --history and --machines: include your own runs in .profiling/dev/")
+    ap.add_argument("--ab", nargs=2, metavar=("A", "B"), help="two builds head to head, now, interleaved: a release tag, HEAD, or a binary's path")
+    ap.add_argument("--only", help="for --ab: only these scenarios (comma-separated)")
     a = ap.parse_args(argv)
     if a.compare:
         print(compare(a.compare[0], a.compare[1], a.machine))
+        return 0
+    if a.ab:
+        print(ab(a.ab[0], a.ab[1], a.only.split(",") if a.only else None))
         return 0
     if a.history:
         print(history(a.machine, a.metric, a.last, a.dev))

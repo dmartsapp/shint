@@ -100,10 +100,13 @@
     var body = el("tbody");
     D.scenarios.forEach(function (s) {
       var a = A.s[s[0]] && A.s[s[0]][state.metric], b = B.s[s[0]] && B.s[s[0]][state.metric], x = delta(a, b);
+      var badA = A.s[s[0]] && A.s[s[0]].failed, badB = B.s[s[0]] && B.s[s[0]].failed;
+      if (badA || badB) x = null;
       body.appendChild(el("tr", {}, [
         el("td", {}, [el("code", { text: s[0] })]),
-        el("td", { text: a ? fmt(a[0]) : "n/a" }), el("td", { text: b ? fmt(b[0]) : "n/a" }),
-        el("td", { class: "perf-delta " + (x ? x.cls : ""), text: x ? (x.d > 0 ? "+" : "") + (x.d * 100).toFixed(1) + "%" + (x.cls === "same" ? " ~" : "") : "" })
+        el("td", { class: badA ? "perf-failed" : "", text: a ? fmt(a[0]) + (badA ? " !" : "") : "n/a" }),
+        el("td", { class: badB ? "perf-failed" : "", text: b ? fmt(b[0]) + (badB ? " !" : "") : "n/a" }),
+        el("td", { class: "perf-delta " + (x ? x.cls : ""), text: x ? (x.d > 0 ? "+" : "") + (x.d * 100).toFixed(1) + "%" + (x.cls === "same" ? " ~" : "") : (badA || badB ? "failed" : "") })
       ]));
     });
     var sizeA = A.size, sizeB = B.size;
@@ -117,7 +120,8 @@
     return el("div", {}, [
       el("h3", { text: METRICS[state.metric][0] + " (" + unit + "): " + state.a + " \u2192 " + state.b }),
       el("div", { class: "tablewrap" }, [el("table", { class: "perf-table" }, [head, body])]),
-      el("p", { class: "perf-note", text: "Medians. Lower is better. ~ marks a change smaller than the runs' own spread (their max - min), i.e. noise." })
+      el("p", { class: "perf-note", text: "Medians. Lower is better. ~ marks a change smaller than the runs' own spread (their max - min), i.e. noise; ! marks a scenario whose runs failed, so its time is not a result." +
+        (A.load != null && B.load != null ? " The machine's load when each run started: " + A.load + " and " + B.load + " - a busy machine is slower for every scenario." : "") })
     ]);
   }
 
@@ -147,11 +151,12 @@
     var step = Math.max(1, Math.ceil(n / 5));
     points.forEach(function (p, i) {
       var picked = p.tag === state.a || p.tag === state.b;
+      var ink = p.failed ? "var(--warn)" : "var(--accent)";
       var c = sv("circle", { cx: x(i), cy: y(p.v[0]), r: picked ? 4.5 : 3,
-        style: "stroke:var(--accent);stroke-width:2;fill:" + (p.kind === "backfill" ? "var(--bg)" : "var(--accent)") });
+        style: "stroke:" + ink + ";stroke-width:2;fill:" + (p.kind === "backfill" ? "var(--bg)" : ink) });
       var tip = sv("title", {});
       tip.textContent = p.tag + (p.kind === "backfill" ? " (backfill)" : "") + ": " + fmt(p.v[0]) + " " + unit +
-        " (" + fmt(p.v[1]) + " to " + fmt(p.v[2]) + ")";
+        " (" + fmt(p.v[1]) + " to " + fmt(p.v[2]) + ")" + (p.load != null ? ", load " + p.load : "") + (p.failed ? " - FAILED: not a result" : "");
       c.appendChild(tip);
       svg.appendChild(c);
       // every step-th build, and the last one - anchored at its end so it stays inside the chart
@@ -168,7 +173,7 @@
     var bs = builds(state.machine), unit = METRICS[state.metric][1], grid = el("div", { class: "perf-grid" });
     D.scenarios.forEach(function (s) {
       var pts = [];
-      bs.forEach(function (r) { if (r.s[s[0]]) pts.push({ tag: r.tag, kind: r.kind, v: r.s[s[0]][state.metric] }); });
+      bs.forEach(function (r) { if (r.s[s[0]]) pts.push({ tag: r.tag, kind: r.kind, load: r.load, failed: r.s[s[0]].failed, v: r.s[s[0]][state.metric] }); });
       if (pts.length) grid.appendChild(chart(s[0], s[1] + " \u00b7 " + METRICS[state.metric][0].toLowerCase() + ", " + unit, pts, unit));
     });
     var size = bs.filter(function (r) { return r.size; }).map(function (r) { var v = mib(r.size); return { tag: r.tag, kind: r.kind, v: [v, v, v] }; });

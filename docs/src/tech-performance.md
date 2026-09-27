@@ -26,6 +26,9 @@ make profile-history                        # this machine: every scenario acros
 make profile-history METRIC=rss LAST=6      # peak memory, the last six builds
 make profile-machines                       # every machine that has measured something
 make profile-compare A=v4.2.2 B=v4.2.3      # two builds, on the same machine when both have run on it
+make profile-ab A=v4.2.3 B=HEAD             # two builds head to head, now, interleaved - the one to trust
 ```
+
+Runs from different days carry the machine's drift between them - see [interleaved, because a machine drifts](tech-testing.md#profiling). To judge a change, measure both builds together with `make profile-ab`.
 
 A new run shows up here once it is committed and the site is rebuilt (`python3 docs/build.py`) - which `make release` does for every release.

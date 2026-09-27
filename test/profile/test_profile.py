@@ -15,6 +15,8 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import profile as P  # noqa: E402
 
+P.QUIET_LIMIT = 0          # the tests never wait for a quiet machine
+
 FAKE = """#!/bin/sh
 # a stand-in binary: no dns command, like a release before v4.2.0
 case "$1" in
@@ -26,7 +28,7 @@ exit 0
 
 def summary(tag, machine_id, wall, rss, size, kind="release", available=True, at="2026-09-27T00:00:00+00:00"):
     s = {"schema": 1, "tag": tag, "kind": kind, "run_at": at,
-         "machine": {"id": machine_id, "power": "ac", "model": "Model-" + machine_id, "cpu": {"logical_cores": 8}},
+         "machine": {"id": machine_id, "power": "ac", "model": "Model-" + machine_id, "cpu": {"logical_cores": 8}, "load_1m_start": 1.5},
          "binary": {"host_size_bytes": size}, "scenarios": {}}
     for name, *_ in P.SCENARIOS:
         s["scenarios"][name] = {"available": available, "wall_ms": {"median": wall, "min": wall * .99, "max": wall * 1.01},
@@ -70,8 +72,14 @@ class Scenarios(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
+    def test_a_failure_is_seen_in_the_output_too(self):
+        self.assertTrue(P.measure(["/bin/sh", "-c", "echo 'x: [web] ERROR response'"])["failed"])     # exit 0, as before v4.0.3
+        self.assertTrue(P.measure(["/bin/sh", "-c", "echo '{\"success\": false}'"])["failed"])
+        self.assertFalse(P.measure(["/bin/sh", "-c", "echo 'x: [web] OK response'"])["failed"])
+
     def test_measure_reports_the_exit_code_and_the_process_resources(self):
         r = P.measure(["/bin/sh", "-c", "exit 3"])
+        self.assertTrue(r["failed"])
         self.assertEqual(r["exit"], 3)
         self.assertGreater(r["wall_ms"], 0)
         self.assertGreater(r["max_rss_mib"], 0)
@@ -80,6 +88,26 @@ class Scenarios(unittest.TestCase):
         self.assertFalse(P.available(self.bin, ["dns", "x"]))
         self.assertTrue(P.available(self.bin, ["telnet", "x"]))
         self.assertTrue(P.available(self.bin, ["--version"]))
+
+    def test_interleaved_runs_measure_every_binary_the_same_number_of_times(self):
+        other = os.path.join(self.tmp, "other")
+        with open(other, "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")                  # this one has dns
+        os.chmod(other, 0o755)
+        got = P.run_interleaved({"old": self.bin, "new": other}, {"dns": 1}, only=["startup", "dns"], log=False)
+        self.assertEqual(set(got), {"old", "new"})
+        self.assertEqual(got["old"]["startup"]["wall_ms"]["n"], got["new"]["startup"]["wall_ms"]["n"])
+        self.assertFalse(got["old"]["dns"]["available"])
+        self.assertTrue(got["new"]["dns"]["available"])
+
+    def test_ab_of_two_binaries(self):
+        out = P.ab(self.bin, self.bin, only=["startup", "dns"], repeat_scale=0.1)
+        self.assertIn("shint(A) (ab", out)
+        self.assertIn("shint(B) (ab", out)
+        self.assertRegex(out, re.compile(r"^startup +\d", re.M))
+        self.assertRegex(out, re.compile(r"^dns +n/a in shint\(A\), shint\(B\)$", re.M))
+        with self.assertRaises(SystemExit):
+            P.ab("not-a-ref", self.bin)
 
     def test_run_scenarios(self):
         got = P.run_scenarios(self.bin, {}, only=["startup", "dns"], log=False)
@@ -148,6 +176,7 @@ class Compare(unittest.TestCase):
         self.run_(summary("v4.1.0", "m1", 20.0, 1.0, 1))
         self.assertNotIn("WARNING", P.compare("v4.0.0", "v4.1.0", "m1"))
         self.assertIn("+100.0%", P.compare("v4.0.0", "v4.1.0", "m1"))
+        self.assertIn("load (1 min) at the start: 1.5, 1.5", P.compare("v4.0.0", "v4.1.0", "m1"))
         # neither build ran on this machine and none is named: each tag's latest run, and a warning
         self.assertIn("WARNING: different machines", P.compare("v4.0.0", "v4.1.0"))
 
@@ -161,6 +190,7 @@ class Compare(unittest.TestCase):
         self.assertRegex(out, r"scenario +v4\.0\.0\* +v4\.9\.0 +v4\.10\.0")   # version order, * = backfill
         self.assertRegex(out, re.compile(r"^startup +10\.0 +15\.0 +20\.0 +\S+ +\+100\.0%$", re.M))
         self.assertRegex(out, re.compile(r"^binary MiB .*\+10\.0%$", re.M))
+        self.assertRegex(out, re.compile(r"^load 1m +1\.50 +1\.50 +1\.50", re.M))
         self.assertIn("v4.10.0", P.history(last=1))
         self.assertNotIn("v4.9.0", P.history(last=1))
         m2 = P.history("m2")
@@ -168,6 +198,15 @@ class Compare(unittest.TestCase):
         self.assertNotIn("v4.0.0", m2)
         with self.assertRaises(SystemExit):
             P.history("m")                                  # ambiguous: m1 and m2
+
+    def test_a_failed_scenario_is_marked_not_charted_as_a_result(self):
+        s = summary("v4.0.0", "m1", 10.0, 1.0, 1)
+        s["scenarios"]["web"]["ok"] = False
+        self.run_(s)
+        self.run_(summary("v4.1.0", "m1", 10.0, 1.0, 1))
+        self.assertRegex(P.history(), re.compile(r"^web +10\.0! +10\.0", re.M))
+        self.assertRegex(P.compare("v4.0.0", "v4.1.0", "m1"), re.compile(r"^web .*FAILED in v4\.0\.0$", re.M))
+
 
     def test_dev_runs_only_when_asked(self):
         self.run_(summary("v4.0.0", "m1", 10.0, 1.0, 1))
@@ -183,6 +222,10 @@ class Compare(unittest.TestCase):
         self.assertIn("m1  2 runs, 2 builds (v4.0.0 .. v4.1.0)", out)
         self.assertIn("m2  1 run, 1 build (v4.1.0 .. v4.1.0)", out)
         self.assertIn("Model-m2, 8 cores", out)
+
+    def test_a_busy_machine_is_noted(self):
+        self.assertIn("busy", P.busy_note({"load_1m_start": 9.0, "cpu": {"logical_cores": 10}}))
+        self.assertEqual(P.busy_note({"load_1m_start": 3.0, "cpu": {"logical_cores": 10}}), "")
 
     def test_spark_and_noise(self):
         self.assertEqual(P.spark([1, None, 3]), "\u2581 \u2588")
