@@ -1,0 +1,24 @@
+File: lib.test
+Type: alloc_space
+Time: 2026-11-08 03:02:20 CST
+Showing nodes accounting for 2263.35kB, 100% of 2263.35kB total
+      flat  flat%   sum%        cum   cum%
+ 1025.05kB 45.29% 45.29%  1025.05kB 45.29%  runtime.mallocgc
+  655.29kB 28.95% 74.24%  1238.30kB 54.71%  compress/flate.NewWriter (inline)
+  583.01kB 25.76%   100%   583.01kB 25.76%  compress/flate.newFastEnc (inline)
+         0     0%   100%   583.01kB 25.76%  compress/flate.(*compressor).init
+         0     0%   100%  1238.30kB 54.71%  compress/gzip.(*Writer).Write
+         0     0%   100%   512.05kB 22.62%  runtime.(*scavengerState).init
+         0     0%   100%      513kB 22.67%  runtime.allocm
+         0     0%   100%   512.05kB 22.62%  runtime.bgscavenge
+         0     0%   100%      513kB 22.67%  runtime.mstart
+         0     0%   100%      513kB 22.67%  runtime.mstart0
+         0     0%   100%      513kB 22.67%  runtime.mstart1
+         0     0%   100%      513kB 22.67%  runtime.newm
+         0     0%   100%  1025.05kB 45.29%  runtime.newobject
+         0     0%   100%      513kB 22.67%  runtime.resetspinning
+         0     0%   100%      513kB 22.67%  runtime.schedule
+         0     0%   100%      513kB 22.67%  runtime.startm
+         0     0%   100%      513kB 22.67%  runtime.wakep
+         0     0%   100%  1238.30kB 54.71%  runtime/pprof.(*profileBuilder).build
+         0     0%   100%  1238.30kB 54.71%  runtime/pprof.profileWriter

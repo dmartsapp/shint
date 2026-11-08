@@ -1,0 +1,37 @@
+File: lib-handlers.test
+Type: cpu
+Time: 2026-11-08 03:01:46 CST
+Duration: 32.70s, Total samples = 1.31s ( 4.01%)
+Showing nodes accounting for 1.31s, 100% of 1.31s total
+Showing top 30 nodes out of 316
+      flat  flat%   sum%        cum   cum%
+     0.52s 39.69% 39.69%      0.52s 39.69%  syscall.rawsyscalln
+     0.13s  9.92% 49.62%      0.13s  9.92%  encoding/json/internal/jsonwire.parseHexUint16 (inline)
+     0.09s  6.87% 56.49%      0.09s  6.87%  runtime.usleep
+     0.08s  6.11% 62.60%      0.21s 16.03%  encoding/json/internal/jsonwire.ConsumeStringResumable
+     0.08s  6.11% 68.70%      0.08s  6.11%  runtime.kevent
+     0.07s  5.34% 74.05%      0.07s  5.34%  runtime.memmove
+     0.07s  5.34% 79.39%      0.07s  5.34%  runtime.pthread_cond_signal
+     0.05s  3.82% 83.21%      0.13s  9.92%  encoding/json/internal/jsonwire.AppendQuote
+     0.05s  3.82% 87.02%      0.05s  3.82%  runtime.pthread_cond_wait
+     0.02s  1.53% 88.55%      0.02s  1.53%  encoding/json/internal/jsonwire.ConsumeSimpleString
+     0.02s  1.53% 90.08%      0.08s  6.11%  encoding/json/internal/jsonwire.appendEscapedASCII
+     0.02s  1.53% 91.60%      0.06s  4.58%  encoding/json/internal/jsonwire.appendEscapedUTF16 (inline)
+     0.02s  1.53% 93.13%      0.02s  1.53%  runtime.memclrNoHeapPointers
+     0.02s  1.53% 94.66%      0.02s  1.53%  runtime.pthread_kill
+     0.01s  0.76% 95.42%      0.01s  0.76%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.01s  0.76% 96.18%      0.01s  0.76%  runtime.(*mspan).nextFreeIndex
+     0.01s  0.76% 96.95%      0.01s  0.76%  runtime.acquirepNoTrace
+     0.01s  0.76% 97.71%      0.01s  0.76%  runtime.gcEndWork
+     0.01s  0.76% 98.47%      0.04s  3.05%  runtime.mallocgc
+     0.01s  0.76% 99.24%      0.01s  0.76%  runtime.mmap
+     0.01s  0.76%   100%      0.01s  0.76%  runtime.scanObject
+         0     0%   100%      0.03s  2.29%  _.goready.func1
+         0     0%   100%      0.02s  1.53%  bufio.(*Reader).Read
+         0     0%   100%      0.01s  0.76%  bufio.(*Writer).Flush
+         0     0%   100%      0.07s  5.34%  bytes.(*Buffer).ReadFrom
+         0     0%   100%      0.01s  0.76%  bytes.(*Buffer).grow
+         0     0%   100%      0.02s  1.53%  bytes.Clone
+         0     0%   100%      0.01s  0.76%  bytes.growSlice
+         0     0%   100%      0.01s  0.76%  crypto/tls.(*Conn).Close
+         0     0%   100%      0.01s  0.76%  crypto/tls.(*Conn).closeNotify
