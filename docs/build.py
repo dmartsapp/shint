@@ -421,6 +421,13 @@ def read_version():
     return m.group(1) if m else "dev"
 
 
+def read_go_version():
+    """The Go release go.mod's `go` line names - the one every workflow builds with
+    (go-version-file: go.mod) and the Dockerfile's builder image must match."""
+    m = re.search(r"^go\s+(\S+)\s*$", (ROOT / "go.mod").read_text(), re.M)
+    return m.group(1) if m else "unknown"
+
+
 def changelog_page():
     """CHANGELOG.md (repo root, the single source of truth) rendered as a docs page."""
     text = (ROOT / "CHANGELOG.md").read_text()
@@ -430,15 +437,18 @@ def changelog_page():
     return intro + text
 
 
-_TOKEN_RE = re.compile(r"(\\?)\{\{(version|minor|major)\}\}")
+_TOKEN_RE = re.compile(r"(\\?)\{\{(version|minor|major|go)\}\}")
 
 
-def fill_tokens(text, version):
+def fill_tokens(text, version, go=None):
     """The current release in a docs page, from main.go's Version, so an example never goes
     stale and a release edits no page: {{version}} -> 4.2.2, {{minor}} -> 4.2, {{major}} -> 4.
-    A backslash keeps one literal: \\{{version}} -> {{version}}. Other {{...}} are left alone."""
+    {{go}} is the Go release shint is built with, from go.mod (1.27.3), so moving Go edits no
+    page either. A backslash keeps one literal: \\{{version}} -> {{version}}. Other {{...}} are
+    left alone."""
     parts = version.split(".")
-    values = {"version": version, "minor": ".".join(parts[:2]), "major": parts[0]}
+    values = {"version": version, "minor": ".".join(parts[:2]), "major": parts[0],
+              "go": go if go is not None else read_go_version()}
     return _TOKEN_RE.sub(lambda m: m.group(0)[1:] if m.group(1) else values[m.group(2)], text)
 
 

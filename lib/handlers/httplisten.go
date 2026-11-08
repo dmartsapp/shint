@@ -331,7 +331,11 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		_ = server.Shutdown(shutdownCtx)
 		cancel()
-		<-serverErr
+		// Wait for Serve to return. After Shutdown it returns http.ErrServerClosed;
+		// anything else is reported, as the select above does.
+		if err := <-serverErr; err != nil && err != http.ErrServerClosed && !*jsonoutput {
+			fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "server error "+lib.Fields("error", err.Error()), true))
+		}
 	}
 
 	// See httpExitGrace: belt-and-suspenders margin against the process

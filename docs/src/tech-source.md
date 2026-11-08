@@ -13,7 +13,8 @@ nav: Source reference
 |---|---|
 | `main.go` | The command line. Defines the cobra commands (`telnet`, `ping`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `listen tcp|udp|http`), every flag, argument validation, the exit-status scheme, and `scanContext`. Holds the `Version` constant. |
 | `main_test.go` | End-to-end tests of the CLI. `TestMain` makes the test binary behave as `shint` when `SHINT_TEST_RUN_MAIN=1`, so tests run it as a subprocess and assert real exit statuses and stdout/stderr. |
-| `go.mod`, `go.sum` | The module (`github.com/dmartsapp/shint/v4`), the Go version, and pinned dependencies. |
+| `go.mod`, `go.sum` | The module (`github.com/dmartsapp/shint/v4`), the Go version, and pinned dependencies. The `go` line ({{go}}) is the one place the Go release is chosen: see [Moving to a new Go release](tech-ci.md#moving-to-a-new-go-release). |
+| `toolchain_test.go` | Fails when the `Dockerfile`'s builder image is not the Go `go.mod` names, so the container images and the release binaries are built with the same Go. |
 | `Makefile` | The one place to build and test from: cross-compilation targets for every release platform, the version-string logic for local builds, and the checks (`make check`, `make test-live`, `make test-full`). |
 | `Dockerfile` | Two-stage image build: Go build stage, distroless final stage. |
 | `.dockerignore`, `.gitignore` | What stays out of the Docker build context and out of git (`bin/`, `*.json`, `.DS_Store`). |
@@ -104,7 +105,7 @@ nav: Source reference
 | File | Purpose |
 |---|---|
 | `Makefile` | One target per platform (`linux-amd64`, `darwin-arm64`, ...), the groups `linux`/`darwin`/`windows`/..., `all` (the desktop triad), `all-platforms` (every release target), `run`, `clean`. Builds with `CGO_ENABLED=0 -trimpath -ldflags "-s -w -X main.Version=..."`. It also holds every check: `check`, `test`, `test-live`, `test-full`, `fmt-check`, `vet`, `lint`, `vuln`, `docs-check`, `workflows`, `tools` and `help` (see [Testing](tech-testing.md#running-the-tests)). |
-| `Dockerfile` | Stage 1 `golang:1.27.1-alpine` compiles the binary for `TARGETOS`/`TARGETARCH`; stage 2 `gcr.io/distroless/static-debian12:nonroot` carries only the binary and CA certificates. `ENTRYPOINT ["/shint"]`, `CMD ["--help"]`. |
+| `Dockerfile` | Stage 1 `golang:{{go}}-alpine` (the Go `go.mod` names - `toolchain_test.go` keeps the two the same) compiles the binary for `TARGETOS`/`TARGETARCH`; stage 2 `gcr.io/distroless/static-debian12:nonroot` carries only the binary and CA certificates. `ENTRYPOINT ["/shint"]`, `CMD ["--help"]`. |
 | `.dockerignore` | Keeps `.git`, `.github`, `bin`, markdown files and scripts out of the build context. |
 
 ## Continuous integration

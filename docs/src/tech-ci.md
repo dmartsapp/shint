@@ -51,7 +51,7 @@ A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag 
 - **The guard:** the first job of every workflow is `verify-tag`, which calls the reusable workflow `verify-release-tag.yaml`; every other job waits for it. See [The release-tag guard](#the-release-tag-guard).
 - **Go toolchain:** `actions/setup-go@v5` with `go-version-file: go.mod` and `check-latest: true`, so CI builds with the version the module declares (or the newest patch of it).
 - **Checkout:** `actions/checkout@v5`.
-- **Linter:** `golangci-lint` **pinned to `v2.13.2`** through `golangci/golangci-lint-action@v7`. It is pinned because `latest` once resolved to a build made with an older Go than the module targets and failed for that reason alone; and action v6 does not support golangci-lint v2.
+- **Linter:** `golangci-lint` **pinned to `v2.15.0`** through `golangci/golangci-lint-action@v7` (Check installs the same version with `go install`). It is pinned because `latest` once resolved to a build made with an older Go than the module targets and failed for that reason alone; and action v6 does not support golangci-lint v2. **A new Go can need a newer golangci-lint**: golangci-lint reads the compiled packages the module's Go writes with its own copy of `golang.org/x/tools`, so when a Go release changes that format, an older golangci-lint fails on every package it type-checks - Go 1.27.3 introduced format version 5, which golangci-lint v2.13.2 (x/tools v0.49.0) cannot read (`export data version 5 is greater than maximum supported version 4`) and v2.14.0 and later (x/tools v0.50.0 and later) can. It is the x/tools inside golangci-lint that matters, not the Go it was built with.
 - **Vulnerabilities:** `golang/govulncheck-action@v1`.
 - **Least privilege:** every job declares `permissions` explicitly (`contents: read` by default; `contents: write` only to create the release; `issues: write` only to file failure issues; `packages: write` only to push to GHCR; `id-token: write` and `attestations: write` only in the binary build, to sign and store its attestation).
 
@@ -94,7 +94,7 @@ The GitHub-managed automation listed [below](#automation-github-manages) is not 
 
 | Job | What it does |
 |---|---|
-| `check` | Checks out the code, looks for a [signed local check report](#the-signed-local-check-report), sets up Go, and then runs one of two things. **With a valid report**: installs `govulncheck` and runs **`make check-quick`**, about a minute. **Without one**: installs `golangci-lint` v2.13.2 (the version `make check` insists on), `govulncheck` and `actionlint` with `go install`, and runs the whole **`make check`**, the command you run locally ([Testing](tech-testing.md#running-the-tests)), about three and a half minutes. Neither runs the live smoke test, which needs real hosts. |
+| `check` | Checks out the code, looks for a [signed local check report](#the-signed-local-check-report), sets up Go, and then runs one of two things. **With a valid report**: installs `govulncheck` and runs **`make check-quick`**, about a minute. **Without one**: installs `golangci-lint` v2.15.0 (the version `make check` insists on), `govulncheck` and `actionlint` with `go install`, and runs the whole **`make check`**, the command you run locally ([Testing](tech-testing.md#running-the-tests)), about three and a half minutes. Neither runs the live smoke test, which needs real hosts. |
 | `report-failure` | If `check` itself failed, files an issue "CI Failure: make check" (see [Failure issues](#failure-issues)). |
 
 Because it runs *after* the merge, a failure does not stop the merge - it opens an issue rather than blocking anything (see [Failure issues](#failure-issues)). Merging to main happens on its own timeline (see the checklist below); a release is a separate, later step: a `vX.Y.Z` tag pushed once `main` already has the release commit and Check has passed on it - `make release` does both, in that order ([Making a release](tech-release.md#making-a-release)).
@@ -173,6 +173,18 @@ Lint, Vulnerability Check and Check each file an issue when their check fails: t
 | `verify-tag` | - | The [guard](#the-release-tag-guard). |
 | `govulncheck` | `verify-tag` | Runs `govulncheck`, writes its report to a file, and turns it into a step summary table (status, vulnerability count, checked modules, details). |
 | `report-failure` | `govulncheck` | If the check itself failed, files an issue "CI Failure: Vulnerability Check" like the lint workflow does. |
+
+## Moving to a new Go release
+
+`go.mod`'s `go` line (now {{go}}) chooses the Go release for everything: every workflow sets up that Go (`go-version-file: go.mod`), the `Dockerfile`'s builder image must name the same one (`toolchain_test.go` fails otherwise), and the documentation fills it in (`\{{go}}`). shint's whole networking stack is the standard library, so **a Go patch release is often a security fix for shint**: when `govulncheck` reports a standard-library advisory, the fix is a newer Go, not a change to shint's code - v4.3.0 moved from Go 1.27.1 to 1.27.3 for exactly that (see the [changelog](changelog.md)).
+
+1. Install the new Go locally and check `go version`.
+2. `go mod edit -go=X.Y.Z`, and move any `golang.org/x/...` module `govulncheck` names (`go get golang.org/x/net@vA.B.C`, then `go mod tidy`). Check the module's own `go` line first: it must not ask for a newer Go than the one you are moving to.
+3. `Dockerfile`: `FROM golang:X.Y.Z-alpine`, once Docker Hub has that tag.
+4. `make lint`. If golangci-lint fails on every package with `export data version N is greater than maximum supported version M`, the new Go writes compiled packages in a format the pinned golangci-lint cannot read: move the pin to a golangci-lint whose `golang.org/x/tools` can (check its `go.mod`, and x/tools' `internal/pkgbits/version.go`) - in `Makefile` (`GOLANGCI_LINT_VERSION`), `check.yaml`, and the `golangci-lint-action` steps of `lint.yaml`, `build.yaml`, `docker-hub.yaml` and `ghcr.yaml` - and install it: `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@vX.Y.Z`. A newer golangci-lint can find new problems; fix them in the same change. Clear its cache (`golangci-lint cache clean`) before believing a clean run: cached results can hide the failure.
+5. `make check` - `govulncheck` must say *No vulnerabilities found* - and a changelog entry naming the advisories.
+
+Binaries already published keep the Go they were built with; only the next release carries the fix, so a serious advisory can be a reason for a patch release.
 
 ## Binary build and release
 
