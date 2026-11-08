@@ -27,6 +27,7 @@ Includes:
 | `tls`/`cert` - certificate chain, expiry, SANs, protocol/cipher, `--warn-days N` | - | Not started |
 | `nmap` upgrades: `--ports 22,80,443` lists, CIDR/multi-host sweeps, service names | - | Not started |
 | `web -k`: the "TLS verification disabled" warning logs at `ERROR` while exit status is 0 | [#37](https://github.com/dmartsapp/shint/issues/37) | Not started - fits naturally with the `tls` work |
+| `web`: `Response Received` instead of `OK` on a response line, and the status's standard name (`status_text`, from the IANA registry) next to its number - text and `--json`, also on `--timing` hops and `listen http` | [#90](https://github.com/dmartsapp/shint/issues/90) | Done - [`4f208a7`](https://github.com/dmartsapp/shint/commit/4f208a7) |
 | SBOM (`syft`) + a preserved vulnerability report (`govulncheck`'s existing scan, plus `grype` for the container images specifically), for both binaries and images | [#71](https://github.com/dmartsapp/shint/issues/71) | Not started - touches `build.yaml`, `docker-hub.yaml`, `ghcr.yaml`, `vulncheck.yaml` together |
 
 ## Bugs
