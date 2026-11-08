@@ -28,6 +28,11 @@ class Tokens(unittest.TestCase):
     def test_the_three_tokens(self):
         self.assertEqual(build.fill_tokens("{{version}} {{minor}} {{major}}", "4.3.0"), "4.3.0 4.3 4")
 
+    def test_the_go_token_is_go_mods_go_line(self):
+        self.assertEqual(build.fill_tokens("golang:{{go}}-alpine", "4.3.0", go="1.27.3"), "golang:1.27.3-alpine")
+        self.assertRegex(build.read_go_version(), r"^1\.\d+(\.\d+)?$")
+        self.assertEqual(build.fill_tokens("{{go}}", "4.3.0"), build.read_go_version())
+
     def test_a_backslash_keeps_one_literal(self):
         self.assertEqual(build.fill_tokens(r"\{{version}} is {{version}}", "4.3.0"), "{{version}} is 4.3.0")
 
@@ -39,8 +44,8 @@ class Tokens(unittest.TestCase):
     def test_every_page_is_filled_in_except_its_escaped_tokens(self):
         for src in sorted(build.SRC.glob("*.md")):
             raw = src.read_text()
-            out = build.fill_tokens(raw, "9.8.7")
-            for name in ("version", "minor", "major"):
+            out = build.fill_tokens(raw, "9.8.7", go="9.9.9")
+            for name in ("version", "minor", "major", "go"):
                 with self.subTest(page=src.name, token=name):
                     self.assertEqual(out.count("{{%s}}" % name), raw.count("\\{{%s}}" % name))
 

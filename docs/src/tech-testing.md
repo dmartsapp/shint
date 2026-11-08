@@ -33,7 +33,7 @@ There are 174 top-level Go tests: 135 in `lib/handlers`, 31 in `lib` and 8 end-t
 | `make profile` | Runtime stats and profiles of this tree's build, and the machine they ran on ([Profiling](#profiling)); `make release` runs it for every release | Go, python3 |
 | `make check-quick` | What CI runs when that receipt exists: `gofmt`, `go vet` (this OS only), `go test` for the CLI tests and `lib`, the battery's command-line groups A to D, `govulncheck`, the docs check | Go, python3 |
 
-`make check` takes about a minute and a half (the Go tests about 15 s cold, the battery about a minute). The first thing it does is check that the tools are installed and prints the install command for any that are not: `golangci-lint` (it must be **v2.13.2**, the version CI pins - a different version is refused), `govulncheck`, `actionlint`, and `python3`. A tool that is not on `PATH` can be named: `make check GOLANGCI_LINT=/path/to/golangci-lint`.
+`make check` takes about a minute and a half (the Go tests about 15 s cold, the battery about a minute). The first thing it does is check that the tools are installed and prints the install command for any that are not: `golangci-lint` (it must be **v2.15.0**, the version CI pins - a different version is refused), `govulncheck`, `actionlint`, and `python3`. A tool that is not on `PATH` can be named: `make check GOLANGCI_LINT=/path/to/golangci-lint`.
 
 For finer control, call `go test` directly:
 
@@ -164,7 +164,7 @@ The [Slack notifier](tech-ci.md#slack-notification) has its own tests, `test_not
 
 ## Lint and vulnerability checks
 
-`golangci-lint` (v2.13.2, default linters) and `govulncheck` gate every release in CI ([CI/CD workflows](tech-ci.md)). `make lint` and `make vuln` run them locally, as part of `make check`; CI will not tell you about a failure until the tag is already pushed.
+`golangci-lint` (v2.15.0, default linters) and `govulncheck` gate every release in CI ([CI/CD workflows](tech-ci.md)). `make lint` and `make vuln` run them locally, as part of `make check`; CI will not tell you about a failure until the tag is already pushed.
 
 ## Writing a good test here
 

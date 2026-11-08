@@ -92,11 +92,12 @@ The other commands follow the same six steps; only step 4 differs.
 
 | Module | Version | Used for |
 |---|---|---|
-| Go | 1.27.1 (`go.mod`) | The toolchain, and the whole networking stack (`net`, `net/http`, `crypto/tls`) |
+| Go | {{go}} (`go.mod`) | The toolchain, and the whole networking stack (`net`, `net/http`, `crypto/tls`) - so a Go patch release is often a security fix for shint itself; see [Moving to a new Go release](tech-ci.md#moving-to-a-new-go-release) |
 | `github.com/spf13/cobra` | v1.10.2 | Commands, flags, help, shell completion |
-| `github.com/dmartsapp/go-ping/v2` | v2.0.0 | ICMP echo over IPv4 and IPv6 (used only by `ping`) |
+| `github.com/dmartsapp/go-ping/v2` | v2.0.1 | ICMP echo over IPv4 and IPv6 (used only by `ping`) |
 | `github.com/spf13/pflag`, `mousetrap` | indirect | cobra's flag parsing and Windows support |
-| `golang.org/x/net`, `golang.org/x/sys` | indirect | Pulled in by go-ping |
+| `golang.org/x/net` | v0.62.0 | DNS messages (`dns/dnsmessage`) for `dns` and the authoritative-servers lookup; go-ping uses it too |
+| `golang.org/x/sys` | indirect | Pulled in by go-ping and x/net |
 
 Everything else - DNS, TCP, UDP, HTTP, TLS, JSON, signal handling - is the standard library. There is no HTTP framework, no logging library and no configuration library.
 

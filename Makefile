@@ -127,7 +127,7 @@ GOLANGCI_LINT ?= golangci-lint
 GOVULNCHECK ?= govulncheck
 ACTIONLINT ?= actionlint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
-GOLANGCI_LINT_VERSION = 2.13.2
+GOLANGCI_LINT_VERSION = 2.15.0
 
 .PHONY: help check check-quick attest hooks test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-start release release-check readme-reconcile profile profile-compare profile-history profile-machines profile-ab
 
