@@ -1,0 +1,37 @@
+File: lib-handlers.test
+Type: alloc_space
+Time: 2026-11-08 03:02:19 CST
+Showing nodes accounting for 2165.56MB, 97.68% of 2216.89MB total
+Dropped 163 nodes (cum <= 11.08MB)
+Showing top 30 nodes out of 46
+      flat  flat%   sum%        cum   cum%
+  774.75MB 34.95% 34.95%   774.75MB 34.95%  encoding/json/internal/jsonwire.appendEscapedUTF16 (inline)
+  528.87MB 23.86% 58.80%   528.87MB 23.86%  bytes.growSlice
+  150.49MB  6.79% 65.59%   150.49MB  6.79%  bytes.(*Buffer).String
+  150.49MB  6.79% 72.38%   150.49MB  6.79%  bytes.Clone (inline)
+  150.41MB  6.78% 79.17%   150.41MB  6.78%  fmt.(*buffer).writeString (inline)
+  149.99MB  6.77% 85.93%  1407.01MB 63.47%  github.com/dmartsapp/shint/v4/lib/handlers.WebHandler
+  149.82MB  6.76% 92.69%   151.15MB  6.82%  encoding/json/jsontext.AppendFormat[go.shape.[]uint8]
+   53.78MB  2.43% 95.12%    53.78MB  2.43%  io.ReadAll
+   32.96MB  1.49% 96.60%    32.96MB  1.49%  slices.Grow[go.shape.[]uint8,go.shape.uint8] (inline)
+      24MB  1.08% 97.68%    77.78MB  3.51%  github.com/dmartsapp/shint/v4/lib/handlers.WebHandler.func1
+         0     0% 97.68%   528.87MB 23.86%  bytes.(*Buffer).ReadFrom
+         0     0% 97.68%   528.87MB 23.86%  bytes.(*Buffer).grow
+         0     0% 97.68%   958.71MB 43.25%  encoding/json.Marshal (inline)
+         0     0% 97.68%  1109.35MB 50.04%  encoding/json.MarshalIndent
+         0     0% 97.68%   151.15MB  6.82%  encoding/json.appendIndent
+         0     0% 97.68%   807.71MB 36.43%  encoding/json/internal/jsonwire.AppendQuote
+         0     0% 97.68%   774.75MB 34.95%  encoding/json/internal/jsonwire.appendEscapedASCII
+         0     0% 97.68%   805.15MB 36.32%  encoding/json/jsontext.(*Encoder).WriteToken (inline)
+         0     0% 97.68%   805.15MB 36.32%  encoding/json/jsontext.(*encoderState).WriteToken
+         0     0% 97.68%   805.15MB 36.32%  encoding/json/jsontext.Token.appendString
+         0     0% 97.68%   958.71MB 43.25%  encoding/json/v2.Marshal
+         0     0% 97.68%   805.66MB 36.34%  encoding/json/v2.makeInterfaceArshaler.func1
+         0     0% 97.68%   805.15MB 36.32%  encoding/json/v2.makeMapArshaler.func2
+         0     0% 97.68%   805.66MB 36.34%  encoding/json/v2.makeSliceArshaler.func2
+         0     0% 97.68%   808.22MB 36.46%  encoding/json/v2.makeStructArshaler.func2
+         0     0% 97.68%   808.22MB 36.46%  encoding/json/v2.marshalEncode
+         0     0% 97.68%   805.66MB 36.34%  encoding/json/v2.marshalValueAny
+         0     0% 97.68%   150.41MB  6.78%  fmt.(*fmt).fmtS
+         0     0% 97.68%   150.41MB  6.78%  fmt.(*fmt).padString
+         0     0% 97.68%   150.41MB  6.78%  fmt.(*pp).doPrintln

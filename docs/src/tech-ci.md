@@ -176,7 +176,7 @@ Lint, Vulnerability Check and Check each file an issue when their check fails: t
 
 ## Moving to a new Go release
 
-`go.mod`'s `go` line (now {{go}}) chooses the Go release for everything: every workflow sets up that Go (`go-version-file: go.mod`), the `Dockerfile`'s builder image must name the same one (`toolchain_test.go` fails otherwise), and the documentation fills it in (`\{{go}}`). shint's whole networking stack is the standard library, so **a Go patch release is often a security fix for shint**: when `govulncheck` reports a standard-library advisory, the fix is a newer Go, not a change to shint's code - v4.3.0 moved from Go 1.27.1 to 1.27.3 for exactly that (see the [changelog](changelog.md)).
+`go.mod`'s `go` line (now {{go}}) chooses the Go release for everything: every workflow sets up that Go (`go-version-file: go.mod`), the `Dockerfile`'s builder image must name the same one (`toolchain_test.go` fails otherwise), and the documentation fills it in (`\{{go}}`). shint's whole networking stack is the standard library, so **a Go patch release is often a security fix for shint**: when `govulncheck` reports a standard-library advisory, the fix is a newer Go, not a change to shint's code - v4.2.4 moved from Go 1.27.1 to 1.27.3 for exactly that, as a security patch (see the [changelog](changelog.md)).
 
 1. Install the new Go locally and check `go version`.
 2. `go mod edit -go=X.Y.Z`, and move any `golang.org/x/...` module `govulncheck` names (`go get golang.org/x/net@vA.B.C`, then `go mod tidy`). Check the module's own `go` line first: it must not ask for a newer Go than the one you are moving to.
