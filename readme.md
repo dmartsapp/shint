@@ -198,6 +198,10 @@ A change that would break scripts on purpose - taking a command or a flag away, 
 
 shint collects nothing. The only network traffic is what a check itself needs - DNS queries, TCP and UDP connections, ICMP packets and the HTTP requests you ask for - sent to the addresses you name.
 
+## Security
+
+Security fixes go into the newest release only. Report a vulnerability privately, through [GitHub](https://github.com/dmartsapp/shint/security/advisories/new). The support policy - including how shint takes its dependencies' fixes - and every advisory are in [SECURITY.md](SECURITY.md) and on the [Security](https://dmartsapp.github.io/shint/docs/security.html) page.
+
 ## License
 
 [MIT](LICENSE) &copy; Farhan Sabbir Siddique
