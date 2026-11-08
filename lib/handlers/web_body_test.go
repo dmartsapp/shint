@@ -76,8 +76,8 @@ func TestWebIncompleteBodyIsAFailure(t *testing.T) {
 			if !strings.Contains(out, "ERROR response incomplete") {
 				t.Errorf("no 'ERROR response incomplete' line; output:\n%s", out)
 			}
-			if strings.Contains(out, "OK response") {
-				t.Errorf("an OK response line was printed for a body that ended early:\n%s", out)
+			if strings.Contains(out, "Response Received") || strings.Contains(out, "OK response") {
+				t.Errorf("a response line was printed for a body that ended early:\n%s", out)
 			}
 
 			asJSON := true

@@ -65,7 +65,7 @@ shint web http://127.0.0.1:8080/   # in another
 
 ```text
 Sun Sep 20 01:50:18 MDT 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=114.5µs
-Sun Sep 20 01:50:19 MDT 2026: [web] OK response url=http://127.0.0.1:8080/ status=200 bytes_sent=97 bytes_received=160 speed=50.92KB/s attempt=1/1 time=3.0685ms
+Sun Sep 20 01:50:19 MDT 2026: [web] Response Received url=http://127.0.0.1:8080/ status=200 status_text=OK bytes_sent=97 bytes_received=160 speed=50.92KB/s attempt=1/1 time=3.0685ms
 ```
 Which ports are open on a machine?
 

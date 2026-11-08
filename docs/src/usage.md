@@ -266,11 +266,11 @@ shint web http://127.0.0.1:18091/ --count 100
 
 ```text
 Sun Sep 20 23:14:31 MDT 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=48.791µs
-Sun Sep 20 23:14:32 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=58.33KB/s attempt=1/100 time=2.678917ms
-Sun Sep 20 23:14:33 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=83.95KB/s attempt=2/100 time=1.861292ms
-Sun Sep 20 23:14:34 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=91.62KB/s attempt=3/100 time=1.705375ms
-Sun Sep 20 23:14:35 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=92.28KB/s attempt=4/100 time=1.69325ms
-Sun Sep 20 23:14:36 MDT 2026: [web] OK response url=http://127.0.0.1:18091/ status=200 bytes_sent=98 bytes_received=160 speed=138.13KB/s attempt=5/100 time=1.131208ms
+Sun Sep 20 23:14:32 MDT 2026: [web] Response Received url=http://127.0.0.1:18091/ status=200 status_text=OK bytes_sent=98 bytes_received=160 speed=58.33KB/s attempt=1/100 time=2.678917ms
+Sun Sep 20 23:14:33 MDT 2026: [web] Response Received url=http://127.0.0.1:18091/ status=200 status_text=OK bytes_sent=98 bytes_received=160 speed=83.95KB/s attempt=2/100 time=1.861292ms
+Sun Sep 20 23:14:34 MDT 2026: [web] Response Received url=http://127.0.0.1:18091/ status=200 status_text=OK bytes_sent=98 bytes_received=160 speed=91.62KB/s attempt=3/100 time=1.705375ms
+Sun Sep 20 23:14:35 MDT 2026: [web] Response Received url=http://127.0.0.1:18091/ status=200 status_text=OK bytes_sent=98 bytes_received=160 speed=92.28KB/s attempt=4/100 time=1.69325ms
+Sun Sep 20 23:14:36 MDT 2026: [web] Response Received url=http://127.0.0.1:18091/ status=200 status_text=OK bytes_sent=98 bytes_received=160 speed=138.13KB/s attempt=5/100 time=1.131208ms
 Sun Sep 20 23:14:36 MDT 2026: [web] ERROR interrupted attempts_completed=5 attempts_planned=100 time=5.4974175s
 
 ========================================== web STATISTICS ==========================================

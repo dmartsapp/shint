@@ -145,7 +145,7 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 			if e.outcome == "" { // it never reached the handler
 				if status := statusFromHead(head); status > 0 {
 					e.outcome, e.status = "rejected", status
-					e.err = "the request could not be read: answered " + strconv.Itoa(status) + " " + http.StatusText(status)
+					e.err = "the request could not be read: answered " + strconv.Itoa(status) + " " + lib.HTTPStatusText(status)
 				} else {
 					e.outcome = "incomplete"
 					e.err = "the connection ended before a complete request arrived, and nothing was answered"
@@ -156,11 +156,16 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 		atomic.AddInt64(&totalReceived, received)
 		atomic.AddInt64(&totalSent, sent)
 
+		statusText := ""
+		if e.status > 0 { // 0: nothing was answered
+			statusText = lib.HTTPStatusText(e.status)
+		}
 		if *jsonoutput {
 			event := lib.HTTPListenEvent{
 				Method:           e.method,
 				Path:             e.path,
 				StatusCode:       e.status,
+				StatusText:       statusText,
 				RemoteAddr:       e.remote,
 				BytesReceived:    received,
 				BytesSent:        sent,
@@ -173,7 +178,7 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 			return
 		}
 		if e.served {
-			fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "request "+lib.Fields("method", e.method, "path", e.path, "status", e.status, "remote", e.remote, "bytes_received", received, "bytes_sent", sent, "time_taken", e.processing), false))
+			fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "request "+lib.Fields("method", e.method, "path", e.path, "status", e.status, "status_text", statusText, "remote", e.remote, "bytes_received", received, "bytes_sent", sent, "time_taken", e.processing), false))
 			return
 		}
 		fields := []any{}
@@ -181,7 +186,7 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 			fields = append(fields, "method", e.method, "path", e.path)
 		}
 		if e.status > 0 {
-			fields = append(fields, "status", e.status)
+			fields = append(fields, "status", e.status, "status_text", statusText)
 		}
 		fields = append(fields, "remote", e.remote, "bytes_received", received, "bytes_sent", sent, "error", e.err)
 		fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "request "+e.outcome+" "+lib.Fields(fields...), true))

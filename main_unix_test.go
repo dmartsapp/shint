@@ -82,7 +82,7 @@ func TestManyAttemptsAtOnceWithFewDescriptors(t *testing.T) {
 		ok   string
 	}{
 		{"telnet", []string{"telnet", "127.0.0.1", strconv.Itoa(acceptingTCPListener(t))}, "connect ok"},
-		{"web", []string{"web", web.URL}, "OK response"},
+		{"web", []string{"web", web.URL}, "] Response Received url="},
 		{"udp", []string{"udp", "127.0.0.1", strconv.Itoa(udpSocket(t, true)), "--data", "x"}, "probe open"},
 	}
 	for _, c := range cases {

@@ -150,9 +150,10 @@ func TestWebHandlerBytesIncludeHeaders(t *testing.T) {
 	})
 }
 
-// TestWebHandlerLogLine covers the text-mode response line: one OK (the log
-// level), no "response ok" / "200 OK" repeats, and the same sent/received
-// figures the JSON carries.
+// TestWebHandlerLogLine covers the text-mode response line: the Response
+// Received level (#90; it was "OK response", and before v4.0.2 "OK response ok
+// ... status=\"200 OK\""), the status as a number with its standard name in a
+// field of its own, and the same sent/received figures the JSON carries.
 func TestWebHandlerLogLine(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -167,18 +168,15 @@ func TestWebHandlerLogLine(t *testing.T) {
 
 	var line string
 	for _, candidate := range strings.Split(out, "\n") {
-		if strings.Contains(candidate, "[web]") && strings.Contains(candidate, "response") && strings.Contains(candidate, "status=") {
+		if strings.Contains(candidate, "[web] Response Received url=") {
 			line = candidate
 		}
 	}
 	if line == "" {
 		t.Fatalf("no response line in output:\n%s", out)
 	}
-	if n := strings.Count(line, "OK"); n != 1 {
-		t.Errorf("response line has %d \"OK\"s, want just the log level:\n%s", n, line)
-	}
-	if !strings.Contains(line, "status=200 ") {
-		t.Errorf("expected numeric status=200, got:\n%s", line)
+	if n := strings.Count(line, "OK"); n != 1 || !strings.Contains(line, " status=200 status_text=OK ") {
+		t.Errorf("want the numeric status=200 and, once, its name status_text=OK - got %d \"OK\"s:\n%s", n, line)
 	}
 	m := regexp.MustCompile(`bytes_sent=(\d+) bytes_received=(\d+)`).FindStringSubmatch(line)
 	if m == nil {

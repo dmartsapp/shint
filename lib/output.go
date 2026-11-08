@@ -68,22 +68,27 @@ type TelnetStats struct {
 // WebStats is one HTTP attempt. A failed attempt (no response at all) is still
 // recorded, with Success false and the reason in Errors.
 type WebStats struct {
-	URL       string         `json:"url"`
-	Errors    []string       `json:"errors"`
-	Request   map[string]any `json:"request"`
-	Response  map[string]any `json:"response"`
-	Success   bool           `json:"success"`
-	RecvTime  int64          `json:"recv_unixtime_µs"`
-	SentTime  int64          `json:"sent_unixtime_µs"`
-	TimeTaken int64          `json:"time_taken_µs"`
+	URL      string         `json:"url"`
+	Errors   []string       `json:"errors"`
+	Request  map[string]any `json:"request"`
+	Response map[string]any `json:"response"`
+	Success  bool           `json:"success"`
+	// Result is the level the attempt's text line shows: LevelResponseReceived
+	// when a response arrived, whatever its status, LevelError when none did.
+	Result    string `json:"result"`
+	RecvTime  int64  `json:"recv_unixtime_µs"`
+	SentTime  int64  `json:"sent_unixtime_µs"`
+	TimeTaken int64  `json:"time_taken_µs"`
 	// BytesSent/BytesReceived are everything that crossed the connection for
 	// this request - request line + headers + body out, status line +
 	// headers + body in - measured the same way "listen http" measures its
 	// own bytes_received/bytes_sent, so the two sides can be compared directly.
-	BytesSent     int64   `json:"bytes_sent"`
-	BytesReceived int64   `json:"bytes_received"`
-	StatusCode    int     `json:"status_code"`   // added field to store the HTTP status code
-	BandwidthKBs  float64 `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
+	BytesSent     int64 `json:"bytes_sent"`
+	BytesReceived int64 `json:"bytes_received"`
+	StatusCode    int   `json:"status_code"` // the HTTP status; 0 when no response arrived
+	// StatusText is the standard name of StatusCode (HTTPStatusText), "" for 0.
+	StatusText   string  `json:"status_text"`
+	BandwidthKBs float64 `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
 	// Timing is present only with --timing: where the request's time went,
 	// one entry per hop when a redirect was followed.
 	Timing *WebTiming `json:"timing,omitempty"`
@@ -105,10 +110,12 @@ type WebTiming struct {
 //	download  the first byte of the response -> its body fully read
 //	total     the hop from start to finish
 //
-// StatusCode is 0 for a hop that got no response (the request failed there).
+// StatusCode is 0 for a hop that got no response (the request failed there),
+// and StatusText - its standard name, HTTPStatusText - is then "".
 type WebHopTiming struct {
 	URL        string `json:"url"`
 	StatusCode int    `json:"status_code"`
+	StatusText string `json:"status_text"`
 	Reused     bool   `json:"reused_connection"`
 	DNSUs      int64  `json:"dns_µs"`
 	ConnectUs  int64  `json:"connect_µs"`
@@ -186,6 +193,7 @@ type HTTPListenEvent struct {
 	Method           string `json:"method"`
 	Path             string `json:"path"`
 	StatusCode       int    `json:"status_code"`
+	StatusText       string `json:"status_text"` // HTTPStatusText(StatusCode): "" when nothing was answered
 	RemoteAddr       string `json:"remote_address"`
 	BytesReceived    int64  `json:"bytes_received"`
 	BytesSent        int64  `json:"bytes_sent"`
@@ -359,15 +367,32 @@ type LocalJSONOutput struct {
 }
 
 // LogWithTimestamp formats a single human-readable log line uniformly across
-// every module: "<timestamp>: [<module>] <OK|ERROR> <message>". Keeping the
+// every module: "<timestamp>: [<module>] <OK|ERROR> <message>" (LogWithLevel
+// for a line with another level, such as Response Received). Keeping the
 // prefix identical for telnet/ping/web/nmap/udp/listen output makes the
 // stream easy to grep/parse regardless of which command produced it.
 func LogWithTimestamp(module string, message string, iserror bool) string {
-	status := "OK"
+	level := LevelOK
 	if iserror {
-		status = "ERROR"
+		level = LevelError
 	}
-	return fmt.Sprintf("%s: [%s] %s %s", time.Now().Format(DATETIMEFORMAT), module, status, message)
+	return LogWithLevel(module, level, message)
+}
+
+// The levels a text line can carry, right after its [module]. Most lines are
+// OK or ERROR; a line that shows an HTTP response is Response Received, because
+// a response arrived whatever its status - the status itself (403 Forbidden, say)
+// is on the line, in status= and status_text=.
+const (
+	LevelOK               = "OK"
+	LevelError            = "ERROR"
+	LevelResponseReceived = "Response Received"
+)
+
+// LogWithLevel is LogWithTimestamp with the level given: one of the Level
+// constants.
+func LogWithLevel(module, level, message string) string {
+	return fmt.Sprintf("%s: [%s] %s %s", time.Now().Format(DATETIMEFORMAT), module, level, message)
 }
 
 // Fields renders a uniform, greppable "key=value" suffix used by every

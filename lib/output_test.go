@@ -2,6 +2,7 @@ package lib
 
 import (
 	"bytes"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -131,5 +132,48 @@ func TestSetVerboseAppliesTheFlag(t *testing.T) {
 	SetVerbose(false)
 	if Verbose {
 		t.Error("SetVerbose(false) left Verbose true")
+	}
+}
+
+// HTTPStatusText follows the IANA registry (RFC 9110), not Go's
+// http.StatusText and not the server's reason phrase (issue #90).
+func TestHTTPStatusText(t *testing.T) {
+	for code, want := range map[int]string{
+		200: "OK", 301: "Moved Permanently", 403: "Forbidden", 404: "Not Found", 500: "Internal Server Error",
+		// where Go's names predate RFC 9110
+		413: "Content Too Large", 414: "URI Too Long", 416: "Range Not Satisfiable", 422: "Unprocessable Content", 418: "(Unused)",
+		306: "(Unused)", 510: "Not Extended (OBSOLETED)",
+		// unregistered: the class RFC 9110 section 15 says to treat it as
+		104: "Informational (1xx)", 299: "Successful (2xx)", 399: "Redirection (3xx)", 499: "Client Error (4xx)", 520: "Server Error (5xx)",
+		// outside 100-599: invalid
+		0: "Invalid", 99: "Invalid", 600: "Invalid", 999: "Invalid",
+	} {
+		if got := HTTPStatusText(code); got != want {
+			t.Errorf("HTTPStatusText(%d) = %q, want %q", code, got, want)
+		}
+	}
+}
+
+// Every code Go has a name for is in the registry table too, so none of them
+// falls back to its class. A new Go release naming a new code fails this until
+// the table (from the IANA registry) has it.
+func TestHTTPStatusTextKnowsEveryCodeGoNames(t *testing.T) {
+	for code := 100; code <= 599; code++ {
+		if http.StatusText(code) == "" {
+			continue
+		}
+		if _, ok := httpStatusNames[code]; !ok {
+			t.Errorf("%d (%s to Go) is not in httpStatusNames", code, http.StatusText(code))
+		}
+	}
+}
+
+func TestLogWithLevel(t *testing.T) {
+	got := LogWithLevel("web", LevelResponseReceived, "url=x status=403 status_text=Forbidden")
+	if !strings.HasSuffix(got, ": [web] Response Received url=x status=403 status_text=Forbidden") {
+		t.Errorf("LogWithLevel() = %q", got)
+	}
+	if got := LogWithTimestamp("web", "request failed", true); !strings.HasSuffix(got, ": [web] ERROR request failed") {
+		t.Errorf("LogWithTimestamp(error) = %q", got)
 	}
 }

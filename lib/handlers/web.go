@@ -216,6 +216,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 					Request:       map[string]any{"method": method, "body": data, "headers": reqHeaders},
 					Response:      map[string]any{},
 					Success:       false,
+					Result:        lib.LevelError,
 					SentTime:      start.UnixMicro(),
 					RecvTime:      time.Now().UnixMicro(),
 					TimeTaken:     elapsed.Microseconds(),
@@ -312,7 +313,9 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				}
 				stat.Request = map[string]any{"method": method, "body": data, "headers": request.Header}
 				stat.Success = true
+				stat.Result = lib.LevelResponseReceived
 				stat.StatusCode = response.StatusCode
+				stat.StatusText = lib.HTTPStatusText(response.StatusCode)
 				stat.BytesSent = bytesSent
 				stat.BytesReceived = bytesReceived
 				stat.BandwidthKBs = bandwidthKBs
@@ -326,7 +329,9 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			statsMutex.Unlock()
 
 			if !*jsonoutput {
-				fmt.Println(lib.LogWithTimestamp(webModule, "response "+lib.Fields("url", URL.String(), "status", response.StatusCode, "bytes_sent", bytesSent, "bytes_received", bytesReceived, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken), false))
+				// Response Received, not OK: a response arrived, and what it said - a
+				// 403 Forbidden is as much a response as a 200 OK - is in the fields.
+				fmt.Println(lib.LogWithLevel(webModule, lib.LevelResponseReceived, lib.Fields("url", URL.String(), "status", response.StatusCode, "status_text", lib.HTTPStatusText(response.StatusCode), "bytes_sent", bytesSent, "bytes_received", bytesReceived, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken)))
 				for _, line := range timingLines(rec, attempt, iterations) {
 					fmt.Println(line)
 				}

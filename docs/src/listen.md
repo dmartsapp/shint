@@ -97,12 +97,12 @@ Each request is reported once it is complete:
 
 ```text
 Sun Sep 20 01:50:18 MDT 2026: [listen-http] OK listening address=0.0.0.0:8080 max_requests=6
-Sun Sep 20 01:50:19 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:59313 bytes_received=97 bytes_sent=160 time_taken=504.375µs
-Sun Sep 20 01:50:20 MDT 2026: [listen-http] OK request method=GET path=/missing status=404 remote=127.0.0.1:59314 bytes_received=104 bytes_sent=175 time_taken=340.042µs
-Sun Sep 20 01:50:21 MDT 2026: [listen-http] OK request method=POST path=/ status=200 remote=127.0.0.1:59315 bytes_received=189 bytes_sent=160 time_taken=85.583µs
-Sun Sep 20 01:50:21 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:59316 bytes_received=97 bytes_sent=160 time_taken=73.291µs
-Sun Sep 20 01:50:22 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:59317 bytes_received=97 bytes_sent=160 time_taken=150.042µs
-Sun Sep 20 01:50:23 MDT 2026: [listen-http] OK request method=GET path=/ status=200 remote=127.0.0.1:59318 bytes_received=97 bytes_sent=160 time_taken=139.875µs
+Sun Sep 20 01:50:19 MDT 2026: [listen-http] OK request method=GET path=/ status=200 status_text=OK remote=127.0.0.1:59313 bytes_received=97 bytes_sent=160 time_taken=504.375µs
+Sun Sep 20 01:50:20 MDT 2026: [listen-http] OK request method=GET path=/missing status=404 status_text="Not Found" remote=127.0.0.1:59314 bytes_received=104 bytes_sent=175 time_taken=340.042µs
+Sun Sep 20 01:50:21 MDT 2026: [listen-http] OK request method=POST path=/ status=200 status_text=OK remote=127.0.0.1:59315 bytes_received=189 bytes_sent=160 time_taken=85.583µs
+Sun Sep 20 01:50:21 MDT 2026: [listen-http] OK request method=GET path=/ status=200 status_text=OK remote=127.0.0.1:59316 bytes_received=97 bytes_sent=160 time_taken=73.291µs
+Sun Sep 20 01:50:22 MDT 2026: [listen-http] OK request method=GET path=/ status=200 status_text=OK remote=127.0.0.1:59317 bytes_received=97 bytes_sent=160 time_taken=150.042µs
+Sun Sep 20 01:50:23 MDT 2026: [listen-http] OK request method=GET path=/ status=200 status_text=OK remote=127.0.0.1:59318 bytes_received=97 bytes_sent=160 time_taken=139.875µs
 Sun Sep 20 01:50:23 MDT 2026: [listen-http] OK done requests=6 bytes_received=681 bytes_sent=975 total_time=5.459357042s
 ```
 `bytes_received` and `bytes_sent` are the raw bytes on the connection - request line, headers and body in; status line, headers and body out - counted the same way [`web`](web.md#bytes-sent-and-received) counts its own. Compare the first request above (97 in, 160 out) with the client's output for the same request: they match exactly. `time_taken` is how long the server spent handling the request.
@@ -110,15 +110,15 @@ Sun Sep 20 01:50:23 MDT 2026: [listen-http] OK done requests=6 bytes_received=68
 With `--json`, one line per request:
 
 ```json
-{"method":"GET","path":"/","status_code":200,"remote_address":"127.0.0.1:59321","bytes_received":97,"bytes_sent":160,"processing_time_µs":189,"unixtime_µs":1789890626321434}
+{"method":"GET","path":"/","status_code":200,"status_text":"OK","remote_address":"127.0.0.1:59321","bytes_received":97,"bytes_sent":160,"processing_time_µs":189,"unixtime_µs":1789890626321434}
 ```
 ### A request that was not served
 
 A connection that sends bytes but does not become a request the listener answers is still a request somebody sent - a broken client, a proxy, a probe - so it is an `ERROR` line and it counts towards `--count`:
 
 ```text
-[listen-http] ERROR request rejected status=400 remote=127.0.0.1:59420 bytes_received=11 bytes_sent=103 error="the request could not be read: answered 400 Bad Request"
-[listen-http] ERROR request rejected method=POST path=/c status=400 remote=127.0.0.1:59421 bytes_received=93 bytes_sent=103 error="the request body could not be read: invalid byte in chunk length"
+[listen-http] ERROR request rejected status=400 status_text="Bad Request" remote=127.0.0.1:59420 bytes_received=11 bytes_sent=103 error="the request could not be read: answered 400 Bad Request"
+[listen-http] ERROR request rejected method=POST path=/c status=400 status_text="Bad Request" remote=127.0.0.1:59421 bytes_received=93 bytes_sent=103 error="the request body could not be read: invalid byte in chunk length"
 [listen-http] ERROR request incomplete method=POST path=/up remote=127.0.0.1:59422 bytes_received=57 bytes_sent=0 error="the client did not finish sending the request: i/o timeout"
 ```
 

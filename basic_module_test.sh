@@ -59,8 +59,8 @@ echo ""
 # --- Test Cases ---
 
 # Web Tests
-run_test "Web GET" "$BINARY web https://google.com --count 1" 'status=200'
-run_test "Web POST" "$BINARY web -X POST https://httpbin.org/post --count 1" 'status=200'
+run_test "Web GET" "$BINARY web https://google.com --count 1" 'Response Received url=https://google.com status=200 status_text=OK'
+run_test "Web POST" "$BINARY web -X POST https://httpbin.org/post --count 1" 'status=200 status_text=OK'
 run_test "Web GET with JSON output" "$BINARY web https://google.com --json --count 1" '"status_code": 200'
 
 # Nmap Test

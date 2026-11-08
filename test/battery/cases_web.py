@@ -82,7 +82,7 @@ web("srv-bigjson-body-W", H + "/bigjson", "--json", "-W", rc=0, max=30)
 web("srv-binary-body-W", H + "/binary", "--json", "-W", rc=0)
 web("srv-empty-W", H + "/empty", "--json", "-W", rc=0)
 web("srv-gzip-bytes", H + "/gzip", "--json", rc=0)
-web("count-100", H + "/ok", "--count", "100", rc=0, serial=True, check=lambda r: None if r["out"].count("OK response") == 100 else "expected 100 response lines, got %d" % r["out"].count("OK response"))
+web("count-100", H + "/ok", "--count", "100", rc=0, serial=True, check=lambda r: None if r["out"].count("] Response Received url=") == 100 else "expected 100 response lines, got %d" % r["out"].count("] Response Received url="))
 web("count-100-json", H + "/ok", "--count", "100", "--json", rc=0, serial=True, check=lambda r: None if sum(s["success"] for s in json.loads(r["out"])["stats"]) == 100 else "expected 100 successful requests in the JSON")
 
 # ---------------- TLS

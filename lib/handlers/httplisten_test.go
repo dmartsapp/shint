@@ -317,7 +317,7 @@ func TestHTTPListenerLogsAndCountsARequestItCannotParse(t *testing.T) {
 	if !strings.HasPrefix(reply, "HTTP/1.1 400") {
 		t.Errorf("the client should be answered 400, got %q", reply)
 	}
-	mustContain(t, out, "[listen-http] ERROR request rejected status=400 remote=127.0.0.1:", "bytes_received=11 ", `error="the request could not be read: answered 400 Bad Request"`, "[listen-http] OK done requests=1 ")
+	mustContain(t, out, `[listen-http] ERROR request rejected status=400 status_text="Bad Request" remote=127.0.0.1:`, "bytes_received=11 ", `error="the request could not be read: answered 400 Bad Request"`, "[listen-http] OK done requests=1 ")
 	if strings.Contains(out, "OK request") {
 		t.Errorf("a request that could not be read is not an OK request:\n%s", out)
 	}
@@ -393,7 +393,7 @@ func TestHTTPListenerAnswersA400ForABodyItCannotParse(t *testing.T) {
 	if !strings.HasPrefix(reply, "HTTP/1.1 400") {
 		t.Errorf("the client should be answered 400, got %q", reply)
 	}
-	mustContain(t, out, "[listen-http] ERROR request rejected method=POST path=/c status=400 ", "the request body could not be read: invalid byte in chunk length", "done requests=1 ")
+	mustContain(t, out, `[listen-http] ERROR request rejected method=POST path=/c status=400 status_text="Bad Request" `, "the request body could not be read: invalid byte in chunk length", "done requests=1 ")
 }
 
 func TestHTTPListenerJSONEventsForRequestsThatWereNotServed(t *testing.T) {

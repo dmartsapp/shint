@@ -165,9 +165,14 @@ func (r *timingRecorder) hopTimings() []lib.WebHopTiming {
 		if end.IsZero() {
 			end = r.now()
 		}
+		statusText := ""
+		if h.status != 0 { // 0: this hop got no response
+			statusText = lib.HTTPStatusText(h.status)
+		}
 		out = append(out, lib.WebHopTiming{
 			URL:        h.url,
 			StatusCode: h.status,
+			StatusText: statusText,
 			Reused:     h.reused,
 			DNSUs:      span(h.dnsStart, h.dnsDone).Microseconds(),
 			ConnectUs:  span(h.connectStart, h.connectDone).Microseconds(),
@@ -217,7 +222,7 @@ func timingLines(rec *timingRecorder, attempt, iterations int) []string {
 		}
 		fields := []any{"url", h.URL, "hop", fmt.Sprintf("%d/%d", i+1, len(hops))}
 		if h.StatusCode != 0 {
-			fields = append(fields, "status", h.StatusCode)
+			fields = append(fields, "status", h.StatusCode, "status_text", h.StatusText)
 		}
 		fields = append(fields, "connection", connection, "dns", us(h.DNSUs), "connect", us(h.ConnectUs), "tls", us(h.TLSUs),
 			"wait", us(h.WaitUs), "download", us(h.DownloadUs), "total", us(h.TotalUs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations))

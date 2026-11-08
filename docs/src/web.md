@@ -53,7 +53,7 @@ shint web http://127.0.0.1:8080/
 
 ```text
 Sun Sep 20 01:50:18 MDT 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=114.5µs
-Sun Sep 20 01:50:19 MDT 2026: [web] OK response url=http://127.0.0.1:8080/ status=200 bytes_sent=97 bytes_received=160 speed=50.92KB/s attempt=1/1 time=3.0685ms
+Sun Sep 20 01:50:19 MDT 2026: [web] Response Received url=http://127.0.0.1:8080/ status=200 status_text=OK bytes_sent=97 bytes_received=160 speed=50.92KB/s attempt=1/1 time=3.0685ms
 
 ========================================== web STATISTICS ==========================================
 Requests sent: 1, Response received: 1, Success: 100%
@@ -68,14 +68,27 @@ shint web http://127.0.0.1:8080/missing
 
 ```text
 Sun Sep 20 01:50:19 MDT 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=118.625µs
-Sun Sep 20 01:50:20 MDT 2026: [web] OK response url=http://127.0.0.1:8080/missing status=404 bytes_sent=104 bytes_received=175 speed=67.90KB/s attempt=1/1 time=2.516959ms
+Sun Sep 20 01:50:20 MDT 2026: [web] Response Received url=http://127.0.0.1:8080/missing status=404 status_text="Not Found" bytes_sent=104 bytes_received=175 speed=67.90KB/s attempt=1/1 time=2.516959ms
 
 ========================================== web STATISTICS ==========================================
 Requests sent: 1, Response received: 1, Success: 100%
 Latency: minimum: 2.516959ms, average: 2.516959ms, maximum: 2.516959ms
 Sun Sep 20 01:50:20 MDT 2026: [web] OK done total_time=1.004834208s
 ```
-A 404 is still a *response*, so the exit status stays `0` - only a request that gets no response at all (refused, timed out, TLS failure) exits `1`. Read the status from the output or `--json` if you need to act on it.
+A 404 is still a *response*, so the line says `Response Received` - not `OK`, and not `ERROR` - and the exit status stays `0`. Only a request that gets no response at all (refused, timed out, TLS failure) is an `ERROR` line and exits `1`. What the response said is in `status`, the number, and `status_text`, its standard name; read them from the output, or `status_code` and `status_text` from `--json`, if you need to act on it.
+
+### Status names
+
+`status_text` is the standard name of the code, from the [IANA HTTP Status Code Registry](https://www.iana.org/assignments/http-status-codes/) (RFC 9110) - never the reason phrase the server sent: HTTP/2 and HTTP/3 responses carry none, and an HTTP/1.1 server can send any text after the number. It is not Go's built-in list either, whose names for 413, 414, 416, 422 and 418 predate RFC 9110.
+
+| The code | `status_text` |
+|---|---|
+| Registered, such as `403` or `404` | Its name: `Forbidden`, `"Not Found"` |
+| Reserved: `306` and `418` | `(Unused)`, as the registry lists them |
+| Not registered, such as Cloudflare's `520` | Its class, which RFC 9110 says a client must treat it as: `"Server Error (5xx)"` |
+| Outside 100-599 | `Invalid` |
+
+A name with a space is quoted, like every other value.
 
 ### POST with a body and headers
 
@@ -87,7 +100,7 @@ shint web -X POST -P '{"name":"shint"}' \
 
 ```text
 Sun Sep 20 01:50:20 MDT 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=108.833µs
-Sun Sep 20 01:50:21 MDT 2026: [web] OK response url=http://127.0.0.1:8080/ status=200 bytes_sent=189 bytes_received=160 speed=160.16KB/s attempt=1/1 time=975.584µs
+Sun Sep 20 01:50:21 MDT 2026: [web] Response Received url=http://127.0.0.1:8080/ status=200 status_text=OK bytes_sent=189 bytes_received=160 speed=160.16KB/s attempt=1/1 time=975.584µs
 
 ========================================== web STATISTICS ==========================================
 Requests sent: 1, Response received: 1, Success: 100%
@@ -104,8 +117,8 @@ shint web http://127.0.0.1:8080/ --count 2 --delay 300
 
 ```text
 Sun Sep 20 01:50:21 MDT 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=44.125µs
-Sun Sep 20 01:50:21 MDT 2026: [web] OK response url=http://127.0.0.1:8080/ status=200 bytes_sent=97 bytes_received=160 speed=125.82KB/s attempt=1/2 time=1.241875ms
-Sun Sep 20 01:50:22 MDT 2026: [web] OK response url=http://127.0.0.1:8080/ status=200 bytes_sent=97 bytes_received=160 speed=64.04KB/s attempt=2/2 time=2.44ms
+Sun Sep 20 01:50:21 MDT 2026: [web] Response Received url=http://127.0.0.1:8080/ status=200 status_text=OK bytes_sent=97 bytes_received=160 speed=125.82KB/s attempt=1/2 time=1.241875ms
+Sun Sep 20 01:50:22 MDT 2026: [web] Response Received url=http://127.0.0.1:8080/ status=200 status_text=OK bytes_sent=97 bytes_received=160 speed=64.04KB/s attempt=2/2 time=2.44ms
 
 ========================================== web STATISTICS ==========================================
 Requests sent: 2, Response received: 2, Success: 100%
@@ -150,12 +163,14 @@ shint web --json -W http://127.0.0.1:8080/
         }
       },
       "success": true,
+      "result": "Response Received",
       "recv_unixtime_µs": 1789890623262263,
       "sent_unixtime_µs": 1789890623259517,
       "time_taken_µs": 2452,
       "bytes_sent": 97,
       "bytes_received": 160,
       "status_code": 200,
+      "status_text": "OK",
       "bandwidth_kbs": 63.70725243361704
     }
   ],
@@ -201,7 +216,7 @@ shint web --cacert ca.pem https://localhost:9443/
 ```text
 Sun Sep 20 01:54:18 MDT 2026: [web] OK using custom CA bundle to verify server certificate
 Sun Sep 20 01:54:18 MDT 2026: [web] OK dns resolved host=localhost addresses=2 ips=[::1,127.0.0.1] time=1.848583ms
-Sun Sep 20 01:54:18 MDT 2026: [web] OK response url=https://localhost:9443/ status=200 bytes_sent=97 bytes_received=175 speed=17.66KB/s attempt=1/1 time=9.677334ms
+Sun Sep 20 01:54:18 MDT 2026: [web] Response Received url=https://localhost:9443/ status=200 status_text=OK bytes_sent=97 bytes_received=175 speed=17.66KB/s attempt=1/1 time=9.677334ms
 ```
 ### Skip verification (diagnostics only)
 
@@ -214,7 +229,7 @@ shint web -k https://localhost:9443/
 ```text
 Sun Sep 20 01:54:18 MDT 2026: [web] ERROR tls verification disabled warning="certificate checks are skipped, response may not be trustworthy"
 Sun Sep 20 01:54:18 MDT 2026: [web] OK dns resolved host=localhost addresses=2 ips=[::1,127.0.0.1] time=2.149791ms
-Sun Sep 20 01:54:18 MDT 2026: [web] OK response url=https://localhost:9443/ status=200 bytes_sent=97 bytes_received=175 speed=38.07KB/s attempt=1/1 time=4.48925ms
+Sun Sep 20 01:54:18 MDT 2026: [web] Response Received url=https://localhost:9443/ status=200 status_text=OK bytes_sent=97 bytes_received=175 speed=38.07KB/s attempt=1/1 time=4.48925ms
 ```
 ### Mutual TLS
 
@@ -235,7 +250,7 @@ shint web --cacert ca.pem --cert client.pem --key client-key.pem https://localho
 Sun Sep 20 01:54:18 MDT 2026: [web] OK using client certificate for mutual TLS
 Sun Sep 20 01:54:18 MDT 2026: [web] OK using custom CA bundle to verify server certificate
 Sun Sep 20 01:54:18 MDT 2026: [web] OK dns resolved host=localhost addresses=2 ips=[::1,127.0.0.1] time=1.388416ms
-Sun Sep 20 01:54:18 MDT 2026: [web] OK response url=https://localhost:9444/ status=200 bytes_sent=97 bytes_received=175 speed=18.41KB/s attempt=1/1 time=9.285083ms
+Sun Sep 20 01:54:18 MDT 2026: [web] Response Received url=https://localhost:9444/ status=200 status_text=OK bytes_sent=97 bytes_received=175 speed=18.41KB/s attempt=1/1 time=9.285083ms
 ```
 ## Timing: where the time went
 
@@ -261,8 +276,8 @@ shint web https://example.com --timing
 ```text
 Sun Sep 20 17:36:50 MDT 2026: [web] OK dns resolved host=example.com addresses=4 ips=[2606:4700:10::6814:179a,2606:4700:10::ac42:93f3,172.66.147.243,104.20.23.154] time=5.305375ms
 Sun Sep 20 17:36:50 MDT 2026: [web] OK dns authoritative zone=example.com nameservers=[elliott.ns.cloudflare.com,hera.ns.cloudflare.com] time=49.024ms
-Sun Sep 20 17:36:51 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=4.85KB/s attempt=1/1 time=141.889375ms
-Sun Sep 20 17:36:51 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 connection=new dns=3.845ms connect=34.038ms tls=55.517ms wait=45.806ms download=1.907ms total=141.678ms attempt=1/1
+Sun Sep 20 17:36:51 MDT 2026: [web] Response Received url=https://example.com status=200 status_text=OK bytes_sent=94 bytes_received=705 speed=4.85KB/s attempt=1/1 time=141.889375ms
+Sun Sep 20 17:36:51 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 status_text=OK connection=new dns=3.845ms connect=34.038ms tls=55.517ms wait=45.806ms download=1.907ms total=141.678ms attempt=1/1
 
 ========================================== web STATISTICS ==========================================
 Requests sent: 1, Response received: 1, Success: 100%
@@ -270,7 +285,7 @@ Latency: minimum: 141.889375ms, average: 141.889375ms, maximum: 141.889375ms
 Sun Sep 20 17:36:51 MDT 2026: [web] OK done total_time=1.14980475s
 ```
 
-Read the `timing` line: of the 141 ms, 55 ms was the TLS handshake, 46 ms the server taking to answer, 34 ms opening the connection and 4 ms the lookup. The download of the small page was 2 ms. (`time=` on the `response` line is the same request measured end to end; the `dns resolved` line at the top is a separate lookup made before the request, so its time is not one of these.)
+Read the `timing` line: of the 141 ms, 55 ms was the TLS handshake, 46 ms the server taking to answer, 34 ms opening the connection and 4 ms the lookup. The download of the small page was 2 ms. (`time=` on the `Response Received` line is the same request measured end to end; the `dns resolved` line at the top is a separate lookup made before the request, so its time is not one of these.)
 
 ### A redirect: one line per hop
 
@@ -283,9 +298,9 @@ shint web http://google.com --timing
 ```text
 Sun Sep 20 17:36:51 MDT 2026: [web] OK dns resolved host=google.com addresses=2 ips=[2607:f8b0:400a:803::200e,142.251.46.78] time=5.836708ms
 Sun Sep 20 17:36:51 MDT 2026: [web] OK dns authoritative zone=google.com nameservers=[ns1.google.com,ns2.google.com,ns3.google.com,ns4.google.com] time=41.446ms
-Sun Sep 20 17:36:53 MDT 2026: [web] OK response url=http://google.com status=200 bytes_sent=218 bytes_received=30872 speed=69.91KB/s attempt=1/1 time=431.219708ms
-Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=http://google.com hop=1/2 status=301 connection=new dns=3.677ms connect=199.103ms tls=0s wait=46.649ms download=625µs total=250.689ms attempt=1/1
-Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=http://www.google.com/ hop=2/2 status=200 connection=new dns=4.932ms connect=42.979ms tls=0s wait=74.752ms download=56.807ms total=180.304ms attempt=1/1
+Sun Sep 20 17:36:53 MDT 2026: [web] Response Received url=http://google.com status=200 status_text=OK bytes_sent=218 bytes_received=30872 speed=69.91KB/s attempt=1/1 time=431.219708ms
+Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=http://google.com hop=1/2 status=301 status_text="Moved Permanently" connection=new dns=3.677ms connect=199.103ms tls=0s wait=46.649ms download=625µs total=250.689ms attempt=1/1
+Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=http://www.google.com/ hop=2/2 status=200 status_text=OK connection=new dns=4.932ms connect=42.979ms tls=0s wait=74.752ms download=56.807ms total=180.304ms attempt=1/1
 
 ========================================== web STATISTICS ==========================================
 Requests sent: 1, Response received: 1, Success: 100%
@@ -306,10 +321,10 @@ shint web https://example.com --timing --count 2 --delay 500
 ```text
 Sun Sep 20 17:36:53 MDT 2026: [web] OK dns resolved host=example.com addresses=4 ips=[2606:4700:10::ac42:93f3,2606:4700:10::6814:179a,172.66.147.243,104.20.23.154] time=6.259083ms
 Sun Sep 20 17:36:53 MDT 2026: [web] OK dns authoritative zone=example.com nameservers=[elliott.ns.cloudflare.com,hera.ns.cloudflare.com] time=49.024ms
-Sun Sep 20 17:36:53 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=5.86KB/s attempt=1/2 time=117.558167ms
-Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 connection=new dns=5.217ms connect=28.472ms tls=47.975ms wait=35.328ms download=87µs total=117.461ms attempt=1/2
-Sun Sep 20 17:36:54 MDT 2026: [web] OK response url=https://example.com status=200 bytes_sent=94 bytes_received=705 speed=18.04KB/s attempt=2/2 time=38.163792ms
-Sun Sep 20 17:36:54 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 connection=reused dns=0s connect=0s tls=0s wait=37.862ms download=166µs total=38.092ms attempt=2/2
+Sun Sep 20 17:36:53 MDT 2026: [web] Response Received url=https://example.com status=200 status_text=OK bytes_sent=94 bytes_received=705 speed=5.86KB/s attempt=1/2 time=117.558167ms
+Sun Sep 20 17:36:53 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 status_text=OK connection=new dns=5.217ms connect=28.472ms tls=47.975ms wait=35.328ms download=87µs total=117.461ms attempt=1/2
+Sun Sep 20 17:36:54 MDT 2026: [web] Response Received url=https://example.com status=200 status_text=OK bytes_sent=94 bytes_received=705 speed=18.04KB/s attempt=2/2 time=38.163792ms
+Sun Sep 20 17:36:54 MDT 2026: [web] OK timing url=https://example.com hop=1/1 status=200 status_text=OK connection=reused dns=0s connect=0s tls=0s wait=37.862ms download=166µs total=38.092ms attempt=2/2
 
 ========================================== web STATISTICS ==========================================
 Requests sent: 2, Response received: 2, Success: 100%
@@ -351,13 +366,16 @@ With `--json`, each stat gains a `timing` object (and only with `--timing`: with
     {
       "url": "http://google.com",
       "success": true,
+      "result": "Response Received",
       "status_code": 200,
+      "status_text": "OK",
       "time_taken_µs": 434854,
       "timing": {
         "hops": [
           {
             "url": "http://google.com",
             "status_code": 301,
+            "status_text": "Moved Permanently",
             "reused_connection": false,
             "dns_µs": 3891,
             "connect_µs": 208242,
@@ -369,6 +387,7 @@ With `--json`, each stat gains a `timing` object (and only with `--timing`: with
           {
             "url": "http://www.google.com/",
             "status_code": 200,
+            "status_text": "OK",
             "reused_connection": false,
             "dns_µs": 4370,
             "connect_µs": 45324,
@@ -385,7 +404,7 @@ With `--json`, each stat gains a `timing` object (and only with `--timing`: with
 }
 ```
 
-`status_code` on a hop is `0` when that hop got no response. `reused_connection` is `true` when the connection was one an earlier request had left open.
+`status_code` on a hop is `0`, and `status_text` empty, when that hop got no response. `reused_connection` is `true` when the connection was one an earlier request had left open.
 
 ## Good to know
 

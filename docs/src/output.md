@@ -15,6 +15,7 @@ Every command's text output follows one grammar, so it is easy to read, `grep` a
 
 ```text
 <timestamp>: [<module>] OK|ERROR <message> key=value key=value ...
+<timestamp>: [web] Response Received key=value key=value ...
 ```
 
 | Part | Meaning |
@@ -22,6 +23,7 @@ Every command's text output follows one grammar, so it is easy to read, `grep` a
 | `<timestamp>` | Local time when the line was printed, in the format of Go's `time.UnixDate` (`Sun Sep 20 01:26:48 MDT 2026`). |
 | `[<module>]` | The command that spoke. |
 | `OK` / `ERROR` | The level of this one line. An `ERROR` line means that step failed (or, for a few warnings such as `-k`, that it deserves attention). |
+| `Response Received` | The level of a `web` line that shows an HTTP response - whatever its status: a `403` is as much a response as a `200`. What the response said is on the line, in `status` (the number) and `status_text` (its [standard name](web.md#status-names)). The line has no `<message>`; the level names the event. A request that got no response is an `ERROR` line. |
 | `<message>` | A short lowercase description of the event. |
 | `key=value` | Details. Durations print like `1.3ms`; values containing spaces are quoted (`error="dial tcp ..."`). |
 
@@ -44,7 +46,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 |---|---|
 | `telnet` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `connect ok`, `connect failed`, `done` |
 | `icmp` | `dns resolved`, `dns authoritative`, `received reply for request #N from ADDR (ipv4/ipv6) in Nms bytes=N`, `ping failed`, `done` |
-| `web` | `dns resolved`, `dns authoritative`, `response`, `timing` (with `--timing`), `request failed`, `tls verification disabled`, `using client certificate for mutual TLS`, `using custom CA bundle...`, `done` |
+| `web` | `dns resolved`, `dns authoritative`, `Response Received` (the level, with no message after it - see above), `timing` (with `--timing`), `request failed`, `tls verification disabled`, `using client certificate for mutual TLS`, `using custom CA bundle...`, `done` |
 | `nmap` | `dns resolved`, `dns authoritative`, `scan started`, `progress`, `port open`, `scan complete`, `scan interrupted`, `done` |
 | `udp` | `dns resolved`, `dns authoritative`, `probe open`, `probe closed`, `probe open|filtered`, `probe error`, `done` |
 | `ntp` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `response`, `query failed`, `done` |
@@ -167,13 +169,15 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Field | Meaning |
 |---|---|
 | `url`, `success`, `status_code` | The URL, whether a response arrived, and its HTTP status (`0` if none). |
+| `result` | The level the text line shows: `"Response Received"` when a response arrived, whatever its status; `"ERROR"` when none did. |
+| `status_text` | The [standard name](web.md#status-names) of `status_code` (`"Forbidden"`); empty when no response arrived. |
 | `request` | `method`, `body` and `headers` as sent by the application (headers the HTTP client adds itself, such as `Host`, are counted in `bytes_sent` but not listed). |
 | `response` | `header`, and `body` when `-W` is given (parsed as JSON when it is JSON, otherwise a string). Empty on failure. |
 | `bytes_sent`, `bytes_received` | Everything that crossed the connection - see [web](web.md#bytes-sent-and-received). |
 | `bandwidth_kbs` | `bytes_received` divided by the time taken, in KB/s. |
 | `sent_unixtime_µs`, `recv_unixtime_µs`, `time_taken_µs` | Timing. |
 | `errors` | Problems noticed, such as a malformed `-H` value or, on failure, why no response arrived. |
-| `timing` | Only with `--timing`: `hops`, one entry per hop (the request and each redirect it followed), each with `url`, `status_code` (`0` if that hop got no response), `reused_connection`, and the microsecond times `dns_µs`, `connect_µs`, `tls_µs`, `wait_µs`, `download_µs`, `total_µs`. See [web](web.md#timing-where-the-time-went). |
+| `timing` | Only with `--timing`: `hops`, one entry per hop (the request and each redirect it followed), each with `url`, `status_code` (`0` if that hop got no response), `status_text` (its standard name; empty with `0`), `reused_connection`, and the microsecond times `dns_µs`, `connect_µs`, `tls_µs`, `wait_µs`, `download_µs`, `total_µs`. See [web](web.md#timing-where-the-time-went). |
 
 **nmap**
 
@@ -276,7 +280,7 @@ The listen commands print one JSON object per line as events happen (JSON Lines)
 
 | Field | Meaning |
 |---|---|
-| `method`, `path`, `status_code` | The request line's method and path, and the status answered. A request that was not answered has `status_code` 0 (`method` and `path` only if the request line arrived); one answered `400` before it could be read has that status and no method or path. |
+| `method`, `path`, `status_code`, `status_text` | The request line's method and path, the status answered, and its [standard name](web.md#status-names) (empty when nothing was answered). A request that was not answered has `status_code` 0 (`method` and `path` only if the request line arrived); one answered `400` before it could be read has that status and no method or path. |
 | `remote_address` | The client. |
 | `bytes_received`, `bytes_sent` | Raw bytes on the connection in each direction, headers and body included. |
 | `processing_time_µs` | Time the handler took. |

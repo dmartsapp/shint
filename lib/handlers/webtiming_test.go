@@ -56,7 +56,7 @@ func TestTimingRecorderBreakdown(t *testing.T) {
 	if len(hops) != 1 {
 		t.Fatalf("%d hops, want 1", len(hops))
 	}
-	want := lib.WebHopTiming{URL: "https://example.test/", StatusCode: 200, Reused: false,
+	want := lib.WebHopTiming{URL: "https://example.test/", StatusCode: 200, StatusText: "OK", Reused: false,
 		DNSUs: 4000, ConnectUs: 10000, TLSUs: 20000, WaitUs: 30000, DownloadUs: 5000, TotalUs: 70000}
 	if hops[0] != want {
 		t.Errorf("\n got %+v\nwant %+v", hops[0], want)
@@ -306,7 +306,7 @@ func TestWebTimingTextOutputAndOffByDefault(t *testing.T) {
 		})
 	}
 	with := run(true)
-	want := "[web] OK timing url=" + srv.URL + " hop=1/1 status=200 connection=new dns="
+	want := "[web] OK timing url=" + srv.URL + " hop=1/1 status=200 status_text=OK connection=new dns="
 	if !strings.Contains(with, want) {
 		t.Errorf("output lacks %q:\n%s", want, with)
 	}

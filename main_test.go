@@ -786,7 +786,7 @@ func TestCtrlCShowsTheSummary(t *testing.T) { // telnet, web, udp - and ntp, rdn
 		summary                []string // what ends the output besides the "interrupted" line
 		args                   []string
 	}{
-		{"web", "web", "] OK response url=", []string{"web STATISTICS", "Requests sent: "}, []string{"web", web200.URL, "--count", "500", "--delay", "40"}},
+		{"web", "web", "] Response Received url=", []string{"web STATISTICS", "Requests sent: "}, []string{"web", web200.URL, "--count", "500", "--delay", "40"}},
 		{"telnet", "telnet", "] OK connect ok", []string{"telnet STATISTICS", "Requests sent: "}, []string{"telnet", "127.0.0.1", open, "--count", "500", "--delay", "40"}},
 		// udp has no statistics block; its summary is the done line
 		{"udp", "udp", "] OK probe open", []string{"probes_sent="}, []string{"udp", "127.0.0.1", udpEcho, "--data", "x", "--count", "500", "--delay", "40"}},

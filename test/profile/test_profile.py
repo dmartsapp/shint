@@ -75,7 +75,8 @@ class Scenarios(unittest.TestCase):
     def test_a_failure_is_seen_in_the_output_too(self):
         self.assertTrue(P.measure(["/bin/sh", "-c", "echo 'x: [web] ERROR response'"])["failed"])     # exit 0, as before v4.0.3
         self.assertTrue(P.measure(["/bin/sh", "-c", "echo '{\"success\": false}'"])["failed"])
-        self.assertFalse(P.measure(["/bin/sh", "-c", "echo 'x: [web] OK response'"])["failed"])
+        self.assertFalse(P.measure(["/bin/sh", "-c", "echo 'x: [web] OK response'"])["failed"])                # before v4.3.0
+        self.assertFalse(P.measure(["/bin/sh", "-c", "echo 'x: [web] Response Received status=403'"])["failed"])  # a response is not a failure
 
     def test_measure_reports_the_exit_code_and_the_process_resources(self):
         r = P.measure(["/bin/sh", "-c", "exit 3"])
