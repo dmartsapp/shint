@@ -4,6 +4,8 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.2.4 - unreleased
+
 ## v4.2.3 - 2026-09-26
 
 - **`shint --version` (and `-v`) also says which Go it was built with, and for which platform** - in brackets after the version, the way `go version` writes them: `v4.2.3/<commit>/<build time> (go1.27.1 linux/amd64)`, or `4.2.3 (go1.27.1 darwin/arm64)` from source. Worth including in a problem report: a behaviour can differ between Go releases. The version is still the first word, so anything that reads only that is unaffected; **a script that compares the whole line will notice** the new part. See [Install](https://dmartsapp.github.io/shint/docs/install.html#check-it-works). (Issue #77)
