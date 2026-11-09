@@ -1,6 +1,6 @@
 ---
 title: Security
-lead: Which releases get security fixes, how to report a vulnerability, how shint handles its dependencies' vulnerabilities - and every advisory so far, with its original sources.
+lead: Which releases get security fixes, how to report a vulnerability, how shint handles its dependencies' vulnerabilities, every release's software bill of materials - and every advisory so far, with its original sources.
 description: shint's security and support policy, and its security advisories with CVE numbers, sources, impact and resolution.
 section: Reference
 order: 3
@@ -36,7 +36,46 @@ shint is built with the [Go](https://go.dev) toolchain and its standard library 
 - **[`govulncheck`](https://go.dev/doc/security/vuln/)**, the Go project's vulnerability scanner, gates every release: the release workflows refuse to publish a release whose code reaches a known vulnerability in the [Go vulnerability database](https://pkg.go.dev/vuln/). It also runs in every local `make check` ([Testing](tech-testing.md)).
 - **It reports what shint's code can reach**, not only what it contains: a vulnerability counts when there is a call path from shint to the vulnerable function. A path is not proof that the flaw can be triggered - it often needs conditions shint never creates - so each advisory below says how shint was affected in practice. shint takes the fix either way.
 - **Between releases nothing scans on its own.** By design, no workflow runs except for a release tag ([the workflow trigger rule](tech-ci.md#the-workflow-trigger-rule)). An advisory published between two releases is found by the next `make check` or release - which is why the advisory below was found a month after its first fixes were published.
-- **Release integrity** - checksums and signed build attestations for every binary - is described in [Install](install.md).
+- **Release integrity** - checksums and signed build attestations for every binary - is described in [Install](install.md); what each binary is made of, in its [software bill of materials](#software-bill-of-materials).
+
+## Software bill of materials
+
+Every release binary has a **software bill of materials (SBOM)** next to it on its release page, in both standard formats, JSON:
+
+| File | Format |
+|---|---|
+| `shint.linux.amd64.cdx.json` | [CycloneDX](https://cyclonedx.org) 1.6 |
+| `shint.linux.amd64.spdx.json` | [SPDX](https://spdx.dev) 2.3 |
+
+and so on for every binary - one pair each, because what is compiled in differs by platform: the Windows builds include `github.com/inconshreveable/mousetrap`, the others do not.
+
+**What an SBOM lists** is what that binary was built from, read from the build information the Go toolchain embeds in every binary:
+
+- **the binary itself**: its SHA-256, the platform it is for, the commit it was built from, and the build settings (`GOOS`, `GOARCH`, `CGO_ENABLED=0`, `-trimpath`);
+- **the Go standard library**, as the Go release that built it: `stdlib` at `go{{go}}` for this release, with the package URL `pkg:golang/stdlib@...` and the CPE `cpe:2.3:a:golang:go:...` that vulnerability scanners match the Go project's own advisories against - where every [advisory](#advisories) so far has come from;
+- **every Go module compiled in**, with its version and its `go.sum` hash: `golang.org/x/net`, `golang.org/x/sys`, `github.com/spf13/cobra`, `github.com/spf13/pflag` and `github.com/dmartsapp/go-ping`.
+
+shint's own license is given (MIT); the modules' licenses are left unasserted.
+
+**Use one** with any tool that reads CycloneDX or SPDX - a vulnerability scanner such as [Grype](https://github.com/anchore/grype) or [OSV-Scanner](https://google.github.io/osv-scanner/), or [Dependency-Track](https://dependencytrack.org) - to find out whether a release you run is affected by a vulnerability published after it:
+
+```bash
+curl -LO https://github.com/dmartsapp/shint/releases/download/v{{version}}/shint.linux.amd64.cdx.json
+grype sbom:shint.linux.amd64.cdx.json
+```
+
+**Verify one.** From v4.3.0, each SBOM is made by the release workflow, in the job that builds its binary, and **attested** like the binary: a signed statement that this SBOM describes this exact file, made by the `dmartsapp/shint` workflow. With the [GitHub CLI](https://cli.github.com):
+
+```bash
+gh attestation verify shint.linux.amd64 --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom
+gh attestation verify shint.linux.amd64 --repo dmartsapp/shint --predicate-type https://spdx.dev/Document/v2.3
+```
+
+The attestation carries the SBOM itself (`--format json` prints it), so it is also proof that the file next to the binary is the one the workflow made.
+
+**Releases before v4.3.0** - v4.0.0 to v4.2.4 - got their SBOMs on 2026-11-09, made from their published binaries by the same script, after each binary was checked against the SHA-256 that GitHub records for it. They say so (the CycloneDX lifecycle is `post-build`; the SPDX package comment says it) and they are **not attested**: an attestation is made by the workflow at the build, and those builds are long finished. The binary's SHA-256 in each SBOM ties it to its file. The v4.0.x releases have no checksum files, and v4.0.0 to v4.0.6 no attestations either; their SBOMs still name the Go release that built them.
+
+**How they are made.** `.github/scripts/sbom.py` reads the build information with `go version -m -json` - which reads the binary and never runs it - and writes both formats. No third-party SBOM tool runs in the release pipeline. (Go's reader finds nothing in AIX's XCOFF binaries; for those the script reads the same block from the file itself, the way the toolchain does.)
 
 ## Advisories
 

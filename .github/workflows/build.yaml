@@ -131,6 +131,32 @@ jobs:
       - name: Write the SHA-256 checksum
         run: bash .github/scripts/write-checksums.sh bin
 
+      # The binary's software bill of materials, in CycloneDX 1.6 and SPDX 2.3:
+      # the Go release and every module it was built from, read from the build
+      # information Go embeds in the binary (.github/scripts/sbom.py, standard
+      # library Python and `go version -m` - no third-party tool runs here).
+      # After the checksum, so the checksum is the binary's alone.
+      - name: Write the SBOMs (CycloneDX and SPDX)
+        env:
+          BINARY: bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+        run: python3 .github/scripts/sbom.py --version "$GITHUB_REF_NAME" "$BINARY"
+
+      # Signed statements that these SBOMs describe this exact file, as the
+      # provenance above is. Users check them with gh attestation verify <file>
+      # --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom (or
+      # https://spdx.dev/Document/v2.3).
+      - name: Attest the CycloneDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+          sbom-path: bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}.cdx.json
+
+      - name: Attest the SPDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+          sbom-path: bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}.spdx.json
+
       - name: Upload artifacts
         if: success() || failure()
         uses: actions/upload-artifact@v4
@@ -211,10 +237,11 @@ jobs:
           echo "" >> release_notes.md
           echo "### Verify your download" >> release_notes.md
           echo "" >> release_notes.md
-          echo "Every binary has a \`.sha256\` file next to it and a signed build attestation." >> release_notes.md
+          echo "Every binary has a \`.sha256\` file next to it, a signed build attestation, and its software bill of materials (SBOM) in CycloneDX and SPDX." >> release_notes.md
           echo "" >> release_notes.md
           echo "- Checksum: \`sha256sum -c shint.linux.amd64.sha256\` (Linux) or \`shasum -a 256 -c shint.darwin.arm64.sha256\` (macOS), in the folder you downloaded both files to." >> release_notes.md
           echo "- Provenance: \`gh attestation verify shint.linux.amd64 --repo ${{ github.repository }}\` proves the file was built by this repository's workflow from this release's commit." >> release_notes.md
+          echo "- SBOM: \`shint.linux.amd64.cdx.json\` (CycloneDX 1.6) and \`shint.linux.amd64.spdx.json\` (SPDX 2.3) list what the binary is built from - the Go release and every module, with versions. Each is attested: \`gh attestation verify shint.linux.amd64 --repo ${{ github.repository }} --predicate-type https://cyclonedx.org/bom\` (\`https://spdx.dev/Document/v2.3\` for SPDX)." >> release_notes.md
 
           echo "" >> release_notes.md
           echo "### Code Changes" >> release_notes.md

@@ -87,7 +87,7 @@ What you will see, in order:
    Answer **`y`** to go on. Anything else stops with nothing pushed.
 4. **`==> main`, `==> Check on main`** - `main` pushed, then the wait for Check on that commit: about a minute with the signed report.
 5. **`==> the tag`** - the tag pushed. The release pipeline starts now.
-6. **`==> the release pipeline`** - the workflows watched to the end (about 10 to 15 minutes), the assets counted, this machine's binary downloaded and its checksum, attestation and `--version` checked, the milestone closed.
+6. **`==> the release pipeline`** - the workflows watched to the end (about 10 to 15 minutes), the binaries counted - each with its checksum and its two SBOMs - this machine's binary downloaded and its checksum, attestation and `--version` checked, the milestone closed.
 7. **`==> v4.4.0 is released`** - done.
 
 ### Step 5 - if it stops
@@ -124,7 +124,7 @@ Nothing. `main`'s README already shows the release, its row links to `releases/v
 | **Publish v4.4.0? [y/N]** | The summary of what is about to go out. The one question. | - |
 | Main | `main` is fast-forwarded to the release commit and pushed; then the wait for [Check](tech-ci.md#check-after-a-merge-to-main) on that commit. A red Check stops here: nothing is tagged. | a commit on `main` stays, but nothing is published |
 | Tag | The annotated tag - `vX.Y.Z: <Summary>` and the changelog - is pushed. This starts the release pipeline. | **no** |
-| Verify | The release workflows watched to the end; the assets counted against the previous release's; this machine's binary downloaded and its checksum, [attestation](install.md) and `--version` checked; the milestone closed if it has no open issues. | - |
+| Verify | The release workflows watched to the end; the binaries counted against the previous release's, and each checked for its checksum and its CycloneDX and SPDX SBOMs; this machine's binary downloaded and its checksum, [attestation](install.md) and `--version` checked; the milestone closed if it has no open issues. | - |
 
 **Main first, then the tag, with a wait in between.** Pushing the commit and the tag together (`git push --follow-tags`) would start the irreversible part before anything outside this machine has checked the commit. The wait for Check is the gap where that happens; `make attest` makes it about a minute (`check-quick`) instead of the whole suite. The script does the waiting, so the order cannot be got wrong.
 

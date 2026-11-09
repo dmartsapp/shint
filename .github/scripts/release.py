@@ -34,7 +34,7 @@ Without a subcommand, on release/vX.Y.Z, on release day:
     7. main fast-forwarded to the release commit and pushed; then the wait for Check on
        that commit - a red Check stops here, and nothing is tagged
     8. the annotated tag (its message from the changelog), pushed: the release pipeline
-    9. the release workflows watched, the assets counted, this machine's binary downloaded
+    9. the release workflows watched, the binaries counted - each with its checksum and SBOMs - this machine's binary downloaded
        and its checksum, attestation and --version checked, the milestone closed
 
 Every step recognises work already done, so after a failure (or a "no" at the prompt) the
@@ -602,13 +602,29 @@ def verify_binary(tag, assets):
         shutil.rmtree(work, ignore_errors=True)
 
 
-def previous_asset_count(tag):
+# Each binary of a release comes with these: its checksum, and its SBOMs (CycloneDX, SPDX).
+WITH_EACH_BINARY = (".sha256", ".cdx.json", ".spdx.json")
+
+
+def binaries(assets):
+    return sorted(a for a in assets if not a.endswith(WITH_EACH_BINARY))
+
+
+def missing_files(assets):
+    """What the release's binaries lack of their checksums and SBOMs."""
+    have = set(assets)
+    return [b + s for b in binaries(assets) for s in WITH_EACH_BINARY if b + s not in have]
+
+
+def previous_binary_count(tag):
+    """How many binaries the release before tag has - releases before v4.3.0 had their SBOMs added later,
+    so binaries are what is counted."""
     tags = sorted((t for t in git("tag", "--list", "v*").split() if TAG_RE.match(t) and t != tag),
                   key=lambda t: tuple(int(x) for x in t[1:].split(".")))
     if not tags:
         return None
     rel = gh_json("release", "view", tags[-1], "--repo", REPO, "--json", "assets")
-    return len(rel["assets"]) if rel else None
+    return len(binaries([a["name"] for a in rel["assets"]])) if rel else None
 
 
 def close_milestones(titles):
@@ -672,10 +688,14 @@ def publish(version, summary, includes):
         say("%-26s %s" % (r.get("workflowName", "?"), r.get("conclusion")))
     rel = gh_json("release", "view", tag, "--repo", REPO, "--json", "assets,url") or {"assets": []}
     assets = [a["name"] for a in rel.get("assets", [])]
-    want = previous_asset_count(tag)
-    say("release %s: %d assets%s" % (rel.get("url", tag), len(assets),
-                                    "" if want is None else " (the previous release had %d)" % want))
-    good = not failed and assets and (want is None or len(assets) == want)
+    bins, missing, want = binaries(assets), missing_files(assets), previous_binary_count(tag)
+    say("release %s: %d binaries, %d assets%s" % (rel.get("url", tag), len(bins), len(assets),
+                                                 "" if want is None else " (the previous release had %d binaries)" % want))
+    if missing:
+        say("FAIL missing: %s%s" % (", ".join(missing[:6]), " and %d more" % (len(missing) - 6) if len(missing) > 6 else ""))
+    else:
+        say("every binary has its checksum and its CycloneDX and SPDX SBOMs")
+    good = not failed and bins and not missing and (want is None or len(bins) == want)
     if os.environ.get("RELEASE_VERIFY_BINARY", "1") != "0" and assets:
         good = verify_binary(tag, assets) and good
     close_milestones([tag] + includes)

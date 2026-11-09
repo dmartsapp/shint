@@ -104,6 +104,8 @@ It succeeds only for a file that is byte-for-byte what that workflow built, and 
 An attestation proves where a file came from. It does not stop macOS or Windows from warning that the publisher is unknown: shint is not signed with an Apple or Microsoft certificate.
 :::
 
+**A software bill of materials** says what a binary is made of - the Go release and every module, with versions - in CycloneDX (`shint.darwin.arm64.cdx.json`) and SPDX (`shint.darwin.arm64.spdx.json`), next to the binary for every release from v4.0.0; from v4.3.0 each is attested too. See [Software bill of materials](security.md#software-bill-of-materials).
+
 ## Docker
 
 Every release is also published as a multi-architecture image (`linux/amd64`, `linux/arm64`) to two registries. The image is tiny: the same static binary on a distroless base, running as a non-root user.
