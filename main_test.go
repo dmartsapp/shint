@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"net"
 	"net/http"
@@ -281,6 +282,17 @@ func TestExitStatus(t *testing.T) {
 	web404 := httptest.NewServer(http.NotFoundHandler())
 	defer web404.Close()
 
+	// tls: an HTTPS server whose certificate (for 127.0.0.1, ::1 and example.com, until
+	// 2084) is trusted only through --cacert, written here as a PEM file.
+	tlsUp := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer tlsUp.Close()
+	tlsPort := strconv.Itoa(tlsUp.Listener.Addr().(*net.TCPAddr).Port)
+	tlsCA := filepath.Join(t.TempDir(), "ca.pem")
+	if err := os.WriteFile(tlsCA, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: tlsUp.Certificate().Raw}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	webPort := web200.Listener.Addr().(*net.TCPAddr).Port
+
 	udpEcho := strconv.Itoa(udpSocket(t, true))
 	udpSilent := strconv.Itoa(udpSocket(t, false))
 	udpClosed := strconv.Itoa(closedUDPPort(t))
@@ -313,6 +325,24 @@ func TestExitStatus(t *testing.T) {
 		{"web unsupported scheme", []string{"web", "ftp://127.0.0.1/"}, 2},
 		{"web no host", []string{"web", "http://"}, 2},
 		{"web scheme typo", []string{"web", "http:127.0.0.1"}, 2},
+
+		// tls: a chain that verifies passes; untrusted, the wrong name, no TLS or no server fail
+		{"tls trusted through --cacert", []string{"tls", "127.0.0.1", tlsPort, "--cacert", tlsCA}, 0},
+		{"tls trusted, json", []string{"tls", "127.0.0.1", tlsPort, "--cacert", tlsCA, "--json"}, 0},
+		{"tls --servername the certificate is for", []string{"tls", "127.0.0.1", tlsPort, "--cacert", tlsCA, "--servername", "example.com"}, 0},
+		{"tls untrusted", []string{"tls", "127.0.0.1", tlsPort}, 1},
+		{"tls a name the certificate is not for", []string{"tls", "127.0.0.1", tlsPort, "--cacert", tlsCA, "--servername", "other.example"}, 1},
+		{"tls expiring within --fail-days", []string{"tls", "127.0.0.1", tlsPort, "--cacert", tlsCA, "--fail-days", "40000"}, 1},
+		{"tls a plain-text port", []string{"tls", "127.0.0.1", strconv.Itoa(webPort)}, 1},
+		{"tls connection refused", []string{"tls", "127.0.0.1", closed}, 1},
+		{"tls dns failure", []string{"tls", dead}, 1},
+		{"tls port out of range", []string{"tls", "127.0.0.1", "99999"}, 2},
+		{"tls negative --warn-days", []string{"tls", "127.0.0.1", tlsPort, "--warn-days", "-1"}, 2},
+		{"tls negative --fail-days", []string{"tls", "127.0.0.1", tlsPort, "--fail-days", "-1"}, 2},
+		{"tls --cacert that does not exist", []string{"tls", "127.0.0.1", tlsPort, "--cacert", "no-such-file.pem"}, 2},
+		{"tls missing argument", []string{"tls"}, 2},
+		{"tls too many arguments", []string{"tls", "127.0.0.1", tlsPort, "extra"}, 2},
+		{"tls an IPv6 address with -4", []string{"tls", "::1", tlsPort, "-4"}, 2},
 
 		// nmap
 		{"nmap finds an open port", []string{"nmap", "127.0.0.1", "--from", open, "--to", open}, 0},

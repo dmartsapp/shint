@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tls · shint</title>
+<meta name="description" content="shint tls connects to a server, completes a TLS handshake and reports the TLS version, the cipher suite and every certificate presented, whether the chain verifies, and how long until it expires, with warning and failure thresholds.">
+<meta name="google-site-verification" content="f8HZndbzPlmiY4bsjViQCpBxHRTPAp1wtew-RUsIJws" />
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.2.4</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="tls.html" class="active" aria-current="page">tls</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="ntp.html">ntp</a></li><li><a href="wol.html">wol</a></li><li><a href="rdns.html">rdns</a></li><li><a href="dns.html">dns</a></li><li><a href="cidr.html">cidr</a></li><li><a href="ip.html">ip</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="changelog.html">Changelog</a></li><li><a href="security.html">Security</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-performance.html">Performance</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Commands</p>
+<h1>tls</h1>
+<p class="lead">Check a server's TLS certificate the way a browser would - the chain, whether it is trusted and valid for the name, when it expires - and the protocol and cipher the server chose.</p>
+<h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
+<p>An expired or misissued certificate takes a service down as surely as a crashed server, and the error users see - "your connection is not private" - says nothing about which certificate, or why. <code>shint tls</code> connects to a server, completes a TLS handshake, and reports what the server presented: the TLS version and cipher suite it chose, every certificate it sent - subject, issuer, the names it is valid for, when it expires, its key - and then whether the chain leads to a trusted root and is valid for the name you asked for, the way a browser decides.</p>
+<p>It checks every address the name resolves to, so one load-balanced server with an old certificate does not hide behind the others.</p>
+<h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> tls &lt;host&gt; [port] [<span class="tok-flag">--servername</span> NAME] [<span class="tok-flag">--cacert</span> FILE] [<span class="tok-flag">--warn-days</span> N] [<span class="tok-flag">--fail-days</span> N] [<span class="tok-flag">--count</span> N] [<span class="tok-flag">--timeout</span> S] [<span class="tok-flag">--json</span>]</code></pre></div>
+<p><code>port</code> is <code>443</code> unless given. <code>host</code> is a name or an address.</p>
+<div class="tablewrap"><table><thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td><code>--servername NAME</code></td><td>the host</td><td>The name sent in the handshake (SNI) and verified against the certificate. Set it to check an address (<code>shint tls 192.0.2.10 --servername www.example.com</code>), or one site of several on one server.</td></tr><tr><td><code>--cacert FILE</code></td><td>none</td><td>A PEM file of CA certificates to trust as well as the system's - for a private or internal CA.</td></tr><tr><td><code>--warn-days N</code></td><td><code>30</code></td><td>A certificate that expires within this many days gets a <code>WARN</code> line. The check still passes. <code>0</code> turns the warning off.</td></tr><tr><td><code>--fail-days N</code></td><td><code>0</code> (off)</td><td>Turn expiry into a check: a certificate that expires within this many days fails it, and the command exits <code>1</code>.</td></tr></tbody></table></div>
+<p>The other <a href="usage.html#flags-shared-by-every-command">shared flags</a> apply: <code>-4</code>/<code>-6</code> choose the address family, and <code>--timeout</code> is how long each connection and handshake gets.</p>
+<h2 id="what-it-reports">What it reports<a class="anchor" href="#what-it-reports" aria-label="Link to this section">#</a></h2>
+<p>For each address, one <code>handshake</code> line, then the certificates, then the verdict:</p>
+<div class="tablewrap"><table><thead><tr><th>Line</th><th>Meaning</th></tr></thead><tbody><tr><td><code>handshake</code></td><td>The handshake completed: <code>version</code> (<code>TLS 1.3</code> or <code>TLS 1.2</code>), <code>cipher</code> (the cipher suite the server chose) and how many certificates it sent.</td></tr><tr><td><code>certificate</code></td><td>One certificate, <code>depth=0</code> being the server's own and each next one its issuer: <code>subject</code>, <code>issuer</code>, <code>not_after</code> and <code>expires_in</code> (in days, or hours under two days), <code>names</code> (the host names and addresses it is valid for), <code>key</code> (<code>ECDSA P-256</code>, <code>RSA 2048</code>, ...) and <code>signature</code>. A certificate is listed once per run, not once per address or attempt.</td></tr><tr><td><code>verified</code></td><td>The chain leads to a trusted root and the certificate is valid for the name: <code>chain</code> is the path, from the server's certificate to the root that is trusted, and <code>trust</code> says which roots - <code>system</code>, or <code>system and --cacert</code>.</td></tr><tr><td><code>verification failed</code></td><td>It does not, with the reason: an unknown authority, an expired or not-yet-valid certificate, a name the certificate is not valid for.</td></tr><tr><td><code>expires soon</code></td><td>A <code>WARN</code>: a certificate in the verified chain expires within <code>--warn-days</code>.</td></tr><tr><td><code>expires too soon</code></td><td>An <code>ERROR</code>: within <code>--fail-days</code>.</td></tr><tr><td><code>handshake failed</code></td><td>No handshake: nothing listens there, the server did not answer with TLS, or it refused the handshake - each said in plain words.</td></tr></tbody></table></div>
+<p>Expiry is judged on the chain that verified - the server's certificate, its intermediates and the root a client trusts - not on every certificate sent: servers often add cross-signed certificates that clients never use, and one of those expiring does not matter.</p>
+<p>shint speaks TLS 1.2 and 1.3. A server that speaks only TLS 1.1 or older fails the handshake, and the line says so.</p>
+<h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
+<h3 id="a-public-site">A public site<a class="anchor" href="#a-public-site" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> tls example.com -4</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=example.com <span class="tok-key">addresses</span>=2 <span class="tok-key">ips</span>=[104.20.23.154,172.66.147.243] <span class="tok-key">time</span>=52.809208ms
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> dns authoritative <span class="tok-key">zone</span>=example.com <span class="tok-key">nameservers</span>=[elliott.ns.cloudflare.com,hera.ns.cloudflare.com] <span class="tok-key">time</span>=46.694ms
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> handshake <span class="tok-key">server</span>=example.com <span class="tok-key">address</span>=104.20.23.154 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">version</span>="TLS 1.3" <span class="tok-key">cipher</span>=TLS_AES_128_GCM_SHA256 <span class="tok-key">certificates</span>=4 <span class="tok-key">time</span>=213.148792ms
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> certificate <span class="tok-key">depth</span>=0 <span class="tok-key">subject</span>=<span class="tok-key">CN</span>=example.com <span class="tok-key">issuer</span>="<span class="tok-key">CN</span>=Cloudflare TLS Issuing ECC CA 3,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">not_after</span>=2026-12-25 <span class="tok-key">expires_in</span>=46d <span class="tok-key">names</span>=[example.com,*.example.com] <span class="tok-key">key</span>="ECDSA P-256" <span class="tok-key">signature</span>=ECDSA-SHA256
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> certificate <span class="tok-key">depth</span>=1 <span class="tok-key">subject</span>="<span class="tok-key">CN</span>=Cloudflare TLS Issuing ECC CA 3,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">issuer</span>="<span class="tok-key">CN</span>=SSL.com TLS Transit ECC CA R2,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">not_after</span>=2035-05-27 <span class="tok-key">expires_in</span>=3121d <span class="tok-key">key</span>="ECDSA P-256" <span class="tok-key">signature</span>=ECDSA-SHA384
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> certificate <span class="tok-key">depth</span>=2 <span class="tok-key">subject</span>="<span class="tok-key">CN</span>=SSL.com TLS Transit ECC CA R2,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">issuer</span>="<span class="tok-key">CN</span>=SSL.com TLS ECC Root CA 2022,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">not_after</span>=2037-10-17 <span class="tok-key">expires_in</span>=3995d <span class="tok-key">key</span>="ECDSA P-384" <span class="tok-key">signature</span>=ECDSA-SHA384
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> certificate <span class="tok-key">depth</span>=3 <span class="tok-key">subject</span>="<span class="tok-key">CN</span>=SSL.com TLS ECC Root CA 2022,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">issuer</span>="<span class="tok-key">CN</span>=AAA Certificate Services,<span class="tok-key">O</span>=Comodo CA Limited,<span class="tok-key">L</span>=Salford,<span class="tok-key">ST</span>=Greater Manchester,<span class="tok-key">C</span>=GB" <span class="tok-key">not_after</span>=2028-12-31 <span class="tok-key">expires_in</span>=783d <span class="tok-key">key</span>="ECDSA P-384" <span class="tok-key">signature</span>=SHA256-RSA
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> verified <span class="tok-key">server</span>=example.com <span class="tok-key">address</span>=104.20.23.154 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">chain</span>="<span class="tok-key">CN</span>=example.com &gt; <span class="tok-key">CN</span>=Cloudflare TLS Issuing ECC CA 3,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US &gt; <span class="tok-key">CN</span>=SSL.com TLS Transit ECC CA R2,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US &gt; <span class="tok-key">CN</span>=SSL.com TLS ECC Root CA 2022,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">trust</span>=system
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> handshake <span class="tok-key">server</span>=example.com <span class="tok-key">address</span>=172.66.147.243 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">version</span>="TLS 1.3" <span class="tok-key">cipher</span>=TLS_AES_128_GCM_SHA256 <span class="tok-key">certificates</span>=4 <span class="tok-key">time</span>=61.750375ms
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> verified <span class="tok-key">server</span>=example.com <span class="tok-key">address</span>=172.66.147.243 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">chain</span>="<span class="tok-key">CN</span>=example.com &gt; <span class="tok-key">CN</span>=Cloudflare TLS Issuing ECC CA 3,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US &gt; <span class="tok-key">CN</span>=SSL.com TLS Transit ECC CA R2,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US &gt; <span class="tok-key">CN</span>=SSL.com TLS ECC Root CA 2022,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">trust</span>=system
+<span class="tok-ts">Mon Nov  9 10:23:46 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> done <span class="tok-key">checks</span>=2 <span class="tok-key">passed</span>=2 <span class="tok-key">total_time</span>=398.159416ms</code></pre></div>
+<p>Both addresses present the same chain, so its certificates are listed once.</p>
+<h3 id="a-private-ca-and-a-certificate-about-to-expire">A private CA, and a certificate about to expire<a class="anchor" href="#a-private-ca-and-a-certificate-about-to-expire" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> tls 127.0.0.1 8443 <span class="tok-flag">--cacert</span> ca.pem</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Mon Nov  9 10:30:26 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=128.208µs
+<span class="tok-ts">Mon Nov  9 10:30:27 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> handshake <span class="tok-key">server</span>=127.0.0.1 <span class="tok-key">address</span>=127.0.0.1 <span class="tok-key">port</span>=8443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">version</span>="TLS 1.2" <span class="tok-key">cipher</span>=TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 <span class="tok-key">certificates</span>=1 <span class="tok-key">time</span>=6.528833ms
+<span class="tok-ts">Mon Nov  9 10:30:27 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> certificate <span class="tok-key">depth</span>=0 <span class="tok-key">subject</span>=<span class="tok-key">CN</span>=localhost <span class="tok-key">issuer</span>=<span class="tok-key">CN</span>=localhost <span class="tok-key">not_after</span>=2026-11-10 <span class="tok-key">expires_in</span>=23h <span class="tok-key">names</span>=[localhost,127.0.0.1,::1] <span class="tok-key">key</span>="ECDSA P-256" <span class="tok-key">signature</span>=ECDSA-SHA256
+<span class="tok-ts">Mon Nov  9 10:30:27 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> verified <span class="tok-key">server</span>=127.0.0.1 <span class="tok-key">address</span>=127.0.0.1 <span class="tok-key">port</span>=8443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">chain</span>=<span class="tok-key">CN</span>=localhost <span class="tok-key">trust</span>="system and --cacert"
+<span class="tok-ts">Mon Nov  9 10:30:27 CST 2026:</span> <span class="tok-mod">[tls]</span> WARN expires soon <span class="tok-key">server</span>=127.0.0.1 <span class="tok-key">address</span>=127.0.0.1 <span class="tok-key">port</span>=8443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">warning</span>="<span class="tok-key">CN</span>=localhost expires in 23h, on 2026-11-10 - within --warn-days 30"
+<span class="tok-ts">Mon Nov  9 10:30:27 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> done <span class="tok-key">checks</span>=1 <span class="tok-key">passed</span>=1 <span class="tok-key">total_time</span>=1.03560275s</code></pre></div>
+<p>The chain is trusted through <code>--cacert</code>, so the check passes (exit <code>0</code>); the certificate expires within 30 days, so it says so in a <code>WARN</code> line.</p>
+<h3 id="not-trusted-or-not-for-this-name">Not trusted, or not for this name<a class="anchor" href="#not-trusted-or-not-for-this-name" aria-label="Link to this section">#</a></h3>
+<p>Without <code>--cacert</code>, the same server's certificate leads to no trusted root:</p>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Mon Nov  9 10:30:28 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-err">ERROR</span> verification failed <span class="tok-key">server</span>=127.0.0.1 <span class="tok-key">address</span>=127.0.0.1 <span class="tok-key">port</span>=8443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">error</span>="signed by an unknown authority: \"<span class="tok-key">CN</span>=localhost\" is not a trusted root, and the server sent no certificate that leads to one (a private CA is trusted with --cacert)"</code></pre></div>
+<p>And asked for another name with <code>--servername app.internal</code>:</p>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Mon Nov  9 10:30:29 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-err">ERROR</span> verification failed <span class="tok-key">server</span>=app.internal <span class="tok-key">address</span>=127.0.0.1 <span class="tok-key">port</span>=8443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">error</span>="certificate is valid for localhost, not app.internal"</code></pre></div>
+<p>Both exit <code>1</code>.</p>
+<h3 id="expiry-as-a-check-fail-days">Expiry as a check: --fail-days<a class="anchor" href="#expiry-as-a-check-fail-days" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> tls example.com -4 <span class="tok-flag">--fail-days</span> 60</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Mon Nov  9 10:30:30 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> handshake <span class="tok-key">server</span>=example.com <span class="tok-key">address</span>=172.66.147.243 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">version</span>="TLS 1.3" <span class="tok-key">cipher</span>=TLS_AES_128_GCM_SHA256 <span class="tok-key">certificates</span>=4 <span class="tok-key">time</span>=65.343084ms
+<span class="tok-ts">Mon Nov  9 10:30:30 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-ok">OK</span> verified <span class="tok-key">server</span>=example.com <span class="tok-key">address</span>=172.66.147.243 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">chain</span>="<span class="tok-key">CN</span>=example.com &gt; <span class="tok-key">CN</span>=Cloudflare TLS Issuing ECC CA 3,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US &gt; <span class="tok-key">CN</span>=SSL.com TLS Transit ECC CA R2,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US &gt; <span class="tok-key">CN</span>=SSL.com TLS ECC Root CA 2022,<span class="tok-key">O</span>=SSL Corporation,<span class="tok-key">C</span>=US" <span class="tok-key">trust</span>=system
+<span class="tok-ts">Mon Nov  9 10:30:30 CST 2026:</span> <span class="tok-mod">[tls]</span> <span class="tok-err">ERROR</span> expires too soon <span class="tok-key">server</span>=example.com <span class="tok-key">address</span>=172.66.147.243 <span class="tok-key">port</span>=443 <span class="tok-key">attempt</span>=1/1 <span class="tok-key">error</span>="a certificate expires in 46d, within --fail-days 60"</code></pre></div>
+<p>The chain is trusted, but the certificate expires in 46 days, within 60: the check fails and the command exits <code>1</code> - a cron job's cue to renew. See the <a href="cookbook.html#will-a-certificate-expire-soon">cookbook</a>.</p>
+<h3 id="json">JSON<a class="anchor" href="#json" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> tls 127.0.0.1 8443 <span class="tok-flag">--cacert</span> ca.pem <span class="tok-flag">--delay</span> 0 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: {
+    <span class="tok-key">"module_name"</span>: <span class="tok-str">"tls"</span>,
+    <span class="tok-key">"sequential"</span>: <span class="tok-lit">false</span>,
+    <span class="tok-key">"throttle"</span>: <span class="tok-lit">false</span>,
+    <span class="tok-key">"host"</span>: <span class="tok-str">"127.0.0.1"</span>,
+    <span class="tok-key">"from_port"</span>: <span class="tok-num">8443</span>,
+    <span class="tok-key">"to_port"</span>: <span class="tok-num">8443</span>,
+    <span class="tok-key">"protocol"</span>: <span class="tok-str">"tcp"</span>,
+    <span class="tok-key">"timeout_ms"</span>: <span class="tok-num">5</span>,
+    <span class="tok-key">"count"</span>: <span class="tok-num">1</span>,
+    <span class="tok-key">"delay_ms"</span>: <span class="tok-num">0</span>,
+    <span class="tok-key">"payload_bytes"</span>: <span class="tok-num">0</span>,
+    <span class="tok-key">"method"</span>: <span class="tok-str">""</span>,
+    <span class="tok-key">"data"</span>: <span class="tok-str">""</span>,
+    <span class="tok-key">"headers"</span>: <span class="tok-lit">null</span>
+  },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"tls"</span>,
+  <span class="tok-key">"dns_lookup"</span>: {
+    <span class="tok-key">"hostname"</span>: <span class="tok-str">"127.0.0.1"</span>,
+    <span class="tok-key">"resolved_addresses"</span>: [
+      <span class="tok-str">"127.0.0.1"</span>
+    ],
+    <span class="tok-key">"error"</span>: <span class="tok-str">""</span>,
+    <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>,
+    <span class="tok-key">"time_taken_µs"</span>: <span class="tok-num">80</span>
+  },
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">8443</span>,
+      <span class="tok-key">"server_name"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>,
+      <span class="tok-key">"tls_version"</span>: <span class="tok-str">"TLS 1.2"</span>,
+      <span class="tok-key">"cipher_suite"</span>: <span class="tok-str">"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"</span>,
+      <span class="tok-key">"verified"</span>: <span class="tok-lit">true</span>,
+      <span class="tok-key">"trust"</span>: <span class="tok-str">"system and --cacert"</span>,
+      <span class="tok-key">"verified_chain"</span>: [
+        <span class="tok-str">"CN=localhost"</span>
+      ],
+      <span class="tok-key">"certificates"</span>: [
+        {
+          <span class="tok-key">"subject"</span>: <span class="tok-str">"CN=localhost"</span>,
+          <span class="tok-key">"issuer"</span>: <span class="tok-str">"CN=localhost"</span>,
+          <span class="tok-key">"dns_names"</span>: [
+            <span class="tok-str">"localhost"</span>
+          ],
+          <span class="tok-key">"ip_addresses"</span>: [
+            <span class="tok-str">"127.0.0.1"</span>,
+            <span class="tok-str">"::1"</span>
+          ],
+          <span class="tok-key">"not_before"</span>: <span class="tok-str">"2026-11-09T15:30:24Z"</span>,
+          <span class="tok-key">"not_after"</span>: <span class="tok-str">"2026-11-10T16:30:24Z"</span>,
+          <span class="tok-key">"expires_in_days"</span>: <span class="tok-num">1</span>,
+          <span class="tok-key">"serial_number"</span>: <span class="tok-str">"1209972062d104b9"</span>,
+          <span class="tok-key">"public_key"</span>: <span class="tok-str">"ECDSA P-256"</span>,
+          <span class="tok-key">"signature_algorithm"</span>: <span class="tok-str">"ECDSA-SHA256"</span>,
+          <span class="tok-key">"is_ca"</span>: <span class="tok-lit">true</span>,
+          <span class="tok-key">"sha256_fingerprint"</span>: <span class="tok-str">"bbc201546aa47a79bbd81ace03e7cc7374c850fcfd4184278854f87736bff0bc"</span>
+        }
+      ],
+      <span class="tok-key">"expires_in_days"</span>: <span class="tok-num">1</span>,
+      <span class="tok-key">"warnings"</span>: [
+        <span class="tok-str">"CN=localhost expires in 23h, on 2026-11-10 - within --warn-days 30"</span>
+      ],
+      <span class="tok-key">"sent_unixtime_µs"</span>: <span class="tok-num">1794241853293626</span>,
+      <span class="tok-key">"recv_unixtime_µs"</span>: <span class="tok-num">1794241853296897</span>,
+      <span class="tok-key">"time_taken_µs"</span>: <span class="tok-num">3271</span>
+    }
+  ],
+  <span class="tok-key">"end_time_unixtime_µs"</span>: <span class="tok-num">1794241853310537</span>,
+  <span class="tok-key">"start_time_unixtime_µs"</span>: <span class="tok-num">1794241853293532</span>,
+  <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">17005</span>,
+  <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
+}</code></pre></div>
+<p>One stat per address and attempt, with every certificate in full each time. <code>expires_in_days</code> is fractional, and negative once a certificate has expired; at the top of a stat it is the soonest in the verified chain. A failed check has <code>success: false</code> and the reason in <code>error</code> - and, for a chain that did not verify, in <code>verify_error</code> too.</p>
+<h2 id="exit-status">Exit status<a class="anchor" href="#exit-status" aria-label="Link to this section">#</a></h2>
+<p><code>0</code> when every address completed a handshake, its chain verified, and - with <code>--fail-days</code> - no certificate in it expires within that many days. <code>1</code> otherwise: the lookup failed, nothing answered, the handshake failed, a chain did not verify, a certificate expires within <code>--fail-days</code>, or the run was cut short with <code>Ctrl+C</code>. <code>2</code> for a usage error (a bad port, a negative <code>--warn-days</code> or <code>--fail-days</code>, a <code>--cacert</code> file that cannot be read). A <code>WARN</code> line never changes the exit status.</p>
+<h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
+<ul><li><strong>Unprivileged</strong>: an ordinary TCP connection and a TLS handshake.</li><li><strong>The handshake skips Go's own verification so every certificate can be shown</strong>, trusted or not; the chain is then verified separately, against the name asked for and the system's roots (plus <code>--cacert</code>), as a browser would. Nothing is sent after the handshake.</li><li><strong>An address checked by itself is verified against the certificate's IP addresses</strong>, and no SNI is sent - as browsers do. A server that serves several sites needs <code>--servername</code> to pick one.</li><li><strong>No STARTTLS</strong> in this release: <code>tls</code> speaks TLS from the first byte, so it checks HTTPS, IMAPS (993), SMTPS (465), LDAPS (636) and the like, not a mail server's port 25 or 587.</li><li><strong><code>web</code> checks a site; <code>tls</code> checks its certificate.</strong> <code>web</code> fails on a certificate it does not trust (or skips the check with <code>-k</code>); <code>tls</code> shows what the certificate is and why it is or is not trusted, and when it expires.</li></ul>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="web.html"><span>Previous</span>web</a><a class="next" href="nmap.html"><span>Next</span>nmap</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tls.md">Edit this page on GitHub</a><span>shint v4.2.4 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#what-it-reports">What it reports</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-public-site">A public site</a></li><li class="toc3"><a href="#a-private-ca-and-a-certificate-about-to-expire">A private CA, and a certificate about to expire</a></li><li class="toc3"><a href="#not-trusted-or-not-for-this-name">Not trusted, or not for this name</a></li><li class="toc3"><a href="#expiry-as-a-check-fail-days">Expiry as a check: --fail-days</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

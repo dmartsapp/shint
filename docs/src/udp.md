@@ -3,7 +3,7 @@ title: udp
 lead: Send a UDP datagram and classify what comes back - open, closed, or open|filtered - the way a UDP port scan does.
 description: shint udp sends a UDP probe to a host and port over IPv4 and IPv6 and reports whether it was answered, refused, or unanswered.
 section: Commands
-order: 5
+order: 6
 nav: udp
 ---
 

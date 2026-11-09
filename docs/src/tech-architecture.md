@@ -51,7 +51,7 @@ The full, file-by-file description is in the [Source reference](tech-source.md).
   <path class="arrow" d="M330 76V108"/>
   <rect class="box" x="110" y="108" width="300" height="70" rx="10"/>
   <text class="h" x="260" y="135" text-anchor="middle">lib/handlers - one per command</text>
-  <text class="sub" x="260" y="155" text-anchor="middle">telnet · icmp · web · nmap · udp · ntp · wol · rdns · dns · cidr · ip · listen</text>
+  <text class="sub" x="260" y="155" text-anchor="middle">telnet · icmp · web · tls · nmap · udp · ntp · wol · rdns · dns · cidr · ip · listen</text>
   <text class="sub" x="260" y="170" text-anchor="middle">concurrency, output (text or JSON), result</text>
   <rect class="box" x="440" y="108" width="110" height="70" rx="10"/>
   <text class="h" x="495" y="135" text-anchor="middle">go-ping/v2</text>
@@ -105,7 +105,7 @@ Everything else - DNS, TCP, UDP, HTTP, TLS, JSON, signal handling - is the stand
 
 | Command | How the work is spread |
 |---|---|
-| `ntp`, `rdns`, `dns`, `wol` | Attempts run one after another, `--delay` before each: they are quick request/response (or send-only) exchanges, and measuring a clock offset is best done without other traffic of our own in the way. |
+| `tls`, `ntp`, `rdns`, `dns`, `wol` | Attempts run one after another, `--delay` before each: they are quick request/response (or send-only) exchanges, and measuring a clock offset is best done without other traffic of our own in the way. |
 | `cidr`, `ip` | Nothing to spread: pure computation, or one read of the interface table. |
 | `telnet`, `web`, `udp` | Attempts are launched one at a time, `--delay` apart, each in its own goroutine - at most 500 running at once (`attemptSlots`; fewer under a low descriptor limit), so `--count 3000 --delay 0` waits its turn instead of opening 3000 sockets. Results are collected under a mutex and a `WaitGroup` waits for all of them. |
 | `ping` | go-ping runs the echo requests in parallel; shint streams its log lines from a channel. |
@@ -114,7 +114,7 @@ Everything else - DNS, TCP, UDP, HTTP, TLS, JSON, signal handling - is the stand
 | `listen udp` | A single read loop. |
 | `listen http` | Go's `net/http` server; each connection is wrapped so its bytes can be counted and reported when it closes. |
 
-Cancellation is by `context`. `nmap`, `telnet`, `web`, `udp`, `ntp`, `rdns`, `wol` and the listeners cancel on `Ctrl+C` (`SIGINT`/`SIGTERM`); no command imposes a run-wide deadline, because `--timeout` bounds single operations only. A cancelled repeating check stops launching attempts, interrupts its `--delay` pause and any attempt in flight (which is dropped, not counted as a failure), then ends as usual - statistics, `done` line, complete JSON - with an `interrupted` line and exit status `1` (`lib/handlers/interrupt.go`). A second `Ctrl+C` is not caught: `interruptContext` removes the handler after the first.
+Cancellation is by `context`. `nmap`, `telnet`, `web`, `tls`, `udp`, `ntp`, `rdns`, `wol` and the listeners cancel on `Ctrl+C` (`SIGINT`/`SIGTERM`); no command imposes a run-wide deadline, because `--timeout` bounds single operations only. A cancelled repeating check stops launching attempts, interrupts its `--delay` pause and any attempt in flight (which is dropped, not counted as a failure), then ends as usual - statistics, `done` line, complete JSON - with an `interrupted` line and exit status `1` (`lib/handlers/interrupt.go`). A second `Ctrl+C` is not caught: `interruptContext` removes the handler after the first.
 
 ## Cross-cutting concerns
 

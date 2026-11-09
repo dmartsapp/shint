@@ -22,7 +22,7 @@ Every command's text output follows one grammar, so it is easy to read, `grep` a
 |---|---|
 | `<timestamp>` | Local time when the line was printed, in the format of Go's `time.UnixDate` (`Sun Sep 20 01:26:48 MDT 2026`). |
 | `[<module>]` | The command that spoke. |
-| `OK` / `ERROR` | The level of this one line. An `ERROR` line means that step failed (or, for a few warnings such as `-k`, that it deserves attention). |
+| `OK` / `ERROR` / `WARN` | The level of this one line. An `ERROR` line means that step failed, and a run with one exits 1. `WARN` is advisory - worth knowing, not a failure: `web -k` skipping certificate checks, a certificate that expires within `tls --warn-days` - and a run with `WARN` lines and no `ERROR` exits 0. |
 | `Response Received` | The level of a `web` line that shows an HTTP response - whatever its status: a `403` is as much a response as a `200`. What the response said is on the line, in `status` (the number) and `status_text` (its [standard name](web.md#status-names)). The line has no `<message>`; the level names the event. A request that got no response is an `ERROR` line. |
 | `<message>` | A short lowercase description of the event. |
 | `key=value` | Details. Durations print like `1.3ms`; values containing spaces are quoted (`error="dial tcp ..."`). |
@@ -47,6 +47,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `telnet` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `connect ok`, `connect failed`, `done` |
 | `icmp` | `dns resolved`, `dns authoritative`, `received reply for request #N from ADDR (ipv4/ipv6) in Nms bytes=N`, `ping failed`, `done` |
 | `web` | `dns resolved`, `dns authoritative`, `Response Received` (the level, with no message after it - see above), `timing` (with `--timing`), `request failed`, `tls verification disabled`, `using client certificate for mutual TLS`, `using custom CA bundle...`, `done` |
+| `tls` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `handshake`, `certificate`, `verified`, `verification failed`, `expires soon` (`WARN`), `expires too soon`, `handshake failed`, `done` |
 | `nmap` | `dns resolved`, `dns authoritative`, `scan started`, `progress`, `port open`, `scan complete`, `scan interrupted`, `done` |
 | `udp` | `dns resolved`, `dns authoritative`, `probe open`, `probe closed`, `probe open|filtered`, `probe error`, `done` |
 | `ntp` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `response`, `query failed`, `done` |
@@ -112,7 +113,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Field | Type | Meaning |
 |---|---|---|
 | `input_params` | object | The parameters the command ran with. |
-| `module_name` | string | `telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp`, `rdns` or `dns` - and `wol`, `cidr` or `ip`, whose documents have no `dns_lookup`. |
+| `module_name` | string | `telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `rdns` or `dns` - and `wol`, `cidr` or `ip`, whose documents have no `dns_lookup`. |
 | `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr`, `ip` and `dns`** (`dns` is itself the lookup), which never look up a name (an empty lookup would only read as a failed one). |
 | `stats` | array | One entry per check; the shape depends on the command (below). |
 | `start_time_unixtime_µs` | integer | When the run started, in Unix microseconds. |
@@ -196,6 +197,22 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `bytes_sent`, `bytes_received`, `response_preview` | Payload sizes and a short preview of any reply. |
 | `sent_unixtime_µs`, `recv_unixtime_µs`, `time_taken_µs` | Timing. |
 | `error` | Present only on failure. |
+
+**tls**
+
+| Field | Meaning |
+|---|---|
+| `address`, `port`, `server_name` | The address and port connected to, and the name sent as SNI and verified against (an address sends no SNI). |
+| `success` | The handshake completed, the chain verified, and - with `--fail-days` - nothing in it expires within that many days. |
+| `tls_version`, `cipher_suite` | What the server chose: `TLS 1.3` or `TLS 1.2`, and the cipher suite's IANA name. |
+| `verified`, `verify_error` | Whether the chain leads to a trusted root and is valid for `server_name`; if not, why. |
+| `trust` | Which roots: `system`, or `system and --cacert`. |
+| `verified_chain` | The subjects of the verified chain, from the server's certificate to the trust anchor. |
+| `certificates` | Every certificate the server sent, its own first: `subject`, `issuer`, `dns_names`, `ip_addresses`, `not_before`, `not_after` (RFC 3339, UTC), `expires_in_days` (fractional, negative once expired), `serial_number` (hex), `public_key` (`ECDSA P-256`, `RSA 2048`, `Ed25519`), `signature_algorithm`, `is_ca`, `sha256_fingerprint`. |
+| `expires_in_days` | The soonest expiry in the verified chain (or, when it did not verify, among the certificates sent). |
+| `warnings` | One line per certificate in the verified chain that expires within `--warn-days`; empty when none does. |
+| `sent_unixtime_µs`, `recv_unixtime_µs`, `time_taken_µs` | Timing of the connection and handshake. |
+| `error` | Present only on failure: the reason the check failed. |
 
 **ntp**
 

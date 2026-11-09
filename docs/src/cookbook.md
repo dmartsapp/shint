@@ -125,6 +125,21 @@ shint web https://example.com --timing
 
 A large `dns` points at the resolver, `connect` at the network path or a firewall, `tls` at the handshake (or a distant server), `wait` at the server itself, and `download` at the size of the response or the bandwidth. The [web page](web.md#timing-where-the-time-went) shows real output for each case, and `--json` gives the same numbers in microseconds for a script to alert on.
 
+## Will a certificate expire soon?
+
+```bash
+shint tls example.com --fail-days 14
+```
+
+Exit `0` when every address the name resolves to presents a chain that is trusted, valid for the name, and good for at least 14 more days; `1` otherwise - an expired or untrusted certificate fails without `--fail-days` too. A certificate within `--warn-days` (30 by default) gets a `WARN` line but passes, so a cron job can renew on the failure and still be told early. `--json` gives `expires_in_days` for each address. See [tls](tls.md).
+
+```bash
+for site in example.com mail.example.com:465; do
+  host=${site%%:*}; port=${site##*:}; [ "$port" = "$site" ] && port=443
+  shint tls "$host" "$port" --fail-days 14 --delay 0 > /dev/null || echo "renew: $site"
+done
+```
+
 ## Is this machine's clock right?
 
 ```bash

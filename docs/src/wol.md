@@ -3,7 +3,7 @@ title: wol
 lead: Send a Wake-on-LAN magic packet to switch on a machine on your network - no privileges needed.
 description: shint wol broadcasts a Wake-on-LAN magic packet as a UDP datagram to wake a sleeping or switched-off machine on the local network segment.
 section: Commands
-order: 7
+order: 8
 nav: wol
 ---
 

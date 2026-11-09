@@ -80,7 +80,8 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 
 	if !*jsonoutput {
 		if tlsConfig.InsecureSkipVerify {
-			fmt.Println(lib.LogWithTimestamp(webModule, "tls verification disabled "+lib.Fields("warning", "certificate checks are skipped, response may not be trustworthy"), true))
+			// Advisory, not a failure (#37): the run can still pass, and ERROR means it did not.
+			fmt.Println(lib.LogWithLevel(webModule, lib.LevelWarn, "tls verification disabled "+lib.Fields("warning", "certificate checks are skipped, response may not be trustworthy")))
 		}
 		if len(tlsConfig.Certificates) > 0 {
 			fmt.Println(lib.LogWithTimestamp(webModule, "using client certificate for mutual TLS", false))

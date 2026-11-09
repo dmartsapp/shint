@@ -3,7 +3,7 @@ title: dns
 lead: Ask a DNS server a question and see exactly what it answered - A, AAAA, MX, TXT, NS, SOA, SRV, CAA and reverse lookups, with the server, the flags and the TTLs. dig, in shint's format, without privileges.
 description: shint dns asks a DNS server for A, AAAA, CNAME, MX, NS, TXT, SOA, SRV, PTR or CAA records over UDP with a TCP fallback, shows the response code, flags and TTLs, and can ask any server, including an authoritative one.
 section: Commands
-order: 9
+order: 10
 nav: dns
 ---
 

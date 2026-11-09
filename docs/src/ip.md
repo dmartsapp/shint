@@ -3,7 +3,7 @@ title: ip
 lead: What does this machine have? Every network interface on one line, with its state, addresses, hardware address and MTU - offline, no privileges.
 description: shint ip lists this machine's network interfaces, one line each, with their state, IPv4 and IPv6 addresses, hardware address, MTU and flags, offline and without privileges.
 section: Commands
-order: 11
+order: 12
 nav: ip
 ---
 

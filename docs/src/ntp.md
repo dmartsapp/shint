@@ -3,7 +3,7 @@ title: ntp
 lead: Check this machine's clock against an NTP time server - the offset, the round trip, and whether the answer can be trusted.
 description: shint ntp asks an NTP server for the time over UDP and reports how far this machine's clock is from it, for IPv4 and IPv6, with an optional pass/fail threshold.
 section: Commands
-order: 6
+order: 7
 nav: ntp
 ---
 

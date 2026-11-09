@@ -16,7 +16,7 @@ shint <command> <target> [flags]
 The target comes first (a host and port, a URL, a port to listen on); flags change how the check runs. Flags can go before or after the target.
 
 ```text
-A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, dns, cidr, ip and listener functionalities.
+A simple network utility tool that provides telnet, ping, nmap, udp, web client, tls, ntp, wol, rdns, dns, cidr, ip and listener functionalities.
 
 Usage:
   shint [command]
@@ -33,6 +33,7 @@ Available Commands:
   ping        Send ICMP ECHO_REQUEST to a host
   rdns        Look up the names an IP address maps back to (reverse DNS)
   telnet      Connect to a host on a specific port
+  tls         Check a server's TLS certificate: chain, expiry, names, protocol and cipher
   udp         Send a UDP probe to a host on a specific port
   web         Make an HTTP request to a URL
   wol         Send a Wake-on-LAN magic packet to wake a machine on your network
@@ -137,7 +138,7 @@ Sun Sep 20 22:33:57 MDT 2026: [telnet] OK done total_time=1.037681542s
 
 `-4` resolves only the IPv4 address (`addresses=1`) and checks only that; `-6` does the same for IPv6. It is the right tool on a machine that has no IPv6 at all, where the IPv6 check would otherwise fail and turn the exit status into `1` even though the service is fine over IPv4 (see [Troubleshooting](troubleshooting.md#ping-and-telnet-report-an-ipv6-failure-but-the-host-works)).
 
-The flags work on every command that resolves a name - `telnet`, `ping`, `nmap`, `udp`, `web`, `ntp` and `rdns`. For `web` they also bind the connection itself, so the HTTP client cannot pick the other family. A few rules keep them honest:
+The flags work on every command that resolves a name - `telnet`, `ping`, `nmap`, `udp`, `web`, `tls`, `ntp` and `rdns`. For `web` they also bind the connection itself, so the HTTP client cannot pick the other family. A few rules keep them honest:
 
 - `-4` and `-6` together is a usage error (exit `2`); so is `-4` with an IPv6 address, or `-6` with an IPv4 address, since nothing could be checked:
 
@@ -156,6 +157,7 @@ The flags work on every command that resolves a name - `telnet`, `ping`, `nmap`,
 |---|---|
 | `telnet` | each connection attempt, and the DNS lookup, may take |
 | `web` | each request may take, from connecting to the last byte of the response |
+| `tls` | each connection and its handshake may take, and the DNS lookup |
 | `nmap` | each *port* may take to answer, and the DNS lookup |
 | `udp` | each probe waits for a reply, and the DNS lookup |
 | `ping` | each echo request waits for its reply before it counts as lost (the name lookup keeps the ping library's own fixed 5-second limit) |
@@ -184,8 +186,8 @@ Requests sent: 1, Response received: 1, Success: 100%
 Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 Sun Sep 20 01:50:10 MDT 2026: [telnet] OK done total_time=1.006831458s
 ```
-- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `listen-tcp`, `listen-udp`, `listen-http`).
-- **OK or ERROR** is the level of that one line.
+- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `listen-tcp`, `listen-udp`, `listen-http`).
+- **OK, ERROR or WARN** is the level of that one line. `ERROR` means a check failed, and the run exits 1; `WARN` is advisory and does not fail it (`web -k`, a certificate expiring within `tls --warn-days`); `web` marks a line that shows a response `Response Received`.
 - The `key=value` pairs are easy to `grep` and `awk`; values with spaces are quoted.
 - Commands that repeat a check finish with a **statistics** block: requests sent, responses received, and minimum, average and maximum latency.
 
@@ -244,6 +246,7 @@ What counts as a failure, per command:
 | `telnet` | the lookup or any connection attempt failed |
 | `ping` | the lookup failed or any echo request went unanswered |
 | `web` | any attempt got no HTTP response. **A 404 or 500 is still a response** and exits `0` - read the status from the output or `--json` |
+| `tls` | the lookup failed, a handshake failed, a certificate chain did not verify (an unknown authority, expired, not valid for the name), or - with `--fail-days` - a certificate expires within that many days. A `WARN` (`--warn-days`) does not fail it |
 | `nmap` | the lookup failed or the scan was cut short. Finding no open ports is a completed scan and exits `0` |
 | `udp` | the lookup failed, the port was reported `closed`, or the probe errored. `open|filtered` (no reply) is inconclusive, not a failure |
 | `ntp` | the lookup failed, a server did not answer, an answer could not be trusted (an unsynchronized server, a mismatched reply, a "kiss-o'-death"), or - with `--max-offset` - the clock is further out than that |
@@ -258,7 +261,7 @@ Results, including `ERROR` lines about failed checks, go to **stdout**; usage er
 
 ## Stopping early
 
-Press `Ctrl+C`. A run that repeats a check - `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol` with `--count`, and `nmap` over its port range - stops and **tells you how far it got**, instead of leaving you with a bare `^C`:
+Press `Ctrl+C`. A run that repeats a check - `telnet`, `web`, `tls`, `udp`, `ntp`, `rdns` and `wol` with `--count`, and `nmap` over its port range - stops and **tells you how far it got**, instead of leaving you with a bare `^C`:
 
 ```bash
 shint web http://127.0.0.1:18091/ --count 100

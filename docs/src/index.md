@@ -88,6 +88,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
   <a class="card" href="telnet.html"><strong><code>telnet</code></strong><span>Can I open a TCP connection to this host and port?</span></a>
   <a class="card" href="ping.html"><strong><code>ping</code></strong><span>Is this host reachable, and how fast does it answer?</span></a>
   <a class="card" href="web.html"><strong><code>web</code></strong><span>Make an HTTP or HTTPS request and see what came back, including TLS and mutual TLS.</span></a>
+  <a class="card" href="tls.html"><strong><code>tls</code></strong><span>Is this server's certificate trusted, valid for the name - and when does it expire?</span></a>
   <a class="card" href="nmap.html"><strong><code>nmap</code></strong><span>Which TCP ports are open on this host?</span></a>
   <a class="card" href="udp.html"><strong><code>udp</code></strong><span>Send a UDP probe and classify the result: open, closed, or open|filtered.</span></a>
   <a class="card" href="ntp.html"><strong><code>ntp</code></strong><span>How far is this machine's clock from a time server?</span></a>
@@ -108,6 +109,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
 | `ping host` | `shint ping host` |
 | `curl -v https://host/` | `shint web https://host/` |
 | `curl -w '%{time_connect} %{time_starttransfer}' https://host/` | `shint web https://host/ --timing` |
+| `openssl s_client -connect host:443 -servername host`, `openssl x509 -noout -dates` | `shint tls host` |
 | `nmap -p 20-9000 host` | `shint nmap host --from 20 --to 9000` |
 | `nc -u host port` | `shint udp host port` |
 | `nc -l 9000`, `python3 -m http.server` | `shint listen tcp 9000`, `shint listen http 8080` |

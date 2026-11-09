@@ -1,6 +1,6 @@
 // Command shint - "Simple Host INspection Toolkit" - bundles the everyday network
 // checks (telnet-style port checks, ping, an HTTP client, a port scanner, a
-// UDP probe, a clock check against an NTP server, Wake-on-LAN, reverse DNS,
+// UDP probe, a TLS certificate check, a clock check against an NTP server, Wake-on-LAN, reverse DNS,
 // a subnet calculator, an interface lister, DNS lookups and local test
 // listeners) into one static binary.
 //
@@ -72,6 +72,12 @@ var (
 	insecureSkipVerify  bool
 	webTiming           bool
 
+	// tls
+	tlsServerName string
+	tlsCACert     string
+	tlsWarnDays   int
+	tlsFailDays   int
+
 	// udp
 	udpData string
 	udpHex  string
@@ -107,7 +113,8 @@ var (
 //	   --max-offset), an address with no reverse (PTR) name, or a
 //	   Wake-on-LAN packet that could not be sent, a DNS question that got no
 //	   records of the type asked (NXDOMAIN, no data, SERVFAIL, REFUSED, no
-//	   answer), an interface that does not exist (ip)
+//	   answer), an interface that does not exist (ip), a TLS certificate chain
+//	   that does not verify, or one that expires within --fail-days (tls)
 //	2  the command was used wrongly (bad argument, flag or value); nothing ran
 //
 // Results - including "ERROR" lines about failed checks - go to stdout; usage
@@ -173,7 +180,7 @@ func finish(ok bool) {
 var rootCmd = &cobra.Command{
 	Use:     filepath.Base(os.Args[0]),
 	Short:   "shint - Simple Host INspection Toolkit",
-	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, ntp, wol, rdns, dns, cidr, ip and listener functionalities.`,
+	Long:    `A simple network utility tool that provides telnet, ping, nmap, udp, web client, tls, ntp, wol, rdns, dns, cidr, ip and listener functionalities.`,
 	Version: Version,
 }
 
@@ -259,6 +266,57 @@ It connects straight to the address the name resolves to and never uses a proxy:
 		defer stop()
 
 		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming))
+	},
+}
+
+var tlsCmd = &cobra.Command{
+	Use:   "tls [host] [port]",
+	Short: "Check a server's TLS certificate: chain, expiry, names, protocol and cipher",
+	Long: `This command connects to a host (port 443 unless another is given), completes a TLS handshake and reports what the server presented: the TLS version and cipher suite it chose, and every certificate it sent - subject, issuer, the names it is valid for, when it expires, its key and signature - then whether the chain leads to a trusted root and is valid for the name asked for, the way a browser decides.
+
+A chain that does not verify - an unknown authority, an expired or not-yet-valid certificate, a name it is not valid for - is a failed check (exit status 1), with the reason. A certificate that expires within --warn-days (30 by default) gets a WARN line and the check still passes; --fail-days turns expiry into a check: exit 1 if a certificate expires within that many days.
+
+--servername sends and verifies another name than the host (to check an address, or one virtual host of several); --cacert trusts a private CA as well as the system's. Every address the name resolves to is checked; --timeout is how long each connection and handshake gets. Unprivileged: an ordinary TCP connection.`,
+	Args: cobra.RangeArgs(1, 2),
+	Example: rootCmd.Name() + ` tls example.com` + "\n" +
+		rootCmd.Name() + ` tls mail.example.com 465` + "\n" +
+		rootCmd.Name() + ` tls 192.0.2.10 8443 --servername app.internal --cacert ca.pem` + "\n" +
+		rootCmd.Name() + ` tls example.com --fail-days 14 --json`,
+	Run: func(cmd *cobra.Command, args []string) {
+		host := args[0]
+		if !applyFamily(host) {
+			return
+		}
+		port := handlers.TLSDefaultPort
+		if len(args) == 2 {
+			p, err := lib.ValidatePort(args[1])
+			if err != nil {
+				usage(err.Error())
+				return
+			}
+			port = p
+		}
+		if tlsWarnDays < 0 || tlsFailDays < 0 {
+			usage("--warn-days and --fail-days must be 0 (off) or a number of days")
+			return
+		}
+		if !checkRunFlags(true) {
+			return
+		}
+		opts := handlers.TLSCheckOptions{Port: port, ServerName: tlsServerName, WarnDays: tlsWarnDays, FailDays: tlsFailDays}
+		if tlsCACert != "" {
+			pool, err := handlers.LoadCAPool(tlsCACert)
+			if err != nil {
+				usage(err.Error())
+				return
+			}
+			opts.RootCAs, opts.CustomCA = pool, true
+		}
+
+		ctx, stop := interruptContext()
+		defer stop()
+
+		finish(handlers.TLSCheckHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, host, opts))
 	},
 }
 
@@ -629,6 +687,11 @@ func init() {
 	webCmd.Flags().BoolVarP(&insecureSkipVerify, "insecure", "k", false, "Skip TLS certificate verification (INSECURE, for diagnostics only)")
 	webCmd.Flags().BoolVar(&webTiming, "timing", false, "Show where each request's time went: DNS, connect, TLS, wait for the first byte, download (one line per redirect hop; a timing object per stat with --json)")
 
+	tlsCmd.Flags().StringVar(&tlsServerName, "servername", "", "Name to send as SNI and to verify the certificate against (default: the host; set it to check an address, or one virtual host of several)")
+	tlsCmd.Flags().StringVar(&tlsCACert, "cacert", "", "Path to a PEM CA certificate bundle to trust in addition to the system pool (for self-signed/internal CAs)")
+	tlsCmd.Flags().IntVar(&tlsWarnDays, "warn-days", 30, "Print a WARN line for a certificate that expires within this many days (0 = no warning); the check still passes")
+	tlsCmd.Flags().IntVar(&tlsFailDays, "fail-days", 0, "Exit 1 if a certificate expires within this many days (0 = only an expired or untrusted certificate fails)")
+
 	nmapCmd.Flags().IntVar(&fromport, "from", 1, "Start port for TCP scan")
 	nmapCmd.Flags().IntVar(&endport, "to", 80, "End port for TCP scan")
 
@@ -666,7 +729,7 @@ var stopProfiling = func() {}
 // variables above are fully initialised first), runs cobra, and exits with the
 // status the chosen command recorded - see the exit-status notes above.
 func main() {
-	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, dnsCmd, cidrCmd, ipCmd, listenCmd)
+	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, tlsCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, dnsCmd, cidrCmd, ipCmd, listenCmd)
 	// cobra adds its completion command only when it executes. Adding it here - after
 	// the commands above, since cobra skips it while the root has none - lets it treat
 	// an argument it does not know as a mistake, like listen.

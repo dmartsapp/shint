@@ -3,7 +3,7 @@ title: nmap
 lead: Find which TCP ports are open on a host, across a range you choose, with live progress so long scans never look stuck.
 description: shint nmap scans a range of TCP ports on a host over IPv4 and IPv6, reports open ports, and shows progress on long scans.
 section: Commands
-order: 4
+order: 5
 nav: nmap
 ---
 

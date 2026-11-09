@@ -21,16 +21,9 @@ func BuildTLSConfig(cacertPath, certPath, keyPath string, insecure bool) (*tls.C
 	cfg := &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: insecure}
 
 	if cacertPath != "" {
-		pem, err := os.ReadFile(cacertPath)
+		pool, err := LoadCAPool(cacertPath)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read CA certificate file %q: %w", cacertPath, err)
-		}
-		pool, err := x509.SystemCertPool()
-		if err != nil || pool == nil {
-			pool = x509.NewCertPool()
-		}
-		if !pool.AppendCertsFromPEM(pem) {
-			return nil, fmt.Errorf("no valid PEM certificates found in CA file %q", cacertPath)
+			return nil, err
 		}
 		cfg.RootCAs = pool
 	}
@@ -47,4 +40,22 @@ func BuildTLSConfig(cacertPath, certPath, keyPath string, insecure bool) (*tls.C
 	}
 
 	return cfg, nil
+}
+
+// LoadCAPool is what --cacert trusts, for web and tls: the system's trust pool with
+// the certificates of a PEM file added, so a self-signed or internal CA can be
+// trusted alongside the public ones.
+func LoadCAPool(cacertPath string) (*x509.CertPool, error) {
+	pem, err := os.ReadFile(cacertPath)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read CA certificate file %q: %w", cacertPath, err)
+	}
+	pool, err := x509.SystemCertPool()
+	if err != nil || pool == nil {
+		pool = x509.NewCertPool()
+	}
+	if !pool.AppendCertsFromPEM(pem) {
+		return nil, fmt.Errorf("no valid PEM certificates found in CA file %q", cacertPath)
+	}
+	return pool, nil
 }

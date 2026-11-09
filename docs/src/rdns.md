@@ -3,7 +3,7 @@ title: rdns
 lead: Reverse DNS - which host names does an IP address map back to? The PTR lookup, without dig.
 description: shint rdns does a reverse DNS lookup for an IP address (or for every address of a host name), over IPv4 and IPv6, and reports the names or their absence.
 section: Commands
-order: 8
+order: 9
 nav: rdns
 ---
 

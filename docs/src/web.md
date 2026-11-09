@@ -227,7 +227,7 @@ shint web -k https://localhost:9443/
 ```
 
 ```text
-Sun Sep 20 01:54:18 MDT 2026: [web] ERROR tls verification disabled warning="certificate checks are skipped, response may not be trustworthy"
+Sun Sep 20 01:54:18 MDT 2026: [web] WARN tls verification disabled warning="certificate checks are skipped, response may not be trustworthy"
 Sun Sep 20 01:54:18 MDT 2026: [web] OK dns resolved host=localhost addresses=2 ips=[::1,127.0.0.1] time=2.149791ms
 Sun Sep 20 01:54:18 MDT 2026: [web] Response Received url=https://localhost:9443/ status=200 status_text=OK bytes_sent=97 bytes_received=175 speed=38.07KB/s attempt=1/1 time=4.48925ms
 ```
