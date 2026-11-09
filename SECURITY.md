@@ -4,7 +4,7 @@
 
 Security fixes go into **the newest release only**. Use the [latest release](https://github.com/dmartsapp/shint/releases/latest) - the Docker tags `latest`, `4` and `4.x` follow it.
 
-Older releases stay published - their binaries, checksums, attestations and image tags are never deleted, so anything pinned to one keeps working and every release can still be verified - but they are not patched. A release found to be affected by a vulnerability is listed in the advisory, with the release that fixes it.
+Older releases stay published - their binaries, checksums, attestations and GHCR image tags are never deleted, so anything pinned to one keeps working and every release can still be verified - but they are not patched. GHCR (`ghcr.io/dmartsapp/shint`) keeps every release's image; Docker Hub keeps v4.2.0 and later, to keep that repository small - an older image is pulled from GHCR, under the same tag. A release found to be affected by a vulnerability is listed in the advisory, with the release that fixes it.
 
 ## Reporting a vulnerability
 
@@ -22,6 +22,18 @@ shint is built with the Go toolchain and its standard library, and a few modules
 - **Out of cycle, when it is serious.** When a dependency's flaw is serious for shint as it is released - it changes what shint reports, or breaks how shint is used or our own tooling - shint gets a patch release outside the cycle, as soon as the fix is public. v4.2.4 was one.
 - **Every release is checked.** `govulncheck` gates every release - it refuses to publish one whose code reaches a known vulnerability - and runs on every local `make check` too.
 - **Not liable for code we did not write.** shint is provided "as is", without warranty of any kind, under its [MIT license](LICENSE). The Go toolchain, its standard library and the modules shint uses are the work and responsibility of their own authors; we follow their advisories and ship their fixes as described above, but we are not liable for flaws in code we did not write.
+
+## Software bill of materials
+
+Every release binary has its software bill of materials (SBOM) next to it on the release page, in **CycloneDX 1.6** (`<binary>.cdx.json`) and **SPDX 2.3** (`<binary>.spdx.json`): the Go release that built it - the standard library, where every advisory so far has come from - and every Go module compiled in, with versions and `go.sum` hashes, read from the build information Go embeds in the binary. Feed one to a vulnerability scanner to check a release you run against advisories published after it.
+
+From v4.3.0 the release workflow makes them with each binary and attests them (`gh attestation verify <binary> --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom`, or `https://spdx.dev/Document/v2.3`). v4.0.0 to v4.2.4 got theirs afterwards, made from their published binaries, unattested. Details: the [Security](https://dmartsapp.github.io/shint/docs/security.html#software-bill-of-materials) page.
+
+From v4.3.0 the Docker images have them too - Docker Hub and GHCR, each platform, both formats, attested (`image.<registry>.linux.<arch>.cdx.json` and `.spdx.json` on the release) - listing the distroless base's Debian packages as well. v4.2.4's images got theirs afterwards, made from the published images' layers, unattested.
+
+## Vulnerability reports
+
+From v4.3.0 every release keeps `govulncheck.txt`, the report of the check that gated it, Grype's scan of each image (`image.<registry>.linux.<arch>.grype.json`) and Dockle's check of each image against the CIS Docker Benchmark (`.dockle.json`). Grype and Dockle report and do not gate - Grype matches versions without reachability analysis - `govulncheck` stays the gate. The Dockerfile is linted with Hadolint in every check and release gate. Each image also carries Docker's own SBOM and provenance attestations in its index, which Docker Scout reads. See the [Security](https://dmartsapp.github.io/shint/docs/security.html#vulnerability-reports) page.
 
 ## Advisories
 

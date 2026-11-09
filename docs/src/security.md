@@ -1,6 +1,6 @@
 ---
 title: Security
-lead: Which releases get security fixes, how to report a vulnerability, how shint handles its dependencies' vulnerabilities - and every advisory so far, with its original sources.
+lead: Which releases get security fixes, how to report a vulnerability, how shint handles its dependencies' vulnerabilities, every release's software bill of materials - and every advisory so far, with its original sources.
 description: shint's security and support policy, and its security advisories with CVE numbers, sources, impact and resolution.
 section: Reference
 order: 3
@@ -11,7 +11,7 @@ nav: Security
 
 Security fixes go into **the newest release only**: use the [latest release](https://github.com/dmartsapp/shint/releases/latest) (`shint --version` says which one you have; the Docker tags `latest`, `{{major}}` and `{{minor}}` follow it). Upgrading is the fix - see [Install](install.md).
 
-**Older releases stay published, and are not patched.** Their binaries, checksums, attestations and image tags are never deleted or replaced: anything pinned to one keeps working, every release can still be verified, and what a user ran can always be examined later. A release found to be affected by a vulnerability is listed in that vulnerability's [advisory](#advisories), with the release that fixes it. Taking a release down is kept for a release that is itself compromised - a tampered build, say - not for one that turns out to contain a known flaw.
+**Older releases stay published, and are not patched.** Their binaries, checksums, attestations and GHCR image tags are never deleted or replaced: anything pinned to one keeps working, every release can still be verified, and what a user ran can always be examined later. [GHCR](install.md#docker) keeps every release's image; Docker Hub keeps v4.2.0 and later, to keep that repository small - an older image is pulled from `ghcr.io/dmartsapp/shint`, under the same tag. A release found to be affected by a vulnerability is listed in that vulnerability's [advisory](#advisories), with the release that fixes it. Taking a release down is kept for a release that is itself compromised - a tampered build, say - not for one that turns out to contain a known flaw.
 
 ## Reporting a vulnerability
 
@@ -36,7 +36,93 @@ shint is built with the [Go](https://go.dev) toolchain and its standard library 
 - **[`govulncheck`](https://go.dev/doc/security/vuln/)**, the Go project's vulnerability scanner, gates every release: the release workflows refuse to publish a release whose code reaches a known vulnerability in the [Go vulnerability database](https://pkg.go.dev/vuln/). It also runs in every local `make check` ([Testing](tech-testing.md)).
 - **It reports what shint's code can reach**, not only what it contains: a vulnerability counts when there is a call path from shint to the vulnerable function. A path is not proof that the flaw can be triggered - it often needs conditions shint never creates - so each advisory below says how shint was affected in practice. shint takes the fix either way.
 - **Between releases nothing scans on its own.** By design, no workflow runs except for a release tag ([the workflow trigger rule](tech-ci.md#the-workflow-trigger-rule)). An advisory published between two releases is found by the next `make check` or release - which is why the advisory below was found a month after its first fixes were published.
-- **Release integrity** - checksums and signed build attestations for every binary - is described in [Install](install.md).
+- **Every image is scanned too.** From v4.3.0, [Grype](https://github.com/anchore/grype) scans each Docker image's SBOM - shint's binary in it, and the distroless base's Debian packages, which `govulncheck` cannot see - and [Dockle](https://github.com/goodwithtech/dockle) checks each image against the CIS Docker Benchmark; both reports are kept on the release. They report and do not gate: see [Vulnerability reports](#vulnerability-reports).
+- **The Dockerfile is linted** with [Hadolint](https://github.com/hadolint/hadolint) in every check on `main` and every release gate: an error-level finding stops the release.
+- **Release integrity** - checksums and signed build attestations for every binary - is described in [Install](install.md); what each binary and image is made of, in its [software bill of materials](#software-bill-of-materials).
+
+## Software bill of materials
+
+Every release binary has a **software bill of materials (SBOM)** next to it on its release page, in both standard formats, JSON:
+
+| File | Format |
+|---|---|
+| `shint.linux.amd64.cdx.json` | [CycloneDX](https://cyclonedx.org) 1.6 |
+| `shint.linux.amd64.spdx.json` | [SPDX](https://spdx.dev) 2.3 |
+
+and so on for every binary - one pair each, because what is compiled in differs by platform: the Windows builds include `github.com/inconshreveable/mousetrap`, the others do not.
+
+**What an SBOM lists** is what that binary was built from, read from the build information the Go toolchain embeds in every binary:
+
+- **the binary itself**: its SHA-256, the platform it is for, the commit it was built from, and the build settings (`GOOS`, `GOARCH`, `CGO_ENABLED=0`, `-trimpath`);
+- **the Go standard library**, as the Go release that built it: `stdlib` at `go{{go}}` for this release, with the package URL `pkg:golang/stdlib@...` and the CPE `cpe:2.3:a:golang:go:...` that vulnerability scanners match the Go project's own advisories against - where every [advisory](#advisories) so far has come from;
+- **every Go module compiled in**, with its version and its `go.sum` hash: `golang.org/x/net`, `golang.org/x/sys`, `github.com/spf13/cobra`, `github.com/spf13/pflag` and `github.com/dmartsapp/go-ping`.
+
+shint's own license is given (MIT); the modules' licenses are left unasserted.
+
+**Use one** with any tool that reads CycloneDX or SPDX - a vulnerability scanner such as [Grype](https://github.com/anchore/grype) or [OSV-Scanner](https://google.github.io/osv-scanner/), or [Dependency-Track](https://dependencytrack.org) - to find out whether a release you run is affected by a vulnerability published after it:
+
+```bash
+curl -LO https://github.com/dmartsapp/shint/releases/download/v{{version}}/shint.linux.amd64.cdx.json
+grype sbom:shint.linux.amd64.cdx.json
+```
+
+**Verify one.** From v4.3.0, each SBOM is made by the release workflow, in the job that builds its binary, and **attested** like the binary: a signed statement that this SBOM describes this exact file, made by the `dmartsapp/shint` workflow. With the [GitHub CLI](https://cli.github.com):
+
+```bash
+gh attestation verify shint.linux.amd64 --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom
+gh attestation verify shint.linux.amd64 --repo dmartsapp/shint --predicate-type https://spdx.dev/Document/v2.3
+```
+
+The attestation carries the SBOM itself (`--format json` prints it), so it is also proof that the file next to the binary is the one the workflow made.
+
+**Releases before v4.3.0** - v4.0.0 to v4.2.4 - got their SBOMs on 2026-11-09, made from their published binaries by the same script, after each binary was checked against the SHA-256 that GitHub records for it. They say so (the CycloneDX lifecycle is `post-build`; the SPDX package comment says it) and they are **not attested**: an attestation is made by the workflow at the build, and those builds are long finished. The binary's SHA-256 in each SBOM ties it to its file. The v4.0.x releases have no checksum files, and v4.0.0 to v4.0.6 no attestations either; their SBOMs still name the Go release that built them.
+
+**How they are made.** `.github/scripts/sbom.py` reads the build information with `go version -m -json` - which reads the binary and never runs it - and writes both formats; no third-party tool makes the binaries' SBOMs. (Go's reader finds nothing in AIX's XCOFF binaries; for those the script reads the same block from the file itself, the way the toolchain does.)
+
+### Docker images
+
+From v4.3.0, the Docker images - [Docker Hub and GHCR](install.md#docker), `linux/amd64` and `linux/arm64` - have SBOMs too, in both formats, one pair per registry and platform, on the release page:
+
+| File | What |
+|---|---|
+| `image.ghcr.linux.amd64.cdx.json`, `.spdx.json` | the GHCR image for `linux/amd64` |
+| `image.ghcr.linux.arm64.cdx.json`, `.spdx.json` | the GHCR image for `linux/arm64` |
+| `image.dockerhub.linux.amd64.cdx.json`, `.spdx.json` | the Docker Hub image for `linux/amd64` |
+| `image.dockerhub.linux.arm64.cdx.json`, `.spdx.json` | the Docker Hub image for `linux/arm64` |
+
+An image holds more than shint's binary: the distroless base's Debian packages - CA certificates, time zones, the user and group files - so its SBOM lists those as well, and the image's own shint binary (built in the Dockerfile, not the one on the release page) with its Go release and modules. [Syft](https://github.com/anchore/syft) makes them, in the image workflows, from the pushed image by each platform's digest; it is pinned, and its download checked against a SHA-256 pinned in the repository, before it runs.
+
+Each is **attested** against its platform's image digest. GHCR's attestations are also pushed to the registry, beside the image, for registry-aware tools; Docker Hub's are kept on GitHub. Either way:
+
+```bash
+docker buildx imagetools inspect ghcr.io/dmartsapp/shint:v{{version}}      # each platform's digest
+gh attestation verify oci://ghcr.io/dmartsapp/shint@sha256:<digest> --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom
+```
+
+(`https://spdx.dev/Document/v2.3` for the SPDX one; `docker.io/<user>/shint` for Docker Hub's.)
+
+**Docker's own attestations** come with every image from v4.3.0 as well, in the image index beside each platform's image: an SBOM made by BuildKit's scanner and the build's full provenance, the form Docker's tools read - [Docker Scout](https://docs.docker.com/scout/), which shows an image's packages and vulnerabilities on Docker Hub, and:
+
+```bash
+docker buildx imagetools inspect ghcr.io/dmartsapp/shint:v{{version}} --format '{{ json .SBOM }}'
+```
+
+**v4.2.4's images** got their SBOMs on 2026-11-09, made from the published images: each layer read from the registry as data and checked against its digest - nothing in the image ran - for the Debian package records the base keeps in `/var/lib/dpkg/status.d`, the Debian release, and the image's own shint binary, read like the release binaries. They are marked as made after the release, are not attested, and have no Grype report. Images before v4.2.4 have none.
+
+## Vulnerability reports
+
+From v4.3.0 every release keeps its scans' reports beside its files, for as long as it exists:
+
+- **`govulncheck.txt`** - the report of the check that gated the release: the modules and the Go release scanned, and what was found. It used to live only in the workflow run's summary, which GitHub deletes after its retention period.
+- **`image.<registry>.linux.<arch>.grype.json`** - Grype's scan of each image's SBOM: every match of a package and version - the Go standard library, the modules, the base image's Debian packages - against vulnerability databases, with its severity. Read one with:
+
+```bash
+jq -r '.matches[] | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version] | @tsv' image.ghcr.linux.amd64.grype.json
+```
+
+- **`image.<registry>.linux.<arch>.dockle.json`** - Dockle's check of each image against the [CIS Docker Benchmark](https://www.cisecurity.org/benchmark/docker) and its own: the user the image runs as, setuid and setgid files, secrets in files or the environment, and the like, each finding with its level (`FATAL`, `WARN`, `INFO`). The image is distroless and runs as `nonroot`, without a shell, so little is expected: `HEALTHCHECK` is the usual note, and does not apply to a command-line tool.
+
+**Grype and Dockle report; they do not decide.** Grype matches versions with no reachability analysis, so it also lists flaws in code shint never calls, and a Debian package's flaw that does not matter in a distroless image. `govulncheck`, which follows call paths from shint's own code, stays the gate. A Grype match that does matter is handled like any other advisory: in the release cycle, or out of it when it is serious.
 
 ## Advisories
 

@@ -22,7 +22,7 @@ There are 174 top-level Go tests: 135 in `lib/handlers`, 31 in `lib` and 8 end-t
 
 | Command | What it runs | Needs |
 |---|---|---|
-| `make check` | Everything below except the live test, in this order: tool check, `gofmt`, `go vet` (also for Windows, FreeBSD and Solaris, so every test file compiles on every kind of target), `go test -race ./...`, the black-box battery, `golangci-lint`, `govulncheck`, the documentation tests and check, the workflow checks | the tools below; no network for the tests (`govulncheck` reads the vulnerability database) |
+| `make check` | Everything below except the live test, in this order: tool check, `gofmt`, `go vet` (also for Windows, FreeBSD and Solaris, so every test file compiles on every kind of target), `go test -race ./...`, the black-box battery, `golangci-lint`, Hadolint on the `Dockerfile` (skipped, saying so, where `hadolint` is not installed - Check on main and the release gates run it), `govulncheck`, the documentation tests and check, the workflow checks | the tools below; no network for the tests (`govulncheck` reads the vulnerability database) |
 | `make test-live` | The [live smoke test](#the-live-smoke-test) | the internet and unprivileged ICMP |
 | `make test-full` | `make check`, then `make test-live` - run this before a release | both |
 | `make test` | The Go tests with the race detector, then the [black-box battery](#the-black-box-battery) | Go, python3 |

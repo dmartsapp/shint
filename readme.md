@@ -200,7 +200,7 @@ shint collects nothing. The only network traffic is what a check itself needs - 
 
 ## Security
 
-Security fixes go into the newest release only. Report a vulnerability privately, through [GitHub](https://github.com/dmartsapp/shint/security/advisories/new). The support policy - including how shint takes its dependencies' fixes - and every advisory are in [SECURITY.md](SECURITY.md) and on the [Security](https://dmartsapp.github.io/shint/docs/security.html) page.
+Security fixes go into the newest release only. Report a vulnerability privately, through [GitHub](https://github.com/dmartsapp/shint/security/advisories/new). The support policy - including how shint takes its dependencies' fixes - and every advisory are in [SECURITY.md](SECURITY.md) and on the [Security](https://dmartsapp.github.io/shint/docs/security.html) page. Every release binary has a software bill of materials next to it, in CycloneDX and SPDX - and from v4.3.0 every Docker image too, with each release's vulnerability reports ([details](https://dmartsapp.github.io/shint/docs/security.html#software-bill-of-materials)).
 
 ## License
 

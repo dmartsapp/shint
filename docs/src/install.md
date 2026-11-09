@@ -104,6 +104,8 @@ It succeeds only for a file that is byte-for-byte what that workflow built, and 
 An attestation proves where a file came from. It does not stop macOS or Windows from warning that the publisher is unknown: shint is not signed with an Apple or Microsoft certificate.
 :::
 
+**A software bill of materials** says what a binary is made of - the Go release and every module, with versions - in CycloneDX (`shint.darwin.arm64.cdx.json`) and SPDX (`shint.darwin.arm64.spdx.json`), next to the binary for every release from v4.0.0; from v4.3.0 each is attested too. See [Software bill of materials](security.md#software-bill-of-materials).
+
 ## Docker
 
 Every release is also published as a multi-architecture image (`linux/amd64`, `linux/arm64`) to two registries. The image is tiny: the same static binary on a distroless base, running as a non-root user.
@@ -121,12 +123,16 @@ docker run --rm farhansabbir/shint:latest nmap example.com --from 1 --to 1024 --
 
 Tags: `latest`, the full version (`{{version}}` and `v{{version}}`), and rolling `{{minor}}` and `{{major}}`. Pin a full version in anything you care about.
 
+**GHCR keeps every release's image; Docker Hub keeps v4.2.0 and later.** For an older release, pull it from GHCR under the same tag: `ghcr.io/dmartsapp/shint:v4.0.6`.
+
 The listen commands need their port published so you can reach them from outside the container:
 
 ```bash
 docker run --rm -p 9000:9000/tcp farhansabbir/shint:latest listen tcp 9000
 docker run --rm -p 8080:8080/tcp farhansabbir/shint:latest listen http 8080
 ```
+
+From v4.3.0 each image - each registry and platform - has a software bill of materials and a vulnerability report on its release page, and an attestation tying the SBOM to the image: see [Docker images](security.md#docker-images).
 
 ## Build from source
 

@@ -126,6 +126,7 @@ no-dirty:
 GOLANGCI_LINT ?= golangci-lint
 GOVULNCHECK ?= govulncheck
 ACTIONLINT ?= actionlint
+HADOLINT ?= hadolint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.15.0
 
@@ -152,7 +153,7 @@ help:
 	echo "make test-battery  just the black-box battery (BATTERY_ARGS=\"--group F\" to pick, --list to see the cases)"
 	echo "make <platform>  build for one platform (linux-amd64, darwin-arm64, ...); all-platforms builds every one"
 
-check: tools fmt-check vet test lint vuln docs-check workflows
+check: tools fmt-check vet test lint dockerfile-lint vuln docs-check workflows
 	echo "==> all checks passed"
 
 test-full: check test-live
@@ -180,7 +181,7 @@ hooks:
 # the release's own Lint workflow and gate), the other operating systems' vet and the
 # workflow tests. About a minute, against three and a half for make check.
 QUICK_BATTERY_ARGS = --group A --group B --group C --group D
-check-quick: tools-quick fmt-check vet-host test-quick vuln docs-check
+check-quick: tools-quick fmt-check vet-host test-quick dockerfile-lint vuln docs-check
 	$(MAKE) --no-print-directory test-battery BATTERY_ARGS="$(QUICK_BATTERY_ARGS)"
 	echo "==> quick checks passed"
 
@@ -246,6 +247,14 @@ lint:
 	echo "==> golangci-lint"
 	$(GOLANGCI_LINT) run ./...
 
+# The Dockerfile, through Hadolint: an error-level finding fails; warnings and notes are printed.
+# Skipped, saying so, where hadolint is not installed - Check on main installs it (pinned, in
+# .github/scripts/install-tools.sh) and runs this on both its paths, and every release gate runs it.
+dockerfile-lint:
+	echo "==> hadolint"
+	if command -v $(HADOLINT) >/dev/null 2>&1; then $(HADOLINT) --failure-threshold error Dockerfile; \
+	else echo "hadolint is not installed: skipped here (Check on main and the release gates run it)"; fi
+
 vuln:
 	echo "==> govulncheck"
 	$(GOVULNCHECK) ./...
@@ -273,6 +282,10 @@ workflows:
 	bash .github/scripts/test-write-checksums.sh
 	bash .github/scripts/test-release-check.sh
 	python3 .github/scripts/test_release.py
+	python3 .github/scripts/test_sbom.py
+	python3 .github/scripts/test_image_sboms.py
+	bash .github/scripts/test-install-tools.sh
+	bash .github/scripts/test-upload-release-assets.sh
 	python3 .github/scripts/test_notify_slack.py
 	python3 .github/scripts/test_readme_reconcile.py
 	bash .github/scripts/test-readme-release.sh

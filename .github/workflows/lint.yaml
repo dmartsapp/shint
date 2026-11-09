@@ -34,6 +34,13 @@ jobs:
         with:
           version: v2.15.0
 
+      # The Dockerfile, through Hadolint (pinned, its download checked in
+      # install-tools.sh): an error-level finding stops the release.
+      - name: hadolint
+        run: |
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" hadolint
+          "$RUNNER_TEMP/tools/hadolint" --failure-threshold error Dockerfile
+
   report-failure:
     name: Report Failure as Issue
     runs-on: ubuntu-latest

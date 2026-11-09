@@ -37,7 +37,10 @@ if a[:2] == ["run", "list"]:
     out([{"databaseId": i, "workflowName": w, "status": "completed", "conclusion": "success", "url": "u"}
          for i, w in enumerate(["Lint", "Vulnerability Check", "Binary Build & Release", "Docker Hub Release", "GHCR Release"])])
 if a[:2] == ["release", "view"]:
-    out({"assets": [{"name": n} for n in ("shint.linux.amd64", "shint.linux.amd64.sha256")], "url": "https://example/release"})
+    names = state.get("assets", ["shint.linux.amd64", "shint.linux.amd64.sha256", "shint.linux.amd64.cdx.json", "shint.linux.amd64.spdx.json",
+                                 "govulncheck.txt"] + ["image.%s.linux.%s.%s" % (r, a, k) for r in ("dockerhub", "ghcr")
+                                                       for a in ("amd64", "arm64") for k in ("cdx.json", "spdx.json", "grype.json", "dockle.json")])
+    out({"assets": [{"name": n} for n in names], "url": "https://example/release"})
 sys.exit(1)
 '''
 
@@ -275,6 +278,18 @@ class Release(Fixture):
         self.assertIn("**`tls` is new.**", tagmsg)
         self.assertIn("v4.3.0 is released", out)
         self.assertIn("README    | [**v4.3.0**](releases/v4.3.0.md) | Released Nov 15 |", out)   # the summary card shows the row
+        self.assertIn("every binary has its checksum and its CycloneDX and SPDX SBOMs; the images' SBOMs, Grype reports and Dockle", out)
+        self.assertIn("release https://example/release: 1 binaries, 21 assets", out)
+
+    def test_a_release_without_its_sboms_is_not_released(self):
+        self.ready()
+        self.set_gh(assets=["shint.linux.amd64", "shint.linux.amd64.sha256", "shint.linux.amd64.cdx.json"])
+        rc, out = self.release()
+        self.assertNotEqual(rc, 0, out)
+        self.assertIn("FAIL missing: shint.linux.amd64.spdx.json, govulncheck.txt, image.dockerhub.linux.amd64.cdx.json", out)
+        self.assertIn("and 12 more", out)
+        self.assertNotIn("v4.3.0 is released", out)
+        self.assertEqual(self.origin_ref("refs/tags/v4.3.0^{commit}"), self.git(self.work, "rev-parse", "HEAD"))  # tagged all the same
 
     def test_main_that_moved_is_merged_in(self):
         self.ready()
