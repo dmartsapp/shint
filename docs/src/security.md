@@ -98,7 +98,9 @@ docker buildx imagetools inspect ghcr.io/dmartsapp/shint:v{{version}}      # eac
 gh attestation verify oci://ghcr.io/dmartsapp/shint@sha256:<digest> --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom
 ```
 
-(`https://spdx.dev/Document/v2.3` for the SPDX one; `docker.io/<user>/shint` for Docker Hub's.) Images before v4.3.0 have none.
+(`https://spdx.dev/Document/v2.3` for the SPDX one; `docker.io/<user>/shint` for Docker Hub's.)
+
+**v4.2.4's images** got their SBOMs on 2026-11-09, made from the published images: each layer read from the registry as data and checked against its digest - nothing in the image ran - for the Debian package records the base keeps in `/var/lib/dpkg/status.d`, the Debian release, and the image's own shint binary, read like the release binaries. They are marked as made after the release, are not attested, and have no Grype report. Images before v4.2.4 have none.
 
 ## Vulnerability reports
 
