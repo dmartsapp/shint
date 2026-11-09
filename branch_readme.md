@@ -18,7 +18,7 @@ Includes:
 - [x] the `tls` target has an issue of its own: [#95](https://github.com/dmartsapp/shint/issues/95) (`nmap`, moved to v4.4.0, gets its own there)
 - [x] the changelog has an entry for every change a user would notice
 - [x] `Summary:` above says what this release is, in plain language
-- [ ] a clean rehearsal: `make release DRY_RUN=1`
+- [x] a clean rehearsal: `make release DRY_RUN=1` (2026-11-09: every check, the live smoke test and release-check passed; nothing pushed)
 
 ## Targets
 
