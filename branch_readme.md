@@ -14,9 +14,9 @@ Includes:
 
 ## To do
 
-- [ ] every target and bug below is done, or moved to a later milestone
-- [ ] the `tls` target has an issue of its own (`nmap` moved to v4.4.0, where it needs one too)
-- [ ] the changelog has an entry for every change a user would notice
+- [x] every target and bug below is done, or moved to a later milestone
+- [x] the `tls` target has an issue of its own: [#95](https://github.com/dmartsapp/shint/issues/95) (`nmap`, moved to v4.4.0, gets its own there)
+- [x] the changelog has an entry for every change a user would notice
 - [x] `Summary:` above says what this release is, in plain language
 - [ ] a clean rehearsal: `make release DRY_RUN=1`
 
@@ -24,7 +24,7 @@ Includes:
 
 | Target | Issue | State |
 |---|---|---|
-| `tls` - certificate chain and trust, names, expiry, protocol and cipher; `--warn-days N` (a `WARN` line) and `--fail-days N` (a failed check), `--servername`, `--cacert` | - (to be filed) | Done - [`eab0903`](https://github.com/dmartsapp/shint/commit/eab0903). See [tls](https://dmartsapp.github.io/shint/docs/tls.html) |
+| `tls` - certificate chain and trust, names, expiry, protocol and cipher; `--warn-days N` (a `WARN` line) and `--fail-days N` (a failed check), `--servername`, `--cacert` | [#95](https://github.com/dmartsapp/shint/issues/95) | Done - [`eab0903`](https://github.com/dmartsapp/shint/commit/eab0903). See [tls](https://dmartsapp.github.io/shint/docs/tls.html) |
 | `web -k`: the "TLS verification disabled" warning logs at `ERROR` while exit status is 0 | [#37](https://github.com/dmartsapp/shint/issues/37) | Done - [`eab0903`](https://github.com/dmartsapp/shint/commit/eab0903): a new line level, `WARN`, advisory; `ERROR` always means exit 1 now |
 | `web`: `Response Received` instead of `OK` on a response line, and the status's standard name (`status_text`, from the IANA registry) next to its number - text and `--json`, also on `--timing` hops and `listen http` | [#90](https://github.com/dmartsapp/shint/issues/90) | Done - [`4f208a7`](https://github.com/dmartsapp/shint/commit/4f208a7) |
 | SBOM + a preserved vulnerability report, for both binaries and images | [#71](https://github.com/dmartsapp/shint/issues/71) | Done on `main` ([`5d9c1fb`](https://github.com/dmartsapp/shint/commit/5d9c1fb), [`2abc3f6`](https://github.com/dmartsapp/shint/commit/2abc3f6), [`e39bfbb`](https://github.com/dmartsapp/shint/commit/e39bfbb)), merged in. The binaries' SBOMs come from `.github/scripts/sbom.py`, the images' from Syft; Grype and Dockle reports, the `govulncheck` report, Docker's own SBOM and provenance attestations, Hadolint on the Dockerfile. v4.0.0 to v4.2.4 have their binaries' SBOMs, and v4.2.4 its images', already (made afterwards). **v4.3.0's tag is the first real run** of Syft, Grype, Dockle and the image attestations - watch the image jobs |
@@ -34,15 +34,22 @@ Includes:
 | Issue | State |
 |---|---|
 | [#75](https://github.com/dmartsapp/shint/issues/75) Release workflows: v4.2.2's cache-collision fix did not work - `golang/govulncheck-action` still restores its cache over the modules `golangci-lint` downloaded (about 1590 `tar: ... Cannot open: File exists` lines per workflow on the v4.2.2 tag) | Done on `main` ([`61fe1cf`](https://github.com/dmartsapp/shint/commit/61fe1cf)), merged in: `Set up Go` restores the cache once, the action's restore is off. The changelog corrects v4.2.2's claim. **Confirm on v4.3.0's tag logs**: no `Cannot open: File exists` lines in the three gate jobs |
-| [#65](https://github.com/dmartsapp/shint/issues/65) `rdns` (and every command via `lib.ResolveName`): a name on several hosts-file lines may resolve to its first address only | Not started - moved from v4.2.2; still needs a repro from the machine that showed it. To move to v4.4.0 if none comes before the release |
 | [#84](https://github.com/dmartsapp/shint/issues/84) `listen http`: a client that stopped sending mid-body still got net/http's `200 OK`, while the listener logged "incomplete, nothing answered" - since v4.2.0; found when it made Check on `main` fail now and then ([#83](https://github.com/dmartsapp/shint/issues/83)) | Done - [`7943de4`](https://github.com/dmartsapp/shint/commit/7943de4): the handler aborts, so nothing is written; a new test reproduces it every time |
 | [#91](https://github.com/dmartsapp/shint/issues/91) Go 1.27.1 standard-library vulnerabilities: `govulncheck` found 10 that shint's code reaches (GO-2026-6809: compromised intermediate certificates still trusted, and nine more), in every release up to v4.2.3 | Released in [v4.2.4](https://github.com/dmartsapp/shint/releases/tag/v4.2.4) (2026-11-08), a security patch outside the cycle - first made here ([`516e339`](https://github.com/dmartsapp/shint/commit/516e339)), carried to `release/v4.2.4`, and back with `main`. The advisory: [Security](https://dmartsapp.github.io/shint/docs/security.html#2026-11-08-go-1-27-1-standard-library) |
+
+## After the release
+
+- Confirm [#75](https://github.com/dmartsapp/shint/issues/75) in the tag's logs: no `Cannot open: File exists` lines in the gate jobs of Binary Build & Release, Docker Hub Release and GHCR Release.
+- Check the first real run of Syft, Grype, Dockle and the image attestations ([#71](https://github.com/dmartsapp/shint/issues/71)): the image jobs green, and the release's 89 assets (`make release` counts them).
+- Close #95, #37, #90, #84, #71 and #75 as resolved in v4.3.0, then the milestone.
+- On `main`: `tls` in the README's command tables (they can only list a released command).
 
 ## Moved
 
 | Target | To | Why |
 |---|---|---|
 | `nmap` upgrades: `--ports 22,80,443` lists, CIDR/multi-host sweeps, service names | v4.4.0 | Agreed with the user on 2026-11-09: both headline features did not fit the time left before Nov 15; `tls` stays, `nmap` moves. |
+| [#65](https://github.com/dmartsapp/shint/issues/65) `rdns` (and every command via `lib.ResolveName`): a name on several hosts-file lines may resolve to its first address only | v4.4.0 | Still needs a reproduction from the machine that showed it (moved here from v4.2.2 already). Nothing changed for it in v4.3.0. |
 
 ## Dropped
 
