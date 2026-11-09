@@ -29,6 +29,12 @@ Every release binary has its software bill of materials (SBOM) next to it on the
 
 From v4.3.0 the release workflow makes them with each binary and attests them (`gh attestation verify <binary> --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom`, or `https://spdx.dev/Document/v2.3`). v4.0.0 to v4.2.4 got theirs afterwards, made from their published binaries, unattested. Details: the [Security](https://dmartsapp.github.io/shint/docs/security.html#software-bill-of-materials) page.
 
+From v4.3.0 the Docker images have them too - Docker Hub and GHCR, each platform, both formats, attested (`image.<registry>.linux.<arch>.cdx.json` and `.spdx.json` on the release) - listing the distroless base's Debian packages as well.
+
+## Vulnerability reports
+
+From v4.3.0 every release keeps `govulncheck.txt`, the report of the check that gated it, and Grype's scan of each image (`image.<registry>.linux.<arch>.grype.json`). Grype reports and does not gate - it matches versions without reachability analysis - `govulncheck` stays the gate. See the [Security](https://dmartsapp.github.io/shint/docs/security.html#vulnerability-reports) page.
+
 ## Advisories
 
 Each advisory - what was affected, the original sources and CVE numbers, how shint was affected and what was done - is on the documentation's [Security](https://dmartsapp.github.io/shint/docs/security.html#advisories) page.

@@ -36,7 +36,8 @@ shint is built with the [Go](https://go.dev) toolchain and its standard library 
 - **[`govulncheck`](https://go.dev/doc/security/vuln/)**, the Go project's vulnerability scanner, gates every release: the release workflows refuse to publish a release whose code reaches a known vulnerability in the [Go vulnerability database](https://pkg.go.dev/vuln/). It also runs in every local `make check` ([Testing](tech-testing.md)).
 - **It reports what shint's code can reach**, not only what it contains: a vulnerability counts when there is a call path from shint to the vulnerable function. A path is not proof that the flaw can be triggered - it often needs conditions shint never creates - so each advisory below says how shint was affected in practice. shint takes the fix either way.
 - **Between releases nothing scans on its own.** By design, no workflow runs except for a release tag ([the workflow trigger rule](tech-ci.md#the-workflow-trigger-rule)). An advisory published between two releases is found by the next `make check` or release - which is why the advisory below was found a month after its first fixes were published.
-- **Release integrity** - checksums and signed build attestations for every binary - is described in [Install](install.md); what each binary is made of, in its [software bill of materials](#software-bill-of-materials).
+- **Every image is scanned too.** From v4.3.0, [Grype](https://github.com/anchore/grype) scans each Docker image's SBOM - shint's binary in it, and the distroless base's Debian packages, which `govulncheck` cannot see - and its report is kept on the release. Grype reports and does not gate: see [Vulnerability reports](#vulnerability-reports).
+- **Release integrity** - checksums and signed build attestations for every binary - is described in [Install](install.md); what each binary and image is made of, in its [software bill of materials](#software-bill-of-materials).
 
 ## Software bill of materials
 
@@ -75,7 +76,42 @@ The attestation carries the SBOM itself (`--format json` prints it), so it is al
 
 **Releases before v4.3.0** - v4.0.0 to v4.2.4 - got their SBOMs on 2026-11-09, made from their published binaries by the same script, after each binary was checked against the SHA-256 that GitHub records for it. They say so (the CycloneDX lifecycle is `post-build`; the SPDX package comment says it) and they are **not attested**: an attestation is made by the workflow at the build, and those builds are long finished. The binary's SHA-256 in each SBOM ties it to its file. The v4.0.x releases have no checksum files, and v4.0.0 to v4.0.6 no attestations either; their SBOMs still name the Go release that built them.
 
-**How they are made.** `.github/scripts/sbom.py` reads the build information with `go version -m -json` - which reads the binary and never runs it - and writes both formats. No third-party SBOM tool runs in the release pipeline. (Go's reader finds nothing in AIX's XCOFF binaries; for those the script reads the same block from the file itself, the way the toolchain does.)
+**How they are made.** `.github/scripts/sbom.py` reads the build information with `go version -m -json` - which reads the binary and never runs it - and writes both formats; no third-party tool makes the binaries' SBOMs. (Go's reader finds nothing in AIX's XCOFF binaries; for those the script reads the same block from the file itself, the way the toolchain does.)
+
+### Docker images
+
+From v4.3.0, the Docker images - [Docker Hub and GHCR](install.md#docker), `linux/amd64` and `linux/arm64` - have SBOMs too, in both formats, one pair per registry and platform, on the release page:
+
+| File | What |
+|---|---|
+| `image.ghcr.linux.amd64.cdx.json`, `.spdx.json` | the GHCR image for `linux/amd64` |
+| `image.ghcr.linux.arm64.cdx.json`, `.spdx.json` | the GHCR image for `linux/arm64` |
+| `image.dockerhub.linux.amd64.cdx.json`, `.spdx.json` | the Docker Hub image for `linux/amd64` |
+| `image.dockerhub.linux.arm64.cdx.json`, `.spdx.json` | the Docker Hub image for `linux/arm64` |
+
+An image holds more than shint's binary: the distroless base's Debian packages - CA certificates, time zones, the user and group files - so its SBOM lists those as well, and the image's own shint binary (built in the Dockerfile, not the one on the release page) with its Go release and modules. [Syft](https://github.com/anchore/syft) makes them, in the image workflows, from the pushed image by each platform's digest; it is pinned, and its download checked against a SHA-256 pinned in the repository, before it runs.
+
+Each is **attested** against its platform's image digest. GHCR's attestations are also pushed to the registry, beside the image, for registry-aware tools; Docker Hub's are kept on GitHub. Either way:
+
+```bash
+docker buildx imagetools inspect ghcr.io/dmartsapp/shint:v{{version}}      # each platform's digest
+gh attestation verify oci://ghcr.io/dmartsapp/shint@sha256:<digest> --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom
+```
+
+(`https://spdx.dev/Document/v2.3` for the SPDX one; `docker.io/<user>/shint` for Docker Hub's.) Images before v4.3.0 have none.
+
+## Vulnerability reports
+
+From v4.3.0 every release keeps its scans' reports beside its files, for as long as it exists:
+
+- **`govulncheck.txt`** - the report of the check that gated the release: the modules and the Go release scanned, and what was found. It used to live only in the workflow run's summary, which GitHub deletes after its retention period.
+- **`image.<registry>.linux.<arch>.grype.json`** - Grype's scan of each image's SBOM: every match of a package and version - the Go standard library, the modules, the base image's Debian packages - against vulnerability databases, with its severity. Read one with:
+
+```bash
+jq -r '.matches[] | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version] | @tsv' image.ghcr.linux.amd64.grype.json
+```
+
+**Grype reports; it does not decide.** It matches versions with no reachability analysis, so it also lists flaws in code shint never calls, and a Debian package's flaw that does not matter in a distroless image. `govulncheck`, which follows call paths from shint's own code, stays the gate. A Grype match that does matter is handled like any other advisory: in the release cycle, or out of it when it is serious.
 
 ## Advisories
 

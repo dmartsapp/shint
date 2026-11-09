@@ -53,7 +53,7 @@ A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag 
 - **Checkout:** `actions/checkout@v5`.
 - **Linter:** `golangci-lint` **pinned to `v2.15.0`** through `golangci/golangci-lint-action@v7` (Check installs the same version with `go install`). It is pinned because `latest` once resolved to a build made with an older Go than the module targets and failed for that reason alone; and action v6 does not support golangci-lint v2. **A new Go can need a newer golangci-lint**: golangci-lint reads the compiled packages the module's Go writes with its own copy of `golang.org/x/tools`, so when a Go release changes that format, an older golangci-lint fails on every package it type-checks - Go 1.27.3 introduced format version 5, which golangci-lint v2.13.2 (x/tools v0.49.0) cannot read (`export data version 5 is greater than maximum supported version 4`) and v2.14.0 and later (x/tools v0.50.0 and later) can. It is the x/tools inside golangci-lint that matters, not the Go it was built with.
 - **Vulnerabilities:** `golang/govulncheck-action@v1`.
-- **Least privilege:** every job declares `permissions` explicitly (`contents: read` by default; `contents: write` only to create the release; `issues: write` only to file failure issues; `packages: write` only to push to GHCR; `id-token: write` and `attestations: write` only in the binary build, to sign and store its attestation).
+- **Least privilege:** every job declares `permissions` explicitly (`contents: read` by default; `contents: write` only to create the release or add files to it - the release job, the image jobs, the vulnerability check; `issues: write` only to file failure issues; `packages: write` only to push to GHCR; `id-token: write` and `attestations: write` only in the binary build and the image jobs, to sign and store their attestations).
 
 ## The release-tag guard
 
@@ -171,7 +171,7 @@ Lint, Vulnerability Check and Check each file an issue when their check fails: t
 | Job | Needs | What it does |
 |---|---|---|
 | `verify-tag` | - | The [guard](#the-release-tag-guard). |
-| `govulncheck` | `verify-tag` | Runs `govulncheck`, writes its report to a file, and turns it into a step summary table (status, vulnerability count, checked modules, details). |
+| `govulncheck` | `verify-tag` | Runs `govulncheck`, writes its report to a file, and turns it into a step summary table (status, vulnerability count, checked modules, details). Then **keeps the report on the release** as `govulncheck.txt` (`.github/scripts/upload-release-assets.sh`, which waits for the build workflow to have created the release): a run's summary ages out of GitHub's retention, the release does not. |
 | `report-failure` | `govulncheck` | If the check itself failed, files an issue "CI Failure: Vulnerability Check" like the lint workflow does. |
 
 ## Moving to a new Go release
@@ -199,7 +199,7 @@ Binaries already published keep the Go they were built with; only the next relea
 
 ### Verifying a release
 
-Every binary has a `<binary>.sha256` next to it (a line in the format `sha256sum -c` and `shasum -a 256 -c` read), an attestation that `gh attestation verify <file> --repo dmartsapp/shint` checks, and its two SBOMs, each attested too (`--predicate-type https://cyclonedx.org/bom`, or `https://spdx.dev/Document/v2.3`). A release therefore has **72 assets: 18 binaries, each with its checksum file and its two SBOMs** (v4.2.1 to v4.2.4 had 36 before their SBOMs were added afterwards; see [Software bill of materials](security.md#software-bill-of-materials)). `make release` checks that every binary has all three, and that there are as many binaries as in the release before. Users' instructions are on the [Install page](install.md#verify-your-download). The attestation is created in the same job as the binary, before the checksum file is added, so it covers exactly the bytes that are uploaded; the workflow needs no key or certificate of its own.
+Every binary has a `<binary>.sha256` next to it (a line in the format `sha256sum -c` and `shasum -a 256 -c` read), an attestation that `gh attestation verify <file> --repo dmartsapp/shint` checks, and its two SBOMs, each attested too (`--predicate-type https://cyclonedx.org/bom`, or `https://spdx.dev/Document/v2.3`). A release therefore has **85 assets: 18 binaries, each with its checksum file and its two SBOMs (72), the govulncheck report, and each registry's image SBOMs and Grype reports for two platforms (12)**. v4.2.1 to v4.2.4 had 36 before their SBOMs were added afterwards (see [Software bill of materials](security.md#software-bill-of-materials)), and no image files or report. `make release` checks that every binary has all three, that the images' files and the report are there, and that there are as many binaries as in the release before. Users' instructions are on the [Install page](install.md#verify-your-download). The attestation is created in the same job as the binary, before the checksum file is added, so it covers exactly the bytes that are uploaded; the workflow needs no key or certificate of its own.
 
 ### Release notes
 
@@ -226,6 +226,14 @@ The commit message is free text written by a person, so it is passed to the shel
 | Login | Docker Hub uses the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. GHCR uses the workflow's own `GITHUB_TOKEN` (needs `packages: write`). |
 | Compute tags | From the tag `v{{version}}`: `v{{version}}`, `{{version}}`, `{{minor}}`, `{{major}}`, and `latest`. |
 | Build and push | `docker/build-push-action@v6`, platforms `linux/amd64,linux/arm64`, build argument `VERSION=<tag>`, and OCI labels for version, revision and source. |
+| Syft and Grype | `.github/scripts/install-tools.sh` downloads both at the versions pinned in it, and checks each archive against the SHA-256 pinned beside the version before anything in it runs. |
+| SBOMs and vulnerability reports | `.github/scripts/image-sboms.py`: for each platform in the pushed image index (the build's attestation manifests skipped), by that platform's own digest, Syft writes the image's SBOM - `image.<registry>.linux.<arch>.cdx.json` and `.spdx.json` - and Grype scans it into `image.<registry>.linux.<arch>.grype.json`; the step summary gets a table of Grype's matches by severity. Grype **reports and does not gate**: govulncheck gates the release. |
+| Attest | Each SBOM, with `actions/attest@v4` (`subject-name` the image, `subject-digest` its platform's digest, `sbom-path`). GHCR's attestations are also pushed to the registry, as referrers of the image (`push-to-registry: true`); Docker Hub's stay on GitHub, where `gh attestation verify` finds them by digest. |
+| Upload | The six files of each registry to the tag's release, `.github/scripts/upload-release-assets.sh` (waits for the release to exist). |
+
+Images get Syft rather than `sbom.py` because an image holds more than shint's binary: the distroless base's Debian packages (CA certificates, time zones, the user and group files), which Syft reads from the image's package database. The image's own shint binary is built in the Dockerfile, not the one on the release page, so its SBOM is its own.
+
+**A new Syft or Grype** is a new pin in `install-tools.sh`: a release at least two weeks old, and the SHA-256 of its `linux_amd64.tar.gz` from the project's own checksums file on that release. `test-install-tools.sh` checks the script against archives served from `file://`; the tools themselves first run on a release tag.
 
 Image names: `docker.io/<DOCKERHUB_USERNAME>/shint` and `ghcr.io/dmartsapp/shint`. The Dockerfile is described in the [Source reference](tech-source.md#build-and-packaging).
 

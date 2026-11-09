@@ -274,6 +274,9 @@ workflows:
 	bash .github/scripts/test-release-check.sh
 	python3 .github/scripts/test_release.py
 	python3 .github/scripts/test_sbom.py
+	python3 .github/scripts/test_image_sboms.py
+	bash .github/scripts/test-install-tools.sh
+	bash .github/scripts/test-upload-release-assets.sh
 	python3 .github/scripts/test_notify_slack.py
 	python3 .github/scripts/test_readme_reconcile.py
 	bash .github/scripts/test-readme-release.sh

@@ -52,8 +52,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: gate
     permissions:
-      contents: read
+      # write: to add the image's SBOMs and reports to the release.
+      contents: write
       packages: write
+      # Only for the SBOM attestations: a short-lived OIDC token for a Sigstore
+      # signing certificate, and permission to store the attestations.
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -93,6 +98,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Build and push
+        id: push
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -105,3 +111,67 @@ jobs:
             org.opencontainers.image.version=${{ steps.image-tags.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      # The image's SBOMs and Grype's vulnerability reports, one set per
+      # platform, each by its platform's own digest (.github/scripts/image-sboms.py).
+      # An image holds the distroless base's Debian packages as well as shint's
+      # binary, which is why images get Syft while the release binaries get
+      # sbom.py. Syft and Grype are pinned, and their archives checked against
+      # SHA-256s pinned in install-tools.sh, before they run. Grype reports and
+      # does not gate: govulncheck gates the release.
+      - name: Install Syft and Grype
+        run: |
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" syft grype
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+
+      - name: SBOMs and vulnerability reports of each platform's image
+        id: image-sboms
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: python3 .github/scripts/image-sboms.py --image "$IMAGE" --digest "$DIGEST" --name ghcr --out image-sboms
+
+      # Signed statements, like the binaries' (keyless, Sigstore), that each SBOM
+      # describes that exact image. Users check them with gh attestation verify
+      # oci://<image>@<platform digest> --repo dmartsapp/shint --predicate-type
+      # https://cyclonedx.org/bom (or https://spdx.dev/Document/v2.3).
+      # They are pushed to the registry too, as referrers of the image.
+      - name: Attest the linux/amd64 image's CycloneDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_amd64 }}
+          sbom-path: image-sboms/image.ghcr.linux.amd64.cdx.json
+          push-to-registry: true
+
+      - name: Attest the linux/amd64 image's SPDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_amd64 }}
+          sbom-path: image-sboms/image.ghcr.linux.amd64.spdx.json
+          push-to-registry: true
+
+      - name: Attest the linux/arm64 image's CycloneDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_arm64 }}
+          sbom-path: image-sboms/image.ghcr.linux.arm64.cdx.json
+          push-to-registry: true
+
+      - name: Attest the linux/arm64 image's SPDX SBOM
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_arm64 }}
+          sbom-path: image-sboms/image.ghcr.linux.arm64.spdx.json
+          push-to-registry: true
+
+      # On the tag's release too, beside the binaries, for whoever has a binary
+      # and no registry access - once the build workflow has created it.
+      - name: Upload the SBOMs and reports to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: bash .github/scripts/upload-release-assets.sh "$GITHUB_REF_NAME" image-sboms/*

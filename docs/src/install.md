@@ -130,6 +130,8 @@ docker run --rm -p 9000:9000/tcp farhansabbir/shint:latest listen tcp 9000
 docker run --rm -p 8080:8080/tcp farhansabbir/shint:latest listen http 8080
 ```
 
+From v4.3.0 each image - each registry and platform - has a software bill of materials and a vulnerability report on its release page, and an attestation tying the SBOM to the image: see [Docker images](security.md#docker-images).
+
 ## Build from source
 
 You need [Go](https://go.dev/dl/) (the version in [go.mod](https://github.com/dmartsapp/shint/blob/main/go.mod) or newer) and, optionally, `make`.
