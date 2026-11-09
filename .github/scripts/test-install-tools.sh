@@ -14,22 +14,29 @@ fail() { echo "FAIL  $1"; fails=$((fails + 1)); }
 
 if command -v sha256sum >/dev/null 2>&1; then hasher=(sha256sum); else hasher=(shasum -a 256); fi
 
-# A fake release of each tool, laid out as GitHub serves them.
-for x in "syft 1.55.0" "grype 0.121.0"; do
-  read -r tool version <<<"$x"
-  mkdir -p "$work/src/$tool" "$work/site/anchore/$tool/releases/download/v$version"
+# A fake release of each tool, laid out as GitHub serves them: three archives, and Hadolint's bare binary.
+for x in "syft 1.55.0 anchore/syft syft_1.55.0_linux_amd64.tar.gz" "grype 0.121.0 anchore/grype grype_0.121.0_linux_amd64.tar.gz" \
+         "dockle 0.4.15 goodwithtech/dockle dockle_0.4.15_Linux-64bit.tar.gz"; do
+  read -r tool version repo file <<<"$x"
+  mkdir -p "$work/src/$tool" "$work/site/$repo/releases/download/v$version"
   printf '#!/bin/sh\necho fake %s\n' "$tool" > "$work/src/$tool/$tool"
-  tar -czf "$work/site/anchore/$tool/releases/download/v$version/${tool}_${version}_linux_amd64.tar.gz" -C "$work/src/$tool" "$tool"
+  tar -czf "$work/site/$repo/releases/download/v$version/$file" -C "$work/src/$tool" "$tool"
 done
+mkdir -p "$work/site/hadolint/hadolint/releases/download/v2.15.1"
+printf '#!/bin/sh\necho fake hadolint\n' > "$work/site/hadolint/hadolint/releases/download/v2.15.1/hadolint-linux-x86_64"
 export INSTALL_TOOLS_BASE_URL="file://$work/site"
-sum() { "${hasher[@]}" "$work/site/anchore/$1/releases/download/v$2/${1}_${2}_linux_amd64.tar.gz" | cut -d' ' -f1; }
+sum() { "${hasher[@]}" "$work/site/$1" | cut -d' ' -f1; }
 
-out="$(INSTALL_TOOLS_SHA256_SYFT="$(sum syft 1.55.0)" INSTALL_TOOLS_SHA256_GRYPE="$(sum grype 0.121.0)" \
-  bash "$here/install-tools.sh" "$work/ok" syft grype 2>&1)"
-if [ $? -eq 0 ] && [ -f "$work/ok/syft" ] && [ -f "$work/ok/grype" ] && ! ls "$work/ok"/*.tar.gz >/dev/null 2>&1; then
-  pass "archives whose SHA-256 matches are unpacked, and the archives removed"
+out="$(INSTALL_TOOLS_SHA256_SYFT="$(sum anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz)" \
+  INSTALL_TOOLS_SHA256_GRYPE="$(sum anchore/grype/releases/download/v0.121.0/grype_0.121.0_linux_amd64.tar.gz)" \
+  INSTALL_TOOLS_SHA256_DOCKLE="$(sum goodwithtech/dockle/releases/download/v0.4.15/dockle_0.4.15_Linux-64bit.tar.gz)" \
+  INSTALL_TOOLS_SHA256_HADOLINT="$(sum hadolint/hadolint/releases/download/v2.15.1/hadolint-linux-x86_64)" \
+  bash "$here/install-tools.sh" "$work/ok" syft grype dockle hadolint 2>&1)"
+if [ $? -eq 0 ] && [ -x "$work/ok/syft" ] && [ -x "$work/ok/grype" ] && [ -x "$work/ok/dockle" ] && [ -x "$work/ok/hadolint" ] \
+   && ! ls "$work/ok"/*.tar.gz "$work/ok"/hadolint-* >/dev/null 2>&1; then
+  pass "downloads whose SHA-256 matches are installed - archives unpacked, a bare binary renamed - and made executable"
 else
-  fail "a matching archive: $out"
+  fail "matching downloads: $out"
 fi
 case "$out" in *"syft 1.55.0:"*"SHA-256 of syft_1.55.0_linux_amd64.tar.gz checked"*) pass "it says which version, and that it checked" ;; *) fail "the output: $out" ;; esac
 

@@ -11,7 +11,7 @@ nav: Security
 
 Security fixes go into **the newest release only**: use the [latest release](https://github.com/dmartsapp/shint/releases/latest) (`shint --version` says which one you have; the Docker tags `latest`, `{{major}}` and `{{minor}}` follow it). Upgrading is the fix - see [Install](install.md).
 
-**Older releases stay published, and are not patched.** Their binaries, checksums, attestations and image tags are never deleted or replaced: anything pinned to one keeps working, every release can still be verified, and what a user ran can always be examined later. A release found to be affected by a vulnerability is listed in that vulnerability's [advisory](#advisories), with the release that fixes it. Taking a release down is kept for a release that is itself compromised - a tampered build, say - not for one that turns out to contain a known flaw.
+**Older releases stay published, and are not patched.** Their binaries, checksums, attestations and GHCR image tags are never deleted or replaced: anything pinned to one keeps working, every release can still be verified, and what a user ran can always be examined later. [GHCR](install.md#docker) keeps every release's image; Docker Hub keeps v4.2.0 and later, to keep that repository small - an older image is pulled from `ghcr.io/dmartsapp/shint`, under the same tag. A release found to be affected by a vulnerability is listed in that vulnerability's [advisory](#advisories), with the release that fixes it. Taking a release down is kept for a release that is itself compromised - a tampered build, say - not for one that turns out to contain a known flaw.
 
 ## Reporting a vulnerability
 
@@ -36,7 +36,8 @@ shint is built with the [Go](https://go.dev) toolchain and its standard library 
 - **[`govulncheck`](https://go.dev/doc/security/vuln/)**, the Go project's vulnerability scanner, gates every release: the release workflows refuse to publish a release whose code reaches a known vulnerability in the [Go vulnerability database](https://pkg.go.dev/vuln/). It also runs in every local `make check` ([Testing](tech-testing.md)).
 - **It reports what shint's code can reach**, not only what it contains: a vulnerability counts when there is a call path from shint to the vulnerable function. A path is not proof that the flaw can be triggered - it often needs conditions shint never creates - so each advisory below says how shint was affected in practice. shint takes the fix either way.
 - **Between releases nothing scans on its own.** By design, no workflow runs except for a release tag ([the workflow trigger rule](tech-ci.md#the-workflow-trigger-rule)). An advisory published between two releases is found by the next `make check` or release - which is why the advisory below was found a month after its first fixes were published.
-- **Every image is scanned too.** From v4.3.0, [Grype](https://github.com/anchore/grype) scans each Docker image's SBOM - shint's binary in it, and the distroless base's Debian packages, which `govulncheck` cannot see - and its report is kept on the release. Grype reports and does not gate: see [Vulnerability reports](#vulnerability-reports).
+- **Every image is scanned too.** From v4.3.0, [Grype](https://github.com/anchore/grype) scans each Docker image's SBOM - shint's binary in it, and the distroless base's Debian packages, which `govulncheck` cannot see - and [Dockle](https://github.com/goodwithtech/dockle) checks each image against the CIS Docker Benchmark; both reports are kept on the release. They report and do not gate: see [Vulnerability reports](#vulnerability-reports).
+- **The Dockerfile is linted** with [Hadolint](https://github.com/hadolint/hadolint) in every check on `main` and every release gate: an error-level finding stops the release.
 - **Release integrity** - checksums and signed build attestations for every binary - is described in [Install](install.md); what each binary and image is made of, in its [software bill of materials](#software-bill-of-materials).
 
 ## Software bill of materials
@@ -100,6 +101,12 @@ gh attestation verify oci://ghcr.io/dmartsapp/shint@sha256:<digest> --repo dmart
 
 (`https://spdx.dev/Document/v2.3` for the SPDX one; `docker.io/<user>/shint` for Docker Hub's.)
 
+**Docker's own attestations** come with every image from v4.3.0 as well, in the image index beside each platform's image: an SBOM made by BuildKit's scanner and the build's full provenance, the form Docker's tools read - [Docker Scout](https://docs.docker.com/scout/), which shows an image's packages and vulnerabilities on Docker Hub, and:
+
+```bash
+docker buildx imagetools inspect ghcr.io/dmartsapp/shint:v{{version}} --format '{{ json .SBOM }}'
+```
+
 **v4.2.4's images** got their SBOMs on 2026-11-09, made from the published images: each layer read from the registry as data and checked against its digest - nothing in the image ran - for the Debian package records the base keeps in `/var/lib/dpkg/status.d`, the Debian release, and the image's own shint binary, read like the release binaries. They are marked as made after the release, are not attested, and have no Grype report. Images before v4.2.4 have none.
 
 ## Vulnerability reports
@@ -113,7 +120,9 @@ From v4.3.0 every release keeps its scans' reports beside its files, for as long
 jq -r '.matches[] | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version] | @tsv' image.ghcr.linux.amd64.grype.json
 ```
 
-**Grype reports; it does not decide.** It matches versions with no reachability analysis, so it also lists flaws in code shint never calls, and a Debian package's flaw that does not matter in a distroless image. `govulncheck`, which follows call paths from shint's own code, stays the gate. A Grype match that does matter is handled like any other advisory: in the release cycle, or out of it when it is serious.
+- **`image.<registry>.linux.<arch>.dockle.json`** - Dockle's check of each image against the [CIS Docker Benchmark](https://www.cisecurity.org/benchmark/docker) and its own: the user the image runs as, setuid and setgid files, secrets in files or the environment, and the like, each finding with its level (`FATAL`, `WARN`, `INFO`). The image is distroless and runs as `nonroot`, without a shell, so little is expected: `HEALTHCHECK` is the usual note, and does not apply to a command-line tool.
+
+**Grype and Dockle report; they do not decide.** Grype matches versions with no reachability analysis, so it also lists flaws in code shint never calls, and a Debian package's flaw that does not matter in a distroless image. `govulncheck`, which follows call paths from shint's own code, stays the gate. A Grype match that does matter is handled like any other advisory: in the release cycle, or out of it when it is serious.
 
 ## Advisories
 

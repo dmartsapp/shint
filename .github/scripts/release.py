@@ -606,9 +606,9 @@ def verify_binary(tag, assets):
 WITH_EACH_BINARY = (".sha256", ".cdx.json", ".spdx.json")
 BINARY_RE = re.compile(r"^shint\.[a-z0-9]+\.[a-z0-9]+(\.exe)?$")
 # And these from the other release workflows: the govulncheck report (Vulnerability Check), and each
-# registry's images' SBOMs and Grype reports, per platform (Docker Hub Release, GHCR Release).
+# registry's images' SBOMs, Grype reports and Dockle checks, per platform (Docker Hub Release, GHCR Release).
 REPORTS = ["govulncheck.txt"] + ["image.%s.linux.%s.%s" % (r, a, k) for r in ("dockerhub", "ghcr")
-                                 for a in ("amd64", "arm64") for k in ("cdx.json", "spdx.json", "grype.json")]
+                                 for a in ("amd64", "arm64") for k in ("cdx.json", "spdx.json", "grype.json", "dockle.json")]
 
 
 def binaries(assets):
@@ -699,8 +699,8 @@ def publish(version, summary, includes):
     if missing:
         say("FAIL missing: %s%s" % (", ".join(missing[:6]), " and %d more" % (len(missing) - 6) if len(missing) > 6 else ""))
     else:
-        say("every binary has its checksum and its CycloneDX and SPDX SBOMs; the images' SBOMs and Grype reports "
-            "and the govulncheck report are there")
+        say("every binary has its checksum and its CycloneDX and SPDX SBOMs; the images' SBOMs, Grype reports and "
+            "Dockle checks, and the govulncheck report, are there")
     good = not failed and bins and not missing and (want is None or len(bins) == want)
     if os.environ.get("RELEASE_VERIFY_BINARY", "1") != "0" and assets:
         good = verify_binary(tag, assets) and good

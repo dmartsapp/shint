@@ -47,6 +47,13 @@ jobs:
       - name: govulncheck
         uses: golang/govulncheck-action@v1
 
+      # The Dockerfile, through Hadolint (pinned, its download checked in
+      # install-tools.sh): an error-level finding stops the release.
+      - name: hadolint
+        run: |
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" hadolint
+          "$RUNNER_TEMP/tools/hadolint" --failure-threshold error Dockerfile
+
   ghcr:
     name: Build and push to GHCR
     runs-on: ubuntu-latest
@@ -104,6 +111,12 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          # Docker's own attestations in the image index, beside each platform's
+          # image: an SBOM (made by BuildKit's scanner) and the build's full
+          # provenance - what Docker Scout, on Docker Hub, and docker buildx
+          # imagetools inspect read.
+          sbom: true
+          provenance: mode=max
           build-args: |
             VERSION=${{ github.ref_name }}
           tags: ${{ steps.image-tags.outputs.tags }}
@@ -112,19 +125,20 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
-      # The image's SBOMs and Grype's vulnerability reports, one set per
-      # platform, each by its platform's own digest (.github/scripts/image-sboms.py).
+      # The image's SBOMs, Grype's vulnerability reports and Dockle's checks,
+      # one set per platform, each by its platform's own digest
+      # (.github/scripts/image-sboms.py).
       # An image holds the distroless base's Debian packages as well as shint's
       # binary, which is why images get Syft while the release binaries get
       # sbom.py. Syft and Grype are pinned, and their archives checked against
-      # SHA-256s pinned in install-tools.sh, before they run. Grype reports and
-      # does not gate: govulncheck gates the release.
-      - name: Install Syft and Grype
+      # SHA-256s pinned in install-tools.sh, before they run. Grype and Dockle
+      # report and do not gate: govulncheck gates the release.
+      - name: Install Syft, Grype and Dockle
         run: |
-          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" syft grype
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" syft grype dockle
           echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
 
-      - name: SBOMs and vulnerability reports of each platform's image
+      - name: SBOMs and reports of each platform's image
         id: image-sboms
         env:
           IMAGE: ghcr.io/${{ github.repository }}

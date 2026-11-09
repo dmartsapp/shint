@@ -61,6 +61,14 @@ jobs:
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
+      # Hadolint, for make dockerfile-lint, on both paths: a laptop seldom has
+      # it, so a signed local report does not stand for it. Pinned, its download
+      # checked against the SHA-256 in install-tools.sh.
+      - name: Install hadolint
+        run: |
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" hadolint
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+
       - name: Install govulncheck
         if: steps.receipt.outputs.fast == 'true'
         run: |

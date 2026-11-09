@@ -4,7 +4,7 @@
 
 Security fixes go into **the newest release only**. Use the [latest release](https://github.com/dmartsapp/shint/releases/latest) - the Docker tags `latest`, `4` and `4.x` follow it.
 
-Older releases stay published - their binaries, checksums, attestations and image tags are never deleted, so anything pinned to one keeps working and every release can still be verified - but they are not patched. A release found to be affected by a vulnerability is listed in the advisory, with the release that fixes it.
+Older releases stay published - their binaries, checksums, attestations and GHCR image tags are never deleted, so anything pinned to one keeps working and every release can still be verified - but they are not patched. GHCR (`ghcr.io/dmartsapp/shint`) keeps every release's image; Docker Hub keeps v4.2.0 and later, to keep that repository small - an older image is pulled from GHCR, under the same tag. A release found to be affected by a vulnerability is listed in the advisory, with the release that fixes it.
 
 ## Reporting a vulnerability
 
@@ -33,7 +33,7 @@ From v4.3.0 the Docker images have them too - Docker Hub and GHCR, each platform
 
 ## Vulnerability reports
 
-From v4.3.0 every release keeps `govulncheck.txt`, the report of the check that gated it, and Grype's scan of each image (`image.<registry>.linux.<arch>.grype.json`). Grype reports and does not gate - it matches versions without reachability analysis - `govulncheck` stays the gate. See the [Security](https://dmartsapp.github.io/shint/docs/security.html#vulnerability-reports) page.
+From v4.3.0 every release keeps `govulncheck.txt`, the report of the check that gated it, Grype's scan of each image (`image.<registry>.linux.<arch>.grype.json`) and Dockle's check of each image against the CIS Docker Benchmark (`.dockle.json`). Grype and Dockle report and do not gate - Grype matches versions without reachability analysis - `govulncheck` stays the gate. The Dockerfile is linted with Hadolint in every check and release gate. Each image also carries Docker's own SBOM and provenance attestations in its index, which Docker Scout reads. See the [Security](https://dmartsapp.github.io/shint/docs/security.html#vulnerability-reports) page.
 
 ## Advisories
 

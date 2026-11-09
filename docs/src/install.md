@@ -123,6 +123,8 @@ docker run --rm farhansabbir/shint:latest nmap example.com --from 1 --to 1024 --
 
 Tags: `latest`, the full version (`{{version}}` and `v{{version}}`), and rolling `{{minor}}` and `{{major}}`. Pin a full version in anything you care about.
 
+**GHCR keeps every release's image; Docker Hub keeps v4.2.0 and later.** For an older release, pull it from GHCR under the same tag: `ghcr.io/dmartsapp/shint:v4.0.6`.
+
 The listen commands need their port published so you can reach them from outside the container:
 
 ```bash

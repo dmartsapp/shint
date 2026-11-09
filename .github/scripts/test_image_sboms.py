@@ -35,7 +35,17 @@ a = sys.argv[1:]
 if name == "docker":
     if os.environ.get("FAKE_DOCKER_FAIL"):
         sys.stderr.write("unauthorized\n"); sys.exit(1)
-    print(os.environ["FAKE_INDEX"]); sys.exit(0)
+    if a[0] == "buildx":
+        print(os.environ["FAKE_INDEX"])
+    elif a[0] == "save":
+        open(a[a.index("-o") + 1], "w").write("an image archive")
+    sys.exit(0)
+if name == "dockle":
+    assert open(a[a.index("--input") + 1]).read() == "an image archive"
+    json.dump({"summary": {"fatal": 0, "warn": 1, "info": 2, "pass": 14},
+               "details": [{"code": "CIS-DI-0006", "level": "WARN", "alerts": ["not found HEALTHCHECK statement"]}]},
+              open(a[a.index("-o") + 1], "w"))
+    sys.exit(0)
 if name == "syft":
     for i, x in enumerate(a):
         if x == "-o":
@@ -59,7 +69,7 @@ class ImageSBOMs(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp)
         self.env = dict(os.environ, FAKE_LOG=os.path.join(self.tmp, "log"), FAKE_INDEX=json.dumps(INDEX),
                         GITHUB_OUTPUT=os.path.join(self.tmp, "output"), GITHUB_STEP_SUMMARY=os.path.join(self.tmp, "summary"))
-        for t in ("docker", "syft", "grype"):
+        for t in ("docker", "syft", "grype", "dockle"):
             p = os.path.join(self.tmp, t)
             with open(p, "w") as f:
                 f.write(FAKE)
@@ -79,19 +89,27 @@ class ImageSBOMs(unittest.TestCase):
         r = self.run_it()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(sorted(os.listdir(os.path.join(self.tmp, "out"))), [
-            "image.ghcr.linux.amd64.cdx.json", "image.ghcr.linux.amd64.grype.json", "image.ghcr.linux.amd64.spdx.json",
-            "image.ghcr.linux.arm64.cdx.json", "image.ghcr.linux.arm64.grype.json", "image.ghcr.linux.arm64.spdx.json"])
+            "image.ghcr.linux.amd64.cdx.json", "image.ghcr.linux.amd64.dockle.json", "image.ghcr.linux.amd64.grype.json",
+            "image.ghcr.linux.amd64.spdx.json",
+            "image.ghcr.linux.arm64.cdx.json", "image.ghcr.linux.arm64.dockle.json", "image.ghcr.linux.arm64.grype.json",
+            "image.ghcr.linux.arm64.spdx.json"])
         log = self.read("log")
         self.assertIn("docker buildx imagetools inspect --raw ghcr.io/dmartsapp/shint@sha256:" + "f" * 64, log)
         self.assertIn("syft scan registry:ghcr.io/dmartsapp/shint@sha256:" + "a" * 64 + " -q -o cyclonedx-json=", log)
         self.assertIn("syft scan registry:ghcr.io/dmartsapp/shint@sha256:" + "b" * 64, log)
         self.assertNotIn("c" * 64, log.split("\n", 1)[1])   # the attestation manifest is not scanned
         self.assertIn("grype sbom:", log)
+        # Dockle reads each platform's image as an archive: pulled by its digest, saved, and given to it.
+        self.assertIn("docker pull -q ghcr.io/dmartsapp/shint@sha256:" + "b" * 64, log)
+        self.assertIn("docker tag ghcr.io/dmartsapp/shint@sha256:%s shint-image-check:linux-arm64" % ("b" * 64), log)
+        self.assertIn("docker save -o ", log)
+        self.assertIn("dockle --exit-code 0 -f json -o ", log)
+        self.assertIn("docker rmi -f shint-image-check:linux-amd64", log)
         self.assertEqual(self.read("output"), "digest_linux_amd64=sha256:%s\ndigest_linux_arm64=sha256:%s\n" % ("a" * 64, "b" * 64))
         summary = self.read("summary")
-        self.assertIn("| linux/amd64 | `sha256:%s` | 0 | 1 | 0 | 2 | 0 | 1 |" % ("a" * 64), summary)
+        self.assertIn("| linux/amd64 | `sha256:%s` | 0 | 1 | 0 | 2 | 0 | 1 | 0 / 1 / 2 |" % ("a" * 64), summary)
         self.assertIn("not gated on", summary)
-        self.assertIn("1 High, 2 Low, 1 Unknown", r.stdout)
+        self.assertIn("Grype: 1 High, 2 Low, 1 Unknown; Dockle: 1 warn, 2 info", r.stdout)
 
     def test_a_platform_missing_from_the_index_stops_it(self):
         index = dict(INDEX, manifests=INDEX["manifests"][:1] + INDEX["manifests"][2:])
