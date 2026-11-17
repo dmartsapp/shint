@@ -1,0 +1,36 @@
+File: lib.test
+Type: alloc_space
+Time: 2026-11-17 13:36:19 CST
+Showing nodes accounting for 3925.10kB, 100% of 3925.10kB total
+Showing top 30 nodes out of 38
+      flat  flat%   sum%        cum   cum%
+ 1184.27kB 30.17% 30.17%  1184.27kB 30.17%  runtime/pprof.StartCPUProfile
+ 1025.05kB 26.12% 56.29%  1025.05kB 26.12%  runtime.mallocgc
+  688.56kB 17.54% 73.83%   688.56kB 17.54%  compress/flate.(*fastGen).addBlock
+  515.19kB 13.13% 86.96%   515.19kB 13.13%  unicode.map.init.2
+  512.02kB 13.04%   100%   512.02kB 13.04%  internal/singleflight.(*Group).DoChan
+         0     0%   100%   688.56kB 17.54%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%   688.56kB 17.54%  compress/flate.(*compressor).close
+         0     0%   100%   688.56kB 17.54%  compress/flate.(*compressor).deflateFast
+         0     0%   100%   688.56kB 17.54%  compress/flate.(*fastEncL1).encode
+         0     0%   100%   688.56kB 17.54%  compress/gzip.(*Writer).Close
+         0     0%   100%   512.02kB 13.04%  github.com/dmartsapp/shint/v4/lib.ResolveName
+         0     0%   100%   512.02kB 13.04%  github.com/dmartsapp/shint/v4/lib.TestResolveNameLoopback
+         0     0%   100%  1184.27kB 30.17%  main.main
+         0     0%   100%   512.02kB 13.04%  net.(*Resolver).LookupIP
+         0     0%   100%   512.02kB 13.04%  net.(*Resolver).internetAddrList
+         0     0%   100%   512.02kB 13.04%  net.(*Resolver).lookupIPAddr
+         0     0%   100%   512.05kB 13.05%  runtime.(*scavengerState).init
+         0     0%   100%      513kB 13.07%  runtime.allocm
+         0     0%   100%   512.05kB 13.05%  runtime.bgscavenge
+         0     0%   100%   515.19kB 13.13%  runtime.doInit (inline)
+         0     0%   100%   515.19kB 13.13%  runtime.doInit1
+         0     0%   100%  1699.47kB 43.30%  runtime.main
+         0     0%   100%      513kB 13.07%  runtime.mstart
+         0     0%   100%      513kB 13.07%  runtime.mstart0
+         0     0%   100%      513kB 13.07%  runtime.mstart1
+         0     0%   100%      513kB 13.07%  runtime.newm
+         0     0%   100%  1025.05kB 26.12%  runtime.newobject
+         0     0%   100%      513kB 13.07%  runtime.resetspinning
+         0     0%   100%      513kB 13.07%  runtime.schedule
+         0     0%   100%      513kB 13.07%  runtime.startm

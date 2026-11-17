@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-17 13:36:42 CST
+Duration: 4.07s, Total samples = 330ms ( 8.10%)
+Showing nodes accounting for 330ms, 100% of 330ms total
+Showing top 30 nodes out of 120
+      flat  flat%   sum%        cum   cum%
+     170ms 51.52% 51.52%      170ms 51.52%  syscall.rawsyscalln
+      60ms 18.18% 69.70%       60ms 18.18%  runtime.kevent
+      50ms 15.15% 84.85%       50ms 15.15%  runtime.pthread_cond_wait
+      10ms  3.03% 87.88%       10ms  3.03%  net/http.writeStatusLine
+      10ms  3.03% 90.91%       10ms  3.03%  runtime.(*mcache).releaseAll
+      10ms  3.03% 93.94%       10ms  3.03%  runtime.(*unwinder).resolveInternal
+      10ms  3.03% 96.97%       10ms  3.03%  runtime.pthread_cond_signal
+      10ms  3.03%   100%       10ms  3.03%  runtime.scanObjectsSmall
+         0     0%   100%       20ms  6.06%  bufio.(*Reader).ReadLine
+         0     0%   100%       20ms  6.06%  bufio.(*Reader).ReadSlice
+         0     0%   100%       20ms  6.06%  bufio.(*Reader).fill
+         0     0%   100%       60ms 18.18%  bufio.(*Writer).Flush
+         0     0%   100%       50ms 15.15%  fmt.Fprintln
+         0     0%   100%       50ms 15.15%  fmt.Println (inline)
+         0     0%   100%       60ms 18.18%  github.com/dmartsapp/shint/v4/lib/handlers.(*countingConn).Close
+         0     0%   100%       60ms 18.18%  github.com/dmartsapp/shint/v4/lib/handlers.(*countingConn).Close.func1
+         0     0%   100%       30ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers.(*countingConn).Read
+         0     0%   100%       50ms 15.15%  github.com/dmartsapp/shint/v4/lib/handlers.(*countingConn).Write
+         0     0%   100%       50ms 15.15%  github.com/dmartsapp/shint/v4/lib/handlers.HTTPListenHandler.func2
+         0     0%   100%       30ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers.HTTPListenHandler.func3
+         0     0%   100%       50ms 15.15%  github.com/dmartsapp/shint/v4/lib/handlers.HTTPListenHandler.func4.1
+         0     0%   100%       50ms 15.15%  github.com/dmartsapp/shint/v4/lib/handlers.HTTPListenHandler.func5
+         0     0%   100%       50ms 15.15%  github.com/dmartsapp/shint/v4/lib/handlers.countingListener.Accept
+         0     0%   100%       20ms  6.06%  internal/poll.(*FD).Accept
+         0     0%   100%       10ms  3.03%  internal/poll.(*FD).Close
+         0     0%   100%       10ms  3.03%  internal/poll.(*FD).Init
+         0     0%   100%       30ms  9.09%  internal/poll.(*FD).Read
+         0     0%   100%       20ms  6.06%  internal/poll.(*FD).SetsockoptInt
+         0     0%   100%      100ms 30.30%  internal/poll.(*FD).Write
+         0     0%   100%       10ms  3.03%  internal/poll.(*FD).decref

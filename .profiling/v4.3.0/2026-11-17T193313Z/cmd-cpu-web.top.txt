@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-17 13:36:26 CST
+Duration: 2.04s, Total samples = 180ms ( 8.81%)
+Showing nodes accounting for 180ms, 100% of 180ms total
+Showing top 30 nodes out of 110
+      flat  flat%   sum%        cum   cum%
+      90ms 50.00% 50.00%       90ms 50.00%  syscall.rawsyscalln
+      40ms 22.22% 72.22%       40ms 22.22%  runtime.kevent
+      10ms  5.56% 77.78%       10ms  5.56%  runtime.getempty
+      10ms  5.56% 83.33%       10ms  5.56%  runtime.madvise
+      10ms  5.56% 88.89%       10ms  5.56%  runtime.pthread_cond_signal
+      10ms  5.56% 94.44%       10ms  5.56%  runtime.stackpoolalloc
+      10ms  5.56%   100%       10ms  5.56%  runtime.usleep
+         0     0%   100%       10ms  5.56%  fmt.Fprintln
+         0     0%   100%       10ms  5.56%  fmt.Println (inline)
+         0     0%   100%       10ms  5.56%  github.com/dmartsapp/shint/v4/lib/handlers.(*countingConn).Close
+         0     0%   100%       10ms  5.56%  github.com/dmartsapp/shint/v4/lib/handlers.(*countingConn).Close.func1
+         0     0%   100%       10ms  5.56%  github.com/dmartsapp/shint/v4/lib/handlers.WebHandler.func1
+         0     0%   100%       80ms 44.44%  github.com/dmartsapp/shint/v4/lib/handlers.newCountingTransport.func1
+         0     0%   100%       10ms  5.56%  internal/poll.(*FD).Close
+         0     0%   100%       10ms  5.56%  internal/poll.(*FD).SetsockoptInt
+         0     0%   100%       10ms  5.56%  internal/poll.(*FD).Write
+         0     0%   100%       10ms  5.56%  internal/poll.(*FD).decref
+         0     0%   100%       10ms  5.56%  internal/poll.(*FD).destroy
+         0     0%   100%       10ms  5.56%  internal/poll.(*SysFile).destroy (inline)
+         0     0%   100%       10ms  5.56%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%       80ms 44.44%  net.(*Dialer).DialContext
+         0     0%   100%       10ms  5.56%  net.(*Resolver).internetAddrList
+         0     0%   100%       10ms  5.56%  net.(*Resolver).lookupIPAddr
+         0     0%   100%       10ms  5.56%  net.(*Resolver).resolveAddrList
+         0     0%   100%       10ms  5.56%  net.(*conn).Close
+         0     0%   100%       10ms  5.56%  net.(*netFD).Close
+         0     0%   100%       40ms 22.22%  net.(*netFD).connect
+         0     0%   100%       40ms 22.22%  net.(*netFD).dial
+         0     0%   100%       70ms 38.89%  net.(*sysDialer).dialParallel
+         0     0%   100%       70ms 38.89%  net.(*sysDialer).dialSerial

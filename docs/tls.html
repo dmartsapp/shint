@@ -16,7 +16,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.2.4</span>
+  <span class="version">v4.3.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -166,7 +166,7 @@
 <ul><li><strong>Unprivileged</strong>: an ordinary TCP connection and a TLS handshake.</li><li><strong>The handshake skips Go's own verification so every certificate can be shown</strong>, trusted or not; the chain is then verified separately, against the name asked for and the system's roots (plus <code>--cacert</code>), as a browser would. Nothing is sent after the handshake.</li><li><strong>An address checked by itself is verified against the certificate's IP addresses</strong>, and no SNI is sent - as browsers do. A server that serves several sites needs <code>--servername</code> to pick one.</li><li><strong>No STARTTLS</strong> in this release: <code>tls</code> speaks TLS from the first byte, so it checks HTTPS, IMAPS (993), SMTPS (465), LDAPS (636) and the like, not a mail server's port 25 or 587.</li><li><strong><code>web</code> checks a site; <code>tls</code> checks its certificate.</strong> <code>web</code> fails on a certificate it does not trust (or skips the check with <code>-k</code>); <code>tls</code> shows what the certificate is and why it is or is not trusted, and when it expires.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="web.html"><span>Previous</span>web</a><a class="next" href="nmap.html"><span>Next</span>nmap</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tls.md">Edit this page on GitHub</a><span>shint v4.2.4 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/tls.md">Edit this page on GitHub</a><span>shint v4.3.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#what-it-reports">What it reports</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-public-site">A public site</a></li><li class="toc3"><a href="#a-private-ca-and-a-certificate-about-to-expire">A private CA, and a certificate about to expire</a></li><li class="toc3"><a href="#not-trusted-or-not-for-this-name">Not trusted, or not for this name</a></li><li class="toc3"><a href="#expiry-as-a-check-fail-days">Expiry as a check: --fail-days</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#exit-status">Exit status</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
 </div>

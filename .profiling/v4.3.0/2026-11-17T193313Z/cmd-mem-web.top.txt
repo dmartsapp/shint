@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-17 13:36:26 CST
+Showing nodes accounting for 80.17MB, 100% of 80.17MB total
+Showing top 30 nodes out of 119
+      flat  flat%   sum%        cum   cum%
+   32.56MB 40.61% 40.61%    32.56MB 40.61%  runtime.mallocgc
+   12.70MB 15.83% 56.45%    12.70MB 15.83%  runtime/pprof.StartCPUProfile
+    3.61MB  4.50% 60.95%     3.61MB  4.50%  net/http.init.func2
+    3.51MB  4.38% 65.33%     3.51MB  4.38%  bufio.NewReaderSize (inline)
+    3.50MB  4.37% 69.70%     3.50MB  4.37%  compress/gzip.NewWriterLevel
+    3.50MB  4.37% 74.07%     7.50MB  9.36%  github.com/dmartsapp/shint/v4/lib/handlers.WebHandler.func1
+    2.56MB  3.19% 77.26%     4.76MB  5.94%  compress/flate.NewWriter
+    2.50MB  3.12% 80.38%     2.50MB  3.12%  net.(*netFD).connect
+    2.02MB  2.52% 82.89%     2.02MB  2.52%  compress/flate.(*fastGen).addBlock
+    2.01MB  2.50% 85.40%     2.01MB  2.50%  bufio.NewWriterSize (inline)
+    1.50MB  1.87% 87.27%     9.52MB 11.88%  net/http.(*Transport).dialConn
+    1.14MB  1.42% 88.69%     1.14MB  1.42%  compress/flate.newFastEnc (inline)
+    1.06MB  1.33% 90.02%     2.20MB  2.75%  compress/flate.(*compressor).init
+       1MB  1.25% 91.26%        1MB  1.25%  internal/bytealg.MakeNoZero
+       1MB  1.25% 92.51%     1.50MB  1.87%  github.com/dmartsapp/shint/v4/lib.Fields
+       1MB  1.25% 93.76%     1.50MB  1.87%  net/http.(*Transport).startDialConnForLocked
+    0.50MB  0.63% 94.39%     0.50MB  0.63%  runtime/pprof.(*profMap).lookup
+    0.50MB  0.62% 95.01%     0.50MB  0.62%  net/http.(*wantConnQueue).pushBack (inline)
+    0.50MB  0.62% 95.63%        1MB  1.25%  github.com/dmartsapp/shint/v4/lib/handlers.WebHandler
+    0.50MB  0.62% 96.26%     0.50MB  0.62%  main.interruptContext.func1
+    0.50MB  0.62% 96.88%     0.50MB  0.62%  time.newTimer
+    0.50MB  0.62% 97.51%     0.50MB  0.62%  github.com/spf13/pflag.(*FlagSet).AddFlag
+    0.50MB  0.62% 98.13%     0.50MB  0.62%  internal/godebug.New
+    0.50MB  0.62% 98.75%     0.50MB  0.62%  time.map.init.0
+    0.50MB  0.62% 99.38%     0.50MB  0.62%  net/textproto.MIMEHeader.Set (inline)
+    0.50MB  0.62%   100%     0.50MB  0.62%  os/signal.NotifyContext
+         0     0%   100%     2.02MB  2.52%  compress/flate.(*Writer).Close
+         0     0%   100%     2.02MB  2.52%  compress/flate.(*compressor).close
+         0     0%   100%     2.02MB  2.52%  compress/flate.(*compressor).deflateFast
+         0     0%   100%     2.02MB  2.52%  compress/flate.(*fastEncL1).encode

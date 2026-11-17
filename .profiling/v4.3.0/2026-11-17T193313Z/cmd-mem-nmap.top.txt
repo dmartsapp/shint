@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-17 13:36:34 CST
+Showing nodes accounting for 100.80MB, 97.11% of 103.80MB total
+Dropped 16 nodes (cum <= 0.52MB)
+Showing top 30 nodes out of 93
+      flat  flat%   sum%        cum   cum%
+   34.05MB 32.81% 32.81%    34.05MB 32.81%  runtime.mallocgc
+   12.70MB 12.23% 45.04%    12.70MB 12.23%  runtime/pprof.StartCPUProfile
+      11MB 10.60% 55.63%       11MB 10.60%  internal/strconv.FormatInt
+       4MB  3.85% 59.49%        4MB  3.85%  context.(*cancelCtx).propagateCancel
+       4MB  3.85% 63.34%        8MB  7.71%  context.AfterFunc
+       4MB  3.85% 67.20%        4MB  3.85%  os.NewSyscallError (inline)
+    3.50MB  3.37% 70.57%    33.01MB 31.80%  net.(*Dialer).DialContext
+    3.50MB  3.37% 73.94%     3.50MB  3.37%  net.newFD (inline)
+    3.50MB  3.37% 77.31%     3.50MB  3.37%  github.com/dmartsapp/shint/v4/lib/handlers.NmapHandler
+    3.20MB  3.08% 80.40%     4.87MB  4.69%  compress/flate.NewWriter (inline)
+       3MB  2.89% 83.29%        5MB  4.82%  context.WithDeadlineCause
+       2MB  1.93% 85.22%        2MB  1.93%  time.newTimer
+       2MB  1.93% 87.14%        2MB  1.93%  context.(*cancelCtx).Done
+       2MB  1.93% 89.07%        2MB  1.93%  net.(*Resolver).lookupIPAddr
+       2MB  1.93% 91.00%        2MB  1.93%  net.ipToSockaddr
+    1.14MB  1.10% 92.09%     1.14MB  1.10%  compress/flate.newFastEnc (inline)
+       1MB  0.96% 93.06%        1MB  0.96%  internal/poll.runtime_pollSetDeadline
+       1MB  0.96% 94.02%        1MB  0.96%  os/signal.NotifyContext
+    0.67MB  0.65% 94.67%     0.67MB  0.65%  compress/flate.(*fastGen).addBlock
+    0.53MB  0.51% 95.18%     1.67MB  1.61%  compress/flate.(*compressor).init
+    0.50MB  0.48% 95.66%    19.50MB 18.79%  net.(*sysDialer).dialSingle
+    0.50MB  0.48% 96.14%     5.50MB  5.30%  net.(*Dialer).dialCtx
+    0.50MB  0.48% 96.63%    13.50MB 13.01%  net.(*netFD).connect
+    0.50MB  0.48% 97.11%        1MB  0.96%  net.filterAddrList
+         0     0% 97.11%     0.67MB  0.65%  compress/flate.(*Writer).Close (inline)
+         0     0% 97.11%     0.67MB  0.65%  compress/flate.(*compressor).close
+         0     0% 97.11%     0.67MB  0.65%  compress/flate.(*compressor).deflateFast
+         0     0% 97.11%     0.67MB  0.65%  compress/flate.(*fastEncL1).encode
+         0     0% 97.11%     0.67MB  0.65%  compress/gzip.(*Writer).Close
+         0     0% 97.11%     4.87MB  4.69%  compress/gzip.(*Writer).Write

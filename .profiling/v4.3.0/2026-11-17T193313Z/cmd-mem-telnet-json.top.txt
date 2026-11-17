@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-17 13:36:23 CST
+Showing nodes accounting for 75.11MB, 100% of 75.11MB total
+Showing top 30 nodes out of 128
+      flat  flat%   sum%        cum   cum%
+   33.06MB 44.01% 44.01%    33.06MB 44.01%  runtime.mallocgc
+   12.13MB 16.15% 60.16%    12.13MB 16.15%  runtime/pprof.StartCPUProfile
+    5.50MB  7.32% 67.48%     5.50MB  7.32%  internal/strconv.FormatInt
+    4.48MB  5.96% 73.45%     6.68MB  8.90%  compress/flate.NewWriter (inline)
+       4MB  5.33% 78.77%        4MB  5.33%  internal/poll.runtime_pollSetDeadline
+    2.69MB  3.58% 82.35%     2.69MB  3.58%  compress/flate.(*fastGen).addBlock
+    1.50MB  2.00% 84.35%     1.50MB  2.00%  internal/sync.runtime_SemacquireMutex
+    1.14MB  1.52% 85.86%     1.14MB  1.52%  compress/flate.newFastEnc (inline)
+    1.06MB  1.42% 87.28%     2.20MB  2.93%  compress/flate.(*compressor).init
+    1.03MB  1.37% 88.65%     1.03MB  1.37%  reflect.compiledTypelinks
+       1MB  1.33% 89.99%        1MB  1.33%  compress/gzip.NewWriterLevel
+       1MB  1.33% 91.32%     2.50MB  3.33%  context.(*cancelCtx).Done
+       1MB  1.33% 92.65%        1MB  1.33%  syscall.anyToSockaddr
+    0.51MB  0.68% 93.33%     0.51MB  0.68%  encoding/json/internal/jsonwire.ReformatString
+    0.51MB  0.67% 94.00%     0.51MB  0.67%  internal/strconv.AppendBool
+    0.50MB  0.67% 94.67%     0.50MB  0.67%  runtime/pprof.(*profMap).lookup
+    0.50MB  0.67% 95.34%     0.50MB  0.67%  syscall.init.func1
+    0.50MB  0.67% 96.01%     1.53MB  2.04%  encoding/json/v2.makeStructFields.func3
+    0.50MB  0.67% 96.67%        7MB  9.32%  net.(*Dialer).DialContext
+    0.50MB  0.67% 97.34%     0.50MB  0.67%  net.newFD (inline)
+    0.50MB  0.67% 98.00%     0.50MB  0.67%  github.com/spf13/cobra.(*Command).Flags
+    0.50MB  0.67% 98.67%     0.50MB  0.67%  net.(*Resolver).internetAddrList.func1
+    0.50MB  0.67% 99.33%     0.50MB  0.67%  runtime/pprof.(*protobuf).varint
+    0.50MB  0.67%   100%     0.50MB  0.67%  os/signal.NotifyContext
+         0     0%   100%     2.69MB  3.58%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%     2.69MB  3.58%  compress/flate.(*compressor).close
+         0     0%   100%     2.69MB  3.58%  compress/flate.(*compressor).deflateFast
+         0     0%   100%     2.69MB  3.58%  compress/flate.(*fastEncL1).encode
+         0     0%   100%     2.69MB  3.58%  compress/gzip.(*Writer).Close
+         0     0%   100%     6.68MB  8.90%  compress/gzip.(*Writer).Write

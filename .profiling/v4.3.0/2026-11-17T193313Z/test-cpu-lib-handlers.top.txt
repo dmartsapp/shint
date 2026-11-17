@@ -1,0 +1,37 @@
+File: lib-handlers.test
+Type: cpu
+Time: 2026-11-17 13:35:44 CST
+Duration: 32.78s, Total samples = 1.43s ( 4.36%)
+Showing nodes accounting for 1.43s, 100% of 1.43s total
+Showing top 30 nodes out of 356
+      flat  flat%   sum%        cum   cum%
+     0.57s 39.86% 39.86%      0.57s 39.86%  syscall.rawsyscalln
+     0.16s 11.19% 51.05%      0.20s 13.99%  encoding/json/internal/jsonwire.ConsumeStringResumable
+     0.10s  6.99% 58.04%      0.10s  6.99%  runtime.pthread_cond_wait
+     0.08s  5.59% 63.64%      0.08s  5.59%  runtime.usleep
+     0.07s  4.90% 68.53%      0.07s  4.90%  runtime.memmove
+     0.06s  4.20% 72.73%      0.06s  4.20%  runtime.kevent
+     0.06s  4.20% 76.92%      0.06s  4.20%  runtime.madvise
+     0.06s  4.20% 81.12%      0.06s  4.20%  runtime.pthread_cond_signal
+     0.04s  2.80% 83.92%      0.11s  7.69%  encoding/json/internal/jsonwire.AppendQuote
+     0.04s  2.80% 86.71%      0.07s  4.90%  encoding/json/internal/jsonwire.appendEscapedASCII
+     0.04s  2.80% 89.51%      0.04s  2.80%  runtime.mmap
+     0.03s  2.10% 91.61%      0.04s  2.80%  encoding/json/internal/jsonwire.parseHexUint16 (inline)
+     0.02s  1.40% 93.01%      0.02s  1.40%  encoding/json/internal/jsonwire.ConsumeSimpleString
+     0.02s  1.40% 94.41%      0.02s  1.40%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.02s  1.40% 95.80%      0.02s  1.40%  runtime.memclrNoHeapPointers
+     0.01s   0.7% 96.50%      0.01s   0.7%  net/http.(*Transport).alternateRoundTripper
+     0.01s   0.7% 97.20%      0.01s   0.7%  runtime.(*listHeadManual).getNode
+     0.01s   0.7% 97.90%      0.01s   0.7%  runtime.(*timer).updateHeap
+     0.01s   0.7% 98.60%      0.01s   0.7%  runtime.asyncPreempt
+     0.01s   0.7% 99.30%      0.01s   0.7%  runtime.gcMarkDone.func1
+     0.01s   0.7%   100%      0.01s   0.7%  runtime.nanotime1
+         0     0%   100%      0.01s   0.7%  _.goready.func1
+         0     0%   100%      0.02s  1.40%  bufio.(*Reader).Read
+         0     0%   100%      0.01s   0.7%  bufio.(*Writer).Flush
+         0     0%   100%      0.02s  1.40%  bufio.(*Writer).Write
+         0     0%   100%      0.04s  2.80%  bytes.(*Buffer).ReadFrom
+         0     0%   100%      0.01s   0.7%  bytes.(*Buffer).String
+         0     0%   100%      0.02s  1.40%  bytes.(*Buffer).grow
+         0     0%   100%      0.01s   0.7%  bytes.Clone
+         0     0%   100%      0.02s  1.40%  bytes.growSlice

@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-17 13:36:31 CST
+Showing nodes accounting for 70.68MB, 100% of 70.68MB total
+Showing top 30 nodes out of 116
+      flat  flat%   sum%        cum   cum%
+   26.04MB 36.85% 36.85%    26.04MB 36.85%  runtime.mallocgc
+   13.23MB 18.72% 55.57%    13.23MB 18.72%  runtime/pprof.StartCPUProfile
+    8.50MB 12.03% 67.60%     8.50MB 12.03%  internal/strconv.FormatInt
+       4MB  5.66% 73.26%        4MB  5.66%  fmt.init.func1
+    2.69MB  3.81% 77.06%     2.69MB  3.81%  compress/flate.(*fastGen).addBlock
+    2.56MB  3.62% 80.68%     3.70MB  5.23%  compress/flate.NewWriter
+       2MB  2.84% 83.52%       12MB 16.98%  github.com/dmartsapp/shint/v4/lib/handlers.probeUDP
+    1.14MB  1.61% 85.13%     1.14MB  1.61%  compress/flate.newFastEnc (inline)
+    1.01MB  1.43% 86.56%     1.01MB  1.43%  runtime/pprof.(*profMap).lookup
+       1MB  1.42% 87.97%        1MB  1.42%  time.readFile
+       1MB  1.42% 89.39%        1MB  1.42%  compress/gzip.NewWriterLevel
+       1MB  1.41% 90.80%        5MB  7.07%  fmt.Sprintf
+       1MB  1.41% 92.22%        1MB  1.41%  os/signal.Stop
+    0.50MB  0.71% 92.93%     0.50MB  0.71%  github.com/spf13/cobra.(*Command).InitDefaultCompletionCmd
+    0.50MB  0.71% 93.63%     0.50MB  0.71%  runtime/pprof.allFrames
+    0.50MB  0.71% 94.34%     1.50MB  2.13%  github.com/dmartsapp/shint/v4/lib/handlers.UDPHandler
+    0.50MB  0.71% 95.05%     0.50MB  0.71%  github.com/dmartsapp/shint/v4/lib/handlers.watchCancel.func1
+    0.50MB  0.71% 95.76%     0.50MB  0.71%  internal/sync.runtime_SemacquireMutex
+    0.50MB  0.71% 96.46%     0.50MB  0.71%  os/signal.NotifyContext.func1
+    0.50MB  0.71% 97.17%     0.50MB  0.71%  sync.(*poolChain).pushHead
+    0.50MB  0.71% 97.88%     0.50MB  0.71%  context.WithDeadlineCause
+    0.50MB  0.71% 98.59%     0.50MB  0.71%  github.com/dmartsapp/shint/v4/lib.Fields
+    0.50MB  0.71% 99.29%     0.50MB  0.71%  net.IPv4 (inline)
+    0.50MB  0.71%   100%     0.50MB  0.71%  runtime/pprof.(*protobuf).varint
+         0     0%   100%     2.69MB  3.81%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%     2.69MB  3.81%  compress/flate.(*compressor).close
+         0     0%   100%     2.69MB  3.81%  compress/flate.(*compressor).deflateFast
+         0     0%   100%     1.14MB  1.61%  compress/flate.(*compressor).init
+         0     0%   100%     2.69MB  3.81%  compress/flate.(*fastEncL1).encode
+         0     0%   100%     2.69MB  3.81%  compress/gzip.(*Writer).Close

@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-17 13:36:34 CST
+Duration: 2.22s, Total samples = 1.34s (60.29%)
+Showing nodes accounting for 1.34s, 100% of 1.34s total
+Showing top 30 nodes out of 120
+      flat  flat%   sum%        cum   cum%
+     0.95s 70.90% 70.90%      0.95s 70.90%  syscall.rawsyscalln
+     0.23s 17.16% 88.06%      0.23s 17.16%  runtime.kevent
+     0.03s  2.24% 90.30%      0.03s  2.24%  runtime.pthread_cond_wait
+     0.03s  2.24% 92.54%      0.03s  2.24%  runtime.usleep
+     0.02s  1.49% 94.03%      0.02s  1.49%  runtime.scanObjectsSmall
+     0.01s  0.75% 94.78%      0.01s  0.75%  internal/runtime/atomic.(*UnsafePointer).StoreNoWB (inline)
+     0.01s  0.75% 95.52%      0.01s  0.75%  runtime.(*lfstack).pop
+     0.01s  0.75% 96.27%      0.01s  0.75%  runtime.(*stackScanState).findObject
+     0.01s  0.75% 97.01%      0.01s  0.75%  runtime.madvise
+     0.01s  0.75% 97.76%      0.02s  1.49%  runtime.pcvalue
+     0.01s  0.75% 98.51%      0.01s  0.75%  runtime.readvarint (inline)
+     0.01s  0.75% 99.25%      0.01s  0.75%  runtime.scanObject
+     0.01s  0.75%   100%      0.01s  0.75%  runtime.tryDeferToSpanScan
+         0     0%   100%      1.12s 83.58%  github.com/dmartsapp/shint/v4/lib.IsPortUp
+         0     0%   100%      1.12s 83.58%  github.com/dmartsapp/shint/v4/lib/handlers.NmapHandler.func5
+         0     0%   100%      0.08s  5.97%  internal/poll.(*FD).Close
+         0     0%   100%      0.15s 11.19%  internal/poll.(*FD).Init
+         0     0%   100%      0.08s  5.97%  internal/poll.(*FD).decref
+         0     0%   100%      0.08s  5.97%  internal/poll.(*FD).destroy
+         0     0%   100%      0.08s  5.97%  internal/poll.(*SysFile).destroy (inline)
+         0     0%   100%      0.15s 11.19%  internal/poll.(*pollDesc).init
+         0     0%   100%      0.15s 11.19%  internal/poll.runtime_pollOpen
+         0     0%   100%      0.01s  0.75%  internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.spanSetBlockHeader2; runtime.spans [512]runtime.atomicMSpanPointer }]).StoreNoWB
+         0     0%   100%      0.02s  1.49%  internal/strconv.FormatInt
+         0     0%   100%      0.02s  1.49%  internal/strconv.Itoa (inline)
+         0     0%   100%      1.10s 82.09%  net.(*Dialer).DialContext
+         0     0%   100%      0.08s  5.97%  net.(*netFD).Close
+         0     0%   100%      0.70s 52.24%  net.(*netFD).connect
+         0     0%   100%      0.70s 52.24%  net.(*netFD).dial
+         0     0%   100%      1.10s 82.09%  net.(*sysDialer).dialParallel

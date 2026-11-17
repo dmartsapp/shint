@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-17 13:36:40 CST
+Showing nodes accounting for 55.46MB, 100% of 55.46MB total
+Showing top 30 nodes out of 58
+      flat  flat%   sum%        cum   cum%
+   15.52MB 27.98% 27.98%    15.52MB 27.98%  runtime.mallocgc
+   14.36MB 25.90% 53.88%    14.36MB 25.90%  runtime/pprof.StartCPUProfile
+   12.23MB 22.06% 75.94%    12.23MB 22.06%  github.com/dmartsapp/shint/v4/lib/handlers.udpExchange
+    2.56MB  4.62% 80.55%     6.33MB 11.41%  compress/flate.NewWriter (inline)
+    2.13MB  3.84% 84.39%     3.77MB  6.79%  compress/flate.(*compressor).init
+    2.02MB  3.64% 88.03%     2.02MB  3.64%  compress/flate.(*fastGen).addBlock
+       2MB  3.61% 91.63%        2MB  3.61%  compress/gzip.NewWriterLevel
+    1.14MB  2.05% 93.69%     1.14MB  2.05%  compress/flate.newFastEnc (inline)
+       1MB  1.80% 95.49%        1MB  1.80%  os/signal.Stop
+    0.50MB   0.9% 96.39%     0.50MB   0.9%  _.goready.func1
+    0.50MB   0.9% 97.30%     0.50MB   0.9%  compress/flate.newHuffmanEncoder (inline)
+    0.50MB   0.9% 98.20%     0.50MB   0.9%  github.com/dmartsapp/shint/v4/lib/handlers.printDNSStat
+    0.50MB   0.9% 99.10%     0.50MB   0.9%  context.(*cancelCtx).Done
+    0.50MB   0.9%   100%     0.50MB   0.9%  github.com/dmartsapp/shint/v4/lib/handlers.watchCancel.func1
+         0     0%   100%     2.02MB  3.64%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%     2.02MB  3.64%  compress/flate.(*compressor).close
+         0     0%   100%     2.02MB  3.64%  compress/flate.(*compressor).deflateFast
+         0     0%   100%     2.02MB  3.64%  compress/flate.(*fastEncL1).encode
+         0     0%   100%     0.50MB   0.9%  compress/flate.newHuffmanBitWriter
+         0     0%   100%     2.02MB  3.64%  compress/gzip.(*Writer).Close
+         0     0%   100%     6.33MB 11.41%  compress/gzip.(*Writer).Write
+         0     0%   100%    12.73MB 22.96%  github.com/dmartsapp/shint/v4/lib/handlers.DNSHandler
+         0     0%   100%    12.23MB 22.06%  github.com/dmartsapp/shint/v4/lib/handlers.exchangeOne
+         0     0%   100%    12.23MB 22.06%  github.com/dmartsapp/shint/v4/lib/handlers.queryServers
+         0     0%   100%    13.73MB 24.76%  github.com/spf13/cobra.(*Command).Execute (inline)
+         0     0%   100%    13.73MB 24.76%  github.com/spf13/cobra.(*Command).ExecuteC
+         0     0%   100%    13.73MB 24.76%  github.com/spf13/cobra.(*Command).execute
+         0     0%   100%    14.36MB 25.90%  main.init.1
+         0     0%   100%    13.73MB 24.76%  main.init.func8
+         0     0%   100%    13.73MB 24.76%  main.main

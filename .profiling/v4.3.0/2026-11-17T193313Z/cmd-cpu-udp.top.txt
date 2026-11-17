@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-17 13:36:31 CST
+Duration: 2.08s, Total samples = 100ms ( 4.80%)
+Showing nodes accounting for 100ms, 100% of 100ms total
+Showing top 30 nodes out of 60
+      flat  flat%   sum%        cum   cum%
+      60ms 60.00% 60.00%       60ms 60.00%  syscall.rawsyscalln
+      10ms 10.00% 70.00%       10ms 10.00%  runtime.kevent
+      10ms 10.00% 80.00%       10ms 10.00%  runtime.madvise
+      10ms 10.00% 90.00%       10ms 10.00%  runtime.pthread_cond_wait
+      10ms 10.00%   100%       10ms 10.00%  runtime.usleep
+         0     0%   100%       20ms 20.00%  fmt.Fprintln
+         0     0%   100%       20ms 20.00%  fmt.Println (inline)
+         0     0%   100%       60ms 60.00%  github.com/dmartsapp/shint/v4/lib/handlers.UDPHandler.func1
+         0     0%   100%       40ms 40.00%  github.com/dmartsapp/shint/v4/lib/handlers.probeUDP
+         0     0%   100%       10ms 10.00%  github.com/dmartsapp/shint/v4/lib/handlers.probeUDP.func1
+         0     0%   100%       10ms 10.00%  internal/poll.(*FD).Close
+         0     0%   100%       20ms 20.00%  internal/poll.(*FD).Write
+         0     0%   100%       10ms 10.00%  internal/poll.(*FD).decref
+         0     0%   100%       10ms 10.00%  internal/poll.(*FD).destroy
+         0     0%   100%       10ms 10.00%  internal/poll.(*SysFile).destroy (inline)
+         0     0%   100%       20ms 20.00%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%       30ms 30.00%  net.(*Dialer).DialContext
+         0     0%   100%       10ms 10.00%  net.(*conn).Close
+         0     0%   100%       10ms 10.00%  net.(*netFD).Close
+         0     0%   100%       10ms 10.00%  net.(*netFD).connect
+         0     0%   100%       10ms 10.00%  net.(*netFD).dial
+         0     0%   100%       30ms 30.00%  net.(*sysDialer).dialParallel
+         0     0%   100%       30ms 30.00%  net.(*sysDialer).dialSerial
+         0     0%   100%       30ms 30.00%  net.(*sysDialer).dialSingle
+         0     0%   100%       30ms 30.00%  net.(*sysDialer).dialUDP
+         0     0%   100%       30ms 30.00%  net.internetSocket
+         0     0%   100%       30ms 30.00%  net.socket
+         0     0%   100%       20ms 20.00%  net.sysSocket
+         0     0%   100%       20ms 20.00%  os.(*File).Write
+         0     0%   100%       20ms 20.00%  os.(*File).write (inline)

@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-17 13:36:20 CST
+Duration: 2.04s, Total samples = 250ms (12.23%)
+Showing nodes accounting for 250ms, 100% of 250ms total
+Showing top 30 nodes out of 60
+      flat  flat%   sum%        cum   cum%
+     220ms 88.00% 88.00%      220ms 88.00%  syscall.rawsyscalln
+      20ms  8.00% 96.00%       20ms  8.00%  runtime.pthread_cond_wait
+      10ms  4.00%   100%       10ms  4.00%  runtime.madvise
+         0     0%   100%      220ms 88.00%  github.com/dmartsapp/shint/v4/lib.IsPortUp
+         0     0%   100%       20ms  8.00%  github.com/dmartsapp/shint/v4/lib.IsPortUp.func1
+         0     0%   100%      220ms 88.00%  github.com/dmartsapp/shint/v4/lib/handlers.TelnetHandler.func1
+         0     0%   100%       20ms  8.00%  internal/poll.(*FD).Close
+         0     0%   100%       60ms 24.00%  internal/poll.(*FD).SetsockoptInt
+         0     0%   100%       20ms  8.00%  internal/poll.(*FD).decref
+         0     0%   100%       20ms  8.00%  internal/poll.(*FD).destroy
+         0     0%   100%       20ms  8.00%  internal/poll.(*SysFile).destroy (inline)
+         0     0%   100%      200ms 80.00%  net.(*Dialer).DialContext
+         0     0%   100%       40ms 16.00%  net.(*TCPConn).SetKeepAliveConfig
+         0     0%   100%       20ms  8.00%  net.(*conn).Close
+         0     0%   100%       20ms  8.00%  net.(*netFD).Close
+         0     0%   100%       70ms 28.00%  net.(*netFD).connect
+         0     0%   100%       80ms 32.00%  net.(*netFD).dial
+         0     0%   100%      200ms 80.00%  net.(*sysDialer).dialParallel
+         0     0%   100%      200ms 80.00%  net.(*sysDialer).dialSerial
+         0     0%   100%      200ms 80.00%  net.(*sysDialer).dialSingle
+         0     0%   100%      200ms 80.00%  net.(*sysDialer).dialTCP
+         0     0%   100%      200ms 80.00%  net.(*sysDialer).doDialTCP (inline)
+         0     0%   100%      200ms 80.00%  net.(*sysDialer).doDialTCPProto
+         0     0%   100%      140ms 56.00%  net.internetSocket
+         0     0%   100%       60ms 24.00%  net.newTCPConn
+         0     0%   100%       20ms  8.00%  net.setKeepAlive
+         0     0%   100%       20ms  8.00%  net.setKeepAliveInterval
+         0     0%   100%       20ms  8.00%  net.setNoDelay
+         0     0%   100%      140ms 56.00%  net.socket
+         0     0%   100%       60ms 24.00%  net.sysSocket

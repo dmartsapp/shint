@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-17 13:36:43 CST
+Showing nodes accounting for 70.02MB, 98.59% of 71.02MB total
+Showing top 30 nodes out of 133
+      flat  flat%   sum%        cum   cum%
+   16.53MB 23.27% 23.27%    17.03MB 23.97%  runtime.mallocgc
+   11.57MB 16.28% 39.55%    11.57MB 16.28%  runtime/pprof.StartCPUProfile
+       8MB 11.26% 50.82%        8MB 11.26%  net/textproto.(*Reader).ReadLine (inline)
+    5.50MB  7.74% 58.56%     5.50MB  7.74%  syscall.anyToSockaddr
+    3.36MB  4.73% 63.30%     3.36MB  4.73%  compress/flate.(*fastGen).addBlock
+       3MB  4.22% 67.52%        3MB  4.22%  net.IP.String
+    2.50MB  3.52% 71.04%    14.50MB 20.42%  net/http.(*conn).readRequest
+       2MB  2.82% 73.86%        2MB  2.82%  net/textproto.readMIMEHeader
+    1.92MB  2.70% 76.56%     3.06MB  4.31%  compress/flate.NewWriter
+    1.50MB  2.11% 78.68%     1.50MB  2.11%  fmt.Sprintf
+    1.50MB  2.11% 80.79%     1.50MB  2.11%  net.(*conn).Read
+    1.14MB  1.60% 82.39%     1.14MB  1.60%  compress/flate.newFastEnc (inline)
+       1MB  1.41% 83.80%       11MB 15.49%  net/http.readRequestLimit
+       1MB  1.41% 85.21%        1MB  1.41%  compress/gzip.NewWriterLevel
+       1MB  1.41% 86.62%        1MB  1.41%  context.(*cancelCtx).propagateCancel
+       1MB  1.41% 88.02%     4.50MB  6.34%  github.com/dmartsapp/shint/v4/lib/handlers.HTTPListenHandler.func2
+       1MB  1.41% 89.43%        2MB  2.82%  github.com/dmartsapp/shint/v4/lib.Fields
+    0.50MB  0.71% 90.14%     0.50MB  0.71%  bufio.NewWriterSize
+    0.50MB  0.71% 90.85%     0.50MB  0.71%  runtime/pprof.(*protobuf).string
+    0.50MB   0.7% 91.55%     0.50MB   0.7%  sync.(*Pool).pinSlow
+    0.50MB   0.7% 92.26%     0.50MB   0.7%  net/textproto.MIMEHeader.Set
+    0.50MB   0.7% 92.96%     0.50MB   0.7%  net/http.(*ServeMux).registerErr
+    0.50MB   0.7% 93.66%     0.50MB   0.7%  net/http.(*Server).newConn
+    0.50MB   0.7% 94.37%     0.50MB   0.7%  internal/bytealg.MakeNoZero
+    0.50MB   0.7% 95.07%        1MB  1.41%  github.com/dmartsapp/shint/v4/lib/handlers.HTTPListenHandler.func4
+    0.50MB   0.7% 95.78%     0.50MB   0.7%  net.sockaddrToTCP
+    0.50MB   0.7% 96.48%     0.50MB   0.7%  time.map.init.0
+    0.50MB   0.7% 97.18%     0.50MB   0.7%  net/http.Header.Clone
+    0.50MB   0.7% 97.89%     0.50MB   0.7%  fmt.Sprint
+    0.50MB   0.7% 98.59%     0.50MB   0.7%  runtime.mallocgcSmallScanNoHeaderSC2

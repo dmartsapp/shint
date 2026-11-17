@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-17 13:36:37 CST
+Showing nodes accounting for 36651.60kB, 100% of 36651.60kB total
+Showing top 30 nodes out of 83
+      flat  flat%   sum%        cum   cum%
+10658.46kB 29.08% 29.08% 10658.46kB 29.08%  runtime/pprof.StartCPUProfile
+ 9739.57kB 26.57% 55.65%  9739.57kB 26.57%  runtime.mallocgc
+ 3276.46kB  8.94% 64.59%  5608.49kB 15.30%  compress/flate.NewWriter (inline)
+ 3072.52kB  8.38% 72.98%  3072.52kB  8.38%  fmt.init.func1
+ 2332.03kB  6.36% 79.34%  2332.03kB  6.36%  compress/flate.newFastEnc (inline)
+ 2048.33kB  5.59% 84.93%  2048.33kB  5.59%  github.com/dmartsapp/go-ping/v2/netutils.(*Pinger).consume (inline)
+ 1377.12kB  3.76% 88.69%  1377.12kB  3.76%  compress/flate.(*fastGen).addBlock
+ 1073.58kB  2.93% 91.61%  1073.58kB  2.93%  github.com/dmartsapp/go-ping/v2/netutils.NewPinger
+ 1024.16kB  2.79% 94.41%  1024.16kB  2.79%  compress/gzip.NewWriterLevel
+     513kB  1.40% 95.81%      513kB  1.40%  time.readFile
+  512.31kB  1.40% 97.21%   512.31kB  1.40%  fmt.(*buffer).writeString (inline)
+  512.05kB  1.40% 98.60%  3584.57kB  9.78%  github.com/dmartsapp/shint/v4/lib/handlers.HandleICMP.func1
+  512.01kB  1.40%   100%   512.01kB  1.40%  net/netip.Addr.AsSlice (inline)
+         0     0%   100%  1377.12kB  3.76%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%  1377.12kB  3.76%  compress/flate.(*compressor).close
+         0     0%   100%  1377.12kB  3.76%  compress/flate.(*compressor).deflateFast
+         0     0%   100%  2332.03kB  6.36%  compress/flate.(*compressor).init
+         0     0%   100%  1377.12kB  3.76%  compress/flate.(*fastEncL1).encode
+         0     0%   100%  1377.12kB  3.76%  compress/gzip.(*Writer).Close
+         0     0%   100%  5608.49kB 15.30%  compress/gzip.(*Writer).Write
+         0     0%   100%   512.31kB  1.40%  fmt.(*pp).doPrintf
+         0     0%   100%  3072.52kB  8.38%  fmt.Sprint
+         0     0%   100%   512.31kB  1.40%  fmt.Sprintf
+         0     0%   100%  3072.52kB  8.38%  fmt.newPrinter
+         0     0%   100%  2048.33kB  5.59%  github.com/dmartsapp/go-ping/v2/netutils.(*Pinger).PingAll.func2
+         0     0%   100%   512.01kB  1.40%  github.com/dmartsapp/go-ping/v2/netutils.(*Pinger).produce.func2
+         0     0%   100%   512.01kB  1.40%  github.com/dmartsapp/go-ping/v2/netutils.(*Pinger).sendICMP
+         0     0%   100%  3072.52kB  8.38%  github.com/dmartsapp/shint/v4/lib.Fields
+         0     0%   100%      513kB  1.40%  github.com/dmartsapp/shint/v4/lib.LogWithLevel
+         0     0%   100%      513kB  1.40%  github.com/dmartsapp/shint/v4/lib.LogWithTimestamp

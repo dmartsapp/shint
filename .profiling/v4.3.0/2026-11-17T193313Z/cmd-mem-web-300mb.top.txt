@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-17 13:36:29 CST
+Showing nodes accounting for 39545.82kB, 100% of 39545.82kB total
+Showing top 30 nodes out of 67
+      flat  flat%   sum%        cum   cum%
+14870.46kB 37.60% 37.60% 14870.46kB 37.60%  runtime.mallocgc
+10631.51kB 26.88% 64.49% 10631.51kB 26.88%  runtime/pprof.StartCPUProfile
+ 3931.76kB  9.94% 74.43%  7353.12kB 18.59%  compress/flate.NewWriter (inline)
+ 2332.03kB  5.90% 80.33%  2332.03kB  5.90%  compress/flate.newFastEnc (inline)
+ 2065.68kB  5.22% 85.55%  2065.68kB  5.22%  compress/flate.(*fastGen).addBlock
+ 1089.33kB  2.75% 88.30%  3421.36kB  8.65%  compress/flate.(*compressor).init
+ 1024.11kB  2.59% 90.89%  1024.11kB  2.59%  main.interruptContext.func1
+  528.17kB  1.34% 92.23%   528.17kB  1.34%  net/http.init.func2
+  512.34kB  1.30% 93.53%   512.34kB  1.30%  net/http.(*Transport).tryPutIdleConn
+  512.25kB  1.30% 94.82%   512.25kB  1.30%  runtime/pprof.(*protobuf).varint
+  512.08kB  1.29% 96.12%   512.08kB  1.29%  compress/gzip.NewWriterLevel
+  512.08kB  1.29% 97.41%   512.08kB  1.29%  github.com/spf13/pflag.(*FlagSet).VarPF
+  512.02kB  1.29% 98.71%   512.02kB  1.29%  github.com/spf13/cobra.init
+  512.01kB  1.29%   100%  1040.17kB  2.63%  net/http.(*Request).write
+         0     0%   100%  2065.68kB  5.22%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%  2065.68kB  5.22%  compress/flate.(*compressor).close
+         0     0%   100%  2065.68kB  5.22%  compress/flate.(*compressor).deflateFast
+         0     0%   100%  2065.68kB  5.22%  compress/flate.(*fastEncL1).encode
+         0     0%   100%  2065.68kB  5.22%  compress/gzip.(*Writer).Close
+         0     0%   100%  7353.12kB 18.59%  compress/gzip.(*Writer).Write
+         0     0%   100%   512.08kB  1.29%  github.com/spf13/pflag.(*FlagSet).BoolVar (inline)
+         0     0%   100%   512.08kB  1.29%  github.com/spf13/pflag.(*FlagSet).BoolVarP
+         0     0%   100%   512.08kB  1.29%  main.init.0
+         0     0%   100% 10631.51kB 26.88%  main.init.1
+         0     0%   100%   512.34kB  1.30%  net/http.(*persistConn).readLoop
+         0     0%   100%   512.34kB  1.30%  net/http.(*persistConn).readLoop.func2
+         0     0%   100%   512.34kB  1.30%  net/http.(*persistConn).readLoop.func5 (inline)
+         0     0%   100%  1040.17kB  2.63%  net/http.(*persistConn).writeLoop
+         0     0%   100%   528.17kB  1.34%  net/http.(*transferWriter).doBodyCopy
+         0     0%   100%   528.17kB  1.34%  net/http.(*transferWriter).writeBody

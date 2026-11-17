@@ -1,0 +1,1147 @@
+{
+ "schema": 1,
+ "tag": "v4.3.0",
+ "kind": "release",
+ "run_at": "2026-11-17T19:33:44+00:00",
+ "source": {
+  "commit": "71e08b72a3797df0531955bb4112b3be48ce929f",
+  "describe": "v4.2.4-46-g71e08b7-dirty",
+  "branch": "release/v4.3.0",
+  "dirty": true,
+  "version": "4.3.0"
+ },
+ "machine": {
+  "label": "",
+  "os": "Darwin",
+  "os_version": "macOS 27.2.1",
+  "kernel": "Darwin Kernel Version 27.2.0: Thu Oct 15 00:02:46 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T6000",
+  "arch": "arm64",
+  "model": "MacBookPro18,3",
+  "cpu": {
+   "model": "Apple M1 Pro",
+   "logical_cores": 10,
+   "physical_cores": 10,
+   "performance_cores": 8,
+   "efficiency_cores": 2
+  },
+  "memory_bytes": 34359738368,
+  "power": "ac",
+  "load_1m_start": 2.8,
+  "go": "go1.27.4",
+  "python": "3.9.6",
+  "id": "3aaf2b6d7782",
+  "quiet_wait_seconds": 30.1,
+  "load_1m_end": 8.25
+ },
+ "notes": [],
+ "binary": {
+  "host_size_bytes": 10282674,
+  "platform_sizes": {
+   "windows/arm64": 10145280,
+   "windows/amd64": 11144192,
+   "linux/arm64": 10092704,
+   "linux/amd64": 10789024,
+   "linux/armv6": 10485920,
+   "linux/ppc64le": 10551456,
+   "darwin/arm64": 10282674,
+   "darwin/amd64": 11063488,
+   "freebsd/amd64": 10748074,
+   "freebsd/arm64": 9961642,
+   "openbsd/amd64": 10748187,
+   "openbsd/arm64": 9961755,
+   "netbsd/amd64": 10711219,
+   "netbsd/arm64": 9961651,
+   "solaris/amd64": 10739975,
+   "android/arm64": 11010342,
+   "aix/ppc64": 12480825,
+   "illumos/amd64": 10739975
+  }
+ },
+ "scenarios": {
+  "startup": {
+   "what": "process start to exit: the floor under every command",
+   "args": [
+    "--version"
+   ],
+   "available": true,
+   "repeat": 20,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 6.259,
+    "mean": 6.759,
+    "min": 6.022,
+    "max": 9.133,
+    "stdev": 0.907,
+    "n": 20
+   },
+   "cpu_ms": {
+    "median": 4.861,
+    "mean": 5.192,
+    "min": 4.704,
+    "max": 6.933,
+    "stdev": 0.639,
+    "n": 20
+   },
+   "user_ms": {
+    "median": 2.726,
+    "mean": 2.902,
+    "min": 2.639,
+    "max": 3.944,
+    "stdev": 0.354,
+    "n": 20
+   },
+   "sys_ms": {
+    "median": 2.165,
+    "mean": 2.29,
+    "min": 2.043,
+    "max": 2.989,
+    "stdev": 0.294,
+    "n": 20
+   },
+   "max_rss_mib": {
+    "median": 11.93,
+    "mean": 11.904,
+    "min": 11.703,
+    "max": 12.031,
+    "stdev": 0.1,
+    "n": 20
+   }
+  },
+  "help": {
+   "what": "cobra building and printing the command tree",
+   "args": [
+    "--help"
+   ],
+   "available": true,
+   "repeat": 10,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 6.352,
+    "mean": 6.907,
+    "min": 6.186,
+    "max": 8.778,
+    "stdev": 1.002,
+    "n": 10
+   },
+   "cpu_ms": {
+    "median": 4.878,
+    "mean": 5.354,
+    "min": 4.759,
+    "max": 6.748,
+    "stdev": 0.829,
+    "n": 10
+   },
+   "user_ms": {
+    "median": 2.723,
+    "mean": 2.902,
+    "min": 2.676,
+    "max": 3.522,
+    "stdev": 0.326,
+    "n": 10
+   },
+   "sys_ms": {
+    "median": 2.17,
+    "mean": 2.451,
+    "min": 2.078,
+    "max": 3.509,
+    "stdev": 0.525,
+    "n": 10
+   },
+   "max_rss_mib": {
+    "median": 11.414,
+    "mean": 11.414,
+    "min": 11.203,
+    "max": 11.641,
+    "stdev": 0.155,
+    "n": 10
+   }
+  },
+  "telnet": {
+   "what": "100 TCP connects, in parallel",
+   "args": [
+    "telnet",
+    "127.0.0.1",
+    "{tcp_echo}",
+    "--count",
+    "100",
+    "--delay",
+    "0"
+   ],
+   "available": true,
+   "repeat": 5,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 10.679,
+    "mean": 10.799,
+    "min": 10.478,
+    "max": 11.211,
+    "stdev": 0.289,
+    "n": 5
+   },
+   "cpu_ms": {
+    "median": 21.12,
+    "mean": 20.455,
+    "min": 18.124,
+    "max": 22.427,
+    "stdev": 1.787,
+    "n": 5
+   },
+   "user_ms": {
+    "median": 5.828,
+    "mean": 5.822,
+    "min": 5.777,
+    "max": 5.881,
+    "stdev": 0.043,
+    "n": 5
+   },
+   "sys_ms": {
+    "median": 15.336,
+    "mean": 14.633,
+    "min": 12.296,
+    "max": 16.546,
+    "stdev": 1.765,
+    "n": 5
+   },
+   "max_rss_mib": {
+    "median": 15.812,
+    "mean": 15.816,
+    "min": 15.781,
+    "max": 15.844,
+    "stdev": 0.023,
+    "n": 5
+   }
+  },
+  "telnet-json": {
+   "what": "the same, with the JSON document",
+   "args": [
+    "telnet",
+    "127.0.0.1",
+    "{tcp_echo}",
+    "--count",
+    "100",
+    "--delay",
+    "0",
+    "--json"
+   ],
+   "available": true,
+   "repeat": 5,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 10.861,
+    "mean": 10.874,
+    "min": 10.696,
+    "max": 11.061,
+    "stdev": 0.131,
+    "n": 5
+   },
+   "cpu_ms": {
+    "median": 15.764,
+    "mean": 17.428,
+    "min": 14.975,
+    "max": 20.442,
+    "stdev": 2.687,
+    "n": 5
+   },
+   "user_ms": {
+    "median": 5.514,
+    "mean": 5.548,
+    "min": 5.294,
+    "max": 5.819,
+    "stdev": 0.194,
+    "n": 5
+   },
+   "sys_ms": {
+    "median": 10.25,
+    "mean": 11.88,
+    "min": 9.681,
+    "max": 14.63,
+    "stdev": 2.517,
+    "n": 5
+   },
+   "max_rss_mib": {
+    "median": 16.391,
+    "mean": 16.428,
+    "min": 16.391,
+    "max": 16.547,
+    "stdev": 0.068,
+    "n": 5
+   }
+  },
+  "web": {
+   "what": "50 small HTTP requests",
+   "args": [
+    "web",
+    "http://127.0.0.1:{http}/ok",
+    "--count",
+    "50",
+    "--delay",
+    "0"
+   ],
+   "available": true,
+   "repeat": 5,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 14.577,
+    "mean": 14.708,
+    "min": 14.137,
+    "max": 15.599,
+    "stdev": 0.566,
+    "n": 5
+   },
+   "cpu_ms": {
+    "median": 16.289,
+    "mean": 16.173,
+    "min": 15.9,
+    "max": 16.41,
+    "stdev": 0.23,
+    "n": 5
+   },
+   "user_ms": {
+    "median": 6.744,
+    "mean": 6.758,
+    "min": 6.694,
+    "max": 6.828,
+    "stdev": 0.051,
+    "n": 5
+   },
+   "sys_ms": {
+    "median": 9.525,
+    "mean": 9.415,
+    "min": 9.072,
+    "max": 9.666,
+    "stdev": 0.243,
+    "n": 5
+   },
+   "max_rss_mib": {
+    "median": 17.859,
+    "mean": 17.878,
+    "min": 17.828,
+    "max": 17.953,
+    "stdev": 0.047,
+    "n": 5
+   }
+  },
+  "web-300mb": {
+   "what": "one 300 MB download: memory must not grow with the body",
+   "args": [
+    "web",
+    "http://127.0.0.1:{http}/big",
+    "--count",
+    "1",
+    "--delay",
+    "0",
+    "--timeout",
+    "60"
+   ],
+   "available": true,
+   "repeat": 3,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 53.783,
+    "mean": 52.815,
+    "min": 50.766,
+    "max": 53.897,
+    "stdev": 1.776,
+    "n": 3
+   },
+   "cpu_ms": {
+    "median": 50.128,
+    "mean": 50.689,
+    "min": 49.03,
+    "max": 52.91,
+    "stdev": 2.0,
+    "n": 3
+   },
+   "user_ms": {
+    "median": 10.858,
+    "mean": 10.866,
+    "min": 10.227,
+    "max": 11.512,
+    "stdev": 0.643,
+    "n": 3
+   },
+   "sys_ms": {
+    "median": 39.901,
+    "mean": 39.824,
+    "min": 38.172,
+    "max": 41.398,
+    "stdev": 1.614,
+    "n": 3
+   },
+   "max_rss_mib": {
+    "median": 13.469,
+    "mean": 13.406,
+    "min": 13.281,
+    "max": 13.469,
+    "stdev": 0.108,
+    "n": 3
+   }
+  },
+  "udp": {
+   "what": "100 UDP probes to an echo server",
+   "args": [
+    "udp",
+    "127.0.0.1",
+    "{udp_echo}",
+    "--count",
+    "100",
+    "--delay",
+    "0"
+   ],
+   "available": true,
+   "repeat": 5,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 9.126,
+    "mean": 9.402,
+    "min": 8.787,
+    "max": 10.749,
+    "stdev": 0.774,
+    "n": 5
+   },
+   "cpu_ms": {
+    "median": 19.778,
+    "mean": 19.709,
+    "min": 17.141,
+    "max": 21.745,
+    "stdev": 1.668,
+    "n": 5
+   },
+   "user_ms": {
+    "median": 6.065,
+    "mean": 6.175,
+    "min": 5.994,
+    "max": 6.642,
+    "stdev": 0.269,
+    "n": 5
+   },
+   "sys_ms": {
+    "median": 13.766,
+    "mean": 13.534,
+    "min": 11.147,
+    "max": 15.103,
+    "stdev": 1.479,
+    "n": 5
+   },
+   "max_rss_mib": {
+    "median": 15.75,
+    "mean": 15.772,
+    "min": 15.562,
+    "max": 15.984,
+    "stdev": 0.193,
+    "n": 5
+   }
+  },
+  "nmap": {
+   "what": "2000 closed loopback ports",
+   "args": [
+    "nmap",
+    "127.0.0.1",
+    "--from",
+    "20000",
+    "--to",
+    "21999",
+    "--timeout",
+    "1"
+   ],
+   "available": true,
+   "repeat": 3,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 33.588,
+    "mean": 33.539,
+    "min": 33.118,
+    "max": 33.91,
+    "stdev": 0.398,
+    "n": 3
+   },
+   "cpu_ms": {
+    "median": 225.038,
+    "mean": 225.817,
+    "min": 224.123,
+    "max": 228.291,
+    "stdev": 2.191,
+    "n": 3
+   },
+   "user_ms": {
+    "median": 36.775,
+    "mean": 36.98,
+    "min": 36.691,
+    "max": 37.474,
+    "stdev": 0.43,
+    "n": 3
+   },
+   "sys_ms": {
+    "median": 187.564,
+    "mean": 188.837,
+    "min": 187.348,
+    "max": 191.6,
+    "stdev": 2.395,
+    "n": 3
+   },
+   "max_rss_mib": {
+    "median": 22.812,
+    "mean": 22.807,
+    "min": 22.703,
+    "max": 22.906,
+    "stdev": 0.102,
+    "n": 3
+   }
+  },
+  "ping": {
+   "what": "10 ICMP echoes (needs unprivileged ICMP)",
+   "args": [
+    "ping",
+    "127.0.0.1",
+    "--count",
+    "10",
+    "--delay",
+    "0",
+    "--timeout",
+    "2"
+   ],
+   "available": true,
+   "repeat": 3,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 6.955,
+    "mean": 6.948,
+    "min": 6.93,
+    "max": 6.958,
+    "stdev": 0.015,
+    "n": 3
+   },
+   "cpu_ms": {
+    "median": 5.909,
+    "mean": 5.916,
+    "min": 5.908,
+    "max": 5.932,
+    "stdev": 0.014,
+    "n": 3
+   },
+   "user_ms": {
+    "median": 3.031,
+    "mean": 3.032,
+    "min": 3.019,
+    "max": 3.047,
+    "stdev": 0.014,
+    "n": 3
+   },
+   "sys_ms": {
+    "median": 2.885,
+    "mean": 2.884,
+    "min": 2.877,
+    "max": 2.89,
+    "stdev": 0.007,
+    "n": 3
+   },
+   "max_rss_mib": {
+    "median": 12.703,
+    "mean": 12.698,
+    "min": 12.594,
+    "max": 12.797,
+    "stdev": 0.102,
+    "n": 3
+   }
+  },
+  "dns": {
+   "what": "20 DNS queries to a local server",
+   "args": [
+    "dns",
+    "ok.example",
+    "A",
+    "@127.0.0.1:{dns}",
+    "--count",
+    "20",
+    "--delay",
+    "0",
+    "--timeout",
+    "2"
+   ],
+   "available": true,
+   "repeat": 5,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 8.677,
+    "mean": 8.706,
+    "min": 8.607,
+    "max": 8.929,
+    "stdev": 0.132,
+    "n": 5
+   },
+   "cpu_ms": {
+    "median": 7.007,
+    "mean": 7.033,
+    "min": 6.962,
+    "max": 7.098,
+    "stdev": 0.06,
+    "n": 5
+   },
+   "user_ms": {
+    "median": 3.392,
+    "mean": 3.405,
+    "min": 3.382,
+    "max": 3.448,
+    "stdev": 0.026,
+    "n": 5
+   },
+   "sys_ms": {
+    "median": 3.613,
+    "mean": 3.628,
+    "min": 3.571,
+    "max": 3.711,
+    "stdev": 0.054,
+    "n": 5
+   },
+   "max_rss_mib": {
+    "median": 13.594,
+    "mean": 13.606,
+    "min": 13.344,
+    "max": 13.891,
+    "stdev": 0.196,
+    "n": 5
+   }
+  },
+  "cidr": {
+   "what": "pure computation",
+   "args": [
+    "cidr",
+    "10.0.0.0/8",
+    "2001:db8::/32"
+   ],
+   "available": true,
+   "repeat": 10,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 6.317,
+    "mean": 6.327,
+    "min": 6.172,
+    "max": 6.545,
+    "stdev": 0.124,
+    "n": 10
+   },
+   "cpu_ms": {
+    "median": 4.838,
+    "mean": 4.846,
+    "min": 4.673,
+    "max": 4.987,
+    "stdev": 0.095,
+    "n": 10
+   },
+   "user_ms": {
+    "median": 2.733,
+    "mean": 2.735,
+    "min": 2.677,
+    "max": 2.808,
+    "stdev": 0.039,
+    "n": 10
+   },
+   "sys_ms": {
+    "median": 2.114,
+    "mean": 2.111,
+    "min": 1.996,
+    "max": 2.201,
+    "stdev": 0.062,
+    "n": 10
+   },
+   "max_rss_mib": {
+    "median": 11.766,
+    "mean": 11.789,
+    "min": 11.594,
+    "max": 11.953,
+    "stdev": 0.097,
+    "n": 10
+   }
+  },
+  "ip": {
+   "what": "reading the interface table",
+   "args": [
+    "ip"
+   ],
+   "available": true,
+   "repeat": 10,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 6.804,
+    "mean": 6.782,
+    "min": 6.7,
+    "max": 6.856,
+    "stdev": 0.053,
+    "n": 10
+   },
+   "cpu_ms": {
+    "median": 5.376,
+    "mean": 5.385,
+    "min": 5.289,
+    "max": 5.486,
+    "stdev": 0.063,
+    "n": 10
+   },
+   "user_ms": {
+    "median": 2.772,
+    "mean": 2.78,
+    "min": 2.734,
+    "max": 2.831,
+    "stdev": 0.033,
+    "n": 10
+   },
+   "sys_ms": {
+    "median": 2.603,
+    "mean": 2.605,
+    "min": 2.555,
+    "max": 2.671,
+    "stdev": 0.038,
+    "n": 10
+   },
+   "max_rss_mib": {
+    "median": 11.977,
+    "mean": 11.988,
+    "min": 11.844,
+    "max": 12.188,
+    "stdev": 0.118,
+    "n": 10
+   }
+  },
+  "listen-http": {
+   "what": "shint as the server: 300 requests from 8 clients",
+   "args": [
+    "listen",
+    "http",
+    "<port>",
+    "--count",
+    "300"
+   ],
+   "available": true,
+   "repeat": 3,
+   "ok": true,
+   "failed_runs": 0,
+   "exit_codes": [
+    0,
+    0,
+    0
+   ],
+   "wall_ms": {
+    "median": 326.498,
+    "mean": 329.216,
+    "min": 322.323,
+    "max": 338.828,
+    "stdev": 8.581,
+    "n": 3
+   },
+   "cpu_ms": {
+    "median": 61.996,
+    "mean": 58.323,
+    "min": 46.503,
+    "max": 66.471,
+    "stdev": 10.478,
+    "n": 3
+   },
+   "user_ms": {
+    "median": 23.994,
+    "mean": 21.994,
+    "min": 16.576,
+    "max": 25.411,
+    "stdev": 4.745,
+    "n": 3
+   },
+   "sys_ms": {
+    "median": 38.002,
+    "mean": 36.33,
+    "min": 29.927,
+    "max": 41.06,
+    "stdev": 5.752,
+    "n": 3
+   },
+   "max_rss_mib": {
+    "median": 16.547,
+    "mean": 16.49,
+    "min": 16.297,
+    "max": 16.625,
+    "stdev": 0.171,
+    "n": 3
+   }
+  }
+ },
+ "go_tests": {
+  "ok": true,
+  "wall_seconds": 33.55,
+  "packages": {
+   "github.com/dmartsapp/shint/v4/test/battery/gencert": {
+    "seconds": 0,
+    "result": "skip"
+   },
+   "github.com/dmartsapp/shint/v4/lib": {
+    "seconds": 0.266,
+    "result": "pass"
+   },
+   "github.com/dmartsapp/shint/v4": {
+    "seconds": 7.314,
+    "result": "pass"
+   },
+   "github.com/dmartsapp/shint/v4/lib/handlers": {
+    "seconds": 33.054,
+    "result": "pass"
+   }
+  },
+  "slowest": [
+   {
+    "test": "TestExitStatus",
+    "package": "github.com/dmartsapp/shint/v4",
+    "seconds": 4.03,
+    "result": "pass"
+   },
+   {
+    "test": "TestWebIncompleteBodyIsAFailure",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 2.22,
+    "result": "pass"
+   },
+   {
+    "test": "TestDNSSilenceIsATimeoutAndSaysWhatWasIgnored",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 2.01,
+    "result": "pass"
+   },
+   {
+    "test": "TestTelnetHandlerRunLongerThanTimeoutStillSucceeds",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1.61,
+    "result": "pass"
+   },
+   {
+    "test": "TestWebAndHTTPListenAgreeOnBytes",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1.36,
+    "result": "pass"
+   },
+   {
+    "test": "TestHTTPListenerJSONEventsForRequestsThatWereNotServed",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1.26,
+    "result": "pass"
+   },
+   {
+    "test": "TestHTTPListenerReportsARequestWhoseBodyNeverCompletes",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1.25,
+    "result": "pass"
+   },
+   {
+    "test": "TestProfilesOnlyFromAProfilingBuild",
+    "package": "github.com/dmartsapp/shint/v4",
+    "seconds": 1.24,
+    "result": "pass"
+   },
+   {
+    "test": "TestNmapHandlerCoversWholeRangeEvenWhenItOutlastsPerPortTimeout",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1.21,
+    "result": "pass"
+   },
+   {
+    "test": "TestNTPHandlerReportsUntrustworthyAndMissingReplies",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1,
+    "result": "pass"
+   },
+   {
+    "test": "TestRDNSHandlerCountAndTimeoutPerLookup",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1,
+    "result": "pass"
+   },
+   {
+    "test": "TestProbeUDPOpenFiltered",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1,
+    "result": "pass"
+   },
+   {
+    "test": "TestUDPHandlerLogLevelFollowsWhetherTheProbeFailed",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 1,
+    "result": "pass"
+   },
+   {
+    "test": "TestCtrlCShowsTheSummary",
+    "package": "github.com/dmartsapp/shint/v4",
+    "seconds": 0.95,
+    "result": "pass"
+   },
+   {
+    "test": "TestNmapHandlerReportsProgress",
+    "package": "github.com/dmartsapp/shint/v4/lib/handlers",
+    "seconds": 0.9,
+    "result": "pass"
+   }
+  ]
+ },
+ "battery": {
+  "ok": true,
+  "wall_seconds": 73.45,
+  "cases": 471,
+  "groups": {
+   "A cli": {
+    "cases": 31,
+    "seconds": 0.45
+   },
+   "B flags": {
+    "cases": 34,
+    "seconds": 2.54
+   },
+   "C hosts": {
+    "cases": 36,
+    "seconds": 15.94
+   },
+   "D ports": {
+    "cases": 15,
+    "seconds": 0.15
+   },
+   "E telnet": {
+    "cases": 14,
+    "seconds": 4.77
+   },
+   "M ip": {
+    "cases": 11,
+    "seconds": 0.11
+   },
+   "F web": {
+    "cases": 149,
+    "seconds": 24.01
+   },
+   "O tls": {
+    "cases": 24,
+    "seconds": 2.34
+   },
+   "G nmap": {
+    "cases": 20,
+    "seconds": 3.06
+   },
+   "H udp": {
+    "cases": 39,
+    "seconds": 22.53
+   },
+   "N dns": {
+    "cases": 42,
+    "seconds": 6.47
+   },
+   "I ping": {
+    "cases": 23,
+    "seconds": 21.6
+   },
+   "J listen": {
+    "cases": 26,
+    "seconds": 30.47
+   },
+   "K signals": {
+    "cases": 6,
+    "seconds": 7.26
+   },
+   "L resources": {
+    "cases": 1,
+    "seconds": 1.09
+   }
+  },
+  "slowest": [
+   {
+    "id": "I.no-false-success-from-another-ping",
+    "group": "I ping",
+    "seconds": 19.34
+   },
+   {
+    "id": "F.tls-https-to-plain-port",
+    "group": "F web",
+    "seconds": 5.02
+   },
+   {
+    "id": "J.tcp-idle-timeout-closes-connection",
+    "group": "J listen",
+    "seconds": 3.51
+   },
+   {
+    "id": "J.http-bare-connections-are-not-requests",
+    "group": "J listen",
+    "seconds": 3.32
+   },
+   {
+    "id": "C.host-17",
+    "group": "C hosts",
+    "seconds": 3.28
+   },
+   {
+    "id": "C.host-18",
+    "group": "C hosts",
+    "seconds": 3.14
+   },
+   {
+    "id": "C.host-12",
+    "group": "C hosts",
+    "seconds": 3.06
+   },
+   {
+    "id": "C.host-21",
+    "group": "C hosts",
+    "seconds": 3.05
+   },
+   {
+    "id": "C.host-24",
+    "group": "C hosts",
+    "seconds": 3.01
+   },
+   {
+    "id": "J.http-client-stalls-mid-body-is-not-logged-as-ok",
+    "group": "J listen",
+    "seconds": 2.8
+   }
+  ]
+ },
+ "profiles": [
+  "cmd-cpu-dns.pprof",
+  "cmd-cpu-listen-http.pprof",
+  "cmd-cpu-nmap.pprof",
+  "cmd-cpu-ping.pprof",
+  "cmd-cpu-telnet-json.pprof",
+  "cmd-cpu-telnet.pprof",
+  "cmd-cpu-udp.pprof",
+  "cmd-cpu-web-300mb.pprof",
+  "cmd-cpu-web.pprof",
+  "cmd-mem-dns.pprof",
+  "cmd-mem-listen-http.pprof",
+  "cmd-mem-nmap.pprof",
+  "cmd-mem-ping.pprof",
+  "cmd-mem-telnet-json.pprof",
+  "cmd-mem-telnet.pprof",
+  "cmd-mem-udp.pprof",
+  "cmd-mem-web-300mb.pprof",
+  "cmd-mem-web.pprof",
+  "test-cpu-lib-handlers.pprof",
+  "test-cpu-lib.pprof",
+  "test-mem-lib-handlers.pprof",
+  "test-mem-lib.pprof"
+ ],
+ "settle": {
+  "time_wait_after": 5,
+  "waited_seconds": 30.3
+ },
+ "duration_seconds": 317.3
+}
