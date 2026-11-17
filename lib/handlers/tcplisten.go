@@ -75,6 +75,7 @@ func TCPListenHandler(bind string, port int, echo bool, maxConnections int, idle
 			limit = strconv.Itoa(maxConnections)
 		}
 		fmt.Println(lib.LogWithTimestamp(listenTCPModule, "listening "+lib.Fields("address", addr, "max_connections", limit, "echo", echo), false))
+		exposureNotice(listenTCPModule, bind, addr)
 	}
 
 	var wg sync.WaitGroup

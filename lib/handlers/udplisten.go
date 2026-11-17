@@ -47,6 +47,7 @@ func UDPListenHandler(bind string, port int, echo bool, maxPackets int, idleTime
 			limit = strconv.Itoa(maxPackets)
 		}
 		fmt.Println(lib.LogWithTimestamp(listenUDPModule, "listening "+lib.Fields("address", addr, "max_packets", limit, "echo", echo), false))
+		exposureNotice(listenUDPModule, bind, addr)
 	}
 
 	buf := make([]byte, 65535)

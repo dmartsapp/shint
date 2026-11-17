@@ -200,6 +200,13 @@ listen_case("J.http-chunked-body-that-cannot-be-parsed-is-rejected", "http",
             ["ERROR request rejected method=POST path=/c status=400", "done requests=1"], expect_absent=["OK request"])
 
 
+# a listener reachable from other machines says so as it starts (#102); bound to loopback it does not
+listen_case("J.http-default-bind-says-it-is-reachable", "http", raw_http(b"GET / HTTP/1.1\r\nHost: x\r\n\r\n"),
+            ["WARN reachable from other machines address=0.0.0.0:", "--bind 127.0.0.1 keeps it to this machine", "done requests=1"])
+listen_case("J.http-loopback-bind-says-nothing", "http", raw_http(b"GET / HTTP/1.1\r\nHost: x\r\n\r\n"),
+            ["done requests=1"], expect_absent=["reachable from other machines"], extra=["--bind", "127.0.0.1"])
+
+
 def bare_connections_then_a_request(port):
     """Connections that send nothing - telnet, nmap, a TCP health check - then one real request."""
     for _ in range(3):

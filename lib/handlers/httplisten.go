@@ -305,6 +305,7 @@ func HTTPListenHandler(bind string, port int, maxRequests int, idleTimeout int, 
 			limit = strconv.Itoa(maxRequests)
 		}
 		fmt.Println(lib.LogWithTimestamp(listenHTTPModule, "listening "+lib.Fields("address", addr, "max_requests", limit), false))
+		exposureNotice(listenHTTPModule, bind, addr)
 	}
 
 	istart := time.Now()
