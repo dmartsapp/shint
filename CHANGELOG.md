@@ -4,6 +4,8 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
+## v4.4.0 - unreleased
+
 ## v4.3.0 - 2026-11-17
 
 - **New command: `tls` checks a server's TLS certificate** - `shint tls example.com`, `shint tls mail.example.com 465`. It completes a handshake with every address the name resolves to and reports the TLS version and cipher suite the server chose, every certificate it sent (subject, issuer, the names it is valid for, expiry, key, signature), whether the chain leads to a trusted root and is valid for the name - the way a browser decides - and how long until it expires. A chain that does not verify fails the check, with the reason in plain words (an unknown authority, expired, not valid for the name, no TLS on that port, a refused handshake). `--warn-days N` (30 by default) gives a certificate that expires within N days a `WARN` line and still passes; `--fail-days N` makes it fail (exit 1). `--servername` sends and verifies another name than the host; `--cacert` trusts a private CA. Expiry is judged on the chain that verified, not on extra certificates a server sends. Text and `--json`. See [tls](https://dmartsapp.github.io/shint/docs/tls.html). ([#95](https://github.com/dmartsapp/shint/issues/95))
