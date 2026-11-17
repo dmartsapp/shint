@@ -68,7 +68,7 @@ func ParseWebURL(arg string) (*url.URL, error) {
 // With timing, each request also reports where its time went - DNS, connect,
 // TLS, waiting for the first byte, downloading - per hop when a redirect is
 // followed (see webtiming.go).
-func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config, timing bool, showCredentials bool) (ok bool) {
+func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config, timing bool, showCredentials bool, maxBody int64) (ok bool) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	var stats = make([]time.Duration, 0)
@@ -274,9 +274,10 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			// early-end check need it - but only --json -W shows it, so only then is it
 			// kept: buffering every response made a 300 MB download cost 660 MB of memory.
 			var body []byte
+			var truncated bool
 			var readErr error
 			if *jsonoutput && includeresponsebody {
-				body, readErr = io.ReadAll(response.Body)
+				body, truncated, readErr = readBody(response.Body, maxBody)
 			} else {
 				_, readErr = io.Copy(io.Discard, response.Body)
 			}
@@ -304,7 +305,11 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			if *jsonoutput {
 				stat := lib.WebStats{}
 				stat.URL = shownURL(URL, showCredentials)
-				if includeresponsebody {
+				if includeresponsebody && truncated {
+					// The first --max-body bytes, as text: a document cut short does not parse.
+					stat.Response = map[string]any{"body": string(body), "header": header}
+					stat.BodyTruncated = true
+				} else if includeresponsebody {
 					var jsondata interface{}
 					if jsonErr := json.Unmarshal(body, &jsondata); jsonErr != nil {
 						errors = append(errors, "JSON parse error: "+jsonErr.Error())
@@ -385,4 +390,19 @@ func parsePort(raw string) (int, error) {
 		return 0, nil
 	}
 	return lib.ValidatePort(raw)
+}
+
+// readBody keeps at most max bytes of a response body (0: all of it) and
+// reads - and discards - the rest, so the byte counts and the timing still
+// cover the whole response (#101). truncated says some of it was not kept.
+func readBody(r io.Reader, max int64) (body []byte, truncated bool, err error) {
+	if max <= 0 {
+		body, err = io.ReadAll(r)
+		return body, false, err
+	}
+	if body, err = io.ReadAll(io.LimitReader(r, max)); err != nil {
+		return body, false, err
+	}
+	rest, err := io.Copy(io.Discard, r)
+	return body, rest > 0, err
 }

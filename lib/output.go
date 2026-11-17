@@ -100,7 +100,11 @@ type WebStats struct {
 	// (a client certificate, headers given with -H) that stay with their
 	// origin (#98).
 	RedirectNotFollowed *RedirectNotFollowed `json:"redirect_not_followed,omitempty"`
-	BandwidthKBs        float64              `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
+	// BodyTruncated is true when, with -W, the response body was longer than
+	// --max-body: response.body holds its first --max-body bytes, as text, and
+	// bytes_received still counts the whole response (#101).
+	BodyTruncated bool    `json:"body_truncated,omitempty"`
+	BandwidthKBs  float64 `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
 	// Timing is present only with --timing: where the request's time went,
 	// one entry per hop when a redirect was followed.
 	Timing *WebTiming `json:"timing,omitempty"`

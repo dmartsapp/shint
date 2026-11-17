@@ -24,7 +24,8 @@ shint web <url> [-X METHOD] [-H "Name: value"]... [-P body] [-W] [flags]
 | `-X`, `--method` | HTTP method: `GET` (default), `POST`, `PUT`, `DELETE`, ... |
 | `-H`, `--header` | A header to send, as `"Name: value"`. Repeat for several. |
 | `-P`, `--payload` | The request body. |
-| `-W`, `--withbody` | Include the response body in the `--json` output. **The body is then held in memory**; without `-W` it is counted and discarded, so memory stays flat however large the download. |
+| `-W`, `--withbody` | Include the response body in the `--json` output - up to `--max-body` of it. **That much is then held in memory**; without `-W` the body is counted and discarded, so memory stays flat however large the download. |
+| `--max-body SIZE` | With `-W`, keep at most this much of each response body: `10M` by default, `512K`, `1G`, or `0` for all of it. The rest is still read and counted - `bytes_received` and the timing cover the whole response - and the request's stat says `"body_truncated": true`, its `body` holding the first SIZE bytes as text (a document cut short does not parse). |
 | `--cacert FILE` | Trust this PEM CA bundle *in addition to* the system roots. |
 | `--cert FILE`, `--key FILE` | Client certificate and key for mutual TLS (give both). |
 | `-k`, `--insecure` | Skip certificate verification. Diagnostics only. |

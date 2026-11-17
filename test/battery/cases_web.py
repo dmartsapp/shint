@@ -79,6 +79,11 @@ for cid, path, rc, extra in [
 web("srv-json-body-W", H + "/json", "--json", "-W", rc=0)
 web("srv-badjson-body-W", H + "/badjson", "--json", "-W", rc=0)
 web("srv-bigjson-body-W", H + "/bigjson", "--json", "-W", rc=0, max=30)
+web("srv-bigjson-body-W-max-1M", H + "/bigjson", "--json", "-W", "--max-body", "1M", rc=0, max=30,
+    check=lambda r: None if (lambda st: st.get("body_truncated") is True and len(st["response"]["body"]) == 1 << 20)(json.loads(r["out"])["stats"][0]) else "a 5 MB body with --max-body 1M was not cut to its first 1 MiB")
+web("srv-bigjson-body-W-max-0", H + "/bigjson", "--json", "-W", "--max-body", "0", rc=0, max=30,
+    check=lambda r: "--max-body 0 cut the body" if json.loads(r["out"])["stats"][0].get("body_truncated") else None)
+web("max-body-not-a-size", H + "/ok", "--json", "-W", "--max-body", "lots", rc=2)
 web("srv-binary-body-W", H + "/binary", "--json", "-W", rc=0)
 web("srv-empty-W", H + "/empty", "--json", "-W", rc=0)
 web("srv-gzip-bytes", H + "/gzip", "--json", rc=0)

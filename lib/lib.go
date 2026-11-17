@@ -156,6 +156,32 @@ func RequireDelay(value int) error {
 	return nil
 }
 
+// MaxByteSize is the largest size ParseByteSize takes: 1 TiB, far beyond any
+// body anyone keeps in memory, and nowhere near overflow.
+const MaxByteSize = 1 << 40
+
+// ParseByteSize reads a size flag: a whole number of bytes, or one with a K, M
+// or G suffix (KiB, MiB, GiB - powers of 1024; a trailing B or iB is allowed,
+// in any case). 0 is allowed: a flag gives it its meaning ("no limit").
+func ParseByteSize(name, value string) (int64, error) {
+	v := strings.ToUpper(strings.TrimSpace(value))
+	v = strings.TrimSuffix(strings.TrimSuffix(v, "B"), "I")
+	unit := int64(1)
+	switch {
+	case strings.HasSuffix(v, "K"):
+		unit, v = 1<<10, strings.TrimSuffix(v, "K")
+	case strings.HasSuffix(v, "M"):
+		unit, v = 1<<20, strings.TrimSuffix(v, "M")
+	case strings.HasSuffix(v, "G"):
+		unit, v = 1<<30, strings.TrimSuffix(v, "G")
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n < 0 || n > MaxByteSize/unit {
+		return 0, fmt.Errorf("--%s must be a size in bytes - 0, 10485760, 10M, 512K, 1G - up to 1T, got %q", name, value)
+	}
+	return n * unit, nil
+}
+
 // RequireNonNegative validates a flag whose 0 is meaningful ("no limit"), so only
 // a negative value is a mistake.
 func RequireNonNegative(name string, value int) error {

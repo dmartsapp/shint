@@ -72,6 +72,7 @@ var (
 	insecureSkipVerify  bool
 	webTiming           bool
 	webShowCredentials  bool
+	webMaxBody          string
 
 	// tls
 	tlsServerName string
@@ -262,11 +263,16 @@ It connects straight to the address the name resolves to and never uses a proxy:
 			usage(err.Error())
 			return
 		}
+		maxBody, err := lib.ParseByteSize("max-body", webMaxBody)
+		if err != nil {
+			usage(err.Error())
+			return
+		}
 
 		ctx, stop := interruptContext()
 		defer stop()
 
-		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming, webShowCredentials))
+		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming, webShowCredentials, maxBody))
 	},
 }
 
@@ -686,6 +692,7 @@ func init() {
 	webCmd.Flags().StringVar(&certFile, "cert", "", "Path to a PEM client certificate for mutual TLS (requires --key)")
 	webCmd.Flags().StringVar(&keyFile, "key", "", "Path to the PEM private key matching --cert (requires --cert)")
 	webCmd.Flags().BoolVarP(&insecureSkipVerify, "insecure", "k", false, "Skip TLS certificate verification (INSECURE, for diagnostics only)")
+	webCmd.Flags().StringVar(&webMaxBody, "max-body", "10M", "With --json -W, keep at most this much of each response body (10M, 512K, 1G; 0 = all): the rest is read and counted, not kept")
 	webCmd.Flags().BoolVar(&webShowCredentials, "show-credentials", false, "Write credential header values and a URL's password in the output as they are (hidden as [redacted] by default)")
 	webCmd.Flags().BoolVar(&webTiming, "timing", false, "Show where each request's time went: DNS, connect, TLS, wait for the first byte, download (one line per redirect hop; a timing object per stat with --json)")
 

@@ -70,7 +70,7 @@ func TestCredentialsAreNotInTheOutput(t *testing.T) {
 	run := func(jsonOut, show bool) string {
 		throttle := false
 		return captureStdout(t, func() {
-			WebHandler(context.Background(), &jsonOut, 1, 0, &throttle, 5, u, "GET", "", headers, false, nil, false, show)
+			WebHandler(context.Background(), &jsonOut, 1, 0, &throttle, 5, u, "GET", "", headers, false, nil, false, show, 0)
 		})
 	}
 	for _, jsonOut := range []bool{true, false} {
