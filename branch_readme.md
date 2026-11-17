@@ -29,7 +29,7 @@ Includes:
 | `ping`: sub-millisecond timings, unreachable replies told apart from timeouts, statistics on Ctrl+C - needs a new go-ping release | [#25](https://github.com/dmartsapp/shint/issues/25) | Not started |
 | `--interface`: send a check's traffic through a given interface or source address | [#69](https://github.com/dmartsapp/shint/issues/69) | Not started |
 | `nmap` upgrades: port lists (`--ports 22,80,443`), subnet sweeps, service names - moved from v4.3.0 | [#94](https://github.com/dmartsapp/shint/issues/94) | Not started |
-| `web --json`: say when certificate checks are skipped, and when a client certificate or a custom CA is used (security review) | [#100](https://github.com/dmartsapp/shint/issues/100) | Not started |
+| `web --json`: say when certificate checks are skipped, and when a client certificate or a custom CA is used (security review) | [#100](https://github.com/dmartsapp/shint/issues/100) | Done - [`379da60`](https://github.com/dmartsapp/shint/commit/379da60): `input_params.tls`, top-level `warnings` |
 | `listen http`: default read timeouts, and a start-up line when it is reachable from the network (security review) | [#102](https://github.com/dmartsapp/shint/issues/102) | Not started |
 
 ## Bugs
