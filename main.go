@@ -233,7 +233,7 @@ var pingCmd = &cobra.Command{
 var webCmd = &cobra.Command{
 	Use:   "web [url]",
 	Short: "Make an HTTP request to a URL",
-	Long: `This command makes an HTTP request to a URL and displays the response. Follows redirects (up to 10, and bytes are counted across every hop) but does not fetch embedded resources.
+	Long: `This command makes an HTTP request to a URL and displays the response. Follows redirects (up to 10, and bytes are counted across every hop) - but not to another origin when the request carries a client certificate (--cert) or headers given with -H - and does not fetch embedded resources.
 
 A URL without a scheme (example.com, 127.0.0.1:8080/status) is fetched over https://; write http:// for a plain-HTTP server. Only http and https URLs are fetched.
 

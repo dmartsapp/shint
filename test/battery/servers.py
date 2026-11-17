@@ -108,6 +108,8 @@ def http_conn(conn, addr):
                 conn.sendall(resp("301 Moved Permanently", b"", {"Location": "/echo"}))
             elif p == "/noloc":
                 conn.sendall(resp("302 Found", b""))
+            elif p == "/away":       # another origin - a port where nothing listens (#98)
+                conn.sendall(resp("302 Found", b"", {"Location": "http://127.0.0.1:1/stolen"}))
             elif p == "/big":        # 300 MB
                 n = 300 * 1024 * 1024
                 conn.sendall(f"HTTP/1.1 200 OK\r\nContent-Length: {n}\r\n\r\n".encode())

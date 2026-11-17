@@ -11,7 +11,7 @@ nav: web
 
 `shint web` sends an HTTP request and reports the outcome: whether a response came back, the status, how long it took, the transfer speed, and the number of bytes sent and received. Add `--json` for the full request and response headers (and, with `-W`, the body).
 
-It is a diagnostic tool, not a browser: it follows redirects (up to 10) but does not fetch a page's images, scripts or other embedded resources. If the URL has no scheme, `https://` is assumed - for `example.com` and equally for `127.0.0.1:8080/status` - so **write `http://` for a plain-HTTP server**. Only `http` and `https` URLs are fetched; a URL with any other scheme, or without a host, is a usage error (exit `2`, see [exit statuses](usage.md#exit-status)).
+It is a diagnostic tool, not a browser: it follows redirects (up to 10 - with the one exception in [Redirects and credentials](#redirects-and-credentials)) but does not fetch a page's images, scripts or other embedded resources. If the URL has no scheme, `https://` is assumed - for `example.com` and equally for `127.0.0.1:8080/status` - so **write `http://` for a plain-HTTP server**. Only `http` and `https` URLs are fetched; a URL with any other scheme, or without a host, is a usage error (exit `2`, see [exit statuses](usage.md#exit-status)).
 
 ## Syntax
 
@@ -252,6 +252,35 @@ Sun Sep 20 01:54:18 MDT 2026: [web] OK using custom CA bundle to verify server c
 Sun Sep 20 01:54:18 MDT 2026: [web] OK dns resolved host=localhost addresses=2 ips=[::1,127.0.0.1] time=1.388416ms
 Sun Sep 20 01:54:18 MDT 2026: [web] Response Received url=https://localhost:9444/ status=200 status_text=OK bytes_sent=97 bytes_received=175 speed=18.41KB/s attempt=1/1 time=9.285083ms
 ```
+## Redirects and credentials
+
+`web` follows redirects - up to 10 - and reports the last response. A request that carries credentials is the exception: with a client certificate (`--cert`) or headers given with `-H`, a redirect to **another origin** - another scheme, host or port - is not followed. The redirect itself is the response: a `WARN` line says where it led and why, and the run passes, exit `0`.
+
+```bash
+shint web http://127.0.0.1:8080/api -H "X-API-Key: s3cret"
+```
+
+```text
+Tue Nov 17 15:05:19 CST 2026: [web] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=97.625µs
+Tue Nov 17 15:05:20 CST 2026: [web] WARN redirect not followed url=http://127.0.0.1:8080/api location=http://127.0.0.1:9090/login reason="another origin, and the request carries headers given with -H"
+Tue Nov 17 15:05:20 CST 2026: [web] Response Received url=http://127.0.0.1:8080/api status=302 status_text=Found bytes_sent=119 bytes_received=152 speed=29.08KB/s attempt=1/1 time=5.104ms
+```
+
+**Why.** A client certificate is offered to any server that asks for one, and the headers given with `-H` go with every request: Go's HTTP client drops `Authorization` and `Cookie` when a redirect leaves a host, but forwards any other header - an `X-API-Key` - as it is. So a redirect from an open redirect or a compromised host could carry your key, or your certificate, to a server you never named. (The certificate identifies you; it does not let that server act as you - the private key never leaves.)
+
+**The same origin** is the same scheme, host and port - and the same host moving from `http://` to `https://` on the default ports (80 to 443), where the credentials stay with that host, encrypted. Redirects within the origin are followed as before, and so is every redirect of a request without credentials.
+
+**To follow it anyway**, request the `Location` itself: naming the host is what makes it one you chose.
+
+In `--json`, the request's stat says the same:
+
+```json
+"redirect_not_followed": {
+  "location": "http://127.0.0.1:9090/login",
+  "reason": "another origin, and the request carries headers given with -H"
+}
+```
+
 ## Timing: where the time went
 
 A slow request is a different problem depending on *where* it is slow. `--timing` adds the breakdown to each request: how long the name lookup, the connection, the TLS handshake, the wait for the server, and the download each took.
@@ -409,7 +438,7 @@ With `--json`, each stat gains a `timing` object (and only with `--timing`: with
 ## Good to know
 
 - **`Ctrl+C` shows the summary.** A run with a large `--count` stops, prints how far it got, the statistics and the `done` line, and exits `1` (cut short) - see [Stopping early](usage.md#stopping-early).
-- **Redirects** are followed (up to 10); the final response is what is reported, and the bytes of every hop are counted.
+- **Redirects** are followed (up to 10); the final response is what is reported, and the bytes of every hop are counted - except a redirect to another origin when the request carries credentials: see [Redirects and credentials](#redirects-and-credentials).
 - **Timeouts.** `--timeout` limits each request from connecting to the last byte of the response.
 - **Timing.** `--timing` changes nothing about how the request is made: the redirect limit, the byte counts and the exit status are the same with and without it.
 - **`--payload`** means the *size* of filler data for `ping` and `udp`, but on `web` the `-P` form means the request *body*.

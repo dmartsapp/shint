@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptrace"
@@ -183,19 +182,6 @@ func (r *timingRecorder) hopTimings() []lib.WebHopTiming {
 		})
 	}
 	return out
-}
-
-// checkRedirect is the client's redirect policy when --timing is on: net/http's
-// own default (stop after 10) plus telling the request's recorder about the
-// hop. Every request carries its own recorder in its context.
-func checkRedirect(req *http.Request, via []*http.Request) error {
-	if rec, ok := req.Context().Value(timingKey{}).(*timingRecorder); ok {
-		rec.redirected(req)
-	}
-	if len(via) >= 10 {
-		return errors.New("stopped after 10 redirects")
-	}
-	return nil
 }
 
 // timingOrNil is the JSON form of a recorder, or nothing without --timing.

@@ -85,6 +85,22 @@ web("srv-gzip-bytes", H + "/gzip", "--json", rc=0)
 web("count-100", H + "/ok", "--count", "100", rc=0, serial=True, check=lambda r: None if r["out"].count("] Response Received url=") == 100 else "expected 100 response lines, got %d" % r["out"].count("] Response Received url="))
 web("count-100-json", H + "/ok", "--count", "100", "--json", rc=0, serial=True, check=lambda r: None if sum(s["success"] for s in json.loads(r["out"])["stats"]) == 100 else "expected 100 successful requests in the JSON")
 
+# ---------------- redirects to another origin, with and without credentials (#98)
+def not_followed(r):
+    if "] WARN redirect not followed " not in r["out"] or "location=http://127.0.0.1:1/stolen" not in r["out"] or "status=302" not in r["out"]:
+        return "a redirect to another origin was followed although the request carried credentials"
+def not_followed_json(r):
+    s = json.loads(r["out"])["stats"][0]
+    nf = s.get("redirect_not_followed") or {}
+    if s.get("status_code") != 302 or nf.get("location") != "http://127.0.0.1:1/stolen":
+        return "the JSON does not report the redirect that was not followed: %r" % s
+web("redir-away-no-credentials", H + "/away", rc=1)  # followed, into a port where nothing listens
+web("redir-away-header", H + "/away", "-H", "X-Api-Key: k", rc=0, check=not_followed)
+web("redir-away-header-json", H + "/away", "-H", "X-Api-Key: k", "--json", rc=0, check=not_followed_json)
+web("redir-away-client-cert", H + "/away", "--cert", "{good_pem}", "--key", "{good_key}", rc=0, check=not_followed)
+web("redir-same-origin-header", H + "/chain/3", "-H", "X-Api-Key: k", rc=0,
+    check=lambda r: "a same-origin redirect was not followed" if "redirect not followed" in r["out"] else None)
+
 # ---------------- TLS
 HS = "https://127.0.0.1:{https}/ok"
 for cid, extra, rc in [

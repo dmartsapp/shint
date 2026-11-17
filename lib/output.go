@@ -67,6 +67,13 @@ type TelnetStats struct {
 
 // WebStats is one HTTP attempt. A failed attempt (no response at all) is still
 // recorded, with Success false and the reason in Errors.
+// RedirectNotFollowed is where a redirect would have led, and why it was not
+// followed.
+type RedirectNotFollowed struct {
+	Location string `json:"location"`
+	Reason   string `json:"reason"`
+}
+
 type WebStats struct {
 	URL      string         `json:"url"`
 	Errors   []string       `json:"errors"`
@@ -87,8 +94,13 @@ type WebStats struct {
 	BytesReceived int64 `json:"bytes_received"`
 	StatusCode    int   `json:"status_code"` // the HTTP status; 0 when no response arrived
 	// StatusText is the standard name of StatusCode (HTTPStatusText), "" for 0.
-	StatusText   string  `json:"status_text"`
-	BandwidthKBs float64 `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
+	StatusText string `json:"status_text"`
+	// RedirectNotFollowed is set when the response is a redirect to another
+	// origin that was not followed, because the request carried credentials
+	// (a client certificate, headers given with -H) that stay with their
+	// origin (#98).
+	RedirectNotFollowed *RedirectNotFollowed `json:"redirect_not_followed,omitempty"`
+	BandwidthKBs        float64              `json:"bandwidth_kbs"` // BytesReceived / TimeTaken, in KB/s
 	// Timing is present only with --timing: where the request's time went,
 	// one entry per hop when a redirect was followed.
 	Timing *WebTiming `json:"timing,omitempty"`

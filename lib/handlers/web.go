@@ -143,13 +143,14 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 
 	// One client for the whole run. Timeout bounds each request end to end
 	// (connect, TLS, response); the transport counts bytes on the wire (see
-	// wireconn.go). Redirects are followed (net/http's default, up to 10).
+	// wireconn.go). Redirects are followed (net/http's default, up to 10) -
+	// but not to another origin when the request carries credentials (#98,
+	// webredirect.go).
+	credentials := credentialsOf(tlsConfig, headers)
 	client := &http.Client{
-		Timeout:   time.Duration(timeout) * time.Second,
-		Transport: newCountingTransport(tlsConfig),
-	}
-	if timing {
-		client.CheckRedirect = checkRedirect // net/http's default policy, plus telling the recorder
+		Timeout:       time.Duration(timeout) * time.Second,
+		Transport:     newCountingTransport(tlsConfig),
+		CheckRedirect: redirectPolicy(credentials),
 	}
 
 	var WG sync.WaitGroup
@@ -252,6 +253,8 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			// body out; status line, headers and body in), the same way
 			// listen http counts them - and every hop, if a redirect is followed.
 			request = request.WithContext(httptrace.WithClientTrace(request.Context(), meter.clientTrace()))
+			stop := &redirectStop{}
+			request = request.WithContext(context.WithValue(request.Context(), redirectStopKey{}, stop))
 			if rec != nil {
 				withRecorder := context.WithValue(request.Context(), timingKey{}, rec)
 				request = request.WithContext(httptrace.WithClientTrace(withRecorder, rec.trace()))
@@ -325,11 +328,18 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				stat.TimeTaken = timeTaken.Microseconds()
 				stat.Errors = errors
 				stat.Timing = timingOrNil(rec)
+				if stop.location != "" {
+					stat.RedirectNotFollowed = &lib.RedirectNotFollowed{Location: stop.location, Reason: notFollowedReason(credentials)}
+				}
 				output.Stats = append(output.Stats.([]lib.WebStats), stat)
 			}
 			statsMutex.Unlock()
 
 			if !*jsonoutput {
+				if stop.location != "" {
+					// Advisory, like -k's line: a response arrived, the run can pass.
+					fmt.Println(lib.LogWithLevel(webModule, lib.LevelWarn, "redirect not followed "+lib.Fields("url", URL.String(), "location", stop.location, "reason", notFollowedReason(credentials))))
+				}
 				// Response Received, not OK: a response arrived, and what it said - a
 				// 403 Forbidden is as much a response as a 200 OK - is in the fields.
 				fmt.Println(lib.LogWithLevel(webModule, lib.LevelResponseReceived, lib.Fields("url", URL.String(), "status", response.StatusCode, "status_text", lib.HTTPStatusText(response.StatusCode), "bytes_sent", bytesSent, "bytes_received", bytesReceived, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken)))
