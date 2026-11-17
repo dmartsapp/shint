@@ -31,7 +31,7 @@ func runWeb(t *testing.T, u *url.URL, timing bool) string {
 	t.Helper()
 	asJSON, throttle := false, false
 	return captureStdout(t, func() {
-		WebHandler(context.Background(), &asJSON, 1, 0, &throttle, 5, u, "GET", "", nil, false, nil, timing)
+		WebHandler(context.Background(), &asJSON, 1, 0, &throttle, 5, u, "GET", "", nil, false, nil, timing, false)
 	})
 }
 

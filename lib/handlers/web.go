@@ -68,7 +68,7 @@ func ParseWebURL(arg string) (*url.URL, error) {
 // With timing, each request also reports where its time went - DNS, connect,
 // TLS, waiting for the first byte, downloading - per hop when a redirect is
 // followed (see webtiming.go).
-func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config, timing bool) (ok bool) {
+func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config, timing bool, showCredentials bool) (ok bool) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
 	var stats = make([]time.Duration, 0)
@@ -111,7 +111,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			Throttle: *throttle,
 			Method:   method,
 			Data:     data,
-			Headers:  headers,
+			Headers:  shownHeaderLines(headers, showCredentials),
 		}
 		output.ModuleName = webModule
 		resolvedIPs, err := lib.ResolveNameToIPs(ctx, URL.Hostname())
@@ -187,7 +187,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			var meter wireMeter
 			var rec *timingRecorder
 			if timing {
-				rec = newTimingRecorder(URL.String())
+				rec = newTimingRecorder(shownURL(URL, showCredentials))
 			}
 
 			// fail records an attempt that got no response: as an ERROR log
@@ -201,7 +201,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 					rec.abort()
 				}
 				if !*jsonoutput {
-					fmt.Println(lib.LogWithTimestamp(webModule, stage+" "+lib.Fields("url", URL.String(), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", elapsed, "error", lib.ExplainError(err)), true))
+					fmt.Println(lib.LogWithTimestamp(webModule, stage+" "+lib.Fields("url", shownURL(URL, showCredentials), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", elapsed, "error", lib.ExplainError(err)), true))
 					for _, line := range timingLines(rec, attempt, iterations) {
 						fmt.Println(line)
 					}
@@ -213,9 +213,9 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				}
 				sent, received := meter.totals()
 				stat := lib.WebStats{
-					URL:           URL.String(),
+					URL:           shownURL(URL, showCredentials),
 					Errors:        append(append([]string{}, errors...), lib.ExplainError(err)),
-					Request:       map[string]any{"method": method, "body": data, "headers": reqHeaders},
+					Request:       map[string]any{"method": method, "body": data, "headers": shownHeader(reqHeaders, showCredentials)},
 					Response:      map[string]any{},
 					Success:       false,
 					Result:        lib.LevelError,
@@ -303,7 +303,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			stats = append(stats, timeTaken)
 			if *jsonoutput {
 				stat := lib.WebStats{}
-				stat.URL = URL.String()
+				stat.URL = shownURL(URL, showCredentials)
 				if includeresponsebody {
 					var jsondata interface{}
 					if jsonErr := json.Unmarshal(body, &jsondata); jsonErr != nil {
@@ -315,7 +315,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				} else {
 					stat.Response = map[string]any{"header": header}
 				}
-				stat.Request = map[string]any{"method": method, "body": data, "headers": request.Header}
+				stat.Request = map[string]any{"method": method, "body": data, "headers": shownHeader(request.Header, showCredentials)}
 				stat.Success = true
 				stat.Result = lib.LevelResponseReceived
 				stat.StatusCode = response.StatusCode
@@ -329,7 +329,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				stat.Errors = errors
 				stat.Timing = timingOrNil(rec)
 				if stop.location != "" {
-					stat.RedirectNotFollowed = &lib.RedirectNotFollowed{Location: stop.location, Reason: notFollowedReason(credentials)}
+					stat.RedirectNotFollowed = &lib.RedirectNotFollowed{Location: shownLocation(stop.location, showCredentials), Reason: notFollowedReason(credentials)}
 				}
 				output.Stats = append(output.Stats.([]lib.WebStats), stat)
 			}
@@ -338,11 +338,11 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			if !*jsonoutput {
 				if stop.location != "" {
 					// Advisory, like -k's line: a response arrived, the run can pass.
-					fmt.Println(lib.LogWithLevel(webModule, lib.LevelWarn, "redirect not followed "+lib.Fields("url", URL.String(), "location", stop.location, "reason", notFollowedReason(credentials))))
+					fmt.Println(lib.LogWithLevel(webModule, lib.LevelWarn, "redirect not followed "+lib.Fields("url", shownURL(URL, showCredentials), "location", shownLocation(stop.location, showCredentials), "reason", notFollowedReason(credentials))))
 				}
 				// Response Received, not OK: a response arrived, and what it said - a
 				// 403 Forbidden is as much a response as a 200 OK - is in the fields.
-				fmt.Println(lib.LogWithLevel(webModule, lib.LevelResponseReceived, lib.Fields("url", URL.String(), "status", response.StatusCode, "status_text", lib.HTTPStatusText(response.StatusCode), "bytes_sent", bytesSent, "bytes_received", bytesReceived, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken)))
+				fmt.Println(lib.LogWithLevel(webModule, lib.LevelResponseReceived, lib.Fields("url", shownURL(URL, showCredentials), "status", response.StatusCode, "status_text", lib.HTTPStatusText(response.StatusCode), "bytes_sent", bytesSent, "bytes_received", bytesReceived, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken)))
 				for _, line := range timingLines(rec, attempt, iterations) {
 					fmt.Println(line)
 				}
@@ -353,7 +353,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 	done := int(atomic.LoadInt32(&completed))
 	interrupted := done < iterations // only Ctrl+C keeps an attempt from being made
 	if *jsonoutput {
-		output.InputParams.Headers = headers
+		output.InputParams.Headers = shownHeaderLines(headers, showCredentials)
 		output.EndTime = time.Now().UnixMicro()
 		output.TotalTimeTaken = output.EndTime - output.StartTime
 		output.Error = ""

@@ -28,6 +28,7 @@ shint web <url> [-X METHOD] [-H "Name: value"]... [-P body] [-W] [flags]
 | `--cacert FILE` | Trust this PEM CA bundle *in addition to* the system roots. |
 | `--cert FILE`, `--key FILE` | Client certificate and key for mutual TLS (give both). |
 | `-k`, `--insecure` | Skip certificate verification. Diagnostics only. |
+| `--show-credentials` | Write credentials in the output as they are. By default the values of credential headers and a URL's password are hidden: see [Credentials in the output](#credentials-in-the-output). |
 | `--timing` | Show where each request's time went: DNS, connect, TLS, wait, download. See [Timing](#timing-where-the-time-went). |
 
 ### The URL
@@ -280,6 +281,43 @@ In `--json`, the request's stat says the same:
   "reason": "another origin, and the request carries headers given with -H"
 }
 ```
+
+## Credentials in the output
+
+The output never shows a request's credentials: JSON in particular ends up in CI logs, build artifacts and shared reports. The values of credential headers show as `[redacted]` - `Authorization`, `Proxy-Authorization` and `Cookie`, and any header whose name says it holds one (`token`, `secret`, `password`, `api-key`, `session`, `auth`: `X-API-Key`, `X-Auth-Token`...) - and so does a password in the URL, as `xxxxx`. The header names stay, and so does an `Authorization`'s scheme, which says how the request authenticated without saying with what. The request itself is sent as you wrote it.
+
+```bash
+shint web 'http://alice:hunter2@127.0.0.1:18080/status' \
+  -H 'Authorization: Bearer s3cret' -H 'X-API-Key: k3y' -H 'Accept: application/json' --json
+```
+
+```json
+{
+  "input_params": {
+    "headers": [
+      "Authorization: Bearer [redacted]",
+      "X-API-Key: [redacted]",
+      "Accept: application/json"
+    ],
+    ...
+  },
+  "stats": [
+    {
+      "url": "http://alice:xxxxx@127.0.0.1:18080/status",
+      "request": {
+        "body": "",
+        "headers": {
+          "Accept": ["application/json"],
+          "Authorization": ["Bearer [redacted]"],
+          "User-Agent": ["dmarts.app-http-v0.1"],
+          "X-Api-Key": ["[redacted]"]
+        },
+        "method": "GET"
+      },
+      ...
+```
+
+The text lines show the URL the same way: `url=http://alice:xxxxx@127.0.0.1:18080/status`. `--show-credentials` writes everything as it is, for debugging - keep that output to yourself. Two things are never changed: the request's body (it is what you are testing), and the response's headers - a `Set-Cookie` included - since showing what the server sent is what the command is for.
 
 ## Timing: where the time went
 

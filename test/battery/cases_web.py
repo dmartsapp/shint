@@ -101,6 +101,16 @@ web("redir-away-client-cert", H + "/away", "--cert", "{good_pem}", "--key", "{go
 web("redir-same-origin-header", H + "/chain/3", "-H", "X-Api-Key: k", rc=0,
     check=lambda r: "a same-origin redirect was not followed" if "redirect not followed" in r["out"] else None)
 
+# ---------------- credentials in the output (#99)
+def no_secret(*secrets):
+    return lambda r: [s for s in secrets if s in r["out"]] and "a credential is in the output: %s" % [s for s in secrets if s in r["out"]] or None
+web("cred-header-json", H + "/ok", "-H", "Authorization: Bearer s3cret", "-H", "X-Api-Key: k3y", "--json", rc=0,
+    check=lambda r: no_secret("s3cret", "k3y")(r) or (None if "Bearer [redacted]" in r["out"] else "the Authorization scheme was not kept"))
+web("cred-url-password", "http://alice:hunter2@127.0.0.1:{http}/ok", "--json", rc=0,
+    check=lambda r: no_secret("hunter2")(r) or (None if "alice:xxxxx@" in r["out"] else "the URL's password is not shown as xxxxx"))
+web("cred-show-credentials", H + "/ok", "-H", "Authorization: Bearer s3cret", "--json", "--show-credentials", rc=0,
+    check=lambda r: None if "Bearer s3cret" in r["out"] else "--show-credentials did not show the header")
+
 # ---------------- TLS
 HS = "https://127.0.0.1:{https}/ok"
 for cid, extra, rc in [

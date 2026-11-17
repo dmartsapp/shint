@@ -68,7 +68,7 @@ func TestWebIncompleteBodyIsAFailure(t *testing.T) {
 			text := false
 			var ok bool
 			out := captureStdout(t, func() {
-				ok = WebHandler(context.Background(), &text, 1, 0, &throttle, timeout, target, "GET", "", nil, false, nil, false)
+				ok = WebHandler(context.Background(), &text, 1, 0, &throttle, timeout, target, "GET", "", nil, false, nil, false, false)
 			})
 			if ok {
 				t.Errorf("WebHandler reported success for a body that ended early; output:\n%s", out)
@@ -82,7 +82,7 @@ func TestWebIncompleteBodyIsAFailure(t *testing.T) {
 
 			asJSON := true
 			out = captureStdout(t, func() {
-				ok = WebHandler(context.Background(), &asJSON, 1, 0, &throttle, timeout, target, "GET", "", nil, false, nil, false)
+				ok = WebHandler(context.Background(), &asJSON, 1, 0, &throttle, timeout, target, "GET", "", nil, false, nil, false, false)
 			})
 			if ok {
 				t.Errorf("--json: WebHandler reported success for a body that ended early")
@@ -127,7 +127,7 @@ func TestWebKeepsTheBodyOnlyWhenItIsShown(t *testing.T) {
 		runtime.GC()
 		runtime.ReadMemStats(&before)
 		out := captureStdout(t, func() {
-			WebHandler(context.Background(), &asJSON, 1, 0, &throttle, 60, target, "GET", "", nil, withBody, nil, false)
+			WebHandler(context.Background(), &asJSON, 1, 0, &throttle, 60, target, "GET", "", nil, withBody, nil, false, false)
 		})
 		runtime.ReadMemStats(&after)
 		return after.TotalAlloc - before.TotalAlloc, out

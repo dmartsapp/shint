@@ -105,7 +105,7 @@ func redirectRun(t *testing.T, target string, headers []string, tlsConfig *tls.C
 	u, _ := url.Parse(target)
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", headers, false, tlsConfig, timing)
+		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", headers, false, tlsConfig, timing, false)
 	})
 	var o struct {
 		Stats []map[string]any `json:"stats"`
@@ -134,7 +134,7 @@ func TestARedirectToAnotherOriginKeepsTheHeaders(t *testing.T) {
 	u, _ := url.Parse(origin.URL + "/away")
 	jsonOutput, throttle := false, false
 	out := captureStdout(t, func() {
-		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", []string{"X-API-Key: s3cret"}, false, nil, false)
+		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", []string{"X-API-Key: s3cret"}, false, nil, false, false)
 	})
 	if !strings.Contains(out, "] WARN redirect not followed ") || !strings.Contains(out, "location="+elsewhere.URL+"/stolen") || !strings.Contains(out, "status=302") {
 		t.Errorf("text output:\n%s", out)
@@ -157,7 +157,7 @@ func TestASameOriginRedirectIsFollowedWithTheHeaders(t *testing.T) {
 	u, _ := url.Parse(origin.URL + "/near")
 	jsonOutput, throttle := false, false
 	out := captureStdout(t, func() {
-		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", []string{"X-API-Key: s3cret"}, false, nil, false)
+		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", []string{"X-API-Key: s3cret"}, false, nil, false, false)
 	})
 	if strings.Contains(out, "redirect not followed") || !strings.Contains(out, "status=200") || atomic.LoadInt32(hits) != 0 {
 		t.Errorf("a same-origin redirect with -H:\n%s", out)

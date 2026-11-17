@@ -120,7 +120,7 @@ func (r *timingRecorder) trace() *httptrace.ClientTrace {
 func (r *timingRecorder) redirected(next *http.Request) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.urls = append(r.urls, next.URL.String())
+	r.urls = append(r.urls, next.URL.Redacted()) // a password in a redirect target is never shown (#99)
 	if n := len(r.hops); n > 0 && next.Response != nil {
 		r.hops[n-1].status = next.Response.StatusCode
 	}

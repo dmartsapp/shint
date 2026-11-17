@@ -151,7 +151,7 @@ func webJSON(t *testing.T, count, delay int, target string, tlsConfig *tls.Confi
 	}
 	jsonOutput, throttle := true, false
 	out := captureStdout(t, func() {
-		WebHandler(context.Background(), &jsonOutput, count, delay, &throttle, 5, u, "GET", "", nil, false, tlsConfig, timing)
+		WebHandler(context.Background(), &jsonOutput, count, delay, &throttle, 5, u, "GET", "", nil, false, tlsConfig, timing, false)
 	})
 	var doc struct {
 		Stats []lib.WebStats `json:"stats"`
@@ -302,7 +302,7 @@ func TestWebTimingTextOutputAndOffByDefault(t *testing.T) {
 	run := func(timing bool) string {
 		jsonOutput, throttle := false, false
 		return captureStdout(t, func() {
-			WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", nil, false, nil, timing)
+			WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", nil, false, nil, timing, false)
 		})
 	}
 	with := run(true)
@@ -328,7 +328,7 @@ func webJSONRaw(t *testing.T, target string, timing bool) string {
 	u, _ := url.Parse(target)
 	jsonOutput, throttle := true, false
 	return captureStdout(t, func() {
-		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", nil, false, nil, timing)
+		WebHandler(context.Background(), &jsonOutput, 1, 0, &throttle, 5, u, "GET", "", nil, false, nil, timing, false)
 	})
 }
 

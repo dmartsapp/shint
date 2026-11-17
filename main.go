@@ -71,6 +71,7 @@ var (
 	keyFile             string
 	insecureSkipVerify  bool
 	webTiming           bool
+	webShowCredentials  bool
 
 	// tls
 	tlsServerName string
@@ -265,7 +266,7 @@ It connects straight to the address the name resolves to and never uses a proxy:
 		ctx, stop := interruptContext()
 		defer stop()
 
-		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming))
+		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming, webShowCredentials))
 	},
 }
 
@@ -685,6 +686,7 @@ func init() {
 	webCmd.Flags().StringVar(&certFile, "cert", "", "Path to a PEM client certificate for mutual TLS (requires --key)")
 	webCmd.Flags().StringVar(&keyFile, "key", "", "Path to the PEM private key matching --cert (requires --cert)")
 	webCmd.Flags().BoolVarP(&insecureSkipVerify, "insecure", "k", false, "Skip TLS certificate verification (INSECURE, for diagnostics only)")
+	webCmd.Flags().BoolVar(&webShowCredentials, "show-credentials", false, "Write credential header values and a URL's password in the output as they are (hidden as [redacted] by default)")
 	webCmd.Flags().BoolVar(&webTiming, "timing", false, "Show where each request's time went: DNS, connect, TLS, wait for the first byte, download (one line per redirect hop; a timing object per stat with --json)")
 
 	tlsCmd.Flags().StringVar(&tlsServerName, "servername", "", "Name to send as SNI and to verify the certificate against (default: the host; set it to check an address, or one virtual host of several)")
