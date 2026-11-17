@@ -131,6 +131,7 @@ Sun Sep 20 01:50:27 MDT 2026: [listen-tcp] OK done connections=1 bytes_received=
 | `shint wol <mac>` | Wake a machine on your network (Wake-on-LAN). |
 | `shint cidr <prefix>` | Network, mask, range and size of a subnet, offline. |
 | `shint ip [interface]` | Which network interfaces and addresses does this machine have? |
+| `shint tls` | Check a server's TLS certificate: chain, expiry, names, protocol and cipher |
 | `shint listen tcp\|udp\|http <port>` | Run a local test server to check against. |
 
 ## Install
