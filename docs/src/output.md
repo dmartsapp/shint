@@ -120,6 +120,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `end_time_unixtime_µs` | integer | When it ended. |
 | `total_time_taken_µs` | integer | Duration of the whole run. |
 | `error` | string | A run-level error (for example a failed lookup); empty on success. |
+| `warnings` | array | The run's `WARN` lines, when it has any - `web -k`'s *tls verification disabled*, for one. Advisory: the run can pass. Absent when there are none. |
 
 ### input_params
 
@@ -132,7 +133,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `timeout_ms` | The `--timeout` value. **Despite the name, it is in seconds.** |
 | `count`, `delay_ms`, `throttle` | `--count`, `--delay` (milliseconds) and `--throttle`. |
 | `payload_bytes` | Payload size: filler size for `ping`/`udp`, request body size for `web`. |
-| `method`, `data`, `headers` | HTTP method, body and headers (`web` only). `data` is also where `wol` puts the MAC address, `cidr` its comma-separated prefixes and `ip` the interface name asked for. |
+| `method`, `data`, `headers` | HTTP method, body and headers (`web` only; a credential header's value is `[redacted]` - see [Credentials in the output](web.md#credentials-in-the-output)). `data` is also where `wol` puts the MAC address, `cidr` its comma-separated prefixes and `ip` the interface name asked for. |
+| `tls` | `web` only: how certificates are treated - `verify_certificates` (`false` with `-k`), `client_certificate` (`--cert`) and `custom_ca` (`--cacert`). |
 | `sequential` | Always `false`; reserved. |
 
 ### dns_lookup
@@ -172,8 +174,10 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `url`, `success`, `status_code` | The URL, whether a response arrived, and its HTTP status (`0` if none). |
 | `result` | The level the text line shows: `"Response Received"` when a response arrived, whatever its status; `"ERROR"` when none did. |
 | `status_text` | The [standard name](web.md#status-names) of `status_code` (`"Forbidden"`); empty when no response arrived. |
-| `request` | `method`, `body` and `headers` as sent by the application (headers the HTTP client adds itself, such as `Host`, are counted in `bytes_sent` but not listed). |
+| `request` | `method`, `body` and `headers` as sent by the application (headers the HTTP client adds itself, such as `Host`, are counted in `bytes_sent` but not listed). A credential header's value shows as `[redacted]` unless `--show-credentials` is given. |
 | `response` | `header`, and `body` when `-W` is given (parsed as JSON when it is JSON, otherwise a string). Empty on failure. |
+| `body_truncated` | `true` when, with `-W`, the body was longer than `--max-body`: `response.body` then holds its first `--max-body` bytes, as a string. Absent otherwise. |
+| `redirect_not_followed` | When the response is a redirect to another origin that was not followed because the request carried credentials: its `location` and the `reason`. Absent otherwise. See [Redirects and credentials](web.md#redirects-and-credentials). |
 | `bytes_sent`, `bytes_received` | Everything that crossed the connection - see [web](web.md#bytes-sent-and-received). |
 | `bandwidth_kbs` | `bytes_received` divided by the time taken, in KB/s. |
 | `sent_unixtime_µs`, `recv_unixtime_µs`, `time_taken_µs` | Timing. |

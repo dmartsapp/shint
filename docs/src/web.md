@@ -222,7 +222,7 @@ Sun Sep 20 01:54:18 MDT 2026: [web] Response Received url=https://localhost:9443
 ```
 ### Skip verification (diagnostics only)
 
-`-k` disables certificate checks, like `curl -k`. shint prints a warning line to remind you the answer cannot be trusted:
+`-k` disables certificate checks, like `curl -k`. shint prints a warning line to remind you the answer cannot be trusted - and with `--json`, `input_params.tls.verify_certificates` is `false` and the warning is in the document's `warnings`, so a program reading it knows too:
 
 ```bash
 shint web -k https://localhost:9443/

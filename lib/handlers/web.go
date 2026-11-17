@@ -112,6 +112,15 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 			Method:   method,
 			Data:     data,
 			Headers:  shownHeaderLines(headers, showCredentials),
+			TLS: &lib.TLSSettings{
+				VerifyCertificates: !tlsConfig.InsecureSkipVerify,
+				ClientCertificate:  len(tlsConfig.Certificates) > 0,
+				CustomCA:           tlsConfig.RootCAs != nil,
+			},
+		}
+		if tlsConfig.InsecureSkipVerify {
+			// The text mode's WARN line, for a program reading the JSON (#100).
+			output.Warnings = append(output.Warnings, "tls verification disabled: certificate checks are skipped, response may not be trustworthy")
 		}
 		output.ModuleName = webModule
 		resolvedIPs, err := lib.ResolveNameToIPs(ctx, URL.Hostname())

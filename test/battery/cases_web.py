@@ -126,6 +126,10 @@ for cid, extra, rc in [
     ("insecure-json", ["-k", "--json"], 0),
 ]:
     web("tls-" + cid, HS, *extra, rc=rc)
+web("tls-insecure-json-says-so", HS, "-k", "--json", rc=0,
+    check=lambda r: None if (lambda o: o["input_params"]["tls"]["verify_certificates"] is False and any("tls verification disabled" in w for w in o.get("warnings", [])))(json.loads(r["out"])) else "the JSON does not say certificate checks were skipped")
+web("tls-cacert-json-says-so", HS, "--cacert", "{good_pem}", "--json", rc=0,
+    check=lambda r: None if (lambda o: o["input_params"]["tls"] == {"verify_certificates": True, "client_certificate": False, "custom_ca": True} and not o.get("warnings"))(json.loads(r["out"])) else "the JSON does not say a custom CA was used")
 web("tls-mismatch-server-insecure", "https://127.0.0.1:{https_bad}/ok", "-k", rc=0)
 web("tls-mismatch-server-cacert", "https://127.0.0.1:{https_bad}/ok", "--cacert", "{bad_pem}", rc=1)
 web("tls-plain-http-to-https-port", "http://127.0.0.1:{https}/ok", rc=None)

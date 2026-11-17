@@ -52,6 +52,18 @@ type InputParams struct {
 	Method     string   `json:"method"`
 	Data       string   `json:"data"`
 	Headers    []string `json:"headers"`
+	// TLS is how web treats certificates (#100) - what its text mode notes in
+	// a line each; nil for every other command.
+	TLS *TLSSettings `json:"tls,omitempty"`
+}
+
+// TLSSettings is how a request treats certificates: whether the server's is
+// verified (false with -k), and whether a client certificate (--cert) and a CA
+// bundle of the user's (--cacert) are used.
+type TLSSettings struct {
+	VerifyCertificates bool `json:"verify_certificates"`
+	ClientCertificate  bool `json:"client_certificate"`
+	CustomCA           bool `json:"custom_ca"`
 }
 
 // TelnetStats is one connection attempt, in microseconds; Error is set only
@@ -272,6 +284,9 @@ type JSONOutput struct {
 	StartTime      int64       `json:"start_time_unixtime_µs"`
 	TotalTimeTaken int64       `json:"total_time_taken_µs"`
 	Error          string      `json:"error"`
+	// Warnings are the run's WARN lines, in the JSON (#100): advisory, the
+	// run can pass - web -k's "tls verification disabled", for one.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // CIDRStats is one subnet as "cidr" reports it. Addresses and UsableHosts are
