@@ -126,6 +126,34 @@ jq -r '.matches[] | [.vulnerability.severity, .vulnerability.id, .artifact.name,
 
 ## Advisories
 
+### 2026-11-17: Go 1.27.3 standard library
+
+| | |
+|---|---|
+| Affected | **shint v4.0.0 to v4.2.4**: every binary and container image - v4.2.4 built with Go 1.27.3, the earlier ones with Go 1.27.1. |
+| Fixed in | **[v4.3.0](https://github.com/dmartsapp/shint/releases/tag/v4.3.0)**, released 2026-11-17: built with Go 1.27.4 |
+| What to do | Nothing urgent: shint does not use the flawed code in a way that can fail (below). Upgrade to v4.3.0 or later ([Install](install.md)) with the next update; a Docker image pulled by `latest` or `4` gets it on the next pull. |
+| Issue | [#96](https://github.com/dmartsapp/shint/issues/96) |
+
+**What happened.** The Go project fixed one vulnerability in its standard library's HTTP/1 server in Go 1.27.4, after shint v4.2.4 (November 8) was built with Go 1.27.3. `govulncheck` found it on November 17, in the v4.3.0 release gate, and v4.3.0 - released the same day, in its regular cycle - is built with the fixed Go.
+
+**The vulnerability**, from the [Go vulnerability database](https://pkg.go.dev/vuln/):
+
+| Advisory | CVE | What | Fixed in | Original sources |
+|---|---|---|---|---|
+| [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) (2026-11-11) | [CVE-2026-97054](https://www.cve.org/CVERecord?id=CVE-2026-97054) | HTTP/1 server crash due to MaxBytesReader header race in net/http | Go 1.26.11, Go 1.27.4 | [issue](https://go.dev/issue/82563), [fix](https://go.dev/cl/862185), [announcement](https://groups.google.com/g/golang-announce/c/iY8TY0wWgbM) |
+
+**How shint was affected.**
+
+| Advisory | How shint was affected |
+|---|---|
+| [GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) | **Not in practice.** The crash needs a handler that reads a request body through `http.MaxBytesReader` (or `MaxBytesHandler`) while it writes the response headers at the same time. `listen http` reaches the fixed header code - which is why `govulncheck` reports it - but reads request bodies with a plain copy and never uses `MaxBytesReader`, so the race cannot happen. |
+
+**What was done, in v4.3.0:**
+
+- `go.mod` names Go 1.27.4 - the version every workflow builds the binaries with - and the container images are built with `golang:1.27.4-alpine`. `govulncheck` finds no vulnerabilities.
+- golangci-lint stays at v2.15.0: it reads Go 1.27.4's compiled packages.
+
 ### 2026-11-08: Go 1.27.1 standard library
 
 | | |

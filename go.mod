@@ -1,6 +1,6 @@
 module github.com/dmartsapp/shint/v4
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/dmartsapp/go-ping/v2 v2.0.1

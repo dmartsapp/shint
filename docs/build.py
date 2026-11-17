@@ -443,7 +443,7 @@ _TOKEN_RE = re.compile(r"(\\?)\{\{(version|minor|major|go)\}\}")
 def fill_tokens(text, version, go=None):
     """The current release in a docs page, from main.go's Version, so an example never goes
     stale and a release edits no page: {{version}} -> 4.2.2, {{minor}} -> 4.2, {{major}} -> 4.
-    {{go}} is the Go release shint is built with, from go.mod (1.27.3), so moving Go edits no
+    {{go}} is the Go release shint is built with, from go.mod's go line, so moving Go edits no
     page either. A backslash keeps one literal: \\{{version}} -> {{version}}. Other {{...}} are
     left alone."""
     parts = version.split(".")
