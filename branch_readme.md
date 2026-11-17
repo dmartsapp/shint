@@ -36,7 +36,7 @@ Includes:
 
 | Issue | State |
 |---|---|
-| [#98](https://github.com/dmartsapp/shint/issues/98) `web`: a redirect to another host gets the client certificate and the custom headers (security review) | Not started |
+| [#98](https://github.com/dmartsapp/shint/issues/98) `web`: a redirect to another host gets the client certificate and the custom headers (security review) | Done - [`b5c04b5`](https://github.com/dmartsapp/shint/commit/b5c04b5): the redirect is the response, with a `WARN` line and `redirect_not_followed` in the JSON |
 | [#99](https://github.com/dmartsapp/shint/issues/99) `web --json`: credential headers' values (`Authorization`, `Cookie`...) are written as given (security review) | Not started |
 | [#101](https://github.com/dmartsapp/shint/issues/101) `web --json -W`: the response body is kept whole in memory, however large (security review) | Not started |
 | [#65](https://github.com/dmartsapp/shint/issues/65) `rdns` (and every command through `lib.ResolveName`): a name on several hosts-file lines may resolve to its first address only - moved from v4.3.0, needs a reproduction | Not started |
