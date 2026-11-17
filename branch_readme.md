@@ -36,12 +36,13 @@ Includes:
 | [#75](https://github.com/dmartsapp/shint/issues/75) Release workflows: v4.2.2's cache-collision fix did not work - `golang/govulncheck-action` still restores its cache over the modules `golangci-lint` downloaded (about 1590 `tar: ... Cannot open: File exists` lines per workflow on the v4.2.2 tag) | Done on `main` ([`61fe1cf`](https://github.com/dmartsapp/shint/commit/61fe1cf)), merged in: `Set up Go` restores the cache once, the action's restore is off. The changelog corrects v4.2.2's claim. **Confirm on v4.3.0's tag logs**: no `Cannot open: File exists` lines in the three gate jobs |
 | [#84](https://github.com/dmartsapp/shint/issues/84) `listen http`: a client that stopped sending mid-body still got net/http's `200 OK`, while the listener logged "incomplete, nothing answered" - since v4.2.0; found when it made Check on `main` fail now and then ([#83](https://github.com/dmartsapp/shint/issues/83)) | Done - [`7943de4`](https://github.com/dmartsapp/shint/commit/7943de4): the handler aborts, so nothing is written; a new test reproduces it every time |
 | [#91](https://github.com/dmartsapp/shint/issues/91) Go 1.27.1 standard-library vulnerabilities: `govulncheck` found 10 that shint's code reaches (GO-2026-6809: compromised intermediate certificates still trusted, and nine more), in every release up to v4.2.3 | Released in [v4.2.4](https://github.com/dmartsapp/shint/releases/tag/v4.2.4) (2026-11-08), a security patch outside the cycle - first made here ([`516e339`](https://github.com/dmartsapp/shint/commit/516e339)), carried to `release/v4.2.4`, and back with `main`. The advisory: [Security](https://dmartsapp.github.io/shint/docs/security.html#2026-11-08-go-1-27-1-standard-library) |
+| [#96](https://github.com/dmartsapp/shint/issues/96) Go 1.27.3 standard library: GO-2026-6859 (CVE-2026-97054), an HTTP/1 server crash on a `MaxBytesReader` header race - `govulncheck` blocked the release gate; `listen http` never uses `MaxBytesReader`, so not in practice | Done - [`851cad8`](https://github.com/dmartsapp/shint/commit/851cad8): Go 1.27.4, `golang:1.27.4-alpine`, an advisory on the Security page |
 
 ## After the release
 
 - Confirm [#75](https://github.com/dmartsapp/shint/issues/75) in the tag's logs: no `Cannot open: File exists` lines in the gate jobs of Binary Build & Release, Docker Hub Release and GHCR Release.
 - Check the first real run of Syft, Grype, Dockle and the image attestations ([#71](https://github.com/dmartsapp/shint/issues/71)): the image jobs green, and the release's 89 assets (`make release` counts them).
-- Close #95, #37, #90, #84, #71 and #75 as resolved in v4.3.0, then the milestone.
+- Close #95, #37, #90, #84, #71, #75 and #96 as resolved in v4.3.0, then the milestone.
 - On `main`: `tls` in the README's command tables (they can only list a released command).
 
 ## Moved
