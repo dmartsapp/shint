@@ -19,7 +19,7 @@ nav: Source reference
 | `Makefile` | The one place to build and test from: cross-compilation targets for every release platform, the version-string logic for local builds, and the checks (`make check`, `make test-live`, `make test-full`). |
 | `Dockerfile` | Two-stage image build: Go build stage, distroless final stage. |
 | `.dockerignore`, `.gitignore` | What stays out of the Docker build context and out of git (`bin/`, `*.json`, `.DS_Store`). |
-| `basic_module_test.sh` | Live-internet smoke test: builds the binary and runs one check per command against real hosts. Run it with `make test-live`. |
+| `test/live/basic_module_test.sh` | Live-internet smoke test: builds the binary and runs one check per command against real hosts. Run it with `make test-live`. |
 | `CHANGELOG.md` | The release history; also rendered as the [Changelog](changelog.md) page. |
 | `readme.md` | The short introduction that GitHub shows on the front page. On `main` it is the project README (all milestones and releases); a release branch's copy is `main`'s (release branches up to v4.2.2 kept a working page of their own here) - see [Releases and tagging](tech-release.md#branches-and-cadence). |
 | `LICENSE` | MIT. |

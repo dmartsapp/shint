@@ -120,7 +120,7 @@ Each invocation is judged against rules that hold for every command - no panic, 
 
 ## The live smoke test
 
-`make test-live` (which runs `basic_module_test.sh`) builds the binary and runs one check per command against real hosts (`google.com`, `httpbin.org`, `8.8.8.8`), asserting on exit status *and* an expected string in the output - including that `ping` shows its payload size. It needs the internet and ICMP, so it is not part of `make check` or `go test`; `make test-full` includes it, and it should pass before a release. It counts failures and continues rather than stopping at the first.
+`make test-live` (which runs `test/live/basic_module_test.sh`) builds the binary and runs one check per command against real hosts (`google.com`, `httpbin.org`, `8.8.8.8`), asserting on exit status *and* an expected string in the output - including that `ping` shows its payload size. It needs the internet and ICMP, so it is not part of `make check` or `go test`; `make test-full` includes it, and it should pass before a release. It counts failures and continues rather than stopping at the first.
 
 ## Profiling
 

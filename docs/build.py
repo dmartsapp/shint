@@ -532,6 +532,11 @@ def render_page(p, pages, version):
 <meta name="description" content="{desc}">
 <meta name="google-site-verification" content="f8HZndbzPlmiY4bsjViQCpBxHRTPAp1wtew-RUsIJws" />
 <meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{html.escape(page_title)}">
+<meta property="og:description" content="{desc}">
+<meta property="og:image" content="https://dmartsapp.github.io/shint/docs/assets/social-card.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/style.css">
 <script>try{{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}}catch(e){{}}</script>

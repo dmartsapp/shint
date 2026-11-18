@@ -335,7 +335,7 @@ readme-reconcile:
 # command against real hosts, and removes the binary again.
 test-live:
 	echo "==> live smoke test"
-	bash basic_module_test.sh
+	bash test/live/basic_module_test.sh
 
 # Start a release: release/vX.Y.Z from origin/main, with "## vX.Y.Z - unreleased" in
 # CHANGELOG.md and the branch's working page releases/vX.Y.Z.md, committed and pushed.

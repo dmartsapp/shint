@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    background: radial-gradient(1200px 600px at 85% -10%, #1f3a5f 0%, rgba(13,17,23,0) 60%), #0d1117;
+    color: #e6edf3; font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Helvetica, sans-serif;
+  }
+  .safe { position: absolute; left: 72px; top: 64px; right: 72px; bottom: 64px; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: baseline; gap: 18px; }
+  .prompt { font-family: "SF Mono", Menlo, monospace; font-size: 72px; color: #3fb950; font-weight: 600; }
+  .name { font-family: "SF Mono", Menlo, monospace; font-size: 96px; font-weight: 700; letter-spacing: -2px; }
+  .tag { font-size: 22px; color: #8b949e; margin-left: 6px; letter-spacing: 0.5px; }
+  .slogan { margin-top: 18px; font-size: 44px; font-weight: 700; line-height: 1.15; }
+  .slogan .b { color: #58a6ff; }
+  .sub { margin-top: 12px; font-size: 24px; color: #c9d1d9; }
+  .term {
+    margin-top: 26px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 18px 22px;
+    font-family: "SF Mono", Menlo, monospace; font-size: 19px; line-height: 1.55; color: #c9d1d9;
+  }
+  .term .p { color: #3fb950; } .term .ok { color: #3fb950; } .term .k { color: #8b949e; } .term .v { color: #e6edf3; }
+  .foot { margin-top: auto; display: flex; justify-content: space-between; font-size: 20px; color: #8b949e; }
+  .chips span { border: 1px solid #30363d; border-radius: 999px; padding: 4px 12px; margin-right: 8px; color: #c9d1d9; }
+</style></head>
+<body><div class="safe">
+  <div class="brand"><span class="prompt">$</span><span class="name">shint</span><span class="tag">Simple Host INspection Toolkit</span></div>
+  <div class="slogan">Respect the classics. <span class="b">Rethink the experience.</span></div>
+  <div class="sub">Everyday network checks in one small binary: one output format, <b>--json</b>, no root.</div>
+  <div class="term">
+    <div><span class="p">$</span> shint tls example.com</div>
+    <div><span class="k">[tls]</span> <span class="ok">OK</span> handshake <span class="k">offered=</span><span class="v">"TLS 1.2,TLS 1.3"</span> <span class="k">version=</span><span class="v">"TLS 1.3"</span> <span class="k">cipher=</span><span class="v">TLS_AES_128_GCM_SHA256</span></div>
+    <div><span class="p">$</span> shint ss -l --ports 5432</div>
+    <div><span class="k">[ss]</span> <span class="ok">OK</span> socket <span class="k">proto=</span><span class="v">tcp</span> <span class="k">state=</span><span class="v">LISTEN</span> <span class="k">local=</span><span class="v">127.0.0.1:5432</span> <span class="k">process=</span><span class="v">postgres</span> <span class="k">pid=</span><span class="v">944</span></div>
+  </div>
+  <div class="foot">
+    <div class="chips"><span>telnet</span><span>ping</span><span>web</span><span>tls</span><span>nmap</span><span>dns</span><span>ss</span><span>ip route</span></div>
+    <div>github.com/dmartsapp/shint</div>
+  </div>
+</div></body></html>

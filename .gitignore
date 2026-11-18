@@ -5,6 +5,9 @@ bin/
 __pycache__/
 *.py[cod]
 
+# local design work (graphics, templates): not part of the repository; finished brand assets go in docs/assets/
+artifacts/
+
 # make profile's runs: a release's (.profiling/vX.Y.Z/) are committed by make release, with their
 # summary.json despite *.json above; your own (make profile without TAG) stay here
 .profiling/dev/

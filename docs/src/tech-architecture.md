@@ -22,18 +22,26 @@ The design follows from a few goals, and most decisions in the code can be trace
 ```plain
 shint/
 ├── main.go                 command line: cobra commands, flags, validation, exit status
+├── main_ss.go              the ss command, built for every platform but AIX
 ├── main_test.go            end-to-end tests: real exit statuses via the test binary
 ├── lib/
 │   ├── lib.go              shared helpers: DNS, dialing, validation, statistics
+│   ├── source.go           --interface: the address the checks send from
 │   ├── output.go           JSON output types and the text log format
-│   └── handlers/           one file per command (plus TLS and wire counting)
-├── docs/                   this documentation site (Markdown sources + build script)
-├── .github/workflows/      the CI/CD workflows: five release ones (with the tag guard), and Check
-├── .github/scripts/        the tag guard, the workflow trigger rule and their tests
+│   └── handlers/           one file per command, with per-platform files (_linux, _windows, ...)
+├── test/
+│   ├── battery/            the black-box battery (make test-battery)
+│   └── live/               the live-internet smoke test (make test-live)
+├── docs/                   this documentation site: Markdown in src/, the built pages, assets/, build.py
+├── releases/               each release's record (its working page, moved there on release day)
+├── .profiling/             each release's performance profile (make profile)
+├── .github/workflows/      the CI/CD workflows: five release ones (with the tag guard), Check, Slack
+├── .github/scripts/        release, reconcile, notification and check scripts, and their tests
 ├── Makefile                cross-compilation for every platform, and every check (make check)
 ├── Dockerfile              multi-arch container image
-├── basic_module_test.sh    live-internet smoke test
 ├── CHANGELOG.md            release history
+├── branch_readme.md        the release branch's working page (only on release/vX.Y.Z)
+├── index.html              the site's front door: sends visitors to docs/
 └── readme.md               the short introduction
 ```
 
