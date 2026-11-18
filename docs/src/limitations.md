@@ -66,9 +66,10 @@ These are choices, not gaps waiting to be filled. Each one keeps shint simple, s
 
 At the time of writing. The [issue tracker](https://github.com/dmartsapp/shint/issues?q=is%3Aissue+is%3Aopen+label%3Abug) always has the current list.
 
-- **A name on several `/etc/hosts` lines may resolve to its first address only** ([#65](https://github.com/dmartsapp/shint/issues/65)). This affects every command that looks up a name.
 - **`ping --timeout` does not limit the name lookup** ([#14](https://github.com/dmartsapp/shint/issues/14)). The ping library resolves with its own fixed 5-second limit.
 - **`ping` stopped with `Ctrl+C` ends without its statistics** ([#25](https://github.com/dmartsapp/shint/issues/25)).
+
+Both are in `ping`'s library, and are planned with its replacement ([#70](https://github.com/dmartsapp/shint/issues/70)).
 
 ## Quirks kept on purpose
 
