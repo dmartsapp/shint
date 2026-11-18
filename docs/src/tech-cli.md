@@ -58,9 +58,9 @@ The scheme follows `fping` because shint has the same shape of problem: one invo
 
 ## Adding a command
 
-1. **Handler.** Create `lib/handlers/<name>.go` with a `<name>Module` constant (it becomes the `[module]` in log lines) and a function that takes plain values plus `jsonoutput *bool` and returns `bool`. Print with `lib.LogWithTimestamp`/`lib.Fields`, and render JSON through `lib.JSONOutput`.
+1. **Handler.** Create the package `lib/handlers/<name>/`, with `<name>.go` holding a `<name>Module` constant (it becomes the `[module]` in log lines) and a function that takes plain values plus `jsonoutput *bool` and returns `bool`. Print with `lib.LogWithTimestamp`/`lib.Fields`, and render JSON through `lib.JSONOutput`.
 2. **Output types.** Add a `<Name>Stats` struct to `lib/output.go` with tagged fields, and document it on [Output formats](output.md).
-3. **Command.** In `main.go`, add a `cobra.Command`: `Args:` for the positional shape, `Run` that validates (each failure `usage(...)`; `return`), then calls `finish(handlers.YourHandler(...))`. Register any flag in `init()` and the command in `main()`.
+3. **Command.** In `main.go`, add a `cobra.Command`: `Args:` for the positional shape, `Run` that validates (each failure `usage(...)`; `return`), then calls `finish(<name>.Run(...))`. Register any flag in `init()` and the command in `main()`.
 4. **Bound every operation** with `--timeout`, never the whole run.
 5. **Tests.** A handler test with a locally started target; an entry in `TestExitStatus` (main_test.go) for each of the 0, 1 and 2 paths; a `--json` failure case in `TestFailuresUnderJSONAreStillJSON`.
 6. **Docs.** A command page under `docs/src/`, a line in [Using shint](usage.md) if it changes the shared tables, and a changelog entry.

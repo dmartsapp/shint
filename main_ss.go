@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/dmartsapp/shint/v4/lib"
-	"github.com/dmartsapp/shint/v4/lib/handlers"
+	"github.com/dmartsapp/shint/v4/lib/handlers/ss"
 )
 
 // ss is left out of the AIX binary: AIX offers no way to list its sockets
@@ -42,7 +42,7 @@ It reads the operating system's socket tables and sends nothing. It needs no pri
 			usage(err.Error())
 			return
 		}
-		query := handlers.SSQuery{TCP: ssTCP, UDP: ssUDP, Listening: ssListening}
+		query := ss.Query{TCP: ssTCP, UDP: ssUDP, Listening: ssListening}
 		if cmd.Flags().Changed("ports") {
 			ports, err := lib.ParsePorts("ports", ssPorts)
 			if err != nil {
@@ -58,7 +58,7 @@ It reads the operating system's socket tables and sends nothing. It needs no pri
 			}
 			query.PID = ssPID
 		}
-		finish(handlers.SSHandler(&jsonoutput, query))
+		finish(ss.Run(&jsonoutput, query))
 	},
 }
 

@@ -28,7 +28,10 @@ shint/
 │   ├── lib.go              shared helpers: DNS, dialing, validation, statistics
 │   ├── source.go           --interface: the address the checks send from
 │   ├── output.go           JSON output types and the text log format
-│   └── handlers/           one file per command, with per-platform files (_linux, _windows, ...)
+│   ├── tlsconf/            the TLS client configuration web and tls share
+│   ├── internal/testutil/  what the tests share
+│   └── handlers/           a package per command (telnet/, web/, ip/, ss/, ...), with per-platform
+│                           files (_linux, _windows, ...), and internal/ (pace, term, wire)
 ├── test/
 │   ├── battery/            the black-box battery (make test-battery)
 │   └── live/               the live-internet smoke test (make test-live)
@@ -58,7 +61,7 @@ The full, file-by-file description is in the [Source reference](tech-source.md).
   <text class="sub" x="330" y="61" text-anchor="middle">cobra commands · flags · validation · exit status</text>
   <path class="arrow" d="M330 76V108"/>
   <rect class="box" x="110" y="108" width="300" height="70" rx="10"/>
-  <text class="h" x="260" y="135" text-anchor="middle">lib/handlers - one per command</text>
+  <text class="h" x="260" y="135" text-anchor="middle">lib/handlers - a package per command</text>
   <text class="sub" x="260" y="155" text-anchor="middle">telnet · icmp · web · tls · nmap · udp · ntp · wol · rdns · dns · cidr · ip · ss · listen</text>
   <text class="sub" x="260" y="170" text-anchor="middle">concurrency, output (text or JSON), result</text>
   <rect class="box" x="440" y="108" width="110" height="70" rx="10"/>
@@ -89,7 +92,7 @@ Following `shint telnet example.com 443 --count 2`:
 
 1. `main()` adds the commands to the root command and calls `Execute`. cobra parses the arguments into the package-level flag variables and calls `telnetCmd.Run`.
 2. `Run` validates the port and the numeric flags. A bad value calls `usage(...)`, which prints to stderr and records exit status `2`; nothing else runs.
-3. `Run` calls `handlers.TelnetHandler`, which resolves the name with `lib.ResolveName` (both A and AAAA records), bounded by `--timeout`.
+3. `Run` calls `telnet.Run` (`lib/handlers/telnet`), which resolves the name with `lib.ResolveName` (both A and AAAA records), bounded by `--timeout`.
 4. For each iteration and each address it waits `--delay`, then starts a goroutine that calls `lib.IsPortUp` - a `net.Dialer` with the per-attempt timeout - and records the result under a mutex.
 5. Once every goroutine is done, the handler prints the statistics block (text) or marshals the JSON document, and returns `true` only if every attempt succeeded.
 6. `Run` passes that to `finish(ok)`, which records exit status `1` if it was `false`; `main` then exits with the recorded status.
@@ -122,7 +125,7 @@ Everything else - DNS, TCP, UDP, HTTP, TLS, JSON, signal handling - is the stand
 | `listen udp` | A single read loop. |
 | `listen http` | Go's `net/http` server; each connection is wrapped so its bytes can be counted and reported when it closes. |
 
-Cancellation is by `context`. `nmap`, `telnet`, `web`, `tls`, `udp`, `ntp`, `rdns`, `wol` and the listeners cancel on `Ctrl+C` (`SIGINT`/`SIGTERM`); no command imposes a run-wide deadline, because `--timeout` bounds single operations only. A cancelled repeating check stops launching attempts, interrupts its `--delay` pause and any attempt in flight (which is dropped, not counted as a failure), then ends as usual - statistics, `done` line, complete JSON - with an `interrupted` line and exit status `1` (`lib/handlers/interrupt.go`). A second `Ctrl+C` is not caught: `interruptContext` removes the handler after the first.
+Cancellation is by `context`. `nmap`, `telnet`, `web`, `tls`, `udp`, `ntp`, `rdns`, `wol` and the listeners cancel on `Ctrl+C` (`SIGINT`/`SIGTERM`); no command imposes a run-wide deadline, because `--timeout` bounds single operations only. A cancelled repeating check stops launching attempts, interrupts its `--delay` pause and any attempt in flight (which is dropped, not counted as a failure), then ends as usual - statistics, `done` line, complete JSON - with an `interrupted` line and exit status `1` (`lib/handlers/internal/pace`). A second `Ctrl+C` is not caught: `interruptContext` removes the handler after the first.
 
 ## Cross-cutting concerns
 
@@ -132,7 +135,7 @@ Cancellation is by `context`. `nmap`, `telnet`, `web`, `tls`, `udp`, `ntp`, `rdn
 | Log grammar | `lib.LogWithTimestamp`, `lib.Fields`, `lib.LogStats` in `lib/output.go`. |
 | JSON schema | The structs in `lib/output.go`; field tags are the contract. |
 | Dual-stack | `lib.NetworkType = "ip"` makes every lookup return A and AAAA records; handlers test each address separately. |
-| Byte counting | `lib/handlers/wireconn.go`, shared by `web` and `listen http`. |
+| Byte counting | `lib/handlers/internal/wire`, shared by `web` and `listen http`. |
 | Exit status | `exitCode`, `usage()` and `finish()` in `main.go`; handlers only report success or failure. |
 
 ## Where to change what
@@ -140,7 +143,7 @@ Cancellation is by `context`. `nmap`, `telnet`, `web`, `tls`, `udp`, `ntp`, `rdn
 | To change... | Look in |
 |---|---|
 | A flag, a default, a help text | `main.go` |
-| What a command does | its file in `lib/handlers/` |
+| What a command does | its package in `lib/handlers/<command>/` |
 | A log line's wording | the handler that prints it (and its test) |
 | A JSON field | `lib/output.go` (and update [Output formats](output.md)) |
 | How addresses are resolved or dialed | `lib/lib.go` |

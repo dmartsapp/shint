@@ -14,7 +14,7 @@ nav: Testing
 - **The race detector is on.** Handlers are concurrent; run `go test -race`.
 - **Every bug gets a test that fails without the fix.** Each regression test below was checked against the broken behaviour before the fix was kept.
 
-There are 174 top-level Go tests: 135 in `lib/handlers`, 31 in `lib` and 8 end-to-end tests in `main_test.go` (one of which, `TestExitStatus`, runs 63 scenarios). Outside `go test`, `make check` also runs a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), Python tests for the [workflow trigger rule](tech-ci.md#the-workflow-trigger-rule) (18) and for the documentation generator (10).
+There are 337 top-level Go tests: 261 in the command packages under `lib/handlers/` (and their shared `internal/` packages), 60 in `lib` and `lib/tlsconf`, and 16 in the `main` package's tests (one of which, `TestExitStatus`, runs 63 scenarios). Outside `go test`, `make check` also runs a shell test for the [release-tag guard](tech-ci.md#the-release-tag-guard), Python tests for the [workflow trigger rule](tech-ci.md#the-workflow-trigger-rule) (18) and for the documentation generator (10).
 
 ## Running the tests
 
@@ -39,7 +39,7 @@ For finer control, call `go test` directly:
 
 ```bash
 go test -race -count=3 ./...                   # shake out flakiness
-go test -run TestNmap -v ./lib/handlers/       # one family, verbosely
+go test -run TestNmap -v ./lib/handlers/nmap/   # one command's tests, verbosely
 ```
 
 `go test -race` on the root package takes about 15 seconds because its tests start the CLI as subprocesses.
@@ -48,13 +48,14 @@ go test -run TestNmap -v ./lib/handlers/       # one family, verbosely
 
 | Helper | Where | What it gives you |
 |---|---|---|
-| `captureStdout(t, fn)` | `testhelpers_test.go` | Runs `fn` with `os.Stdout` redirected and returns what it printed. The pipe is drained by a goroutine *while* `fn` runs, so a handler that prints more than the pipe buffer cannot deadlock. |
-| `requireInterrupt`, `sendInterrupt` | `interrupt_unix_test.go`, `interrupt_windows_test.go` | The Ctrl+C tests for the listeners: `sendInterrupt` delivers SIGINT to the test process itself. Windows has no `syscall.Kill`, so there `requireInterrupt` skips the test - which still compiles. |
-| `freeTCPPort`, `freeUDPPort` | `testhelpers_test.go` | An unused port number, for tests that need to know it in advance. |
-| `generateTestCA`, `issueCert` | `testhelpers_test.go` | A self-signed CA plus server and client certificates written to a temp directory, for mutual-TLS tests. |
-| `startEchoListener` (+ IPv6 form) | `telnet_test.go` | A TCP listener that accepts and closes. |
-| `rawServer` | `wirebytes_test.go` | A bare TCP/TLS responder that knows exactly how many bytes each request occupied, to check `web`'s counts against ground truth. |
-| `recordingListener` | `wirebytes_test.go` | Wraps accepted connections in counters so a test can total what a real server read and wrote. |
+| `testutil.CaptureStdout(t, fn)` | `lib/internal/testutil` | Runs `fn` with `os.Stdout` redirected and returns what it printed. The pipe is drained by a goroutine *while* `fn` runs, so a handler that prints more than the pipe buffer cannot deadlock. |
+| `testutil.RequireInterrupt`, `testutil.SendInterrupt` | `lib/internal/testutil` (`interrupt_unix.go`, `interrupt_windows.go`) | The Ctrl+C tests for the listeners: `SendInterrupt` delivers SIGINT to the test process itself. Windows has no `syscall.Kill`, so there `requireInterrupt` skips the test - which still compiles. |
+| `testutil.FreeTCPPort`, `testutil.FreeUDPPort` | `lib/internal/testutil` | An unused port number, for tests that need to know it in advance. |
+| `testutil.NewCA`, `testutil.IssueCert` | `lib/internal/testutil` | A self-signed CA plus server and client certificates written to a temp directory, for mutual-TLS tests. |
+| `testutil.EchoListener` (+ IPv6 form), `testutil.WaitForListener` | `lib/internal/testutil` | A TCP listener that accepts and closes; waiting until a listener a test started accepts. |
+| `testutil.CancelAfter`, `InterruptedCounts`, `RunWithin` | `lib/internal/testutil` | For the `Ctrl+C` tests each command package has (`<command>_cancel_test.go`): a context cancelled after a moment, the numbers on an `interrupted` line, a run that must end in time. |
+| `rawServer` | `lib/handlers/web/wirebytes_test.go` | A bare TCP/TLS responder that knows exactly how many bytes each request occupied, to check `web`'s counts against ground truth. |
+| `recordingListener` | `lib/handlers/web/wirebytes_test.go` | Wraps accepted connections in counters so a test can total what a real server read and wrote. |
 | `runShint`, `TestMain` | `main_test.go` | Runs the *real CLI* as a subprocess and returns its exit status, stdout and stderr. |
 
 ### Hooks for testing
@@ -130,7 +131,7 @@ Tests say whether shint is right; profiling says how fast and how lean it is, **
 - **Scenarios**: shint run as a user runs it, against the battery's loopback servers - startup, `--help`, 100 `telnet` connects (and with `--json`), 50 small `web` requests, one 300 MB download, 100 `udp` probes, a 2000-port `nmap`, 10 pings, 20 `dns` queries, `cidr`, `ip`, and `listen http` serving 300 requests from 8 clients. Each is run several times after an unmeasured warm-up, and records the process's wall time, CPU time (user and system) and peak memory - median, mean, minimum, maximum and spread.
 - **The binary's size** for every release platform, built here with the release flags.
 - **The tests' time**: each Go package and the slowest tests (`go test -json`, without the race detector), and the battery's time per group and its slowest cases.
-- **Profiles** (`pprof`) of the `lib` and `lib/handlers` tests' CPU and memory - and, in a tree with the `profiling` build tag's hook, of the binary itself in each scenario. Each profile has a `.top.txt` next to it: the functions that took the most, readable without any tools. For the full picture, `go tool pprof -http=: <profile>`.
+- **Profiles** (`pprof`) of the `lib` and `lib/handlers/<command>` tests' CPU and memory - and, in a tree with the `profiling` build tag's hook, of the binary itself in each scenario. Each profile has a `.top.txt` next to it: the functions that took the most, readable without any tools. For the full picture, `go tool pprof -http=: <profile>`.
 
 ```bash
 make profile                              # .profiling/dev/<git describe>/<time>/ - yours; git ignores it

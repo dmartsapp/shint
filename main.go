@@ -25,7 +25,20 @@ import (
 	"time"
 
 	"github.com/dmartsapp/shint/v4/lib"
-	"github.com/dmartsapp/shint/v4/lib/handlers"
+	"github.com/dmartsapp/shint/v4/lib/handlers/cidr"
+	"github.com/dmartsapp/shint/v4/lib/handlers/dns"
+	"github.com/dmartsapp/shint/v4/lib/handlers/ip"
+	"github.com/dmartsapp/shint/v4/lib/handlers/listen"
+	"github.com/dmartsapp/shint/v4/lib/handlers/nmap"
+	"github.com/dmartsapp/shint/v4/lib/handlers/ntp"
+	"github.com/dmartsapp/shint/v4/lib/handlers/ping"
+	"github.com/dmartsapp/shint/v4/lib/handlers/rdns"
+	"github.com/dmartsapp/shint/v4/lib/handlers/telnet"
+	"github.com/dmartsapp/shint/v4/lib/handlers/tlscheck"
+	"github.com/dmartsapp/shint/v4/lib/handlers/udp"
+	"github.com/dmartsapp/shint/v4/lib/handlers/web"
+	"github.com/dmartsapp/shint/v4/lib/handlers/wol"
+	"github.com/dmartsapp/shint/v4/lib/tlsconf"
 	"github.com/spf13/cobra"
 )
 
@@ -273,7 +286,7 @@ var telnetCmd = &cobra.Command{
 		if !applyInterface(cmd, "telnet") {
 			return
 		}
-		finish(handlers.TelnetHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, host))
+		finish(telnet.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, host))
 	},
 }
 
@@ -289,11 +302,11 @@ var pingCmd = &cobra.Command{
 		if !checkRunFlags(true) {
 			return
 		}
-		if err := handlers.ValidatePingPayload(payload_size); err != nil {
+		if err := ping.ValidatePayload(payload_size); err != nil {
 			usage(err.Error())
 			return
 		}
-		finish(handlers.HandleICMP(args[0], &jsonoutput, iterations, delay, &throttle, timeout, payload_size))
+		finish(ping.Run(args[0], &jsonoutput, iterations, delay, &throttle, timeout, payload_size))
 	},
 }
 
@@ -313,7 +326,7 @@ It connects straight to the address the name resolves to and never uses a proxy:
 			return
 		}
 
-		URL, err := handlers.ParseWebURL(args[0])
+		URL, err := web.ParseURL(args[0])
 		if err != nil {
 			usage(err.Error())
 			return
@@ -323,7 +336,7 @@ It connects straight to the address the name resolves to and never uses a proxy:
 			return
 		}
 
-		tlsConfig, err := handlers.BuildTLSConfig(cacertFile, certFile, keyFile, insecureSkipVerify)
+		tlsConfig, err := tlsconf.Build(cacertFile, certFile, keyFile, insecureSkipVerify)
 		if err != nil {
 			usage(err.Error())
 			return
@@ -340,7 +353,7 @@ It connects straight to the address the name resolves to and never uses a proxy:
 		if !applyInterface(cmd, "web") {
 			return
 		}
-		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming, webShowCredentials, maxBody))
+		finish(web.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming, webShowCredentials, maxBody))
 	},
 }
 
@@ -362,7 +375,7 @@ A chain that does not verify - an unknown authority, an expired or not-yet-valid
 		if !applyFamily(host) {
 			return
 		}
-		port := handlers.TLSDefaultPort
+		port := tlscheck.DefaultPort
 		if len(args) == 2 {
 			p, err := lib.ValidatePort(args[1])
 			if err != nil {
@@ -378,9 +391,9 @@ A chain that does not verify - an unknown authority, an expired or not-yet-valid
 		if !checkRunFlags(true) {
 			return
 		}
-		opts := handlers.TLSCheckOptions{Port: port, ServerName: tlsServerName, WarnDays: tlsWarnDays, FailDays: tlsFailDays}
+		opts := tlscheck.Options{Port: port, ServerName: tlsServerName, WarnDays: tlsWarnDays, FailDays: tlsFailDays}
 		if tlsCACert != "" {
-			pool, err := handlers.LoadCAPool(tlsCACert)
+			pool, err := tlsconf.LoadCAPool(tlsCACert)
 			if err != nil {
 				usage(err.Error())
 				return
@@ -394,7 +407,7 @@ A chain that does not verify - an unknown authority, an expired or not-yet-valid
 		if !applyInterface(cmd, "tls") {
 			return
 		}
-		finish(handlers.TLSCheckHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, host, opts))
+		finish(tlscheck.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, host, opts))
 	},
 }
 
@@ -416,12 +429,12 @@ Scan only networks you run, or have permission to test. A sweep that covers publ
 		if !checkRunFlags(true) {
 			return
 		}
-		targets, err := handlers.ParseNmapTargets(args)
+		targets, err := nmap.ParseTargets(args)
 		if err != nil {
 			usage(err.Error())
 			return
 		}
-		scan := handlers.NmapScan{Targets: targets, Delay: time.Duration(delay) * time.Millisecond}
+		scan := nmap.Scan{Targets: targets, Delay: time.Duration(delay) * time.Millisecond}
 		if cmd.Flags().Changed("ports") {
 			if cmd.Flags().Changed("from") || cmd.Flags().Changed("to") {
 				usage("--ports and --from/--to cannot be used together: give a list (--ports 22,80,8000-8100) or a range (--from/--to)")
@@ -450,7 +463,7 @@ Scan only networks you run, or have permission to test. A sweep that covers publ
 		if !applyInterface(cmd, "nmap") {
 			return
 		}
-		finish(handlers.NmapHandler(ctx, scan, iterations, timeout, throttle, &jsonoutput))
+		finish(nmap.Run(ctx, scan, iterations, timeout, throttle, &jsonoutput))
 	},
 }
 
@@ -502,14 +515,14 @@ The payload is one of three things: --data sends a message, as text exactly as t
 				usage("--hex and --data cannot be used together: give the payload one way")
 				return
 			}
-			bytes, err := handlers.ParseHexPayload(udpHex)
+			bytes, err := udp.ParseHexPayload(udpHex)
 			if err != nil {
 				usage(err.Error())
 				return
 			}
 			data = string(bytes)
 		}
-		if err := handlers.ValidateUDPPayload(payload_size, data); err != nil {
+		if err := udp.ValidatePayload(payload_size, data); err != nil {
 			usage(err.Error())
 			return
 		}
@@ -520,7 +533,7 @@ The payload is one of three things: --data sends a message, as text exactly as t
 		if !applyInterface(cmd, "udp") {
 			return
 		}
-		finish(handlers.UDPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, data, port, host))
+		finish(udp.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, data, port, host))
 	},
 }
 
@@ -546,7 +559,7 @@ An address that has no PTR record is reported as a failed check (exit status 1);
 		if !applyInterface(cmd, "rdns") {
 			return
 		}
-		finish(handlers.RDNSHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, args[0]))
+		finish(rdns.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, args[0]))
 	},
 }
 
@@ -568,7 +581,7 @@ A question that gets no record of the type asked - the name does not exist (NXDO
 			usage(err.Error())
 			return
 		}
-		query, err := handlers.ParseDNSArgs(args)
+		query, err := dns.ParseArgs(args)
 		if err != nil {
 			usage(err.Error())
 			return
@@ -582,7 +595,7 @@ A question that gets no record of the type asked - the name does not exist (NXDO
 		if !applyInterface(cmd, "dns") {
 			return
 		}
-		finish(handlers.DNSHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, query, handlers.DNSOptions{ForceTCP: dnsTCP, NoRecurse: dnsNoRecurse}))
+		finish(dns.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, query, dns.Options{ForceTCP: dnsTCP, NoRecurse: dnsNoRecurse}))
 	},
 }
 
@@ -596,12 +609,12 @@ It works entirely offline: nothing is looked up and nothing is sent. Only --json
 	Example: rootCmd.Name() + ` cidr 192.168.1.10/24` + "\n" +
 		rootCmd.Name() + ` cidr 10.0.0.0/8 2001:db8::/32 --json`,
 	Run: func(cmd *cobra.Command, args []string) {
-		subnets, err := handlers.ParseSubnets(args)
+		subnets, err := cidr.ParseSubnets(args)
 		if err != nil {
 			usage(err.Error())
 			return
 		}
-		finish(handlers.CIDRHandler(&jsonoutput, subnets))
+		finish(cidr.Run(&jsonoutput, subnets))
 	},
 }
 
@@ -624,7 +637,7 @@ It reads the operating system's interface table and sends nothing, so it needs n
 		if len(args) == 1 {
 			name = args[0]
 		}
-		finish(handlers.IPHandler(&jsonoutput, name))
+		finish(ip.Interfaces(&jsonoutput, name))
 	},
 }
 
@@ -665,7 +678,7 @@ It reads the system's routing table and sends nothing, so it needs no network an
 			}
 			target = args[0]
 		}
-		finish(handlers.IPRouteHandler(&jsonoutput, target))
+		finish(ip.Routes(&jsonoutput, target))
 	},
 }
 
@@ -689,7 +702,7 @@ Addresses are shown as they are: nothing is looked up, so it is instant and work
 		if len(args) == 1 {
 			iface = args[0]
 		}
-		finish(handlers.IPArpHandler(&jsonoutput, iface))
+		finish(ip.Neighbours(&jsonoutput, iface))
 	},
 }
 
@@ -707,12 +720,12 @@ The machine must have Wake-on-LAN enabled in its firmware and network card, and 
 			usage("wol is IPv4 only (a magic packet is a broadcast, and IPv6 has none); -6/--ipv6 does not apply")
 			return
 		}
-		mac, err := handlers.ParseMAC(args[0])
+		mac, err := wol.ParseMAC(args[0])
 		if err != nil {
 			usage(err.Error())
 			return
 		}
-		broadcast, err := handlers.ParseBroadcast(wolBroadcast)
+		broadcast, err := wol.ParseBroadcast(wolBroadcast)
 		if err != nil {
 			usage(err.Error())
 			return
@@ -730,7 +743,7 @@ The machine must have Wake-on-LAN enabled in its firmware and network card, and 
 		if !applyInterface(cmd, "wol") {
 			return
 		}
-		finish(handlers.WOLHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, mac, broadcast, wolPort))
+		finish(wol.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, mac, broadcast, wolPort))
 	},
 }
 
@@ -764,7 +777,7 @@ A reply that cannot be trusted - it answers a different request, the server says
 		if !applyInterface(cmd, "ntp") {
 			return
 		}
-		finish(handlers.NTPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, ntpPort, time.Duration(ntpMaxOffset)*time.Millisecond, args[0]))
+		finish(ntp.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, ntpPort, time.Duration(ntpMaxOffset)*time.Millisecond, args[0]))
 	},
 }
 
@@ -812,7 +825,7 @@ var listenTCPCmd = &cobra.Command{
 		if !checkListenFlags() {
 			return
 		}
-		handlers.TCPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
+		listen.TCP(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
 	},
 }
 
@@ -829,7 +842,7 @@ var listenUDPCmd = &cobra.Command{
 		if !checkListenFlags() {
 			return
 		}
-		handlers.UDPListenHandler(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
+		listen.UDP(listenBind, port, listenEcho, listenMaxCount, timeout, &jsonoutput)
 	},
 }
 
@@ -847,7 +860,7 @@ var listenHTTPCmd = &cobra.Command{
 		if !checkListenFlags() {
 			return
 		}
-		handlers.HTTPListenHandler(listenBind, port, listenMaxCount, timeout, &jsonoutput)
+		listen.HTTP(listenBind, port, listenMaxCount, timeout, &jsonoutput)
 	},
 }
 
@@ -863,7 +876,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Print extra diagnostic lines about internal steps (name resolution, ...) to stderr as they happen; --json is unaffected. Not every command has something to add.")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		lib.SetVerbose(verbose)
-		handlers.UserAgent = userAgent()
+		web.UserAgent = userAgent()
 	}
 
 	webCmd.Flags().StringVarP(&httpmethod, "method", "X", "GET", "HTTP method to use (GET, POST, PUT, DELETE)")
@@ -893,10 +906,10 @@ func init() {
 	dnsCmd.Flags().BoolVar(&dnsTCP, "tcp", false, "Ask over TCP only (by default UDP, with a TCP retry when the answer is truncated)")
 	dnsCmd.Flags().BoolVar(&dnsNoRecurse, "no-recurse", false, "Clear the \"recursion desired\" bit: ask the server only for what it knows itself (use with an authoritative @server)")
 
-	wolCmd.Flags().StringVar(&wolBroadcast, "broadcast", handlers.WOLDefaultBroadcast, "IPv4 broadcast address to send the magic packet to (for one subnet, e.g. 192.168.1.255)")
-	wolCmd.Flags().IntVar(&wolPort, "port", handlers.WOLDefaultPort, "UDP port to send the magic packet to")
+	wolCmd.Flags().StringVar(&wolBroadcast, "broadcast", wol.DefaultBroadcast, "IPv4 broadcast address to send the magic packet to (for one subnet, e.g. 192.168.1.255)")
+	wolCmd.Flags().IntVar(&wolPort, "port", wol.DefaultPort, "UDP port to send the magic packet to")
 
-	ntpCmd.Flags().IntVar(&ntpPort, "port", handlers.NTPDefaultPort, "UDP port of the NTP server")
+	ntpCmd.Flags().IntVar(&ntpPort, "port", ntp.DefaultPort, "UDP port of the NTP server")
 	ntpCmd.Flags().IntVar(&ntpMaxOffset, "max-offset", 0, "Exit 1 if the clock offset is larger than this many milliseconds (0 = only report it)")
 
 	listenCmd.PersistentFlags().StringVar(&listenBind, "bind", "0.0.0.0", "Local address to bind the listener to")

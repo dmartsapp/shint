@@ -19,7 +19,7 @@ A run builds this tree's binary (release flags, this machine's platform) and rec
   * the size of the binary for every release platform (built here with the release flags)
   * the Go tests' time per package and the slowest tests (go test -json, no race detector),
     and the black-box battery's time per group and its slowest cases
-  * CPU and memory profiles (pprof) of the lib and lib/handlers tests, and - when the tree
+  * CPU and memory profiles (pprof) of the lib and the lib/handlers/<command> tests, and - when the tree
     has the `profiling` build tag's hook - of the binary itself in each scenario, each with a
     plain-text "top" summary next to it, readable without any tools
 
@@ -78,7 +78,11 @@ SCENARIOS = [
 ]
 LISTEN_REQUESTS = 300
 LISTEN_CLIENTS = 8
-PROFILED_PACKAGES = ["./lib/handlers", "./lib"]
+# One package per command since the handlers were split (lib/handlers/<command>);
+# go test takes -cpuprofile for one package at a time, so each is listed.
+PROFILED_PACKAGES = ["./lib/handlers/" + p for p in (
+    "telnet", "ping", "web", "tlscheck", "nmap", "udp", "ntp", "wol", "rdns", "dns", "cidr", "ip", "ss", "listen",
+    "internal/pace", "internal/term")] + ["./lib", "./lib/tlsconf"]
 
 
 # --- small helpers ----------------------------------------------------------------------

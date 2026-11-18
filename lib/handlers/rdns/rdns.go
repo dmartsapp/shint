@@ -1,0 +1,165 @@
+package rdns
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net"
+	"net/netip"
+	"strings"
+	"time"
+
+	"github.com/dmartsapp/shint/v4/lib"
+	"github.com/dmartsapp/shint/v4/lib/handlers/dns"
+	"github.com/dmartsapp/shint/v4/lib/handlers/internal/pace"
+)
+
+const rdnsModule = "rdns"
+
+// lookupAddr is the reverse lookup itself. It is a variable so tests can
+// substitute a resolver, the way probePort is for nmap; in the program it is
+// the system resolver's PTR query.
+var lookupAddr = func(ctx context.Context, address string) ([]string, error) {
+	var resolver net.Resolver
+	if name, _ := lib.SourceInterface(); name != "" {
+		// --interface: the PTR query leaves from it too, through Go's own
+		// resolver (the system's cannot be told where to send from).
+		resolver.PreferGo = true
+		resolver.Dial = func(ctx context.Context, network, server string) (net.Conn, error) {
+			var d net.Dialer
+			if err := lib.BindSource(&d, network, server); err != nil {
+				return nil, err
+			}
+			return d.DialContext(ctx, network, server)
+		}
+	}
+	return resolver.LookupAddr(ctx, address)
+}
+
+// Run looks up the host names each address of host maps back to
+// (reverse DNS, PTR records), iterations times. host may be an IP address, which
+// is looked up as is, or a name: like every command, a name is resolved first
+// and each address it resolves to is checked. --timeout bounds each lookup.
+//
+// It reports true only if every address had at least one name. An address with
+// no PTR record is a failed check, not an empty success: many addresses have
+// none, and knowing that is the point of asking.
+// ctx is cancelled by Ctrl+C and nothing else - never a deadline; see
+// interrupt.go for how a cancelled run ends.
+func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, host string) (ok bool) {
+	output := lib.JSONOutput{}
+	output.InputParams = lib.InputParams{
+		Mode:      rdnsModule,
+		Interface: lib.SourceLabel(),
+		Host:      host,
+		FromPort:  53,
+		ToPort:    53,
+		Protocol:  "dns",
+		Timeout:   timeout,
+		Count:     iterations,
+		Delay:     delay,
+		Throttle:  *throttle,
+	}
+	output.ModuleName = rdnsModule
+	istart := time.Now()
+	dnsCtx, cancelDNS := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	addresses, err := lib.ResolveName(dnsCtx, host)
+	cancelDNS()
+	if err != nil {
+		if *jsonoutput {
+			output.DNSLookup = lib.DNSLookup{Hostname: host, Success: false, Error: err.Error(), TimeTaken: time.Since(istart).Microseconds()}
+			output.Error = err.Error()
+			output.Stats = make([]lib.RDNSStats, 0)
+			output.StartTime = istart.UnixMicro()
+			output.EndTime = time.Now().UnixMicro()
+			output.TotalTimeTaken = output.EndTime - output.StartTime
+			JS, _ := json.MarshalIndent(output, "", "  ")
+			fmt.Println(string(JS))
+		} else {
+			fmt.Println(lib.LogWithTimestamp(rdnsModule, "dns resolution failed "+lib.Fields("host", host, "error", err.Error(), "time", time.Since(istart)), true))
+		}
+		return false
+	}
+
+	if *jsonoutput {
+		output.DNSLookup = lib.DNSLookup{Hostname: host, Success: true, ResolvedAddresses: addresses, TimeTaken: time.Since(istart).Microseconds(), Authoritative: dns.FindAuthoritative(ctx, host, dns.AuthoritativeTimeout(timeout))}
+		output.Stats = make([]lib.RDNSStats, 0)
+		output.StartTime = istart.UnixMicro()
+	} else {
+		fmt.Println(lib.LogWithTimestamp(rdnsModule, "dns resolved "+lib.Fields("host", host, "addresses", len(addresses), "ips", "["+strings.Join(addresses, ",")+"]", "time", time.Since(istart)), false))
+		dns.PrintAuthoritative(rdnsModule, dns.FindAuthoritative(ctx, host, dns.AuthoritativeTimeout(timeout)))
+	}
+
+	var resolved, failures, completed int
+attempts:
+	for i := 0; i < iterations; i++ {
+		attempt := i + 1
+		for _, address := range addresses {
+			if ctx.Err() != nil || !pace.Pause(ctx, pace.Delay(delay, *throttle)) {
+				break attempts
+			}
+			query := address
+			if ip, perr := netip.ParseAddr(address); perr == nil {
+				query = dns.ReverseName(ip)
+			}
+			begin := time.Now()
+			lctx, lcancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+			names, lerr := lookupAddr(lctx, address)
+			lcancel()
+			taken := time.Since(begin)
+			if len(names) == 0 && ctx.Err() != nil {
+				break attempts // cut off by Ctrl+C: never finished, so it neither resolved nor failed
+			}
+			completed++
+			if len(names) == 0 && lerr == nil {
+				lerr = fmt.Errorf("no PTR record for %s", address)
+			}
+			// A partial answer - some names, plus an error about the ones the
+			// resolver discarded as malformed - still counts: the names are good.
+			success := len(names) > 0
+			if success {
+				resolved++
+			} else {
+				failures++
+			}
+
+			if *jsonoutput {
+				stat := lib.RDNSStats{Address: address, Query: query, Names: names, Success: success, SentTime: begin.UnixMicro(), RecvTime: time.Now().UnixMicro(), TimeTaken: taken.Microseconds()}
+				if stat.Names == nil {
+					stat.Names = []string{}
+				}
+				if !success {
+					stat.Error = lerr.Error()
+				}
+				output.Stats = append(output.Stats.([]lib.RDNSStats), stat)
+				continue
+			}
+			where := lib.Fields("address", address, "query", query, "attempt", fmt.Sprintf("%d/%d", attempt, iterations))
+			if success {
+				fmt.Println(lib.LogWithTimestamp(rdnsModule, "reverse lookup "+where+" "+lib.Fields("names", "["+strings.Join(names, ",")+"]", "time", taken), false))
+			} else {
+				fmt.Println(lib.LogWithTimestamp(rdnsModule, "reverse lookup failed "+where+" "+lib.Fields("time", taken, "error", lerr.Error()), true))
+			}
+		}
+	}
+
+	planned := iterations * len(addresses)
+	interrupted := completed < planned // only Ctrl+C keeps an attempt from being made
+	if *jsonoutput {
+		output.EndTime = time.Now().UnixMicro()
+		output.TotalTimeTaken = output.EndTime - output.StartTime
+		if interrupted {
+			output.Error = pace.InterruptedNote(completed, planned)
+		}
+		JS, _ := json.MarshalIndent(output, "", "  ")
+		fmt.Println(string(JS))
+	} else {
+		lookups := planned
+		if interrupted {
+			fmt.Println(pace.InterruptedLine(rdnsModule, completed, planned, istart))
+			lookups = completed
+		}
+		fmt.Println(lib.LogWithTimestamp(rdnsModule, "done "+lib.Fields("lookups", lookups, "resolved", resolved, "total_time", time.Since(istart)), false))
+	}
+	return failures == 0 && !interrupted
+}
