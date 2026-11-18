@@ -14,8 +14,8 @@ Includes:
 ## To do
 
 - [ ] every target and bug below is done, or moved to a later milestone
-- [ ] the `ip route` target has an issue of its own
-- [ ] `ss` has run on a real Windows machine (`shint.exe ss`, `ss -l`, `ss --json`): its Windows code is unit-tested on recorded tables, but the system calls have only been compiled, never run
+- [x] the `ip route` target has an issue of its own ([#108](https://github.com/dmartsapp/shint/issues/108))
+- [ ] `ss`, `ip route` and `ip arp` have run on a real Windows machine (`shint.exe ss -l`, `shint.exe ip route`, `shint.exe ip arp`, each also with `--json`): their Windows code is unit-tested on recorded tables, but the system calls have only been compiled, never run
 - [ ] `ping`'s targets ([#14](https://github.com/dmartsapp/shint/issues/14), [#25](https://github.com/dmartsapp/shint/issues/25)): the go-ping release they need is out, and `go.mod` uses it
 - [ ] the changelog has an entry for every change a user would notice
 - [ ] `Summary:` above says what this release is, in plain language
@@ -25,10 +25,11 @@ Includes:
 
 | Target | Issue | State |
 |---|---|---|
-| `ip route`: this machine's routing table and default gateway | - (to file) | Not started |
+| `ip route`: this machine's routing table and default gateway, and which way traffic to an address goes | [#108](https://github.com/dmartsapp/shint/issues/108) | Done - [`f332f23`](https://github.com/dmartsapp/shint/commit/f332f23): Linux, macOS, the BSDs, Windows; checked against iproute2 and netstat |
+| `ip arp` (alias `neigh`): the neighbour table, ARP and NDP, the gateway marked | [#109](https://github.com/dmartsapp/shint/issues/109) | Done - [`f332f23`](https://github.com/dmartsapp/shint/commit/f332f23) |
 | `ss`: this machine's sockets, each with the process that owns it - one record per socket | [#68](https://github.com/dmartsapp/shint/issues/68) | Done on Linux and Windows - [`65da11b`](https://github.com/dmartsapp/shint/commit/65da11b): `-t`/`-u`/`-l`/`--ports`/`--pid`, `owner=hidden` without privileges, exit 1 when nothing matches; JSON `processes`, `owner_hidden`. Other systems say "not supported yet"; the BSDs are [#105](https://github.com/dmartsapp/shint/issues/105) (v4.5.0). The AIX binary is built without `ss` (no unprivileged interface exists there). Windows still needs a real run (see To do) |
 | `ping`: sub-millisecond timings, unreachable replies told apart from timeouts, statistics on Ctrl+C - needs a new go-ping release | [#25](https://github.com/dmartsapp/shint/issues/25) | Not started |
-| `--interface`: send a check's traffic through a given interface or source address | [#69](https://github.com/dmartsapp/shint/issues/69) | Not started |
+| `--interface`: send a check's traffic through a given interface or source address | [#69](https://github.com/dmartsapp/shint/issues/69) | Done but `ping` - [`f332f23`](https://github.com/dmartsapp/shint/commit/f332f23): telnet, web, tls, nmap, udp, ntp, dns, rdns, wol; an unknown name lists the real ones. `ping` waits for go-ping (with #14, #25) |
 | Responsible use: a sweep of public addresses warns and is paced by `--delay`; `web`'s User-Agent names shint and its release; the rule on the Security and design pages | [#106](https://github.com/dmartsapp/shint/issues/106) | Done - [`d492b69`](https://github.com/dmartsapp/shint/commit/d492b69): `WARN public addresses` with probes and estimate, probes spaced by `--delay` (1 s default, `0` for none); JSON `warnings`, `delay_ms`; User-Agent `shint/<release> (+URL)`; Security "Responsible use", design "Checking, not reconnaissance" |
 | `nmap` upgrades: port lists (`--ports 22,80,443`), subnet sweeps, service names - moved from v4.3.0 | [#94](https://github.com/dmartsapp/shint/issues/94) | Done - [`3554ffc`](https://github.com/dmartsapp/shint/commit/3554ffc): `--ports`/`-p`, several targets and prefixes (up to 65,536 addresses), `service=`; JSON `target`, `service`, `ports`, `targets`, `dns_lookups` |
 | `web --json`: say when certificate checks are skipped, and when a client certificate or a custom CA is used (security review) | [#100](https://github.com/dmartsapp/shint/issues/100) | Done - [`379da60`](https://github.com/dmartsapp/shint/commit/379da60): `input_params.tls`, top-level `warnings` |
