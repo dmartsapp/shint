@@ -66,6 +66,7 @@ shint tls example.com --json | jq '.stats[0].expires_in_days'
 
 ## Limitations
 
+- **Use it on networks you run, or have permission to test.** Its scans are ordinary connections that the target's firewall and services log, and it deliberately has nothing for scanning unnoticed.
 - **Only two of the 18 builds are tested regularly:** macOS on Apple silicon and Linux on amd64. Windows, the BSDs, Solaris, illumos, AIX, Android, and Linux on ARM and Power are built for every release but not run by the project. If you use shint on one of them, you are its testing: [open an issue](https://github.com/dmartsapp/shint/issues/new) with what you ran and what it printed. Testers for Windows, the BSDs, Solaris and AIX are especially welcome.
 - **It never needs root**, so nothing that needs raw packets: no SYN scans, no packet capture, no traceroute.
 
