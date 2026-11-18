@@ -1,6 +1,6 @@
 # shint v4.4.0 - work in progress
 
-Summary: this machine's sockets, routes and neighbours (`ss`, `ip route`, `ip arp`), `nmap` port lists and subnet sweeps, `--interface` to check from a chosen interface, `web --headers-only`, and `web` and `listen` hardened after an outside security review
+Summary: this machine's sockets, routes and neighbours (`ss`, `ip route`, `ip arp`), `nmap` port lists and subnet sweeps, `--interface` to check from a chosen interface, `web --headers-only`, `tls` showing the TLS versions it offered, sweeps of public addresses that warn and are paced by `--delay`, and `web` and `listen` hardened after an outside security review
 Includes:
 
 > The working page for `release/v4.4.0`: what the release is meant to deliver, the bugs it fixes, what changed, and what is left to do - kept up to date as the branch moves. **`Summary:`** is the one plain-language line main's README roadmap will show for this release; **`Includes:`** names releases folded into this one (like `v4.4.0`), if any. `make release` reads both, refuses to publish while anything under **To do** is unchecked, and moves this file to `releases/v4.4.0.md` in the release commit, where it stays on `main` as the release's record. Main's roadmap row links here in the meantime.
@@ -18,7 +18,7 @@ Includes:
 - [ ] `ss`, `ip route` and `ip arp` have run on a real Windows machine (`shint.exe ss -l`, `shint.exe ip route`, `shint.exe ip arp`, each also with `--json`): their Windows code is unit-tested on recorded tables, but the system calls have only been compiled, never run
 - [x] `ping`'s targets ([#14](https://github.com/dmartsapp/shint/issues/14), [#25](https://github.com/dmartsapp/shint/issues/25)): moved to v4.6.0 - go-ping becomes go-net there ([#70](https://github.com/dmartsapp/shint/issues/70)), and fixing go-ping first would do the work twice
 - [x] the changelog has an entry for every change a user would notice (checked against every commit since v4.3.0; the docs entry added last)
-- [ ] `Summary:` above says what this release is, in plain language
+- [x] `Summary:` above says what this release is, in plain language
 - [ ] a clean rehearsal: `make release DRY_RUN=1`
 
 ## Targets
