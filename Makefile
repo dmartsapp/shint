@@ -13,8 +13,8 @@ MAKEFLAGS += --silent
 	solaris-amd64 android-arm64 aix-ppc64 illumos-amd64 no-dirty
 
 run:
-	CGO_ENABLED=0 go build -trimpath -ldflags "-X main.Version=$(VERSIONSTR)" -o $(BINARY) main.go
-	go run -ldflags "-X main.Version=$(VERSIONSTR)" main.go
+	CGO_ENABLED=0 go build -trimpath -ldflags "-X main.Version=$(VERSIONSTR)" -o $(BINARY) .
+	go run -ldflags "-X main.Version=$(VERSIONSTR)" .
 
 # Common desktop triad for quick local builds.
 all: linux darwin windows
@@ -53,58 +53,58 @@ aix: aix-ppc64
 illumos: illumos-amd64
 
 windows-arm64:
-	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o bin/$(BINARY).windows.arm64.exe $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -o bin/$(BINARY).windows.arm64.exe $(BUILDFLAGS) .
 
 windows-amd64:
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).windows.amd64.exe $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o bin/$(BINARY).windows.amd64.exe $(BUILDFLAGS) .
 
 linux-arm64:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/$(BINARY).linux-arm64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o bin/$(BINARY).linux-arm64 $(BUILDFLAGS) .
 
 linux-amd64:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(BINARY).linux-amd64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(BINARY).linux-amd64 $(BUILDFLAGS) .
 
 linux-arm:
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=6 go build -o bin/$(BINARY).linux-arm $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=6 go build -o bin/$(BINARY).linux-arm $(BUILDFLAGS) .
 
 linux-ppc64le:
-	CGO_ENABLED=0 GOOS=linux GOARCH=ppc64le go build -o bin/$(BINARY).linux-ppc64le $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=ppc64le go build -o bin/$(BINARY).linux-ppc64le $(BUILDFLAGS) .
 
 darwin-arm64:
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/$(BINARY).darwin-arm64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/$(BINARY).darwin-arm64 $(BUILDFLAGS) .
 
 darwin-amd64:
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o bin/$(BINARY).darwin-amd64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o bin/$(BINARY).darwin-amd64 $(BUILDFLAGS) .
 
 freebsd-amd64:
-	CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build -o bin/$(BINARY).freebsd-amd64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build -o bin/$(BINARY).freebsd-amd64 $(BUILDFLAGS) .
 
 freebsd-arm64:
-	CGO_ENABLED=0 GOOS=freebsd GOARCH=arm64 go build -o bin/$(BINARY).freebsd-arm64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=freebsd GOARCH=arm64 go build -o bin/$(BINARY).freebsd-arm64 $(BUILDFLAGS) .
 
 openbsd-amd64:
-	CGO_ENABLED=0 GOOS=openbsd GOARCH=amd64 go build -o bin/$(BINARY).openbsd-amd64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=openbsd GOARCH=amd64 go build -o bin/$(BINARY).openbsd-amd64 $(BUILDFLAGS) .
 
 openbsd-arm64:
-	CGO_ENABLED=0 GOOS=openbsd GOARCH=arm64 go build -o bin/$(BINARY).openbsd-arm64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=openbsd GOARCH=arm64 go build -o bin/$(BINARY).openbsd-arm64 $(BUILDFLAGS) .
 
 netbsd-amd64:
-	CGO_ENABLED=0 GOOS=netbsd GOARCH=amd64 go build -o bin/$(BINARY).netbsd-amd64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=netbsd GOARCH=amd64 go build -o bin/$(BINARY).netbsd-amd64 $(BUILDFLAGS) .
 
 netbsd-arm64:
-	CGO_ENABLED=0 GOOS=netbsd GOARCH=arm64 go build -o bin/$(BINARY).netbsd-arm64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=netbsd GOARCH=arm64 go build -o bin/$(BINARY).netbsd-arm64 $(BUILDFLAGS) .
 
 solaris-amd64:
-	CGO_ENABLED=0 GOOS=solaris GOARCH=amd64 go build -o bin/$(BINARY).solaris-amd64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=solaris GOARCH=amd64 go build -o bin/$(BINARY).solaris-amd64 $(BUILDFLAGS) .
 
 android-arm64:
-	CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -o bin/$(BINARY).android-arm64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -o bin/$(BINARY).android-arm64 $(BUILDFLAGS) .
 
 aix-ppc64:
-	CGO_ENABLED=0 GOOS=aix GOARCH=ppc64 go build -o bin/$(BINARY).aix-ppc64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=aix GOARCH=ppc64 go build -o bin/$(BINARY).aix-ppc64 $(BUILDFLAGS) .
 
 illumos-amd64:
-	CGO_ENABLED=0 GOOS=illumos GOARCH=amd64 go build -o bin/$(BINARY).illumos-amd64 $(BUILDFLAGS) main.go
+	CGO_ENABLED=0 GOOS=illumos GOARCH=amd64 go build -o bin/$(BINARY).illumos-amd64 $(BUILDFLAGS) .
 
 clean:
 	rm -f bin/*

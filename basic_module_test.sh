@@ -52,7 +52,7 @@ run_test() {
 
 # --- Build ---
 echo "Building the application..."
-go build -o $BINARY main.go
+go build -o $BINARY .
 echo "Build complete."
 echo ""
 
