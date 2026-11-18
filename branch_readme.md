@@ -17,7 +17,7 @@ Includes:
 - [x] the `ip route` target has an issue of its own ([#108](https://github.com/dmartsapp/shint/issues/108))
 - [ ] `ss`, `ip route` and `ip arp` have run on a real Windows machine (`shint.exe ss -l`, `shint.exe ip route`, `shint.exe ip arp`, each also with `--json`): their Windows code is unit-tested on recorded tables, but the system calls have only been compiled, never run
 - [x] `ping`'s targets ([#14](https://github.com/dmartsapp/shint/issues/14), [#25](https://github.com/dmartsapp/shint/issues/25)): moved to v4.6.0 - go-ping becomes go-net there ([#70](https://github.com/dmartsapp/shint/issues/70)), and fixing go-ping first would do the work twice
-- [ ] the changelog has an entry for every change a user would notice
+- [x] the changelog has an entry for every change a user would notice (checked against every commit since v4.3.0; the docs entry added last)
 - [ ] `Summary:` above says what this release is, in plain language
 - [ ] a clean rehearsal: `make release DRY_RUN=1`
 
