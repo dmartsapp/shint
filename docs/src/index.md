@@ -128,4 +128,5 @@ shint covers the everyday checks; it does not replace the full feature sets of `
 
 - **New here?** [Install shint](install.md) takes a minute, then [Using shint](usage.md) explains the flags every command shares.
 - **Have a specific job?** The [cookbook](cookbook.md) has ready-made recipes, and [troubleshooting](troubleshooting.md) covers the common surprises.
+- **Before you depend on it:** [Limitations](limitations.md) says where shint is not tested, what differs by platform and what it deliberately does not do.
 - **Curious how it works?** The [Technical](tech-architecture.md) section documents the architecture, every source file, the CI/CD pipeline and how releases are cut.

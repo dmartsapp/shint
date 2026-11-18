@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Limitations · shint</title>
+<meta name="description" content="shint&#x27;s limitations - the platforms it is built for but not tested on, the commands that differ by platform, what it deliberately does not do, and the bugs still open - and how you can help test it.">
+<meta name="google-site-verification" content="f8HZndbzPlmiY4bsjViQCpBxHRTPAp1wtew-RUsIJws" />
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem("shint-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+</head>
+<body>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">
+<header class="topbar">
+  <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
+  <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
+  <span class="version">v4.3.0</span>
+  <nav class="toplinks" aria-label="Site">
+    <a href="install.html">Install</a>
+    <a href="usage.html">Docs</a>
+    <a href="tech-architecture.html">Technical</a>
+    <a href="https://github.com/dmartsapp/shint/releases/latest">Releases</a>
+    <a href="https://github.com/dmartsapp/shint">GitHub</a>
+    <button type="button" class="themebtn" id="themebtn" aria-label="Toggle color theme" title="Toggle color theme">&#9680;</button>
+  </nav>
+</header>
+<div class="layout">
+<nav class="sidebar" aria-label="Documentation"><div class="navgroup"><p class="navtitle">Get started</p><ul><li><a href="index.html">Overview</a></li><li><a href="install.html">Install</a></li><li><a href="usage.html">Using shint</a></li></ul></div><div class="navgroup"><p class="navtitle">Commands</p><ul><li><a href="telnet.html">telnet</a></li><li><a href="ping.html">ping</a></li><li><a href="web.html">web</a></li><li><a href="tls.html">tls</a></li><li><a href="nmap.html">nmap</a></li><li><a href="udp.html">udp</a></li><li><a href="ntp.html">ntp</a></li><li><a href="wol.html">wol</a></li><li><a href="rdns.html">rdns</a></li><li><a href="dns.html">dns</a></li><li><a href="cidr.html">cidr</a></li><li><a href="ip.html">ip</a></li><li><a href="ss.html">ss</a></li><li><a href="listen.html">listen</a></li></ul></div><div class="navgroup"><p class="navtitle">Guides</p><ul><li><a href="cookbook.html">Cookbook</a></li><li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li></ul></div><div class="navgroup"><p class="navtitle">Reference</p><ul><li><a href="output.html">Output formats</a></li><li><a href="limitations.html" class="active" aria-current="page">Limitations</a></li><li><a href="changelog.html">Changelog</a></li><li><a href="security.html">Security</a></li></ul></div><div class="navgroup"><p class="navtitle">Technical</p><ul><li><a href="tech-architecture.html">Architecture</a></li><li><a href="tech-source.html">Source reference</a></li><li><a href="tech-cli.html">Command-line design</a></li><li><a href="tech-design.html">Design notes</a></li><li><a href="tech-ci.html">CI/CD workflows</a></li><li><a href="tech-release.html">Releases and tagging</a></li><li><a href="tech-testing.html">Testing</a></li><li><a href="tech-performance.html">Performance</a></li><li><a href="tech-docs.html">This documentation</a></li></ul></div></nav>
+<main class="content" id="content">
+<article>
+<p class="eyebrow">Reference</p>
+<h1>Limitations</h1>
+<p class="lead">What shint cannot do, where it has not been tested, and what is still broken. Said plainly, so nothing surprises you on a machine that matters.</p>
+<h2 id="where-shint-is-tested-and-where-it-is-not">Where shint is tested, and where it is not<a class="anchor" href="#where-shint-is-tested-and-where-it-is-not" aria-label="Link to this section">#</a></h2>
+<p>shint is built for 18 platforms. Every release ships all of them. But only two are tested regularly, and that is the biggest limitation there is.</p>
+<div class="tablewrap"><table><thead><tr><th>Platform</th><th>Binaries</th><th>How it is tested</th></tr></thead><tbody><tr><td>macOS on Apple silicon</td><td><code>shint.darwin.arm64</code></td><td><strong>Every change.</strong> The whole test suite runs on the maintainer's Mac: the unit and command-line tests, a battery of more than 500 black-box cases, lint and the vulnerability check. A live smoke test against real hosts runs before each release.</td></tr><tr><td>Linux on amd64</td><td><code>shint.linux.amd64</code></td><td><strong>Every merge.</strong> The same test suite runs on GitHub's Ubuntu runners after each merge to <code>main</code>. <code>ss</code> was also checked against a real Linux host when it was written.</td></tr><tr><td>Linux on arm64, 32-bit arm and ppc64le; macOS on Intel</td><td><code>shint.linux.arm64</code>, <code>shint.linux.arm</code>, <code>shint.linux.ppc64le</code>, <code>shint.darwin.amd64</code></td><td><strong>Built, never run by the project.</strong> The code is the same as on their tested siblings, so problems are unlikely, but nobody checks.</td></tr><tr><td>Windows</td><td><code>shint.windows.amd64.exe</code>, <code>shint.windows.arm64.exe</code></td><td><strong>Built, never run by the project.</strong> The code written for Windows (<code>ss</code>'s socket tables, where <code>dns</code> finds the hosts file) is compiled, and unit-tested on recorded data where it can be, but it has never run on Windows. Neither has stopping a run with <code>Ctrl+C</code>.</td></tr><tr><td>FreeBSD, OpenBSD, NetBSD, Solaris, illumos, Android, AIX</td><td>the rest</td><td><strong>Built, never run by the project.</strong></td></tr></tbody></table></div>
+<p>So on everything below the first two rows, <strong>you are the testing</strong>. If shint misbehaves there, an issue with what you ran and what it printed is the only way anyone finds out.</p>
+<h3 id="testers-wanted">Testers wanted<a class="anchor" href="#testers-wanted" aria-label="Link to this section">#</a></h3>
+<p>Windows, the BSDs, Solaris, illumos and AIX need people who use them. You do not need to know Go. Download the binary for your platform from the <a href="https://github.com/dmartsapp/shint/releases/latest">latest release</a> and run:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> <span class="tok-flag">--version</span>
+<span class="tok-cmd">shint</span> ip
+<span class="tok-cmd">shint</span> ping 127.0.0.1 <span class="tok-flag">--count</span> 3
+<span class="tok-cmd">shint</span> telnet example.com 443
+<span class="tok-cmd">shint</span> web https://example.com
+<span class="tok-cmd">shint</span> tls example.com
+<span class="tok-cmd">shint</span> dns example.com MX
+<span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">-p</span> 22,80,443
+<span class="tok-cmd">shint</span> ntp pool.ntp.org
+<span class="tok-cmd">shint</span> ss <span class="tok-flag">-l</span>
+<span class="tok-cmd">shint</span> ping example.com <span class="tok-flag">--count</span> 20    <span class="tok-com"># press Ctrl+C partway through</span></code></pre></div>
+<p>Then <a href="https://github.com/dmartsapp/shint/issues/new">open an issue</a> with your platform and its version (<code>uname -a</code>, or <code>winver</code> on Windows) and the output: everything, or just the commands that surprised you. <code>shint ss</code> says it is not supported on most of these systems; that is expected (see below). If you have Go and Python, <code>make check</code> runs the whole test suite, which tells us far more.</p>
+<h2 id="commands-that-differ-by-platform">Commands that differ by platform<a class="anchor" href="#commands-that-differ-by-platform" aria-label="Link to this section">#</a></h2>
+<ul><li><strong><code>ss</code> works on Linux and Windows only.</strong> On macOS, the BSDs, Solaris and illumos it says it is not supported yet and exits <code>1</code>; the BSDs are planned (<a href="https://github.com/dmartsapp/shint/issues/105">#105</a>). <strong>The AIX binary has no <code>ss</code> at all.</strong> AIX has no way to list its sockets, with the process holding each, without root. Its own tools read kernel memory as root, and shint never asks for root. So the command is left out of that binary rather than shipped as one that can never work. See <a href="ss.html#platforms">ss</a>.</li><li><strong><code>ping</code> on Linux may need a setting.</strong> It uses unprivileged ICMP, which Linux allows only to the groups in <code>net.ipv4.ping_group_range</code>. Most desktop distributions allow everyone; a hardened server may not. See <a href="troubleshooting.html">troubleshooting</a>. macOS, the BSDs and Windows need nothing.</li><li><strong><code>listen --bind ::</code> accepting IPv4 too</strong> has been verified on macOS and Linux only.</li><li><strong>Some systems get no binary at all</strong>, because Go, which shint is written in, does not build for them: HP-UX, Solaris on SPARC, and AIX on anything but IBM POWER.</li></ul>
+<h2 id="what-shint-does-not-do">What shint does not do<a class="anchor" href="#what-shint-does-not-do" aria-label="Link to this section">#</a></h2>
+<p>These are choices, not gaps waiting to be filled. Each one keeps shint simple, safe to run anywhere, and free of root.</p>
+<ul><li><strong>It never needs root.</strong> So there is nothing that needs raw packets: no SYN or UDP port scans, no OS or version detection, no packet capture, and no traceroute (<a href="https://github.com/dmartsapp/shint/issues/67">#67</a> explores whether one can be done without privileges).</li><li><strong><code>nmap</code> is a TCP connect scan.</strong> Each open port's <code>service=</code> is the service usually found on that port number. It is a guess: nothing is read from the port.</li><li><strong>TCP and UDP cannot tell "nothing there" from "a firewall dropped it".</strong> A port that does not answer, and a UDP probe with no reply (<code>open|filtered</code>), mean exactly that and no more.</li><li><strong><code>web</code> never uses a proxy.</strong> <code>HTTP_PROXY</code> and friends are ignored, on purpose: it measures the path from this machine to the server, not to a proxy.</li><li><strong>It changes nothing.</strong> No command adds an address, closes a socket, stops a process or alters a setting.</li><li><strong>No banner grabbing, no iSCSI checks.</strong> Both were planned and dropped; the reasons are on the <a href="tech-design.html#what-shint-does-not-do-and-why">design page</a>.</li></ul>
+<h2 id="bugs-still-open">Bugs still open<a class="anchor" href="#bugs-still-open" aria-label="Link to this section">#</a></h2>
+<p>At the time of writing. The <a href="https://github.com/dmartsapp/shint/issues?q=is%3Aissue+is%3Aopen+label%3Abug">issue tracker</a> always has the current list.</p>
+<ul><li><strong>A name on several <code>/etc/hosts</code> lines may resolve to its first address only</strong> (<a href="https://github.com/dmartsapp/shint/issues/65">#65</a>). This affects every command that looks up a name.</li><li><strong><code>ping --timeout</code> does not limit the name lookup</strong> (<a href="https://github.com/dmartsapp/shint/issues/14">#14</a>). The ping library resolves with its own fixed 5-second limit.</li><li><strong><code>ping</code> stopped with <code>Ctrl+C</code> ends without its statistics</strong> (<a href="https://github.com/dmartsapp/shint/issues/25">#25</a>).</li></ul>
+<h2 id="quirks-kept-on-purpose">Quirks kept on purpose<a class="anchor" href="#quirks-kept-on-purpose" aria-label="Link to this section">#</a></h2>
+<p>A few things in the JSON output are odd, and stay that way so that scripts written against them keep working: <code>timeout_ms</code> holds seconds, and <code>ping</code>'s <code>from_port</code>/<code>to_port</code> hold <code>7</code> and mean nothing. They are listed in <a href="output.html#inputparams">Output</a>.</p>
+</article>
+<nav class="pager" aria-label="Pagination"><a class="prev" href="output.html"><span>Previous</span>Output formats</a><a class="next" href="changelog.html"><span>Next</span>Changelog</a></nav>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/limitations.md">Edit this page on GitHub</a><span>shint v4.3.0 &middot; MIT License</span></footer>
+</main>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#where-shint-is-tested-and-where-it-is-not">Where shint is tested, and where it is not</a></li><li class="toc3"><a href="#testers-wanted">Testers wanted</a></li><li class="toc2"><a href="#commands-that-differ-by-platform">Commands that differ by platform</a></li><li class="toc2"><a href="#what-shint-does-not-do">What shint does not do</a></li><li class="toc2"><a href="#bugs-still-open">Bugs still open</a></li><li class="toc2"><a href="#quirks-kept-on-purpose">Quirks kept on purpose</a></li></ul></aside>
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>
