@@ -46,4 +46,4 @@ Includes:
 
 | Change | Where | State |
 |---|---|---|
-| CI: actions pinned to commits, base images to digests, and a check that refuses unpinned ones (security review) - [#103](https://github.com/dmartsapp/shint/issues/103) | `main` (CI only, no release needed) | Not started |
+| CI: actions pinned to commits, base images to digests, and a check that refuses unpinned ones (security review) - [#103](https://github.com/dmartsapp/shint/issues/103) | `main` (CI only, no release needed) | Done on `main` - [`db0fe0b`](https://github.com/dmartsapp/shint/commit/db0fe0b): 56 `uses:` pinned to commits, both base images to digests, and `check-pins.py` in `make workflows`; merged in by `make release` |
