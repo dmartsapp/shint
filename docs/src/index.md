@@ -1,7 +1,7 @@
 ---
 title: shint
-lead: One small tool for the network checks you run every day - connect, ping, request, scan, probe, look up, check a clock and listen - with the same clear output on every platform.
-description: shint is a single-binary network diagnostics tool - telnet-style port checks, ping, HTTP requests with timing, port scans, UDP probes, reverse DNS, NTP clock checks, Wake-on-LAN, a subnet calculator and local test listeners - with readable output, JSON, and proper exit codes.
+lead: Respect the classics. Rethink the experience. One small tool for the network checks you run every day, with the same clear output on every platform.
+description: shint is a single-binary network diagnostics tool - telnet-style port checks, ping, HTTP requests with timing, TLS certificate checks, port scans, UDP probes, DNS and reverse DNS lookups, NTP clock checks, Wake-on-LAN, a subnet calculator, this machine's interfaces and sockets, and local test listeners - with readable output, JSON, and proper exit codes.
 section: Get started
 order: 1
 nav: Overview
@@ -17,12 +17,12 @@ nav: Overview
 
 ## What is shint?
 
-shint - *Simple Host INspection Toolkit* - puts the small utilities you keep reaching for into **one program**: a `telnet`-style port check, `ping`, an HTTP client, a port scanner, a UDP probe, a reverse DNS lookup, a clock check against a time server, Wake-on-LAN, a subnet calculator, and local test servers to try them against. Nothing to install alongside it, nothing to configure, and every command reports what it found in the same readable format.
+shint - *Simple Host INspection Toolkit* - puts the small utilities you keep reaching for into **one program**: a `telnet`-style port check, `ping`, an HTTP client, a TLS certificate check, a port scanner, a UDP probe, DNS and reverse DNS lookups, a clock check against a time server, Wake-on-LAN, a subnet calculator, this machine's interfaces and sockets, and local test servers to try them against. Nothing to install alongside it, nothing to configure, and every command reports what it found in the same readable format.
 
 :::html
 <div class="facts">
-  <div class="fact"><b>10</b><span>commands in one tool</span></div>
-  <div class="fact"><b>14</b><span>OS / CPU combinations</span></div>
+  <div class="fact"><b>14</b><span>commands in one tool</span></div>
+  <div class="fact"><b>18</b><span>OS / CPU combinations</span></div>
   <div class="fact"><b>1 file</b><span>static binary, ~10 MB</span></div>
   <div class="fact"><b>IPv4 + IPv6</b><span>checked in one run</span></div>
 </div>
@@ -31,7 +31,7 @@ shint - *Simple Host INspection Toolkit* - puts the small utilities you keep rea
 ## Why people use it
 
 - **Answers, not noise.** Every line says what was checked, whether it worked, and how long it took: `[telnet] OK connect ok host=142.251.46.78 port=443 attempt=1/1 time=30.89725ms`.
-- **The same everywhere.** One download per platform (Linux, macOS, Windows, the BSDs, Solaris, Android) or one Docker image. The commands, flags and output are identical on all of them.
+- **The same everywhere.** One download per platform (Linux, macOS, Windows, the BSDs, Solaris, illumos, AIX, Android) or one Docker image. The commands, flags and output are identical on all of them, apart from the few differences listed under [Limitations](limitations.md).
 - **Made for scripts.** Add `--json` for machine-readable output, and rely on standard exit codes: `0` everything passed, `1` something failed, `2` you used it wrongly.
 - **Practise safely.** `shint listen` starts a TCP, UDP or HTTP server on your own machine, so you can test firewalls, load balancers and other tools without touching anything real.
 - **Honest numbers.** Timeouts apply to the thing they are named for, and byte counts are measured on the wire - headers included - so the client's and the server's figures match.
