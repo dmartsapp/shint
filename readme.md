@@ -64,6 +64,11 @@ shint telnet db.internal 5432 > /dev/null && echo "database reachable"
 shint tls example.com --json | jq '.stats[0].expires_in_days'
 ```
 
+## Limitations
+
+- **Only two of the 18 builds are tested regularly:** macOS on Apple silicon and Linux on amd64. Windows, the BSDs, Solaris, illumos, AIX, Android, and Linux on ARM and Power are built for every release but not run by the project. If you use shint on one of them, you are its testing: [open an issue](https://github.com/dmartsapp/shint/issues/new) with what you ran and what it printed. Testers for Windows, the BSDs, Solaris and AIX are especially welcome.
+- **It never needs root**, so nothing that needs raw packets: no SYN scans, no packet capture, no traceroute.
+
 ## Documentation
 
 **[dmartsapp.github.io/shint](https://dmartsapp.github.io/shint/)**: [using shint](https://dmartsapp.github.io/shint/docs/usage.html), [cookbook](https://dmartsapp.github.io/shint/docs/cookbook.html), [troubleshooting](https://dmartsapp.github.io/shint/docs/troubleshooting.html), [output and JSON](https://dmartsapp.github.io/shint/docs/output.html), and [how it is built and tested](https://dmartsapp.github.io/shint/docs/tech-architecture.html). What changed in each release is in the [changelog](CHANGELOG.md). Questions and ideas go to [Discussions](https://github.com/dmartsapp/shint/discussions).
