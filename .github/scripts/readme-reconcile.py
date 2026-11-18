@@ -61,17 +61,14 @@ OLD_EXPANSIONS = ["that SHIt Network Tool"]
 SUPPORT_URL = "https://www.paypal.com/paypalme/farhanssiddique"
 SUPPORT_LINE = "If shint saves you time, you can [support its development](%s)." % SUPPORT_URL
 
-# (key that identifies the badge in the file, the badge's Markdown), in the order they appear
+# (key that identifies the badge in the file, the badge's Markdown), in the order they appear.
+# Kept to what a reader of the README cares about: the release, the licence, whether
+# the tests and the vulnerability check pass, and the donate button.
 BADGES = [
     ("img.shields.io/github/v/release", "[![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest)"),
     ("img.shields.io/badge/license-MIT", "[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)"),
-    ("workflows/lint.yaml/badge.svg", "[![Lint](https://github.com/dmartsapp/shint/actions/workflows/lint.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/lint.yaml)"),
     ("workflows/vulncheck.yaml/badge.svg", "[![Vulnerability check](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml)"),
-    ("workflows/build.yaml/badge.svg", "[![Build](https://github.com/dmartsapp/shint/actions/workflows/build.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/build.yaml)"),
-    ("workflows/docker-hub.yaml/badge.svg", "[![Docker Hub](https://github.com/dmartsapp/shint/actions/workflows/docker-hub.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/docker-hub.yaml)"),
-    ("workflows/ghcr.yaml/badge.svg", "[![GHCR](https://github.com/dmartsapp/shint/actions/workflows/ghcr.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/ghcr.yaml)"),
     ("workflows/check.yaml/badge.svg", "[![Check](https://github.com/dmartsapp/shint/actions/workflows/check.yaml/badge.svg?branch=main)](https://github.com/dmartsapp/shint/actions/workflows/check.yaml)"),
-    ("img.shields.io/github/discussions", "[![Discussions](https://img.shields.io/github/discussions/dmartsapp/shint)](https://github.com/dmartsapp/shint/discussions)"),
     ("img.shields.io/badge/Donate", "[![Donate](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](%s)" % SUPPORT_URL),
 ]
 
