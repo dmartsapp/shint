@@ -81,9 +81,9 @@ A release every two weeks. Earlier releases are in the [changelog](CHANGELOG.md)
 | Release | Sprint | What it brings |
 |---|---|---|
 | [**v4.3.0**](releases/v4.3.0.md) | Released Nov 17 | `tls`: a server's certificate - chain, trust, names, expiry, protocol and cipher; SBOMs and security reports with every release |
-| [**v4.4.0**](https://github.com/dmartsapp/shint/blob/release/v4.4.0/branch_readme.md) | Nov 16 - Nov 29 | `ss` (this machine's sockets and the process holding each), `ip route`, richer `ping`, and `nmap` port lists, subnet sweeps and service names |
+| [**v4.4.0**](https://github.com/dmartsapp/shint/blob/release/v4.4.0/branch_readme.md) | Nov 16 - Nov 29 | `ss` (this machine's sockets and the process holding each), `ip route` and `ip arp` (routes and neighbours), `--interface`, `web --headers-only`, and `nmap` port lists, subnet sweeps and service names |
 | **v4.5.0** | Nov 30 - Dec 13 | Performance and storage: `speed` (throughput between two of your machines), `disk` (I/O on a folder or a disk), Fibre Channel path state |
-| **v4.6.0** | Dec 14 - Dec 27 | No new commands: shint measured, then made leaner inside |
+| **v4.6.0** | Dec 14 - Dec 27 | `inspect` (one command that checks a URL or host layer by layer and says where it breaks), path diagnostics and DNS propagation, `ping` fixes, and go-net - the networking library under shint |
 | **v5.0.0** | Not scheduled | Only changes that break scripts: `--timeout` and `--delay` in seconds, `listen tcp` removed (use `listen http`) |
 | **Later** | | Homebrew and Scoop packages |
 
