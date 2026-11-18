@@ -1,5 +1,7 @@
 # shint
 
+### Respect the classics. Rethink the experience.
+
 **Simple Host INspection Toolkit** - the network checks you run every day, in one small program.
 
 [![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest)
@@ -15,7 +17,7 @@
 - **the same exit codes everywhere**: `0` passed, `1` failed, `2` used wrongly;
 - **no root, no config file, no telemetry**: one file, built for Linux, macOS, Windows, the BSDs, Solaris, illumos, AIX and Android.
 
-It doesn't replace the classics. It's the one command you already know, for the checks you run most.
+The classics stay where they are, doing what they do best. shint is the one command you already know, for the checks you run most.
 
 ## Install
 
