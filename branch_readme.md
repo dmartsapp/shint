@@ -1,6 +1,6 @@
 # shint v4.4.0 - work in progress
 
-Summary: this machine's tables (`ip route`, `ss`), a richer `ping`, `nmap` port lists and sweeps, and `web` and `listen` hardened after an outside security review
+Summary: this machine's sockets, routes and neighbours (`ss`, `ip route`, `ip arp`), `nmap` port lists and subnet sweeps, `--interface` to check from a chosen interface, `web --headers-only`, and `web` and `listen` hardened after an outside security review
 Includes:
 
 > The working page for `release/v4.4.0`: what the release is meant to deliver, the bugs it fixes, what changed, and what is left to do - kept up to date as the branch moves. **`Summary:`** is the one plain-language line main's README roadmap will show for this release; **`Includes:`** names releases folded into this one (like `v4.4.0`), if any. `make release` reads both, refuses to publish while anything under **To do** is unchecked, and moves this file to `releases/v4.4.0.md` in the release commit, where it stays on `main` as the release's record. Main's roadmap row links here in the meantime.
