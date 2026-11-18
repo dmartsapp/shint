@@ -121,7 +121,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `end_time_unixtime_µs` | integer | When it ended. |
 | `total_time_taken_µs` | integer | Duration of the whole run. |
 | `error` | string | A run-level error (for example a failed lookup); empty on success. |
-| `warnings` | array | The run's `WARN` lines, when it has any - `web -k`'s *tls verification disabled*, for one. Advisory: the run can pass. Absent when there are none. |
+| `warnings` | array | The run's `WARN` lines, when it has any - `web -k`'s *tls verification disabled*, or `nmap`'s note that a sweep covers public addresses. Advisory: the run can pass. Absent when there are none. |
 | `dns_lookups` | array | `nmap` given more than one target: one [`dns_lookup`](#dnslookup) per host name or address, in the order given (a prefix has none), in place of `dns_lookup`. Absent otherwise. |
 
 ### input_params
@@ -136,7 +136,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `protocol` | `tcp`, `udp`, `icmp` or `dns` (`rdns`); for `ss`, the protocols listed: `tcp`, `udp` or `tcp,udp`. |
 | `listening`, `pid` | `ss` only: `true` with `-l`, and the `--pid` asked for. Absent otherwise. |
 | `timeout_ms` | The `--timeout` value. **Despite the name, it is in seconds.** |
-| `count`, `delay_ms`, `throttle` | `--count`, `--delay` (milliseconds) and `--throttle`. |
+| `count`, `delay_ms`, `throttle` | `--count`, `--delay` (milliseconds) and `--throttle`. For `nmap`, `delay_ms` is the pace of a sweep of public addresses, and `0` when there is none. |
 | `payload_bytes` | Payload size: filler size for `ping`/`udp`, request body size for `web`. |
 | `method`, `data`, `headers` | HTTP method, body and headers (`web` only; a credential header's value is `[redacted]` - see [Credentials in the output](web.md#credentials-in-the-output)). `data` is also where `wol` puts the MAC address, `cidr` its comma-separated prefixes and `ip` the interface name asked for. |
 | `tls` | `web` only: how certificates are treated - `verify_certificates` (`false` with `-k`), `client_certificate` (`--cert`) and `custom_ca` (`--cacert`). |

@@ -146,7 +146,7 @@ shint web --json -W http://127.0.0.1:8080/
         "body": "",
         "headers": {
           "User-Agent": [
-            "dmarts.app-http-v0.1"
+            "shint/4.4.0 (+https://github.com/dmartsapp/shint)"
           ]
         },
         "method": "GET"
@@ -310,7 +310,7 @@ shint web 'http://alice:hunter2@127.0.0.1:18080/status' \
         "headers": {
           "Accept": ["application/json"],
           "Authorization": ["Bearer [redacted]"],
-          "User-Agent": ["dmarts.app-http-v0.1"],
+          "User-Agent": ["shint/4.4.0 (+https://github.com/dmartsapp/shint)"],
           "X-Api-Key": ["[redacted]"]
         },
         "method": "GET"
@@ -484,4 +484,4 @@ With `--json`, each stat gains a `timing` object (and only with `--timing`: with
 - **No proxy is ever used.** `web` connects directly to the address the host name resolves to; `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY` are ignored. That is deliberate - it measures the path from *this* machine, and the byte counts and [timing](#timing-where-the-time-went) describe the connection to the server, not to a proxy - but it means that on a network where the internet is reachable only through a proxy, a request that works in your browser or with `curl` can time out here (see [Troubleshooting](troubleshooting.md#it-works-with-curl-or-my-browser-but-not-with-shint-behind-a-proxy)).
 - **Memory does not grow with the response.** The body is read to its end - the byte counts, the timing and the check that it arrived whole need that - and thrown away as it goes; only `--json -W` keeps it, because it is what the document shows, so use `-W` on bodies that fit in memory. (A 300 MB download used to cost 660 MB of memory whether or not anything was shown.)
 - **HTTP/1.1** is used for all requests; the byte counts describe that plain byte stream.
-- The default `User-Agent` is `dmarts.app-http-v0.1`; override it with `-H "User-Agent: ..."`.
+- The default `User-Agent` names shint and its release, with a link to read about it: `shint/4.4.0 (+https://github.com/dmartsapp/shint)`. Whoever runs the server can then tell what made the request. Override it with `-H "User-Agent: ..."`. (Before v4.4.0 it was `dmarts.app-http-v0.1`.)

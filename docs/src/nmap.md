@@ -15,6 +15,8 @@ It makes plain TCP connections, the way any program does: no raw packets, so it 
 
 Give it one target or several: host names, addresses and prefixes (`192.168.1.0/24`), in any mix. A host name that resolves to several addresses has every address scanned; a prefix has each of its addresses scanned. An address that more than one target leads to is scanned once.
 
+**Scan only networks you run, or have permission to test.** A sweep of public addresses says so before it starts, and goes slower: see [Public addresses](#public-addresses).
+
 ## Syntax
 
 ```bash
@@ -31,6 +33,7 @@ A target is a host name, an IPv4 or IPv6 address, or a prefix to sweep.
 | `--timeout` | `5` | Seconds **each port** is given to answer. It is not a limit on the whole scan. |
 | `--count` | `1` | Scan the whole range this many times. |
 | `--throttle` | off | Wait a random 0-10 seconds before each port (slow and quiet). |
+| `--delay` | `1000` | Milliseconds between probes to the addresses of a **public** sweep; `0` for none. Hosts and local ranges are not paced. See [Public addresses](#public-addresses). |
 | `--json` | off | One JSON document with every port's result. |
 
 `--from` and `--to` must be between 1 and 65535, with `--from` not greater than `--to`. `--ports` takes the same ports, as decimal numbers only; it cannot be combined with `--from` or `--to`.
@@ -44,6 +47,21 @@ A prefix with host bits set is read as its network: `192.168.1.77/24` sweeps `19
 One run sweeps at most **65,536 addresses** - an IPv4 `/16`, or an IPv6 `/112` - across all its prefixes. A wider sweep is a usage error that says how many addresses it would have been; split it into smaller prefixes, or narrow it to the hosts you mean. An IPv6 `/64` holds 2^64 addresses, which no scanner can sweep by trying each one.
 
 `-4` and `-6` apply to prefixes as they do to addresses: an IPv6 prefix with `-4` is a usage error.
+
+### Public addresses
+
+A sweep runs at full speed when its prefix lies in a **local** range: private (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`), carrier-NAT (`100.64.0.0/10`), loopback or link-local. Any other prefix covers **public** addresses, which may well belong to someone else. Then two things change:
+
+- **A warning, before the scan starts.** It names the public prefixes, counts their probes, and says roughly how long they will take:
+
+  ```text
+  Wed Nov 18 02:30:11 CST 2026: [nmap] OK sweep target=203.0.113.0/28 addresses=14
+  Wed Nov 18 02:30:11 CST 2026: [nmap] WARN public addresses targets=[203.0.113.0/28] probes=14 delay=1s estimate=13s warning="this sweep covers public addresses: scan only networks you run or have permission to test; their probes are spaced by --delay (1s): set --delay to change the pace, --delay 0 to remove it"
+  ```
+
+- **A pace.** The probes to those addresses are spaced by `--delay`, 1000 ms by default, so a public `/24` on one port takes about four minutes instead of a few seconds. If the network is yours, set the pace you want: `--delay 50`, or `--delay 0` for full speed. The warning is printed either way.
+
+A host - a name, an address, or a prefix of one address (`/32`, `/128`) - is never paced: checking your own server's ports stays as quick as it was. Neither is a sweep of a local range. With `--json`, the warning is in the document's `warnings`, and `input_params.delay_ms` is the pace.
 
 ## Examples
 
@@ -225,7 +243,7 @@ shint nmap 127.0.0.1 -p 2222,8080 --json
   ...
 }
 ```
-With `--ports`, `input_params.ports` is the list, sorted and with runs written as ranges, and `from_port`/`to_port` are its lowest and highest port. A run given more than one target lists them in `input_params.targets` (and `host` is empty) and has `dns_lookups`, one lookup per host name or address, in place of `dns_lookup`; a prefix is swept without a lookup. See [Output formats](output.md#inputparams).
+With `--ports`, `input_params.ports` is the list, sorted and with runs written as ranges, and `from_port`/`to_port` are its lowest and highest port. A run given more than one target lists them in `input_params.targets` (and `host` is empty) and has `dns_lookups`, one lookup per host name or address, in place of `dns_lookup`; a prefix is swept without a lookup. A sweep of public addresses adds its warning to a top-level `warnings` list, and puts its pace in `input_params.delay_ms`. See [Output formats](output.md#inputparams).
 
 ## Service names
 
@@ -254,6 +272,8 @@ With up to 500 ports in flight (`max_in_flight` on the `scan started` line says 
 
 On a fast, reliable network, `--timeout 1` is usually plenty and makes silent hosts much quicker to scan. Addresses with nothing on them are the silent ones in a sweep, so sweep for a few ports (`-p 22,80,443`) rather than a wide range.
 
+The `/24` rows are for a local range. A sweep of **public** addresses is also paced by `--delay` (1 s per probe by default), so it takes at least probes × delay: about 4 minutes for a public `/24` on one port. The warning before it starts gives the estimate.
+
 ## Reading the results
 
 - **A port listed as open** accepted the connection.
@@ -264,4 +284,4 @@ On a fast, reliable network, `--timeout 1` is usually plenty and makes silent ho
 
 - Only TCP is scanned. For UDP, use [`udp`](udp.md), one port at a time.
 - The service names are a guess from the port number; to check what a web or TLS port really serves, use [`web`](web.md) or [`tls`](tls.md).
-- Scanning hosts you do not own or manage may be against the rules of the network you are on. Scan your own systems, or ones you have permission to test.
+- Scanning hosts you do not own or manage may be against the rules of the network you are on, and against the law in some places. Scan your own systems, or ones you have permission to test. shint's scans are plain connections that the target's firewall and services log, and it deliberately has nothing for scanning unnoticed - see [Responsible use](security.md#responsible-use).

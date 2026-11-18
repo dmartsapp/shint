@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"net/netip"
 	"slices"
 	"strings"
 	"testing"
@@ -113,6 +114,24 @@ func TestServiceName(t *testing.T) {
 	for port, name := range tcpServices {
 		if port < 1 || port > 65535 || name == "" || strings.ToLower(name) != name || strings.ContainsAny(name, " _=\"") {
 			t.Errorf("tcpServices[%d] = %q: want a port 1-65535 and a lower-case name of letters, digits and hyphens", port, name)
+		}
+	}
+}
+
+func TestIsPublicSweep(t *testing.T) {
+	for prefix, want := range map[string]bool{
+		"10.1.2.0/24": false, "172.16.0.0/16": false, "172.31.255.0/24": false, "192.168.1.0/24": false,
+		"100.64.0.0/16": false, "127.0.0.0/24": false, "169.254.1.0/24": false,
+		"fd00::/120": false, "fe80::/112": false,
+		"8.8.8.0/24": true, "203.0.113.0/24": true, "172.32.0.0/24": true, "100.128.0.0/24": true,
+		"192.0.2.0/30": true, "2001:db8::/120": true, "2600::/112": true,
+		"172.0.0.0/8": true,                            // wider than 172.16.0.0/12, so not inside it
+		"8.8.8.8/32":  false, "2001:db8::1/128": false, // a host, not a sweep
+		"8.8.8.8/31": true,
+	} {
+		p := netip.MustParsePrefix(prefix).Masked()
+		if got := isPublicSweep(p); got != want {
+			t.Errorf("isPublicSweep(%s) = %v, want %v", prefix, got, want)
 		}
 	}
 }

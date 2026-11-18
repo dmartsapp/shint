@@ -55,7 +55,7 @@ for cid, extra in [
 def sent(r):
     return r["out"]
 web("sem-echo-request", H + "/echo", "-X", "POST", "-P", "abc", "-H", "X-A: 1", "--json", "-W", rc=0,
-    check=lambda r: [m for m in ["POST /echo", "X-A: 1", "abc", "dmarts.app-http-v0.1", "Content-Length: 3"] if m not in r["out"]] and ["what was sent lacks: %s" % [m for m in ["POST /echo", "X-A: 1", "abc", "dmarts.app-http-v0.1", "Content-Length: 3"] if m not in r["out"]]] or None)
+    check=lambda r: [m for m in ["POST /echo", "X-A: 1", "abc", "User-Agent: shint/", "Content-Length: 3"] if m not in r["out"]] and ["what was sent lacks: %s" % [m for m in ["POST /echo", "X-A: 1", "abc", "dmarts.app-http-v0.1", "Content-Length: 3"] if m not in r["out"]]] or None)
 web("sem-host-header-is-honoured", H + "/host", "-H", "Host: virtual.example", "--json", "-W", rc=0,
     check=lambda r: None if "virtual.example" in r["out"] else "-H 'Host: virtual.example' was ignored: the server saw the URL's host instead")
 

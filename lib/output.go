@@ -494,6 +494,8 @@ type NmapJSONOutput struct {
 	StartTime      int64       `json:"start_time_unixtime_µs"`
 	TotalTimeTaken int64       `json:"total_time_taken_µs"`
 	Error          string      `json:"error"`
+	// Warnings are the run's WARN lines: a sweep of public addresses (#106).
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // LocalJSONOutput is the JSON document of a command that never looks up a

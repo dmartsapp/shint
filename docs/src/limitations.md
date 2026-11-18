@@ -52,6 +52,7 @@ Then [open an issue](https://github.com/dmartsapp/shint/issues/new) with your pl
 
 These are choices, not gaps waiting to be filled. Each one keeps shint simple, safe to run anywhere, and free of root.
 
+- **It is for networks you run.** A sweep of public addresses warns before it starts and is paced by `--delay` (1 s per probe by default), so a public `/24` takes minutes, not seconds. Set `--delay` for your own networks. See [Responsible use](security.md#responsible-use).
 - **It never needs root.** So there is nothing that needs raw packets: no SYN or UDP port scans, no OS or version detection, no packet capture, and no traceroute ([#67](https://github.com/dmartsapp/shint/issues/67) explores whether one can be done without privileges).
 - **`nmap` is a TCP connect scan.** Each open port's `service=` is the service usually found on that port number. It is a guess: nothing is read from the port.
 - **TCP and UDP cannot tell "nothing there" from "a firewall dropped it".** A port that does not answer, and a UDP probe with no reply (`open|filtered`), mean exactly that and no more.

@@ -85,6 +85,18 @@ add("G.sweep-host-bits", ["nmap", "127.0.0.1/31", "-p", "{tcp_echo}", "--timeout
 add("G.sweep-too-wide", ["nmap", "10.0.0.0/8"], group="G nmap", rc=2, contains=["16777214 addresses", "at most 65536"], absent=["scan started"])
 add("G.sweep-too-wide-together", ["nmap", "10.0.0.0/16", "10.1.0.0/16"], group="G nmap", rc=2, contains=["131068 addresses"])
 add("G.sweep-ipv6-too-wide", ["nmap", "fd00::/64"], group="G nmap", rc=2, contains=["18446744073709551616 addresses"])
+
+# A sweep of public addresses warns and is paced by --delay (#106). 203.0.113.0/30 is a
+# documentation range (no host answers), which counts as public: two addresses, one port.
+add("G.public-sweep-warns-and-paces", ["nmap", "203.0.113.0/30", "-p", "9", "--timeout", "1"], group="G nmap", rc=0, max=15,
+    contains=["WARN public addresses targets=[203.0.113.0/30] probes=2 delay=1s estimate=1s", "scan only networks you run or have permission to test"])
+add("G.public-sweep-delay-zero", ["nmap", "203.0.113.0/30", "-p", "9", "--timeout", "1", "--delay", "0"], group="G nmap", rc=0, max=10,
+    contains=["WARN public addresses", "with --delay 0 their probes are not paced"], absent=["estimate="])
+add("G.public-sweep-json-warning", ["nmap", "203.0.113.0/30", "-p", "9", "--timeout", "1", "--delay", "0", "--json"], group="G nmap", rc=0, max=10,
+    check=lambda r: None if json.loads(r["out"]).get("warnings", [""])[0].startswith("public addresses (203.0.113.0/30)") else "no public-address warning in the JSON")
+add("G.local-sweep-no-warning", ["nmap", "127.0.0.0/30", "-p", "{tcp_closed}", "--timeout", "1"], group="G nmap", rc=0, max=10, absent=["WARN", "public addresses"])
+add("G.public-host-no-warning", ["nmap", "203.0.113.7", "-p", "9", "--timeout", "1"], group="G nmap", rc=0, max=10, absent=["public addresses"])
+add("G.delay-negative", ["nmap", "127.0.0.1", "-p", "{tcp_echo}", "--delay", "-1"], group="G nmap", rc=2)
 add("G.prefix-invalid", ["nmap", "127.0.0.1/33"], group="G nmap", rc=2, contains=["invalid prefix"])
 add("G.prefix-of-a-name", ["nmap", "localhost/24"], group="G nmap", rc=2, contains=["invalid prefix"])
 add("G.prefix-wrong-family", ["nmap", "-4", "::1/128"], group="G nmap", rc=2, contains=["IPv6 prefix, but -4/--ipv4"])

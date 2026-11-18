@@ -39,11 +39,18 @@ type NmapScan struct {
 	// PortList is whether the ports were given as a list (--ports) rather than
 	// a --from/--to range; the JSON record of the run then has the list.
 	PortList bool
+	// Delay spaces the probes to the addresses of a public sweep (--delay,
+	// 1000 ms by default; 0 for none). Hosts and local ranges are scanned at
+	// full speed, as before (#106).
+	Delay time.Duration
 }
 
-// scanAddress is one address to scan and the target it came from.
+// scanAddress is one address to scan and the target it came from. paced is
+// whether it came from a sweep of public addresses, whose probes are spaced
+// by NmapScan.Delay.
 type scanAddress struct {
 	target, ip string
+	paced      bool
 }
 
 // NmapHandler reports true if every target was looked up and the scan ran to
@@ -87,11 +94,12 @@ func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, th
 	var problems []string // the JSON error: failed lookups, an interrupted scan
 	var addresses []scanAddress
 	seen := make(map[string]bool)
-	add := func(target string, ips []string) {
+	var publicTargets []string // prefixes that sweep public addresses (#106)
+	add := func(target string, ips []string, paced bool) {
 		for _, ip := range ips {
 			if !seen[ip] {
 				seen[ip] = true
-				addresses = append(addresses, scanAddress{target: target, ip: ip})
+				addresses = append(addresses, scanAddress{target: target, ip: ip, paced: paced})
 			}
 		}
 	}
@@ -105,7 +113,11 @@ func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, th
 				}
 				fmt.Println(lib.LogWithTimestamp(nmapModule, "sweep "+lib.Fields(append(fields, "addresses", len(ips))...), false))
 			}
-			add(t.Input, ips)
+			public := isPublicSweep(t.Prefix)
+			if public {
+				publicTargets = append(publicTargets, t.Input)
+			}
+			add(t.Input, ips, public)
 			continue
 		}
 		// Each lookup gets --timeout to itself; the scan that follows does
@@ -149,7 +161,7 @@ func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, th
 				output.DNSLookups = append(output.DNSLookups, lookup)
 			}
 		}
-		add(t.Input, ipaddresses)
+		add(t.Input, ipaddresses, false)
 	}
 
 	// Nothing to scan because every lookup failed: those failures are the
@@ -165,6 +177,7 @@ func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, th
 		var openCount, scanned int
 		openHosts := make(map[string]bool)
 		plannedScans := iterations * len(addresses) * len(ports)
+		publicWarning(scan, publicTargets, addresses, iterations, &output, *jsonoutput)
 
 		// Text mode only: --json output must stay one clean document.
 		stopProgress := func() {}
@@ -201,7 +214,8 @@ func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, th
 				})
 			}
 		}
-		defer stopProgress() // covers the early return inside the loop
+		defer stopProgress()  // covers the early return inside the loop
+		pacedStarted := false // no wait before the first paced probe
 	scanLoop:
 		for i := 0; i < iterations; i++ { // the whole scan, --count times
 			for _, addr := range addresses { // every address of every target
@@ -212,6 +226,16 @@ func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, th
 					// individual dial has its own separate timeout.
 					if ctx.Err() != nil {
 						break scanLoop
+					}
+					if addr.paced && scan.Delay > 0 {
+						if pacedStarted {
+							select {
+							case <-time.After(scan.Delay):
+							case <-ctx.Done():
+								break scanLoop
+							}
+						}
+						pacedStarted = true
 					}
 					if throttle { // check if throttle is enable, then slow things down a bit of random milisecond wait between 0 10000 ms
 						randDelay, err := rand.Int(rand.Reader, big.NewInt(10000))
@@ -297,4 +321,45 @@ func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, th
 		fmt.Println(lib.LogWithTimestamp(nmapModule, "done "+lib.Fields("total_time", time.Since(istart)), false))
 	}
 	return ok
+}
+
+// publicWarning says, before the scan starts, that a sweep covers public
+// addresses: in a WARN line (text) or in warnings (JSON), with how many
+// probes are paced, by how much, and about how long that takes (#106).
+func publicWarning(scan NmapScan, publicTargets []string, addresses []scanAddress, iterations int, output *lib.NmapJSONOutput, jsonoutput bool) {
+	paced := 0
+	for _, a := range addresses {
+		if a.paced {
+			paced++
+		}
+	}
+	if paced == 0 {
+		return
+	}
+	probes := iterations * paced * len(scan.Ports)
+	targets := strings.Join(publicTargets, ",")
+	text := "this sweep covers public addresses: scan only networks you run or have permission to test"
+	fields := []any{"targets", "[" + targets + "]", "probes", probes}
+	if scan.Delay > 0 {
+		estimate := time.Duration(probes-1) * scan.Delay
+		fields = append(fields, "delay", scan.Delay, "estimate", roundEstimate(estimate))
+		text += fmt.Sprintf("; their probes are spaced by --delay (%s): set --delay to change the pace, --delay 0 to remove it", scan.Delay)
+	} else {
+		text += "; with --delay 0 their probes are not paced"
+	}
+	if jsonoutput {
+		output.InputParams.Delay = int(scan.Delay / time.Millisecond)
+		output.Warnings = append(output.Warnings, "public addresses ("+targets+"): "+text)
+		return
+	}
+	fmt.Println(lib.LogWithLevel(nmapModule, lib.LevelWarn, "public addresses "+lib.Fields(append(fields, "warning", text)...)))
+}
+
+// roundEstimate writes a duration the way a person estimates one: to the
+// second from a second up, to the millisecond below.
+func roundEstimate(d time.Duration) time.Duration {
+	if d >= time.Second {
+		return d.Round(time.Second)
+	}
+	return d.Round(time.Millisecond)
 }

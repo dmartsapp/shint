@@ -21,12 +21,13 @@ import (
 	"github.com/dmartsapp/shint/v4/lib"
 )
 
-const (
-	// HTTP_CLIENT_USER_AGENT is the default User-Agent; -H "User-Agent: ..."
-	// overrides it.
-	HTTP_CLIENT_USER_AGENT string = "dmarts.app-http-v0.1"
-	webModule              string = "web"
-)
+const webModule string = "web"
+
+// UserAgent is the User-Agent web sends unless -H "User-Agent: ..." gives
+// one: shint's name, its release version and where to read about it, so
+// whoever finds it in their logs can tell what it is (#106). main sets it from
+// the version stamped into the binary; "shint" alone is for tests.
+var UserAgent = "shint"
 
 // ParseWebURL turns the argument of "web" into the URL to fetch. A URL without
 // a scheme - example.com, 127.0.0.1:8080/status - is fetched over https://, the
@@ -245,7 +246,7 @@ func WebHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 				fail("request build failed", nil, time.Now(), err)
 				return
 			}
-			request.Header.Set("user-agent", HTTP_CLIENT_USER_AGENT)
+			request.Header.Set("user-agent", UserAgent)
 			// -H values are "Name: value"; a malformed one is skipped and
 			// reported in the JSON "errors" field.
 			for _, h := range headers {

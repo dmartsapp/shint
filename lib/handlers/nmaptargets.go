@@ -93,6 +93,37 @@ func hostNameByte(c byte) bool {
 	return c == '-' || c == '.' || c == '_'
 }
 
+// localRanges are the ranges a sweep covers at full speed: private (RFC 1918
+// and unique-local fc00::/7), shared address space (100.64.0.0/10, carrier
+// NAT), loopback and link-local. Every other range counts as public -
+// documentation and reserved ones too - so a sweep there gets the warning and
+// the pace (#106).
+var localRanges = []netip.Prefix{
+	netip.MustParsePrefix("10.0.0.0/8"),
+	netip.MustParsePrefix("172.16.0.0/12"),
+	netip.MustParsePrefix("192.168.0.0/16"),
+	netip.MustParsePrefix("100.64.0.0/10"),
+	netip.MustParsePrefix("127.0.0.0/8"),
+	netip.MustParsePrefix("169.254.0.0/16"),
+	netip.MustParsePrefix("fc00::/7"),
+	netip.MustParsePrefix("fe80::/10"),
+	netip.MustParsePrefix("::1/128"),
+}
+
+// isPublicSweep is whether a prefix sweeps addresses outside localRanges. A
+// prefix of a single address (a /32, a /128) is a host, not a sweep.
+func isPublicSweep(p netip.Prefix) bool {
+	if sweepSize(p) <= 1 {
+		return false
+	}
+	for _, r := range localRanges {
+		if r.Bits() <= p.Bits() && r.Contains(p.Addr()) {
+			return false
+		}
+	}
+	return true
+}
+
 // sweepSize is how many addresses a prefix sweeps, or maxSweepAddresses+1 for
 // one wider than any sweep may be. An IPv4 prefix of /30 or wider leaves out
 // its network and broadcast addresses, which no host has; a /31 and a /32 have

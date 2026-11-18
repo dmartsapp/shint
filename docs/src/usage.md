@@ -63,7 +63,7 @@ These are defined once, so they mean the same thing everywhere they apply:
 |---|---|---|
 | `--count N` | `1` | How many times to repeat the check. For `listen`, the number of connections, packets or requests to accept before exiting (default `0`: keep going until Ctrl+C). |
 | `--timeout S` | `5` | Seconds to wait, from 1 to 86400 (a day) - see [what it limits](#what-timeout-limits) below. For `listen`, the idle time before a quiet connection is closed, 0 to 86400 (`0`: never). |
-| `--delay MS` | `1000` | Milliseconds to pause before each attempt, from 0 to 86400000 (a day). Use `--delay 0` for back-to-back checks. |
+| `--delay MS` | `1000` | Milliseconds to pause before each attempt, from 0 to 86400000 (a day). Use `--delay 0` for back-to-back checks. For `nmap`, it is the pace of a sweep of public addresses only ([Public addresses](nmap.md#public-addresses)). |
 | `--throttle` | off | Wait a random 0-10 seconds between attempts instead of a fixed `--delay`, to imitate uneven traffic. |
 | `--payload N` | `4` | Filler payload size in bytes for `ping` and `udp` (ignored by `udp` when `--data` or `--hex` gives the payload). (On `web`, `-P` is the request *body* instead.) |
 | `--json` | off | Print one machine-readable JSON document instead of log lines. |
@@ -80,7 +80,7 @@ These are defined once, so they mean the same thing everywhere they apply:
 :::
 
 :::note Every attempt waits first
-`--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr`, `ip` and `ss` do no attempts, so they have no delay.)
+`--delay` is applied before each attempt, including the first, which is why a default `telnet` takes about a second. Add `--delay 0` when you want an immediate answer. (`cidr`, `ip` and `ss` do no attempts, so they have no delay. `nmap` scans its ports without pauses, except in a sweep of public addresses, which `--delay` paces.)
 :::
 
 ### Verbose

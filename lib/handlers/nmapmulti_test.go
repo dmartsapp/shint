@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/dmartsapp/shint/v4/lib"
 )
@@ -183,5 +185,62 @@ func TestNmapSingleFailedLookupJSON(t *testing.T) {
 	l := doc.DNSLookup
 	if ok || len(stats) != 0 || l == nil || l.Hostname != "this-host-should-not-exist.invalid" || l.Success || l.Error == "" || doc.Error != l.Error {
 		t.Errorf("ok %v, error %q, dns_lookup %+v:\n%s", ok, doc.Error, l, out)
+	}
+}
+
+// A sweep of public addresses warns before it starts, and spaces its probes by
+// Delay; a host and a local range do neither (#106).
+func TestNmapPublicSweepWarnsAndPaces(t *testing.T) {
+	var mu sync.Mutex
+	var started []time.Time
+	withProbe(t, func(ctx context.Context, host string, port, timeout int) (bool, error) {
+		mu.Lock()
+		started = append(started, time.Now())
+		mu.Unlock()
+		return false, errors.New("connection refused")
+	})
+	delay := 60 * time.Millisecond
+	scan := NmapScan{Targets: targetsOf(t, "192.0.2.0/29"), Ports: []int{22}, Delay: delay}
+
+	out, ok := nmapRun(t, scan, false)
+	if !ok || !strings.Contains(out, "[nmap] WARN public addresses targets=[192.0.2.0/29] probes=6 delay=60ms estimate=300ms warning=\"this sweep covers public addresses: scan only networks you run or have permission to test; their probes are spaced by --delay (60ms)") {
+		t.Errorf("ok %v, want the warning:\n%s", ok, out)
+	}
+	if strings.Index(out, "WARN public addresses") > strings.Index(out, "scan started") {
+		t.Errorf("the warning should come before the scan starts:\n%s", out)
+	}
+	if len(started) != 6 {
+		t.Fatalf("%d probes, want 6", len(started))
+	}
+	for i := 1; i < len(started); i++ {
+		if gap := started[i].Sub(started[i-1]); gap < delay-5*time.Millisecond {
+			t.Errorf("probe %d started %v after the one before, want at least %v", i, gap, delay)
+		}
+	}
+
+	started = nil
+	out, _ = nmapRun(t, scan, true)
+	_, doc := nmapStatsFromJSON(t, out)
+	if len(doc.Warnings) != 1 || !strings.HasPrefix(doc.Warnings[0], "public addresses (192.0.2.0/29): this sweep covers public addresses") || doc.InputParams.Delay != 60 {
+		t.Errorf("warnings %q, input_params.delay_ms %d", doc.Warnings, doc.InputParams.Delay)
+	}
+
+	// --delay 0: still the warning, no pace.
+	started = nil
+	scan.Delay = 0
+	out, _ = nmapRun(t, scan, false)
+	if !strings.Contains(out, "probes=6 warning=\"this sweep covers public addresses: scan only networks you run or have permission to test; with --delay 0 their probes are not paced\"") || strings.Contains(out, "estimate=") {
+		t.Errorf("--delay 0:\n%s", out)
+	}
+
+	// A local range, a public host and a public /32: full speed, no warning.
+	for _, target := range []string{"10.0.0.0/29", "192.0.2.1", "192.0.2.1/32"} {
+		started = nil
+		begin := time.Now()
+		out, _ = nmapRun(t, NmapScan{Targets: targetsOf(t, target), Ports: []int{22, 80}, Delay: time.Second}, true)
+		_, doc := nmapStatsFromJSON(t, out)
+		if doc.Warnings != nil || strings.Contains(out, `"warnings"`) || time.Since(begin) > 500*time.Millisecond {
+			t.Errorf("%s: warnings %q, took %v", target, doc.Warnings, time.Since(begin))
+		}
 	}
 }

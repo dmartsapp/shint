@@ -70,6 +70,15 @@ UDP has no handshake, so `probeUDP` uses a *connected* UDP socket and reads the 
 
 `listen http` answers `{"status":"ok"}` on `/` and 404 elsewhere, for any method, and does nothing else. It makes no attempt to interpret requests, so it is a *fixed point* to measure against: the same request always gets the same response, byte for byte. On shutdown it flushes the response and waits (`Server.Shutdown` plus a short grace period) so the process cannot exit a beat before the operating system has sent the last response - a real race that once produced `curl: (52) Empty reply from server` on the final request.
 
+## Checking, not reconnaissance
+
+shint is for checking infrastructure you are responsible for. Any network tool can be pointed elsewhere. Skilled attackers have far better tools already, so shint is no help to them. The realistic risk is a well-meaning user sweeping a network that is not theirs. The rule for features, decided on 2026-11-18 ([#106](https://github.com/dmartsapp/shint/issues/106)):
+
+- **Never anything whose main value is covert reconnaissance.** No stealth or evasion (raw packets, spoofing, decoys, fragmentation), no fingerprinting (banners, versions, operating systems), no vulnerability probing, no password guessing. Banner grabbing was dropped for related reasons (below).
+- **Make the risky case deliberate, without new flags.** A sweep of public addresses prints a warning and is paced by `--delay`, the shared flag that already exists, at its default of 1 s per probe. Its owner sets their own pace, and `--delay 0` removes it. Hosts and private ranges keep full speed, so everyday checks cost nothing extra. A `--public` flag was considered and turned down: every extra parameter is something users must learn.
+- **Be identifiable.** `web`'s User-Agent is `shint/<release> (+URL)`, not an anonymous string.
+- **No policing.** No telemetry, phoning home, kill switch, target blocklists or accounts. shint is MIT-licensed open source, so such checks would be removed in minutes and stop no one. They would only break the promise that shint collects nothing.
+
 ## What shint does not do, and why
 
 Some features were planned and then dropped. Each is recorded here with its reasons, so the question does not have to be argued again from scratch - and so it can be reopened on the same terms if the reasons stop holding.

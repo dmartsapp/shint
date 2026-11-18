@@ -1,6 +1,6 @@
 ---
 title: Security
-lead: Which releases get security fixes, how to report a vulnerability, how shint handles its dependencies' vulnerabilities, every release's software bill of materials - and every advisory so far, with its original sources.
+lead: Which releases get security fixes, how to report a vulnerability, how to use shint responsibly, how shint handles its dependencies' vulnerabilities, every release's software bill of materials - and every advisory so far, with its original sources.
 description: shint's security and support policy, and its security advisories with CVE numbers, sources, impact and resolution.
 section: Reference
 order: 3
@@ -20,6 +20,20 @@ Report it privately: **[Report a vulnerability](https://github.com/dmartsapp/shi
 Include what `shint --version` prints, the command you ran and what happened. The answer comes in the report itself, and the fix is credited to you unless you ask otherwise.
 
 A vulnerability that is already public - in shint or in one of its dependencies - can go in an ordinary [issue](https://github.com/dmartsapp/shint/issues).
+
+## Responsible use
+
+**Use shint on networks you run, or have permission to test.** Scanning other people's networks may break the rules of the network you are on, a provider's terms, or the law where you are.
+
+shint is built to check your own infrastructure, and it leaves out what is mainly good for looking around someone else's:
+
+- **Nothing covert.** It never needs root, so there are no SYN scans, spoofed or crafted packets, or decoys. Every probe is an ordinary connection that the target's firewall and services see and log.
+- **No fingerprinting.** No banner grabbing, no version or OS detection, no vulnerability checks, no password guessing. `nmap`'s service names are a guess from the port number.
+- **Limits.** At most 500 connections in flight and 65,536 addresses in a run. `dns` asks for ordinary records only: no zone transfers.
+- **Public sweeps say so, and slow down.** A sweep of public addresses warns before it starts and spaces its probes by `--delay` (1 s by default). A host, or a sweep of a private range, runs at full speed. See [Public addresses](nmap.md#public-addresses).
+- **It says what it is.** `web` sends `User-Agent: shint/<version> (+https://github.com/dmartsapp/shint)`, so whoever finds a request in their logs can tell what made it.
+
+What shint will **not** do is check up on its users: no telemetry, no phoning home, no accounts, no lists of forbidden targets. In an open-source tool, such checks are deleted in minutes and stop no one. They would only break the promise that shint collects nothing. The rule for new features is on the [design page](tech-design.md#checking-not-reconnaissance).
 
 ## Dependencies
 

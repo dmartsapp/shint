@@ -859,3 +859,29 @@ func TestCtrlCShowsTheSummary(t *testing.T) { // telnet, web, udp - and ntp, rdn
 		})
 	}
 }
+
+// The User-Agent names the release whatever form the version was stamped in
+// (#106): the source's default, a release build's tag/commit/time, make's
+// tag-date, or a build of no release.
+func TestReleaseVersion(t *testing.T) {
+	for in, want := range map[string]string{
+		"4.3.0":                           "4.3.0",
+		"v4.4.0/1a2b3c/2026-11-29T10:00Z": "4.4.0",
+		"v4.4.0-29112026100000":           "4.4.0",
+		"v10.20.30":                       "10.20.30",
+		"dev-18112026021500":              "dev",
+		"dev":                             "dev",
+		"":                                "dev",
+		"4.4":                             "dev",
+	} {
+		if got := releaseVersion(in); got != want {
+			t.Errorf("releaseVersion(%q) = %q, want %q", in, got, want)
+		}
+	}
+	orig := Version
+	defer func() { Version = orig }()
+	Version = "v4.4.0/1a2b3c/2026-11-29T10:00Z"
+	if got := userAgent(); got != "shint/4.4.0 (+https://github.com/dmartsapp/shint)" {
+		t.Errorf("userAgent() = %q", got)
+	}
+}

@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"syscall"
 	"time"
@@ -33,6 +34,24 @@ var (
 	// build reports something traceable. See docs/src/tech-release.md.
 	Version string = "4.3.0"
 )
+
+// releaseVersion is the release a version string names - "4.4.0" from
+// "4.4.0", "v4.4.0/<commit>/<time>" (a release build) or "v4.4.0-<date>"
+// (make) - or "dev" for a build of no release.
+func releaseVersion(v string) string {
+	if m := releaseVersionRE.FindStringSubmatch(v); m != nil {
+		return m[1]
+	}
+	return "dev"
+}
+
+var releaseVersionRE = regexp.MustCompile(`^v?(\d+\.\d+\.\d+)`)
+
+// userAgent is what web sends as its User-Agent: shint, its release, and
+// where to read about it (#106).
+func userAgent() string {
+	return "shint/" + releaseVersion(Version) + " (+https://github.com/dmartsapp/shint)"
+}
 
 // versionLine is what `shint --version` and `-v` print: the version, then the
 // Go toolchain the binary was built with and the platform it was built for, in
@@ -334,13 +353,17 @@ var nmapCmd = &cobra.Command{
 	Short: "Scan for open TCP ports on hosts and subnets",
 	Long: `This command scans for open TCP ports: on a host, on several, or across a subnet (192.168.1.0/24), on a range of ports (--from/--to) or a list (--ports 22,80,443,8000-8100). An open port is shown with the service usually found on it. --timeout is how long each individual port is given to answer; the scan itself runs until every port has been covered (Ctrl+C stops it early and reports how far it got).
 
-A prefix sweeps its addresses (an IPv4 /24 is its 254 host addresses), up to 65536 addresses in one run. Only TCP connect scans are made: no raw packets, no privileges needed.`,
+A prefix sweeps its addresses (an IPv4 /24 is its 254 host addresses), up to 65536 addresses in one run. Only TCP connect scans are made: no raw packets, no privileges needed.
+
+Scan only networks you run, or have permission to test. A sweep that covers public addresses - anything but private, carrier-NAT, loopback and link-local ranges - prints a WARN line saying so, with an estimate of how long it takes, and its probes are spaced by --delay (1000 ms by default): set --delay to change the pace, --delay 0 to remove it. Hosts, and sweeps of local ranges, run at full speed.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		if !applyFamily("") {
 			return
 		}
-		if !checkRunFlags(false) {
+		// --delay paces a sweep of public addresses only (#106), so it is
+		// checked like every other command's: a bad value is a usage error.
+		if !checkRunFlags(true) {
 			return
 		}
 		targets, err := handlers.ParseNmapTargets(args)
@@ -348,7 +371,7 @@ A prefix sweeps its addresses (an IPv4 /24 is its 254 host addresses), up to 655
 			usage(err.Error())
 			return
 		}
-		scan := handlers.NmapScan{Targets: targets}
+		scan := handlers.NmapScan{Targets: targets, Delay: time.Duration(delay) * time.Millisecond}
 		if cmd.Flags().Changed("ports") {
 			if cmd.Flags().Changed("from") || cmd.Flags().Changed("to") {
 				usage("--ports and --from/--to cannot be used together: give a list (--ports 22,80,8000-8100) or a range (--from/--to)")
@@ -713,7 +736,10 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&ipv4Only, "ipv4", "4", false, "Resolve and check IPv4 addresses only (a host with both kinds is normally checked over both)")
 	rootCmd.PersistentFlags().BoolVarP(&ipv6Only, "ipv6", "6", false, "Resolve and check IPv6 addresses only")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Print extra diagnostic lines about internal steps (name resolution, ...) to stderr as they happen; --json is unaffected. Not every command has something to add.")
-	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) { lib.SetVerbose(verbose) }
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		lib.SetVerbose(verbose)
+		handlers.UserAgent = userAgent()
+	}
 
 	webCmd.Flags().StringVarP(&httpmethod, "method", "X", "GET", "HTTP method to use (GET, POST, PUT, DELETE)")
 	webCmd.Flags().StringVarP(&httpdata, "payload", "P", "", "HTTP payload data to send")
