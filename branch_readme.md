@@ -48,3 +48,8 @@ Includes:
 | Change | Where | State |
 |---|---|---|
 | CI: actions pinned to commits, base images to digests, and a check that refuses unpinned ones (security review) - [#103](https://github.com/dmartsapp/shint/issues/103) | `main` (CI only, no release needed) | Done on `main` - [`db0fe0b`](https://github.com/dmartsapp/shint/commit/db0fe0b): 56 `uses:` pinned to commits, both base images to digests, and `check-pins.py` in `make workflows`; merged in by `make release` |
+
+## After the release
+
+- `main`'s README: link the Limitations page (`https://dmartsapp.github.io/shint/docs/limitations.html`) from its Limitations section, and say there that `ss` covers Linux and Windows only and is not in the AIX binary. Add `ss` to the Commands table if the reconcile has not.
+- Record the README demo again with an `ss -l` line (`vhs docs/assets/demo.tape`), now that `ss` is released.
