@@ -26,7 +26,7 @@ Includes:
 | Target | Issue | State |
 |---|---|---|
 | `ip route`: this machine's routing table and default gateway | - (to file) | Not started |
-| `ss`: this machine's sockets, each with the process that owns it - one record per socket | [#68](https://github.com/dmartsapp/shint/issues/68) | Not started |
+| `ss`: this machine's sockets, each with the process that owns it - one record per socket | [#68](https://github.com/dmartsapp/shint/issues/68) | Done on Linux and Windows - [`65da11b`](https://github.com/dmartsapp/shint/commit/65da11b): `-t`/`-u`/`-l`/`--ports`/`--pid`, `owner=hidden` without privileges, exit 1 when nothing matches; JSON `processes`, `owner_hidden`. Other systems say "not supported yet"; the BSDs are [#105](https://github.com/dmartsapp/shint/issues/105) (v4.5.0). Windows still needs a real run (see To do) |
 | `ping`: sub-millisecond timings, unreachable replies told apart from timeouts, statistics on Ctrl+C - needs a new go-ping release | [#25](https://github.com/dmartsapp/shint/issues/25) | Not started |
 | `--interface`: send a check's traffic through a given interface or source address | [#69](https://github.com/dmartsapp/shint/issues/69) | Not started |
 | `nmap` upgrades: port lists (`--ports 22,80,443`), subnet sweeps, service names - moved from v4.3.0 | [#94](https://github.com/dmartsapp/shint/issues/94) | Done - [`3554ffc`](https://github.com/dmartsapp/shint/commit/3554ffc): `--ports`/`-p`, several targets and prefixes (up to 65,536 addresses), `service=`; JSON `target`, `service`, `ports`, `targets`, `dns_lookups` |
