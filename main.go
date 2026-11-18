@@ -112,6 +112,7 @@ var (
 	keyFile             string
 	insecureSkipVerify  bool
 	webTiming           bool
+	webHeadersOnly      bool
 	webShowCredentials  bool
 	webMaxBody          string
 
@@ -346,6 +347,10 @@ It connects straight to the address the name resolves to and never uses a proxy:
 			usage(err.Error())
 			return
 		}
+		if webHeadersOnly && (includeresponsebody || webTiming) {
+			usage("--headers-only shows each response's status and headers alone: it cannot be combined with --withbody/-W or --timing")
+			return
+		}
 
 		ctx, stop := interruptContext()
 		defer stop()
@@ -353,6 +358,7 @@ It connects straight to the address the name resolves to and never uses a proxy:
 		if !applyInterface(cmd, "web") {
 			return
 		}
+		web.HeadersOnly = webHeadersOnly
 		finish(web.Run(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming, webShowCredentials, maxBody))
 	},
 }
@@ -889,6 +895,7 @@ func init() {
 	webCmd.Flags().BoolVarP(&insecureSkipVerify, "insecure", "k", false, "Skip TLS certificate verification (INSECURE, for diagnostics only)")
 	webCmd.Flags().StringVar(&webMaxBody, "max-body", "10M", "With --json -W, keep at most this much of each response body (10M, 512K, 1G; 0 = all): the rest is read and counted, not kept")
 	webCmd.Flags().BoolVar(&webShowCredentials, "show-credentials", false, "Write credential header values and a URL's password in the output as they are (hidden as [redacted] by default)")
+	webCmd.Flags().BoolVar(&webHeadersOnly, "headers-only", false, "Show only each response's status and headers, in text and in the JSON (the request is the same; add -X HEAD to skip downloading the body)")
 	webCmd.Flags().BoolVar(&webTiming, "timing", false, "Show where each request's time went: DNS, connect, TLS, wait for the first byte, download (one line per redirect hop; a timing object per stat with --json)")
 
 	tlsCmd.Flags().StringVar(&tlsServerName, "servername", "", "Name to send as SNI and to verify the certificate against (default: the host; set it to check an address, or one virtual host of several)")

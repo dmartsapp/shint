@@ -69,6 +69,9 @@ type InputParams struct {
 	// Interface is what --interface named (an interface or an address), for
 	// the commands that take it; absent without it.
 	Interface string `json:"interface,omitempty"`
+	// HeadersOnly is web --headers-only: the stats hold each response's status
+	// and headers only.
+	HeadersOnly bool `json:"headers_only,omitempty"`
 }
 
 // TLSSettings is how a request treats certificates: whether the server's is
@@ -78,6 +81,19 @@ type TLSSettings struct {
 	VerifyCertificates bool `json:"verify_certificates"`
 	ClientCertificate  bool `json:"client_certificate"`
 	CustomCA           bool `json:"custom_ca"`
+}
+
+// WebHeadersStats is one web request with --headers-only: the response's
+// status and headers, and nothing else - or, for a request that got no
+// response, its error. Headers are as the server sent them, one list of values
+// per (canonical) name.
+type WebHeadersStats struct {
+	URL        string              `json:"url"`
+	Success    bool                `json:"success"`
+	StatusCode int                 `json:"status_code,omitempty"`
+	StatusText string              `json:"status_text,omitempty"`
+	Headers    map[string][]string `json:"headers,omitempty"`
+	Error      string              `json:"error,omitempty"`
 }
 
 // TelnetStats is one connection attempt, in microseconds; Error is set only

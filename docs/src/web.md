@@ -31,6 +31,7 @@ shint web <url> [-X METHOD] [-H "Name: value"]... [-P body] [-W] [flags]
 | `-k`, `--insecure` | Skip certificate verification. Diagnostics only. |
 | `--show-credentials` | Write credentials in the output as they are. By default the values of credential headers and a URL's password are hidden: see [Credentials in the output](#credentials-in-the-output). |
 | `--timing` | Show where each request's time went: DNS, connect, TLS, wait, download. See [Timing](#timing-where-the-time-went). |
+| `--headers-only` | Show only each response's status and headers, in text and in the JSON. See [Headers only](#headers-only). |
 
 ### The URL
 
@@ -127,6 +128,26 @@ Requests sent: 2, Response received: 2, Success: 100%
 Latency: minimum: 1.241875ms, average: 1.840937ms, maximum: 2.44ms
 Sun Sep 20 01:50:22 MDT 2026: [web] OK done total_time=605.185875ms
 ```
+### Headers only
+
+```bash
+shint web https://example.com --headers-only
+```
+
+```text
+Wed Nov 18 10:10:06 CST 2026: [web] Response Received url=https://example.com status=200 status_text=OK proto=HTTP/1.1
+Wed Nov 18 10:10:06 CST 2026: [web] OK header name=Allow value="GET, HEAD"
+Wed Nov 18 10:10:06 CST 2026: [web] OK header name=Content-Type value="text/html; charset=utf-8"
+Wed Nov 18 10:10:06 CST 2026: [web] OK header name=Date value="Wed, 18 Nov 2026 16:10:06 GMT"
+Wed Nov 18 10:10:06 CST 2026: [web] OK header name=Server value=cloudflare
+```
+
+The status line, then one `header` line per value, sorted by name - and nothing else: no lookup lines, no statistics. A header sent twice (`Set-Cookie`) has a line per value. The values are the server's, so anything that is not printable is shown escaped. A request that gets no response still has its `ERROR` line, and the exit status is the usual one.
+
+With `--json`, each entry of `stats` holds `url`, `success`, `status_code`, `status_text` and `headers` (each name with its list of values) - or, for a request that got no response, its `error` - and `input_params.headers_only` is `true`.
+
+It changes the output only: the request is the same, and its body is still downloaded and counted. To skip the body, ask for the headers alone with `-X HEAD`. It cannot be combined with `-W` (the body) or `--timing`.
+
 ### JSON, with the response body
 
 ```bash

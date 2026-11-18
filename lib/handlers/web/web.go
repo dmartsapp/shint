@@ -13,6 +13,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -73,6 +74,12 @@ func ParseURL(arg string) (*url.URL, error) {
 // With timing, each request also reports where its time went - DNS, connect,
 // TLS, waiting for the first byte, downloading - per hop when a redirect is
 // followed (see webtiming.go).
+// HeadersOnly is --headers-only: the output shows each response's status and
+// headers and nothing else - no lookup lines, no statistics in text, no body,
+// timing or byte counts in the JSON. The request and the check are the same
+// either way. Set by main, like UserAgent.
+var HeadersOnly bool
+
 func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, URL *url.URL, method string, data string, headers []string, includeresponsebody bool, tlsConfig *tls.Config, timing bool, showCredentials bool, maxBody int64) (ok bool) {
 	output := lib.JSONOutput{}
 	istart := time.Now()
@@ -83,7 +90,11 @@ func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throt
 		tlsConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 	}
 
-	if !*jsonoutput {
+	if !*jsonoutput && HeadersOnly {
+		if tlsConfig.InsecureSkipVerify { // a WARN still shows: the answer may not be trustworthy
+			fmt.Println(lib.LogWithLevel(webModule, lib.LevelWarn, "tls verification disabled "+lib.Fields("warning", "certificate checks are skipped, response may not be trustworthy")))
+		}
+	} else if !*jsonoutput {
 		if tlsConfig.InsecureSkipVerify {
 			// Advisory, not a failure (#37): the run can still pass, and ERROR means it did not.
 			fmt.Println(lib.LogWithLevel(webModule, lib.LevelWarn, "tls verification disabled "+lib.Fields("warning", "certificate checks are skipped, response may not be trustworthy")))
@@ -106,18 +117,19 @@ func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throt
 
 	if *jsonoutput {
 		output.InputParams = lib.InputParams{
-			Mode:      webModule,
-			Interface: lib.SourceLabel(),
-			Host:      URL.Host,
-			Protocol:  "tcp",
-			Timeout:   timeout,
-			Count:     iterations,
-			Delay:     delay,
-			Payload:   len(data),
-			Throttle:  *throttle,
-			Method:    method,
-			Data:      data,
-			Headers:   shownHeaderLines(headers, showCredentials),
+			Mode:        webModule,
+			Interface:   lib.SourceLabel(),
+			Host:        URL.Host,
+			Protocol:    "tcp",
+			Timeout:     timeout,
+			Count:       iterations,
+			Delay:       delay,
+			Payload:     len(data),
+			Throttle:    *throttle,
+			Method:      method,
+			Data:        data,
+			Headers:     shownHeaderLines(headers, showCredentials),
+			HeadersOnly: HeadersOnly,
 			TLS: &lib.TLSSettings{
 				VerifyCertificates: !tlsConfig.InsecureSkipVerify,
 				ClientCertificate:  len(tlsConfig.Certificates) > 0,
@@ -154,6 +166,9 @@ func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throt
 		output.InputParams.ToPort = output.InputParams.FromPort
 		output.StartTime = istart.UnixMicro()
 		output.Stats = make([]lib.WebStats, 0)
+		if HeadersOnly {
+			output.Stats = make([]lib.WebHeadersStats, 0)
+		}
 	}
 
 	// One client for the whole run. Timeout bounds each request end to end
@@ -220,6 +235,12 @@ func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throt
 					for _, line := range timingLines(rec, attempt, iterations) {
 						fmt.Println(line)
 					}
+					return
+				}
+				if HeadersOnly {
+					statsMutex.Lock()
+					output.Stats = append(output.Stats.([]lib.WebHeadersStats), lib.WebHeadersStats{URL: shownURL(URL, showCredentials), Error: lib.ExplainError(err)})
+					statsMutex.Unlock()
 					return
 				}
 				reqHeaders := http.Header{}
@@ -317,7 +338,10 @@ func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throt
 
 			statsMutex.Lock()
 			stats = append(stats, timeTaken)
-			if *jsonoutput {
+			if *jsonoutput && HeadersOnly {
+				output.Stats = append(output.Stats.([]lib.WebHeadersStats), lib.WebHeadersStats{URL: shownURL(URL, showCredentials), Success: true,
+					StatusCode: response.StatusCode, StatusText: lib.HTTPStatusText(response.StatusCode), Headers: header})
+			} else if *jsonoutput {
 				stat := lib.WebStats{}
 				stat.URL = shownURL(URL, showCredentials)
 				if includeresponsebody && truncated {
@@ -360,6 +384,10 @@ func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throt
 					// Advisory, like -k's line: a response arrived, the run can pass.
 					fmt.Println(lib.LogWithLevel(webModule, lib.LevelWarn, "redirect not followed "+lib.Fields("url", shownURL(URL, showCredentials), "location", shownLocation(stop.location, showCredentials), "reason", notFollowedReason(credentials))))
 				}
+				if HeadersOnly {
+					printHeaders(shownURL(URL, showCredentials), response)
+					return
+				}
 				// Response Received, not OK: a response arrived, and what it said - a
 				// 403 Forbidden is as much a response as a 200 OK - is in the fields.
 				fmt.Println(lib.LogWithLevel(webModule, lib.LevelResponseReceived, lib.Fields("url", shownURL(URL, showCredentials), "status", response.StatusCode, "status_text", lib.HTTPStatusText(response.StatusCode), "bytes_sent", bytesSent, "bytes_received", bytesReceived, "speed", fmt.Sprintf("%.2fKB/s", bandwidthKBs), "attempt", fmt.Sprintf("%d/%d", attempt, iterations), "time", timeTaken)))
@@ -386,6 +414,10 @@ func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throt
 			os.Exit(1)
 		}
 		fmt.Println(string(JS))
+	} else if HeadersOnly {
+		if interrupted {
+			fmt.Println(pace.InterruptedLine(webModule, done, iterations, istart))
+		}
 	} else {
 		statsMutex.Lock()
 		if interrupted {
@@ -398,6 +430,23 @@ func Run(ctx context.Context, jsonoutput *bool, iterations int, delay int, throt
 		fmt.Println(lib.LogWithTimestamp(webModule, "done "+lib.Fields("total_time", time.Since(istart)), false))
 	}
 	return atomic.LoadInt32(&failed) == 0 && !interrupted
+}
+
+// printHeaders is a response with --headers-only, in text: its status line,
+// then a line per header value, sorted by name. The values are the server's,
+// so they are printed escaped.
+func printHeaders(url string, response *http.Response) {
+	fmt.Println(lib.LogWithLevel(webModule, lib.LevelResponseReceived, lib.Fields("url", url, "status", response.StatusCode, "status_text", lib.HTTPStatusText(response.StatusCode), "proto", response.Proto)))
+	names := make([]string, 0, len(response.Header))
+	for name := range response.Header {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		for _, value := range response.Header[name] {
+			fmt.Println(lib.LogWithTimestamp(webModule, "header "+lib.Fields("name", term.Escape([]byte(name)), "value", term.Escape([]byte(value))), false))
+		}
+	}
 }
 
 func parsePort(raw string) (int, error) {

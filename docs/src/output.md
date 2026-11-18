@@ -138,6 +138,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `protocol` | `tcp`, `udp`, `icmp` or `dns` (`rdns`); for `ss`, the protocols listed: `tcp`, `udp` or `tcp,udp`. |
 | `listening`, `pid` | `ss` only: `true` with `-l`, and the `--pid` asked for. Absent otherwise. |
 | `interface` | What `--interface` named - an interface, or an address - for the commands that take it. Absent without it. |
+| `headers_only` | `web --headers-only`: `true`, and each `stats` entry holds only `url`, `success`, `status_code`, `status_text` and `headers` (or `error`). Absent otherwise. |
 | `timeout_ms` | The `--timeout` value. **Despite the name, it is in seconds.** |
 | `count`, `delay_ms`, `throttle` | `--count`, `--delay` (milliseconds) and `--throttle`. For `nmap`, `delay_ms` is the pace of a sweep of public addresses, and `0` when there is none. |
 | `payload_bytes` | Payload size: filler size for `ping`/`udp`, request body size for `web`. |

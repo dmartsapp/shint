@@ -139,3 +139,11 @@ web("tls-https-to-plain-port", "https://127.0.0.1:{http}/ok", rc=1)
 web("env-proxy-ignored-or-used", H + "/ok", rc=None, envvars={"HTTP_PROXY": "http://127.0.0.1:1", "http_proxy": "http://127.0.0.1:1"},
     note="does web honour HTTP_PROXY? (a dead proxy makes the request fail if it does)")
 
+# --headers-only: each response's status and headers, nothing else, in text and JSON
+web("headers-only", "http://127.0.0.1:{http}/ok", "--headers-only", rc=0,
+    contains=["Response Received url=http://127.0.0.1:", "status=200", "OK header name=Content-Length value="], absent=["dns resolved", "STATISTICS", "done total_time"])
+web("headers-only-json", "http://127.0.0.1:{http}/ok", "--headers-only", "--json", rc=0,
+    check=lambda r: None if json.loads(r["out"])["input_params"]["headers_only"] and all(set(s) <= {"url", "success", "status_code", "status_text", "headers", "error"} for s in json.loads(r["out"])["stats"]) and json.loads(r["out"])["stats"][0]["headers"] else "the JSON should hold the status and headers alone")
+web("headers-only-with-body", "http://127.0.0.1:{http}/", "--headers-only", "-W", rc=2)
+web("headers-only-with-timing", "http://127.0.0.1:{http}/", "--headers-only", "--timing", rc=2)
+web("headers-only-no-server", "http://127.0.0.1:{tcp_closed}/", "--headers-only", rc=1, contains=["ERROR request failed"])
