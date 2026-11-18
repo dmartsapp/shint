@@ -277,6 +277,8 @@ workflows:
 	echo "==> workflows"
 	python3 .github/scripts/test_check_workflow_triggers.py
 	python3 .github/scripts/check-workflow-triggers.py
+	python3 .github/scripts/test_check_pins.py
+	python3 .github/scripts/check-pins.py
 	bash .github/scripts/test-verify-release-tag.sh
 	bash .github/scripts/test-write-ci-failure-issue.sh
 	bash .github/scripts/test-write-checksums.sh

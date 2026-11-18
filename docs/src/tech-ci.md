@@ -181,11 +181,31 @@ Lint, Vulnerability Check and Check each file an issue when their check fails: t
 
 1. Install the new Go locally and check `go version`.
 2. `go mod edit -go=X.Y.Z`, and move any `golang.org/x/...` module `govulncheck` names (`go get golang.org/x/net@vA.B.C`, then `go mod tidy`). Check the module's own `go` line first: it must not ask for a newer Go than the one you are moving to.
-3. `Dockerfile`: `FROM golang:X.Y.Z-alpine`, once Docker Hub has that tag.
+3. `Dockerfile`: `FROM golang:X.Y.Z-alpine@sha256:<digest>`, once Docker Hub has that tag - the image is pinned to its digest, found as described in [Pinned actions and images](#pinned-actions-and-images).
 4. `make lint`. If golangci-lint fails on every package with `export data version N is greater than maximum supported version M`, the new Go writes compiled packages in a format the pinned golangci-lint cannot read: move the pin to a golangci-lint whose `golang.org/x/tools` can (check its `go.mod`, and x/tools' `internal/pkgbits/version.go`) - in `Makefile` (`GOLANGCI_LINT_VERSION`), `check.yaml`, and the `golangci-lint-action` steps of `lint.yaml`, `build.yaml`, `docker-hub.yaml` and `ghcr.yaml` - and install it: `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@vX.Y.Z`. A newer golangci-lint can find new problems; fix them in the same change. Clear its cache (`golangci-lint cache clean`) before believing a clean run: cached results can hide the failure.
 5. `make check` - `govulncheck` must say *No vulnerabilities found* - and a changelog entry naming the advisories.
 
 Binaries already published keep the Go they were built with; only the next release carries the fix, so a serious advisory can be a reason for a patch release.
+
+## Pinned actions and images
+
+Every action a workflow uses is named by a **full commit SHA**, with its version as a comment, and both base images in the `Dockerfile` by **digest**:
+
+```yaml
+- uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+```
+
+```dockerfile
+FROM golang:{{go}}-alpine@sha256:<digest> AS builder
+```
+
+A tag can be moved: whoever controls an action's repository, or an image's, could otherwise change what the release pipeline runs - and it holds the registry tokens and makes the attestations. A SHA or a digest cannot be moved. `make workflows` (in `make check`) runs `.github/scripts/check-pins.py`, which refuses a `uses:` that is not a commit SHA - a local action (`./...`) or an image by digest excepted - and a `FROM` without a digest.
+
+Pins do not move by themselves: there is no Dependabot. **To move one** - a newer release of an action, or a rebuilt base image:
+
+1. **An action:** find the release and its commit - `gh api repos/OWNER/REPO/releases/latest --jq .tag_name`, then `gh api repos/OWNER/REPO/git/ref/tags/vX.Y.Z --jq .object` (for an annotated tag, `object.type` is `tag`: one more `gh api repos/OWNER/REPO/git/tags/<sha> --jq .object.sha` gives the commit). Read the release's notes - a new major can change inputs.
+2. **An image:** its index digest, which covers every platform - `docker buildx imagetools inspect golang:{{go}}-alpine` (the `Digest:` line), or Docker Hub's `https://hub.docker.com/v2/repositories/library/golang/tags/{{go}}-alpine` (`digest`).
+3. Replace the SHA and the comment (or the digest) everywhere it appears, run `make check`, and land it on `main` like any CI change.
 
 ## Binary build and release
 
