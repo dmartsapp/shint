@@ -89,6 +89,22 @@ shint nmap 192.168.1.0/24 -p 22 --timeout 1
 
 Every address of the `/24` is tried on port 22, and each one that answers gets a `port open ... service=ssh` line. List a few ports with `-p 22,80,443`, or give several subnets and hosts at once. See [Prefixes](nmap.md#prefixes).
 
+## What is listening on this machine, and which process holds it?
+
+```bash
+shint ss -l
+```
+
+Every listening TCP and UDP socket, one line each, with the process holding it (`process=postgres pid=944 fd=7`). Run as a normal user, it cannot say which process holds a socket of another user's: those show `owner=hidden`, and `sudo shint ss -l` shows them too. On Linux and Windows. See [ss](ss.md).
+
+## Wait until a service is listening
+
+```bash
+until shint ss -l --ports 5432 > /dev/null; do sleep 1; done
+```
+
+`ss` fails (exit status `1`) while nothing matches, so this loops until something listens on port 5432 here - in a container's entrypoint, say, before starting what depends on it.
+
 ## Check a private HTTPS service
 
 With an internal certificate authority:

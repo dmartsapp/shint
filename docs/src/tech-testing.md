@@ -112,6 +112,7 @@ Two package-level variables exist only so tests can control time and slowness de
 | G, H, I | `nmap` (single ports, ranges, the whole port range, filtered targets, port lists, several targets, prefix sweeps and the targets it refuses), `udp` (payload sizes, closed and silent ports, big replies), `ping` (payload limits, unreachable, multicast, and a reply that belongs to another ping) |
 | J | `listen`: 20 MB uploads, resets, binary data, idle timeouts, 150 concurrent connections, malformed and half-finished HTTP requests |
 | K, L | signals and closed pipes (SIGINT, SIGTERM, `| head -1`), and memory use on a 300 MB response |
+| M, P | `ip` and `ss`: listing this machine's interfaces and sockets, the filters, and the usage errors (`--ports 22;id`, `--pid 0`). On Linux, `ss` must find the battery's own TCP and UDP servers with their process and descriptor; elsewhere it must say plainly that it is not supported |
 
 Each invocation is judged against rules that hold for every command - no panic, exit status 0, 1 or 2, `--json` prints one valid document, a usage error goes to stderr, exit 1 comes with an `ERROR` line and exit 0 without one, nothing hangs - plus what the case itself expects. Cases that open hundreds of connections run one at a time, after the parallel ones.
 

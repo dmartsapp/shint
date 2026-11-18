@@ -90,7 +90,7 @@ The operating system's firewall is asking whether `shint` may accept connections
 
 ## "address already in use"
 
-Another program owns that port. Pick another, or find the owner (`lsof -i :8080` on macOS and Linux). `shint listen` exits with status `1` in this case.
+Another program owns that port. Pick another, or find the owner: `shint ss -l --ports 8080` names the process on Linux and Windows (as root for another user's process), and `lsof -i :8080` does on macOS. `shint listen` exits with status `1` in this case.
 
 ## Does shint collect any data?
 

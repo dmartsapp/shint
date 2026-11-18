@@ -1,6 +1,7 @@
 """Command-line handling and the telnet command: usage errors, flag parsing, host and port forms."""
 import json
 import re
+import sys
 
 from runner import add
 
@@ -110,3 +111,38 @@ add("M.ip-unknown-interface-json", ["ip", "no-such-interface0", "--json"], rc=1,
 add("M.ip-both-families", ["ip", "-4", "-6"], rc=2, group="M ip", max=10)
 add("M.ip-two-arguments", ["ip", "a", "b"], rc=2, group="M ip", max=10)
 add("M.ip-ignores-shared-flags", ["ip", "--count", "5", "--timeout", "1", "--delay", "3000"], rc=0, group="M ip", max=6)
+
+# ---------------- P: ss (reads this machine's socket tables; Linux and Windows only)
+SS_KEYS = {"protocol", "family", "state", "local_address", "local_port", "remote_address", "remote_port",
+           "recv_q", "send_q", "uid", "user", "processes", "owner_hidden"}
+
+
+def ss(cid, args, **kw):
+    add("P." + cid, ["ss"] + list(args), group="P ss", max=kw.pop("max", 10), **kw)
+
+
+for cid, args in [("argument", ["extra"]), ("both-families", ["-4", "-6"]), ("pid-zero", ["--pid", "0"]),
+                  ("pid-negative", ["--pid", "-5"]), ("pid-not-a-number", ["--pid", "abc"]), ("pid-huge", ["--pid", "99999999999999999999"]),
+                  ("ports-zero", ["--ports", "0"]), ("ports-empty", ["--ports", ""]), ("ports-bad-range", ["--ports", "1-x"]),
+                  ("ports-backwards", ["--ports", "80-22"]), ("ports-injection", ["--ports", "22;id"]), ("ports-too-big", ["--ports", "65536"])]:
+    ss(cid, args, rc=2)
+ss("help", ["--help"], rc=0, contains=["--listening", "--ports", "--pid", "--tcp", "--udp"])
+
+if sys.platform.startswith("linux"):
+    ss("lists", [], rc=0, contains=["[ss] OK socket proto=", "[ss] OK done sockets="])
+    ss("finds-the-battery-listener", ["-l", "-t", "--ports", "{tcp_echo}"], rc=0,
+       contains=["state=LISTEN local=127.0.0.1:{tcp_echo} ", " pid="], absent=["owner=hidden", "proto=udp"])
+    ss("finds-the-battery-udp-server", ["-l", "-u", "--ports", "{udp_echo}"], rc=0, contains=["proto=udp state=UNCONN local=127.0.0.1:{udp_echo} ", " pid="])
+    ss("nothing-on-a-closed-port", ["-l", "--ports", "{tcp_closed}"], rc=1, contains=["no socket matches: listening, port {tcp_closed}"])
+    ss("json", ["--json"], rc=0,
+       check=lambda r: None if all(set(s) <= SS_KEYS for s in json.loads(r["out"])["stats"]) and json.loads(r["out"])["stats"] else "no sockets, or a socket entry with a key it should not have")
+    ss("json-listener-has-its-process", ["-l", "-t", "--ports", "{tcp_echo}", "--json"], rc=0,
+       check=lambda r: None if [s for s in json.loads(r["out"])["stats"] if s["local_port"] == int(r["args"][-2]) and s.get("processes") and "fd" in s["processes"][0]] else "the battery's listener is not listed with its process and descriptor")
+    ss("ipv4-only", ["-4"], rc=0, absent=["local=["])
+    ss("ipv6-only", ["-6"], absent=["local=0.", "local=1", "local=2", "local=3", "local=4", "local=5", "local=6", "local=7", "local=8", "local=9"])
+    ss("pid-that-holds-nothing", ["--pid", "999999999"], rc=1, contains=["no socket matches: held by process 999999999"])
+    ss("ignores-shared-flags", ["-l", "--count", "5", "--timeout", "1", "--delay", "3000"], rc=0)
+else:
+    ss("not-supported", [], rc=1, contains=["[ss] ERROR failed error=\"ss is not supported on "])
+    ss("not-supported-json", ["--json"], rc=1,
+       check=lambda r: None if "is not supported on" in json.loads(r["out"])["error"] and json.loads(r["out"])["stats"] == [] else "the JSON does not say why, or lists sockets")

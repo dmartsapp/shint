@@ -61,6 +61,11 @@ type InputParams struct {
 	// ("22,80,443,8000-8100"); FromPort and ToPort are its lowest and highest.
 	Targets []string `json:"targets,omitempty"`
 	Ports   string   `json:"ports,omitempty"`
+	// Listening and PID are what ss was asked to narrow its list to (-l,
+	// --pid); Protocol is "tcp", "udp" or "tcp,udp" there, and Ports its
+	// --ports list.
+	Listening bool `json:"listening,omitempty"`
+	PID       int  `json:"pid,omitempty"`
 }
 
 // TLSSettings is how a request treats certificates: whether the server's is
@@ -389,6 +394,47 @@ type IPStats struct {
 	MTU   int      `json:"mtu"`
 	Flags []string `json:"flags"`
 	Error string   `json:"error,omitempty"`
+}
+
+// SSStats is one socket listed by "ss", everything known about it in this one
+// entry (#68): one socket is one record, never a socket entry and a separate
+// process entry. Protocol is "tcp" or "udp" and Family "ipv4" or "ipv6" - the
+// socket's, so a dual-stack listener on [::] is ipv6 although it accepts IPv4
+// too. State is the TCP state (LISTEN, ESTABLISHED, TIME-WAIT, ...) or, for
+// UDP, UNCONN (bound, no peer) or ESTABLISHED (connected); Windows does not say
+// for UDP, and it is empty there. RemoteAddress and RemotePort are empty for a
+// socket with no peer. RecvQ and SendQ are the bytes queued (for a listening
+// TCP socket, RecvQ is the connections waiting to be accepted), UID the user
+// the socket belongs to and User that user's name: Linux reports them,
+// Windows does not, and they are absent there. Processes are the processes
+// holding the socket - more than one when it is shared, as by a server's
+// workers - and FD is the descriptor number in each (absent on Windows, which
+// has none). Processes is absent when no process holds the socket (one in
+// TIME-WAIT) and when OwnerHidden is true: the socket belongs to a process this
+// user may not inspect.
+type SSStats struct {
+	Protocol      string      `json:"protocol"`
+	Family        string      `json:"family"`
+	State         string      `json:"state,omitempty"`
+	LocalAddress  string      `json:"local_address"`
+	LocalPort     int         `json:"local_port"`
+	RemoteAddress string      `json:"remote_address,omitempty"`
+	RemotePort    int         `json:"remote_port,omitempty"`
+	RecvQ         *uint32     `json:"recv_q,omitempty"`
+	SendQ         *uint32     `json:"send_q,omitempty"`
+	UID           *uint32     `json:"uid,omitempty"`
+	User          string      `json:"user,omitempty"`
+	Processes     []SSProcess `json:"processes,omitempty"`
+	OwnerHidden   bool        `json:"owner_hidden,omitempty"`
+}
+
+// SSProcess is a process holding a socket: its PID, its name (on Linux the
+// kernel's short name for it, at most 15 characters; on Windows the program's
+// file name) and the descriptor number the socket has in it.
+type SSProcess struct {
+	PID  int    `json:"pid"`
+	Name string `json:"name"`
+	FD   *int   `json:"fd,omitempty"`
 }
 
 // DNSStats is one question asked by "dns": Name and Type are what was asked,

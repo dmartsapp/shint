@@ -15,6 +15,7 @@ Includes:
 
 - [ ] every target and bug below is done, or moved to a later milestone
 - [ ] the `ip route` target has an issue of its own
+- [ ] `ss` has run on a real Windows machine (`shint.exe ss`, `ss -l`, `ss --json`): its Windows code is unit-tested on recorded tables, but the system calls have only been compiled, never run
 - [ ] `ping`'s targets ([#14](https://github.com/dmartsapp/shint/issues/14), [#25](https://github.com/dmartsapp/shint/issues/25)): the go-ping release they need is out, and `go.mod` uses it
 - [ ] the changelog has an entry for every change a user would notice
 - [ ] `Summary:` above says what this release is, in plain language

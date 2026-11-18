@@ -56,6 +56,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `dns` | `server resolved`, `dns resolution failed`, `query`, `query failed`, `answer`, `authority`, `no server to ask`, `done` |
 | `cidr` | `subnet`, `done` |
 | `ip` | `interface`, `failed`, `done` |
+| `ss` | `socket`, `failed`, `done`, `owners hidden` (`WARN`) |
 | `listen-tcp` | `listening`, `connection accepted`, `data received`, `connection closed`, `done` |
 | `listen-udp` | `listening`, `packet received`, `done` |
 | `listen-http` | `listening`, `request`, `request rejected`, `request incomplete`, `done` |
@@ -113,8 +114,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Field | Type | Meaning |
 |---|---|---|
 | `input_params` | object | The parameters the command ran with. |
-| `module_name` | string | `telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `rdns` or `dns` - and `wol`, `cidr` or `ip`, whose documents have no `dns_lookup`. |
-| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr`, `ip` and `dns`** (`dns` is itself the lookup), which never look up a name (an empty lookup would only read as a failed one) - and for `nmap` given a prefix, which is swept without a lookup, or more than one target, which has `dns_lookups`. |
+| `module_name` | string | `telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `rdns` or `dns` - and `wol`, `cidr`, `ip` or `ss`, whose documents have no `dns_lookup`. |
+| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr`, `ip`, `ss` and `dns`** (`dns` is itself the lookup), which never look up a name (an empty lookup would only read as a failed one) - and for `nmap` given a prefix, which is swept without a lookup, or more than one target, which has `dns_lookups`. |
 | `stats` | array | One entry per check; the shape depends on the command (below). |
 | `start_time_unixtime_µs` | integer | When the run started, in Unix microseconds. |
 | `end_time_unixtime_µs` | integer | When it ended. |
@@ -131,8 +132,9 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `host` | The target as given. Empty for `nmap` given more than one target, which lists them in `targets`. |
 | `targets` | `nmap` only, given more than one target: each as given - host names, addresses and prefixes. Absent otherwise. |
 | `from_port`, `to_port` | The port, or the scanned range for `nmap` (with `--ports`, the lowest and highest port of the list). (For `ping` these hold `7`, the echo port, and carry no meaning.) |
-| `ports` | `nmap --ports` only: the ports scanned, sorted, each once, with runs written as ranges (`"22,80,443,8000-8100"`). Absent for a `--from`/`--to` range. |
-| `protocol` | `tcp`, `udp`, `icmp` or `dns` (`rdns`). |
+| `ports` | `nmap --ports` and `ss --ports` only: the ports scanned or listed, sorted, each once, with runs written as ranges (`"22,80,443,8000-8100"`). Absent for a `--from`/`--to` range, and when `ss` was given no `--ports`. |
+| `protocol` | `tcp`, `udp`, `icmp` or `dns` (`rdns`); for `ss`, the protocols listed: `tcp`, `udp` or `tcp,udp`. |
+| `listening`, `pid` | `ss` only: `true` with `-l`, and the `--pid` asked for. Absent otherwise. |
 | `timeout_ms` | The `--timeout` value. **Despite the name, it is in seconds.** |
 | `count`, `delay_ms`, `throttle` | `--count`, `--delay` (milliseconds) and `--throttle`. |
 | `payload_bytes` | Payload size: filler size for `ping`/`udp`, request body size for `web`. |
@@ -284,6 +286,19 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `name`, `state`, `mtu`, `mac`, `flags` | The interface. `state` is `up` or `down`; `flags` a list of words; `mac` is left out when the interface has none. |
 | `ipv4`, `ipv6` | Its addresses of that family as plain strings with their prefix length (`"192.168.1.20/24"`): lists that are empty, never `null`, when it has none (or after `-4`/`-6`). |
 | `error` | Present only when the addresses of this interface could not be read. |
+
+**ss** - one entry per socket, everything about it in that one entry, no timing (see [ss](ss.md#what-it-reports) for what each field means)
+
+| Field | Meaning |
+|---|---|
+| `protocol`, `family` | `tcp` or `udp`, and `ipv4` or `ipv6` - the socket's family, so a dual-stack listener on `[::]` is `ipv6`. |
+| `state` | `LISTEN`, `ESTABLISHED`, `TIME-WAIT`, ... for TCP; `UNCONN` or `ESTABLISHED` for UDP. Left out for UDP on Windows, which does not report it. |
+| `local_address`, `local_port` | The local end. |
+| `remote_address`, `remote_port` | The peer. Left out for a socket that has none. |
+| `recv_q`, `send_q` | Bytes queued in each direction (for a listener, `recv_q` is the connections waiting to be accepted). Linux only; left out on Windows. |
+| `uid`, `user` | The user the socket belongs to, and that user's name when it has one. Linux only, and left out for a socket no process holds (`TIME-WAIT`), so `0` is always root. |
+| `processes` | The processes holding the socket: a list of `{pid, name, fd}` (no `fd` on Windows). More than one when the socket is shared. Left out when no process holds it, or when it could not be seen. |
+| `owner_hidden` | `true` when the socket belongs to a process this user may not inspect, so `processes` is unknown. Left out otherwise. |
 
 ## Listener events
 
