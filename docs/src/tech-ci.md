@@ -254,7 +254,7 @@ Everything reaches the script through environment variables, never interpolated 
 
 ## Slack notification
 
-`Notify Slack` (`.github/workflows/notify-slack.yaml`) is the last word on a release. It starts with the tag like the others, waits until the five release workflows have finished, and posts **one message** to Slack:
+`Notify Slack` (`.github/workflows/notify-slack.yaml`) is the last word on a release. It starts with the tag like the others, waits until the five release workflows have finished, and posts **one message** to Slack with the result:
 
 | Part | What it shows |
 |---|---|
@@ -263,6 +263,13 @@ Everything reaches the script through environment variables, never interpolated 
 | What failed | For a failed workflow, the job and step (`golangci-lint › Run golangci-lint`), up to three |
 | Footer | The tag, the commit (linked) and its subject, and who pushed the tag |
 | Buttons | The release notes (only when everything passed) and the tag's workflow runs |
+
+**When everything passed, the release is announced too**, for the people who use shint rather than the ones who build it:
+
+- **A second Slack post**, right after the result: `shint v{{version}} is out`, the release's one-line summary (the `Summary:` line of `releases/vX.Y.Z.md`), the headline of each changelog entry for the version (its leading bold sentence; "Release process" entries are left out, and after eight the rest are counted), how to get it (the release, `docker pull`, `go install`), and buttons for the release notes, the changelog and the documentation.
+- **A discussion** in the repository's *Announcements* category, titled `vX.Y.Z released`, with the same content in Markdown and every highlight. It is made once: a re-run that finds a discussion with that title leaves it alone. This is why the job has `discussions: write`.
+
+A failed or unfinished release is never announced. The body goes to `gh` as a raw field (`-f`), so its text is never read as a file name - the mistake that once posted a file path as eight announcements' text.
 
 **It cannot start any other way and cannot hurt a release.** It obeys the [trigger rule](#the-workflow-trigger-rule) - a tag push, nothing else - so it cannot use `workflow_run` to be told when the others finish; it looks at the runs of its own tag every 20 seconds (`gh run list`, needing only `actions: read`) until all five have completed, for at most 50 minutes. It publishes nothing and changes nothing: if it fails, or Slack is down, the release is exactly as it was, and the failure shows only on this workflow's own run.
 

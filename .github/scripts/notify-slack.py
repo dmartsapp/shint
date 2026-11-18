@@ -5,9 +5,17 @@
 
 Run by .github/workflows/notify-slack.yaml, which the tag push starts alongside
 the five release workflows. This waits until each of them has finished (or the
-wait runs out), then posts one message: the tag, whether everything passed, one
+wait runs out), then posts the result: the tag, whether everything passed, one
 line per workflow with its duration and a link to its run, what failed and where,
 and buttons for the release and the runs.
+
+When everything passed, the release is announced, for the people who use shint
+rather than the ones who build it: in a second Slack post, and as a discussion in
+the repository's Announcements category (titled "vX.Y.Z released", once per
+version). Both hold the release's one-line summary (releases/vX.Y.Z.md), the
+headline of each changelog entry for the version (CHANGELOG.md), how to get it,
+and links to the release notes, the changelog and the documentation. A failed or
+unfinished release is never announced.
 
 Settings come from the environment:
 
@@ -16,17 +24,22 @@ Settings come from the environment:
   RUN_ID              this workflow's own run, ignored while waiting
   ACTOR               who pushed the tag
   SERVER_URL          https://github.com
-  SLACK_WEBHOOK_URL   the incoming webhook; without it nothing is posted (a fork,
-                      or the secret not set) and the run still succeeds
+  SLACK_WEBHOOK_URL   the incoming webhook; without it nothing is posted to Slack
+                      (a fork, or the secret not set) and the run still succeeds
+  ANNOUNCE_DISCUSSIONS=1  also announce a release that passed in Discussions
+                      (GH_TOKEN then needs discussions: write)
   WAIT_SECONDS        how long to wait for the workflows (default 3000)
   POLL_SECONDS        seconds between looks (default 20)
-  DRY_RUN=1           print the message instead of posting it
+  DRY_RUN=1           print the messages instead of posting them
+  CHANGELOG           the changelog to announce from (default CHANGELOG.md)
+  RELEASES_DIR        where releases/vX.Y.Z.md lives (default releases)
 
 The webhook URL is a credential: it is never printed, logged or put in an error.
 Standard library only, like the other scripts here.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -213,6 +226,176 @@ def build_payload(tag, repo, sha, subject, actor, server, runs, timed_out, asset
     return {"text": fallback, "attachments": [{"color": color, "blocks": blocks}]}
 
 
+# --- the announcement ------------------------------------------------------------------
+
+DOCS_URL = "https://dmartsapp.github.io/shint/"
+CHANGELOG_URL = "https://dmartsapp.github.io/shint/docs/changelog.html"
+DOCKER_IMAGE = "farhansabbir/shint"   # the Docker Hub image the release workflow pushes
+MAX_HIGHLIGHTS = 8                    # changelog headlines shown; the rest are counted
+MAX_HEADLINE = 240                    # characters per headline, before it is cut
+
+
+def changelog_entries(text, tag):
+    """The entries ("- ..." items, one string each) of the changelog section for tag
+    (## v4.4.0 - 2026-11-29), or [] when the changelog has no such section."""
+    version = tag.lstrip("v")
+    heading = re.compile(r"^## v%s( |$)" % re.escape(version))
+    entries, inside = [], False
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if inside:
+                break
+            inside = bool(heading.match(line))
+            continue
+        if not inside:
+            continue
+        if line.startswith("- "):
+            entries.append(line[2:].strip())
+        elif entries and line.strip() and line.startswith("  "):
+            entries[-1] += " " + line.strip()   # a wrapped entry
+    return entries
+
+
+def headline(entry):
+    """What an entry says first: its leading bold sentence (with what comes before
+    it, as in "Release process: **...**"), else its first sentence."""
+    m = re.match(r"^([^*]{0,40}?)\*\*(.+?)\*\*", entry)
+    if m:
+        return (m.group(1) + "**" + m.group(2) + "**").strip()
+    first = re.split(r"(?<=[.!?])\s", entry, maxsplit=1)[0]
+    return first
+
+
+def mrkdwn(md):
+    """Markdown as Slack mrkdwn: &, < and > escaped, **bold** as *bold*, and
+    [text](url) as <url|text>. `code` is the same in both."""
+    text = md.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    text = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", lambda m: "<%s|%s>" % (m.group(2), m.group(1)), text)
+    return re.sub(r"\*\*(.+?)\*\*", r"*\1*", text)
+
+
+def cut(text, limit):
+    if len(text) <= limit:
+        return text
+    return text[:limit - 1].rsplit(" ", 1)[0] + "…"
+
+
+def release_summary(text):
+    """The Summary: line of a releases/vX.Y.Z.md, or None."""
+    for line in text.splitlines():
+        if line.startswith("Summary:"):
+            return line[len("Summary:"):].strip() or None
+    return None
+
+
+def build_announcement(tag, summary, entries, release_url):
+    """The release announcement, posted after the result when everything passed, or
+    None when the changelog has nothing for this version. Pure: no network."""
+    items = [e for e in entries if not e.lower().startswith("release process")]
+    if not items:
+        return None
+    shown = items[:MAX_HIGHLIGHTS]
+    bullets = ["•  " + cut(mrkdwn(headline(e)), MAX_HEADLINE) for e in shown]
+    if len(items) > len(shown):
+        bullets.append("_...and %d more in the release notes._" % (len(items) - len(shown)))
+
+    intro = ":tada:  *shint %s is out*" % tag
+    if summary:
+        intro += "\n" + mrkdwn(summary)
+    version = tag.lstrip("v")
+    get = ["Download from the <%s|release>" % release_url if release_url else "Download from GitHub",
+           "`docker pull %s:%s`" % (DOCKER_IMAGE, version),
+           "`go install github.com/dmartsapp/shint/v4@%s`" % tag]
+
+    buttons = []
+    if release_url:
+        buttons.append({"type": "button", "text": {"type": "plain_text", "text": "Release notes"}, "url": release_url, "style": "primary"})
+    buttons.append({"type": "button", "text": {"type": "plain_text", "text": "Changelog"}, "url": CHANGELOG_URL})
+    buttons.append({"type": "button", "text": {"type": "plain_text", "text": "Documentation"}, "url": DOCS_URL})
+
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": intro}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": "*What's new*\n" + "\n".join(bullets)}},
+        {"type": "context", "elements": [{"type": "mrkdwn", "text": "  ·  ".join(get)}]},
+        {"type": "actions", "elements": buttons},
+    ]
+    fallback = "shint %s is out" % tag + (": " + summary if summary else "")
+    return {"text": fallback, "attachments": [{"color": GREEN, "blocks": blocks}]}
+
+
+def discussion_title(tag):
+    return "%s released" % tag
+
+
+def build_discussion(tag, summary, entries, release_url):
+    """The Discussions announcement, in Markdown: every highlight (there is room), or
+    None when the changelog has nothing for this version. Pure: no network."""
+    items = [e for e in entries if not e.lower().startswith("release process")]
+    if not items:
+        return None
+    release_url = release_url or "https://github.com/dmartsapp/shint/releases/tag/%s" % tag
+    lines = ["**shint %s is out.**%s" % (tag, " " + summary if summary else ""), "", "## What's new", ""]
+    lines += ["- " + headline(e) for e in items]
+    lines += ["", "Every change, with the details, is in the [release notes](%s) and the [changelog](%s)." % (release_url, CHANGELOG_URL),
+              "", "## Get it", "",
+              "- [Download from the release](%s): a binary for each platform, with checksums, signed attestations and SBOMs" % release_url,
+              "- `docker pull %s:%s`" % (DOCKER_IMAGE, tag.lstrip("v")),
+              "- `go install github.com/dmartsapp/shint/v4@%s`" % tag,
+              "", "[Documentation](%s)" % DOCS_URL]
+    return "\n".join(lines) + "\n"
+
+
+DISCUSSION_LOOKUP = """query($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    id
+    discussionCategories(first: 25) { nodes { id name } }
+    discussions(first: 50, orderBy: {field: CREATED_AT, direction: DESC}) { nodes { title url } }
+  }
+}"""
+
+DISCUSSION_CREATE = """mutation($repo: ID!, $category: ID!, $title: String!, $body: String!) {
+  createDiscussion(input: {repositoryId: $repo, categoryId: $category, title: $title, body: $body}) {
+    discussion { url }
+  }
+}"""
+
+
+def announce_in_discussions(gh, repo, tag, body, category="Announcements"):
+    """Create the release's discussion, unless one with its title exists already (a
+    re-run). Returns its URL, or None if it could not be made. The body goes to gh
+    as a raw field (-f), so nothing in it is read as a file name."""
+    owner, name = repo.split("/", 1)
+    try:
+        found = gh(["api", "graphql", "-f", "query=" + DISCUSSION_LOOKUP, "-f", "owner=" + owner, "-f", "name=" + name])["data"]["repository"]
+    except (RuntimeError, KeyError, TypeError) as err:
+        print("could not look up the repository's discussions (%s)" % err)
+        return None
+    title = discussion_title(tag)
+    for d in found["discussions"]["nodes"]:
+        if d["title"] == title:
+            print("Discussions already has %r: %s" % (title, d["url"]))
+            return d["url"]
+    ids = [c["id"] for c in found["discussionCategories"]["nodes"] if c["name"] == category]
+    if not ids:
+        print("the repository has no %r discussion category" % category)
+        return None
+    try:
+        made = gh(["api", "graphql", "-f", "query=" + DISCUSSION_CREATE, "-f", "repo=" + found["id"],
+                   "-f", "category=" + ids[0], "-f", "title=" + title, "-f", "body=" + body])
+        return made["data"]["createDiscussion"]["discussion"]["url"]
+    except (RuntimeError, KeyError, TypeError) as err:
+        print("could not create the discussion (%s)" % err)
+        return None
+
+
+def read_file(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
 def post(url, payload, attempts=3, sleep=time.sleep):
     """POST to the webhook. Returns True on Slack's 'ok'. Never prints the URL."""
     body = json.dumps(payload).encode("utf-8")
@@ -253,9 +436,11 @@ def main(env=None, gh=gh_json, sleep=time.sleep, clock=time.monotonic):
         return 2
     url = env.get("SLACK_WEBHOOK_URL", "")
     dry = env.get("DRY_RUN") == "1"
+    discussions = env.get("ANNOUNCE_DISCUSSIONS") == "1"
     if not url and not dry:
-        print("SLACK_WEBHOOK_URL is not set (a fork, or the secret is missing): nothing to post.")
-        return 0
+        print("SLACK_WEBHOOK_URL is not set (a fork, or the secret is missing): nothing to post to Slack.")
+        if not discussions:
+            return 0
 
     names = [n for n, _ in WORKFLOWS]
     runs, timed_out = wait_for_runs(lambda: fetch_runs(gh, repo, sha, tag, env.get("RUN_ID", "")), names,
@@ -282,14 +467,46 @@ def main(env=None, gh=gh_json, sleep=time.sleep, clock=time.monotonic):
                             runs, timed_out, assets, release_url, failures)
     print(payload["text"])
     write_step_summary(payload, tag)
+
+    # The announcement: only for a release whose every check passed.
+    announcement = discussion = None
+    if classify(runs, timed_out)[0] == "passed":
+        entries = changelog_entries(read_file(env.get("CHANGELOG", "CHANGELOG.md")), tag)
+        summary = release_summary(read_file(os.path.join(env.get("RELEASES_DIR", "releases"), tag + ".md")))
+        announcement = build_announcement(tag, summary, entries, release_url)
+        discussion = build_discussion(tag, summary, entries, release_url)
+        if announcement is None:
+            print("The changelog has no entries for %s: no announcement." % tag)
+
     if dry:
         print(json.dumps(payload, indent=2))
+        if announcement:
+            print(json.dumps(announcement, indent=2))
+        if discussion and discussions:
+            print("--- the discussion %r ---\n%s" % (discussion_title(tag), discussion))
         return 0
-    if post(url, payload, sleep=sleep):
-        print("Posted to Slack.")
-        return 0
-    print("The message was not delivered to Slack.", file=sys.stderr)
-    return 1
+
+    status = 0
+    if url:
+        if post(url, payload, sleep=sleep):
+            print("Posted to Slack.")
+            if announcement is not None:
+                if post(url, announcement, sleep=sleep):
+                    print("Posted the announcement to Slack.")
+                else:
+                    print("The announcement was not delivered to Slack.", file=sys.stderr)
+                    status = 1
+        else:
+            print("The message was not delivered to Slack.", file=sys.stderr)
+            status = 1
+    if discussions and discussion is not None:
+        made = announce_in_discussions(gh, repo, tag, discussion)
+        if made:
+            print("Announced in Discussions: %s" % made)
+        else:
+            print("The release was not announced in Discussions.", file=sys.stderr)
+            status = 1
+    return status
 
 
 if __name__ == "__main__":

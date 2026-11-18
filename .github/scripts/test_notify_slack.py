@@ -11,6 +11,7 @@ import io
 import json
 import os
 import subprocess
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -269,6 +270,67 @@ class PostTests(unittest.TestCase):
         self.assertIn("fix: a thing (v4.0.6)", json.dumps(sent))
         self.assertNotIn("SECRET", out)
 
+    def announce_env(self, url=None):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        d = tmp.name
+        with open(os.path.join(d, "CHANGELOG.md"), "w") as f:
+            f.write(CHANGELOG)
+        os.mkdir(os.path.join(d, "releases"))
+        with open(os.path.join(d, "releases", TAG + ".md"), "w") as f:
+            f.write("# shint v4.0.6 - released\n\nSummary: Two wrong answers fixed\n")
+        env = {"REPO": REPO, "TAG": TAG, "SHA": SHA, "ANNOUNCE_DISCUSSIONS": "1",
+               "CHANGELOG": os.path.join(d, "CHANGELOG.md"), "RELEASES_DIR": os.path.join(d, "releases")}
+        if url:
+            env["SLACK_WEBHOOK_URL"] = url
+        return env
+
+    def gh_for(self, runs, created):
+        def gh(args):
+            if args[:2] == ["run", "list"]:
+                return list(runs.values())
+            if args[:2] == ["run", "view"]:
+                return {"jobs": []}
+            if args[:2] == ["api", "graphql"]:
+                query = next(a for a in args if a.startswith("query="))
+                if "createDiscussion" in query:
+                    created.append(next(a for a in args if a.startswith("body=")))
+                    return {"data": {"createDiscussion": {"discussion": {"url": "https://github.com/dmartsapp/shint/discussions/99"}}}}
+                return {"data": {"repository": {"id": "R_1", "discussionCategories": {"nodes": [{"id": "C_1", "name": "Announcements"}]},
+                                                "discussions": {"nodes": []}}}}
+            raise RuntimeError("not needed")
+        return gh
+
+    def test_main_announces_a_release_that_passed(self):
+        url = self.serve([(200, "ok")])
+        created = []
+        result, out = self.call(lambda: ns.main(self.announce_env(url), gh=self.gh_for(all_runs(), created), sleep=lambda s: None))
+        self.assertEqual(result, 0, out)
+        self.assertEqual(len(FakeSlack.seen), 2)                     # the result, then the announcement
+        self.assertIn("released", FakeSlack.seen[0]["text"])
+        self.assertEqual(FakeSlack.seen[1]["text"], "shint v4.0.6 is out: Two wrong answers fixed")
+        self.assertEqual(len(created), 1)
+        self.assertIn("Two wrong answers fixed", created[0])
+        self.assertIn("Announced in Discussions", out)
+        self.assertNotIn("SECRET", out)
+
+    def test_main_never_announces_a_failed_release(self):
+        url = self.serve([(200, "ok")])
+        created = []
+        runs = all_runs(Lint=run("Lint", conclusion="failure", rid=7))
+        result, out = self.call(lambda: ns.main(self.announce_env(url), gh=self.gh_for(runs, created), sleep=lambda s: None))
+        self.assertEqual(result, 0, out)
+        self.assertEqual(len(FakeSlack.seen), 1)
+        self.assertIn("failed", FakeSlack.seen[0]["text"])
+        self.assertEqual(created, [])
+
+    def test_main_announces_in_discussions_without_a_webhook(self):
+        created = []
+        result, out = self.call(lambda: ns.main(self.announce_env(), gh=self.gh_for(all_runs(), created), sleep=lambda s: None))
+        self.assertEqual(result, 0, out)
+        self.assertEqual(len(created), 1)
+        self.assertIn("nothing to post to Slack", out)
+
     def test_main_reports_delivery_failure(self):
         url = self.serve([(404, "no_service")])
         env = {"REPO": REPO, "TAG": TAG, "SHA": SHA, "SLACK_WEBHOOK_URL": url}
@@ -278,6 +340,107 @@ class PostTests(unittest.TestCase):
             raise RuntimeError("no release, no commit")   # both are optional in the message
         result, _ = self.call(lambda: ns.main(env, gh=gh, sleep=lambda s: None))
         self.assertEqual(result, 1)
+
+
+CHANGELOG = """# Changelog
+
+## v4.0.7 - unreleased
+
+- **Not this one.**
+
+## v4.0.6 - 2026-09-21
+
+- **`web` no longer reports a cut-short response as a success ([#40](https://github.com/dmartsapp/shint/issues/40)).** The details
+  carry on here.
+- **`ping` no longer reports a dead host as reachable.** More text & <things>.
+- Built with Go 1.27.4 (was 1.27.3). Then more.
+- Release process: **the battery runs on every release.**
+
+## v4.0.5 - 2026-09-20
+
+- **Older.**
+"""
+
+
+class AnnouncementTests(unittest.TestCase):
+    def test_changelog_entries_are_the_versions_items(self):
+        entries = ns.changelog_entries(CHANGELOG, "v4.0.6")
+        self.assertEqual(len(entries), 4)
+        self.assertTrue(entries[0].endswith("The details carry on here."))   # a wrapped entry is joined
+        self.assertEqual(ns.changelog_entries(CHANGELOG, "v4.0.9"), [])
+        self.assertEqual(ns.changelog_entries(CHANGELOG, "v4.0.5"), ["**Older.**"])
+
+    def test_headline(self):
+        e = ns.changelog_entries(CHANGELOG, "v4.0.6")
+        self.assertEqual(ns.headline(e[0]), "**`web` no longer reports a cut-short response as a success ([#40](https://github.com/dmartsapp/shint/issues/40)).**")
+        self.assertEqual(ns.headline(e[2]), "Built with Go 1.27.4 (was 1.27.3).")
+        self.assertEqual(ns.headline(e[3]), "Release process: **the battery runs on every release.**")
+
+    def test_mrkdwn(self):
+        self.assertEqual(ns.mrkdwn("**a [b](https://x.example/?q=1&r=2) `c` <d> & e**"),
+                         "*a <https://x.example/?q=1&amp;r=2|b> `c` &lt;d&gt; &amp; e*")
+
+    def test_announcement(self):
+        a = ns.build_announcement("v4.0.6", "Two wrong answers fixed", ns.changelog_entries(CHANGELOG, "v4.0.6"),
+                                  "https://github.com/dmartsapp/shint/releases/tag/v4.0.6")
+        t = json.dumps(a)
+        self.assertIn("shint v4.0.6 is out", t)
+        self.assertIn("Two wrong answers fixed", t)
+        self.assertIn("<https://github.com/dmartsapp/shint/issues/40|#40>", t)
+        self.assertIn("docker pull farhansabbir/shint:4.0.6", t)
+        self.assertIn("go install github.com/dmartsapp/shint/v4@v4.0.6", t)
+        self.assertNotIn("battery runs", t)            # release-process entries are for builders, not users
+        self.assertNotIn("Not this one", t)
+        self.assertEqual([b["text"]["text"] for b in a["attachments"][0]["blocks"][3]["elements"]], ["Release notes", "Changelog", "Documentation"])
+        self.assertIsNone(ns.build_announcement("v4.0.9", None, [], None))
+
+    def test_announcement_counts_what_it_leaves_out(self):
+        entries = ["**Item %d %s.**" % (i, "x" * 400) for i in range(12)]
+        a = ns.build_announcement("v4.0.6", None, entries, None)
+        text = a["attachments"][0]["blocks"][1]["text"]["text"]
+        self.assertIn("...and 4 more in the release notes", text)
+        self.assertLess(len(text), 3000)               # Slack's limit for a section
+        self.assertNotIn("Release notes", json.dumps(a["attachments"][0]["blocks"][3]))   # no release URL, no button
+
+    def test_discussion(self):
+        body = ns.build_discussion("v4.0.6", "Two wrong answers fixed", ns.changelog_entries(CHANGELOG, "v4.0.6"), None)
+        self.assertTrue(body.startswith("**shint v4.0.6 is out.** Two wrong answers fixed"))
+        self.assertIn("- **`ping` no longer reports a dead host as reachable.**", body)
+        self.assertIn("(https://github.com/dmartsapp/shint/releases/tag/v4.0.6)", body)
+        self.assertNotIn("battery runs", body)
+        self.assertEqual(ns.discussion_title("v4.0.6"), "v4.0.6 released")
+
+    def fake_discussions(self, existing=(), categories=("Announcements", "General")):
+        calls = []
+
+        def gh(args):
+            calls.append(args)
+            query = next(a for a in args if a.startswith("query="))
+            if "createDiscussion" in query:
+                return {"data": {"createDiscussion": {"discussion": {"url": "https://github.com/dmartsapp/shint/discussions/99"}}}}
+            return {"data": {"repository": {"id": "R_1",
+                    "discussionCategories": {"nodes": [{"id": "C_" + c, "name": c} for c in categories]},
+                    "discussions": {"nodes": [{"title": t, "url": "https://github.com/dmartsapp/shint/discussions/1"} for t in existing]}}}}
+        return gh, calls
+
+    def test_a_discussion_is_made_once(self):
+        gh, calls = self.fake_discussions()
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(ns.announce_in_discussions(gh, REPO, "v4.0.6", "@/etc/passwd body"), "https://github.com/dmartsapp/shint/discussions/99")
+        create = calls[1]
+        self.assertIn("body=@/etc/passwd body", create)              # a raw field: never read as a file
+        self.assertEqual(create[create.index("body=@/etc/passwd body") - 1], "-f")
+        self.assertIn("category=C_Announcements", create)
+        self.assertIn("title=v4.0.6 released", create)
+
+        gh, calls = self.fake_discussions(existing=("v4.0.6 released",))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(ns.announce_in_discussions(gh, REPO, "v4.0.6", "body"), "https://github.com/dmartsapp/shint/discussions/1")
+        self.assertEqual(len(calls), 1)                               # found it: nothing created
+
+        gh, calls = self.fake_discussions(categories=("General",))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertIsNone(ns.announce_in_discussions(gh, REPO, "v4.0.6", "body"))
 
 
 class RepositoryTests(unittest.TestCase):
