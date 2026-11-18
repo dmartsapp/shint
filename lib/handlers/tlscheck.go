@@ -72,11 +72,29 @@ func tlsHandshake(ctx context.Context, address string, port int, serverName stri
 	}
 	// #nosec G402 -- verification is done by verifyChain, against the name asked for:
 	// skipping it here is what lets an untrusted or expired certificate be shown.
-	tc := tls.Client(conn, &tls.Config{ServerName: serverName, InsecureSkipVerify: true, MinVersion: tls.VersionTLS12})
+	tc := tls.Client(conn, &tls.Config{ServerName: serverName, InsecureSkipVerify: true, MinVersion: tlsMinVersion, MaxVersion: tlsMaxVersion})
 	if err := tc.HandshakeContext(ctx); err != nil {
 		return tlsResult{}, handshakeError{err: err, timeout: timeout}
 	}
 	return tlsResult{state: tc.ConnectionState(), handshakeIn: time.Since(begin)}, nil
+}
+
+// tlsMinVersion and tlsMaxVersion are the TLS versions tls offers, set both ends
+// so what it says it offered is exactly what it sent, whatever Go's defaults
+// become. TLS 1.0 and 1.1 are deprecated (RFC 8996).
+const (
+	tlsMinVersion = tls.VersionTLS12
+	tlsMaxVersion = tls.VersionTLS13
+)
+
+// offeredVersions are the TLS versions tls offers, oldest first ("TLS 1.2",
+// "TLS 1.3"): in the handshake lines (offered=) and the JSON.
+func offeredVersions() []string {
+	var out []string
+	for v := uint16(tlsMinVersion); v <= tlsMaxVersion; v++ {
+		out = append(out, tls.VersionName(v))
+	}
+	return out
 }
 
 // verifyChain is what a browser decides about the certificates a server sent:
@@ -128,7 +146,7 @@ func explainTLSError(err error, name string, certs []*x509.Certificate, now time
 	case strings.Contains(err.Error(), "remote error: tls: handshake failure") || strings.Contains(err.Error(), "remote error: tls: unrecognized name"):
 		return fmt.Sprintf("the server refused the handshake - it may have no certificate for %q (the name sent; --servername sends another), or share no cipher suite with shint (%s)", name, err.Error())
 	case strings.Contains(err.Error(), "unsupported protocol version") || strings.Contains(err.Error(), "protocol version not supported"):
-		return "the server and shint share no TLS version: shint speaks TLS 1.2 and 1.3, so the server may speak only TLS 1.1 or older (" + err.Error() + ")"
+		return "the server and shint share no TLS version: shint offered " + strings.Join(offeredVersions(), " and ") + ", so the server may speak only TLS 1.1 or older (" + err.Error() + ")"
 	}
 	return strings.TrimPrefix(strings.TrimPrefix(lib.ExplainError(err), "x509: "), "tls: ")
 }
@@ -279,14 +297,14 @@ attempts:
 			now := time.Now()
 			certs := res.state.PeerCertificates
 			stat := lib.TLSStats{Address: ip, Port: opts.Port, ServerName: serverName, SentTime: begin.UnixMicro(), TimeTaken: taken.Microseconds(),
-				Certificates: make([]lib.TLSCertificate, 0, len(certs)), Warnings: make([]string, 0)}
+				Certificates: make([]lib.TLSCertificate, 0, len(certs)), Warnings: make([]string, 0), OfferedVersions: offeredVersions()}
 			where := lib.Fields("server", serverName, "address", ip, "port", opts.Port, "attempt", fmt.Sprintf("%d/%d", attempt, iterations))
 			var failure string
 			if herr != nil {
 				failure = explainTLSError(herr, serverName, nil, now)
 				stat.Error = failure
 				if !*jsonoutput {
-					fmt.Println(lib.LogWithTimestamp(tlsModule, "handshake failed "+where+" "+lib.Fields("time", taken, "error", failure), true))
+					fmt.Println(lib.LogWithTimestamp(tlsModule, "handshake failed "+where+" "+lib.Fields("offered", strings.Join(stat.OfferedVersions, ","), "time", taken, "error", failure), true))
 				}
 			} else {
 				stat.RecvTime = now.UnixMicro()
@@ -330,7 +348,8 @@ attempts:
 				}
 
 				if !*jsonoutput {
-					fmt.Println(lib.LogWithTimestamp(tlsModule, "handshake "+where+" "+lib.Fields("version", stat.TLSVersion, "cipher", stat.CipherSuite, "certificates", len(certs), "time", taken), false))
+					// offered is what shint asked for; version and cipher are what the server chose.
+					fmt.Println(lib.LogWithTimestamp(tlsModule, "handshake "+where+" "+lib.Fields("offered", strings.Join(stat.OfferedVersions, ","), "version", stat.TLSVersion, "cipher", stat.CipherSuite, "certificates", len(certs), "time", taken), false))
 					for depth, c := range certs {
 						d := stat.Certificates[depth]
 						if shown[d.SHA256] {

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"net"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +23,14 @@ import (
 // until the test ends; it returns the port.
 func tlsServer(t *testing.T, cert tls.Certificate) int {
 	t.Helper()
-	ln, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{Certificates: []tls.Certificate{cert}})
+	return tlsServerWith(t, &tls.Config{Certificates: []tls.Certificate{cert}})
+}
+
+// tlsServerWith is tlsServer with a configuration of the test's own (to limit
+// the TLS versions the server speaks, say).
+func tlsServerWith(t *testing.T, cfg *tls.Config) int {
+	t.Helper()
+	ln, err := tls.Listen("tcp", "127.0.0.1:0", cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,5 +216,30 @@ func TestFormatDays(t *testing.T) {
 		if got := formatDays(d); got != want {
 			t.Errorf("formatDays(%v) = %q, want %q", d, got, want)
 		}
+	}
+}
+
+// The handshake line says which TLS versions shint offered and which one the
+// server chose; a server that speaks only older versions fails, saying what
+// shint offered.
+func TestTLSOfferedAndChosenVersions(t *testing.T) {
+	ca := generateTestCA(t)
+	port := tlsServerWith(t, &tls.Config{Certificates: []tls.Certificate{ca.ServerTLSCert}, MaxVersion: tls.VersionTLS12})
+	text, ok, _, stats := runTLS(t, TLSCheckOptions{Port: port, RootCAs: ca.CAPool, CustomCA: true}, 1)
+	if !ok || !strings.Contains(text, `port=`+strconv.Itoa(port)+` attempt=1/1 offered="TLS 1.2,TLS 1.3" version="TLS 1.2" cipher=`) {
+		t.Errorf("ok %v, want offered and the version the server chose:\n%s", ok, text)
+	}
+	if len(stats) != 1 || strings.Join(stats[0].OfferedVersions, ",") != "TLS 1.2,TLS 1.3" || stats[0].TLSVersion != "TLS 1.2" {
+		t.Errorf("stats %+v", stats)
+	}
+
+	old := tlsServerWith(t, &tls.Config{Certificates: []tls.Certificate{ca.ServerTLSCert}, MinVersion: tls.VersionTLS10, MaxVersion: tls.VersionTLS11})
+	text, ok, _, stats = runTLS(t, TLSCheckOptions{Port: old, RootCAs: ca.CAPool, CustomCA: true}, 1)
+	if ok || !strings.Contains(text, `ERROR handshake failed server=127.0.0.1`) || !strings.Contains(text, `offered="TLS 1.2,TLS 1.3"`) ||
+		!strings.Contains(text, "the server and shint share no TLS version: shint offered TLS 1.2 and TLS 1.3") {
+		t.Errorf("ok %v, want a failed handshake that says what was offered:\n%s", ok, text)
+	}
+	if len(stats) != 1 || len(stats[0].OfferedVersions) != 2 || stats[0].TLSVersion != "" {
+		t.Errorf("a failed handshake still records what was offered: %+v", stats)
 	}
 }

@@ -215,7 +215,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 |---|---|
 | `address`, `port`, `server_name` | The address and port connected to, and the name sent as SNI and verified against (an address sends no SNI). |
 | `success` | The handshake completed, the chain verified, and - with `--fail-days` - nothing in it expires within that many days. |
-| `tls_version`, `cipher_suite` | What the server chose: `TLS 1.3` or `TLS 1.2`, and the cipher suite's IANA name. |
+| `tls_versions_offered` | The TLS versions shint offered: `["TLS 1.2", "TLS 1.3"]`. There even when the handshake failed. |
+| `tls_version`, `cipher_suite` | What the server chose from them: `TLS 1.3` or `TLS 1.2`, and the cipher suite's IANA name. |
 | `verified`, `verify_error` | Whether the chain leads to a trusted root and is valid for `server_name`; if not, why. |
 | `trust` | Which roots: `system`, or `system and --cacert`. |
 | `verified_chain` | The subjects of the verified chain, from the server's certificate to the trust anchor. |

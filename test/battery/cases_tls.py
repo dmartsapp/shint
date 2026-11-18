@@ -35,7 +35,7 @@ def listed_once(r):
 
 # ---------------- O: tls - trusted, untrusted, expiry
 tl("trusted-cacert", "127.0.0.1", "{https}", "--cacert", "{good_pem}", rc=0,
-   contains=["] OK handshake server=127.0.0.1", "] OK certificate depth=0", "] OK verified ", "] WARN expires soon", "] OK done checks=1 passed=1"],
+   contains=["] OK handshake server=127.0.0.1", 'offered="TLS 1.2,TLS 1.3" version="TLS 1.', "] OK certificate depth=0", "] OK verified ", "] WARN expires soon", "] OK done checks=1 passed=1"],
    absent=["ERROR"])
 tl("trusted-by-name", "localhost", "{https}", "-4", "--cacert", "{good_pem}", rc=0, contains=["server=localhost"])
 tl("untrusted", "127.0.0.1", "{https}", rc=1, contains=["] ERROR verification failed", "signed by an unknown authority", "--cacert"])

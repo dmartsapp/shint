@@ -36,17 +36,17 @@ For each address, one `handshake` line, then the certificates, then the verdict:
 
 | Line | Meaning |
 |---|---|
-| `handshake` | The handshake completed: `version` (`TLS 1.3` or `TLS 1.2`), `cipher` (the cipher suite the server chose) and how many certificates it sent. |
+| `handshake` | The handshake completed: `offered` (the TLS versions shint offered, `TLS 1.2,TLS 1.3`), then what the server chose from them - `version` (`TLS 1.3` or `TLS 1.2`) and `cipher` (the cipher suite) - and how many certificates it sent. |
 | `certificate` | One certificate, `depth=0` being the server's own and each next one its issuer: `subject`, `issuer`, `not_after` and `expires_in` (in days, or hours under two days), `names` (the host names and addresses it is valid for), `key` (`ECDSA P-256`, `RSA 2048`, ...) and `signature`. A certificate is listed once per run, not once per address or attempt. |
 | `verified` | The chain leads to a trusted root and the certificate is valid for the name: `chain` is the path, from the server's certificate to the root that is trusted, and `trust` says which roots - `system`, or `system and --cacert`. |
 | `verification failed` | It does not, with the reason: an unknown authority, an expired or not-yet-valid certificate, a name the certificate is not valid for. |
 | `expires soon` | A `WARN`: a certificate in the verified chain expires within `--warn-days`. |
 | `expires too soon` | An `ERROR`: within `--fail-days`. |
-| `handshake failed` | No handshake: nothing listens there, the server did not answer with TLS, or it refused the handshake - each said in plain words. |
+| `handshake failed` | No handshake: nothing listens there, the server did not answer with TLS, or it refused the handshake - each said in plain words, with `offered` (the versions shint offered). |
 
 Expiry is judged on the chain that verified - the server's certificate, its intermediates and the root a client trusts - not on every certificate sent: servers often add cross-signed certificates that clients never use, and one of those expiring does not matter.
 
-shint speaks TLS 1.2 and 1.3. A server that speaks only TLS 1.1 or older fails the handshake, and the line says so.
+shint offers TLS 1.2 and 1.3, and every handshake line says so (`offered="TLS 1.2,TLS 1.3"`) next to the version the server chose (`version=`). A server that speaks only TLS 1.1 or older (deprecated by RFC 8996) fails the handshake, and the line says that the two share no version and what shint offered.
 
 ## Examples
 
@@ -59,13 +59,13 @@ shint tls example.com -4
 ```text
 Mon Nov  9 10:23:46 CST 2026: [tls] OK dns resolved host=example.com addresses=2 ips=[104.20.23.154,172.66.147.243] time=52.809208ms
 Mon Nov  9 10:23:46 CST 2026: [tls] OK dns authoritative zone=example.com nameservers=[elliott.ns.cloudflare.com,hera.ns.cloudflare.com] time=46.694ms
-Mon Nov  9 10:23:46 CST 2026: [tls] OK handshake server=example.com address=104.20.23.154 port=443 attempt=1/1 version="TLS 1.3" cipher=TLS_AES_128_GCM_SHA256 certificates=4 time=213.148792ms
+Mon Nov  9 10:23:46 CST 2026: [tls] OK handshake server=example.com address=104.20.23.154 port=443 attempt=1/1 offered="TLS 1.2,TLS 1.3" version="TLS 1.3" cipher=TLS_AES_128_GCM_SHA256 certificates=4 time=213.148792ms
 Mon Nov  9 10:23:46 CST 2026: [tls] OK certificate depth=0 subject=CN=example.com issuer="CN=Cloudflare TLS Issuing ECC CA 3,O=SSL Corporation,C=US" not_after=2026-12-25 expires_in=46d names=[example.com,*.example.com] key="ECDSA P-256" signature=ECDSA-SHA256
 Mon Nov  9 10:23:46 CST 2026: [tls] OK certificate depth=1 subject="CN=Cloudflare TLS Issuing ECC CA 3,O=SSL Corporation,C=US" issuer="CN=SSL.com TLS Transit ECC CA R2,O=SSL Corporation,C=US" not_after=2035-05-27 expires_in=3121d key="ECDSA P-256" signature=ECDSA-SHA384
 Mon Nov  9 10:23:46 CST 2026: [tls] OK certificate depth=2 subject="CN=SSL.com TLS Transit ECC CA R2,O=SSL Corporation,C=US" issuer="CN=SSL.com TLS ECC Root CA 2022,O=SSL Corporation,C=US" not_after=2037-10-17 expires_in=3995d key="ECDSA P-384" signature=ECDSA-SHA384
 Mon Nov  9 10:23:46 CST 2026: [tls] OK certificate depth=3 subject="CN=SSL.com TLS ECC Root CA 2022,O=SSL Corporation,C=US" issuer="CN=AAA Certificate Services,O=Comodo CA Limited,L=Salford,ST=Greater Manchester,C=GB" not_after=2028-12-31 expires_in=783d key="ECDSA P-384" signature=SHA256-RSA
 Mon Nov  9 10:23:46 CST 2026: [tls] OK verified server=example.com address=104.20.23.154 port=443 attempt=1/1 chain="CN=example.com > CN=Cloudflare TLS Issuing ECC CA 3,O=SSL Corporation,C=US > CN=SSL.com TLS Transit ECC CA R2,O=SSL Corporation,C=US > CN=SSL.com TLS ECC Root CA 2022,O=SSL Corporation,C=US" trust=system
-Mon Nov  9 10:23:46 CST 2026: [tls] OK handshake server=example.com address=172.66.147.243 port=443 attempt=1/1 version="TLS 1.3" cipher=TLS_AES_128_GCM_SHA256 certificates=4 time=61.750375ms
+Mon Nov  9 10:23:46 CST 2026: [tls] OK handshake server=example.com address=172.66.147.243 port=443 attempt=1/1 offered="TLS 1.2,TLS 1.3" version="TLS 1.3" cipher=TLS_AES_128_GCM_SHA256 certificates=4 time=61.750375ms
 Mon Nov  9 10:23:46 CST 2026: [tls] OK verified server=example.com address=172.66.147.243 port=443 attempt=1/1 chain="CN=example.com > CN=Cloudflare TLS Issuing ECC CA 3,O=SSL Corporation,C=US > CN=SSL.com TLS Transit ECC CA R2,O=SSL Corporation,C=US > CN=SSL.com TLS ECC Root CA 2022,O=SSL Corporation,C=US" trust=system
 Mon Nov  9 10:23:46 CST 2026: [tls] OK done checks=2 passed=2 total_time=398.159416ms
 ```
@@ -80,7 +80,7 @@ shint tls 127.0.0.1 8443 --cacert ca.pem
 
 ```text
 Mon Nov  9 10:30:26 CST 2026: [tls] OK dns resolved host=127.0.0.1 addresses=1 ips=[127.0.0.1] time=128.208µs
-Mon Nov  9 10:30:27 CST 2026: [tls] OK handshake server=127.0.0.1 address=127.0.0.1 port=8443 attempt=1/1 version="TLS 1.2" cipher=TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 certificates=1 time=6.528833ms
+Mon Nov  9 10:30:27 CST 2026: [tls] OK handshake server=127.0.0.1 address=127.0.0.1 port=8443 attempt=1/1 offered="TLS 1.2,TLS 1.3" version="TLS 1.2" cipher=TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 certificates=1 time=6.528833ms
 Mon Nov  9 10:30:27 CST 2026: [tls] OK certificate depth=0 subject=CN=localhost issuer=CN=localhost not_after=2026-11-10 expires_in=23h names=[localhost,127.0.0.1,::1] key="ECDSA P-256" signature=ECDSA-SHA256
 Mon Nov  9 10:30:27 CST 2026: [tls] OK verified server=127.0.0.1 address=127.0.0.1 port=8443 attempt=1/1 chain=CN=localhost trust="system and --cacert"
 Mon Nov  9 10:30:27 CST 2026: [tls] WARN expires soon server=127.0.0.1 address=127.0.0.1 port=8443 attempt=1/1 warning="CN=localhost expires in 23h, on 2026-11-10 - within --warn-days 30"
@@ -112,7 +112,7 @@ shint tls example.com -4 --fail-days 60
 ```
 
 ```text
-Mon Nov  9 10:30:30 CST 2026: [tls] OK handshake server=example.com address=172.66.147.243 port=443 attempt=1/1 version="TLS 1.3" cipher=TLS_AES_128_GCM_SHA256 certificates=4 time=65.343084ms
+Mon Nov  9 10:30:30 CST 2026: [tls] OK handshake server=example.com address=172.66.147.243 port=443 attempt=1/1 offered="TLS 1.2,TLS 1.3" version="TLS 1.3" cipher=TLS_AES_128_GCM_SHA256 certificates=4 time=65.343084ms
 Mon Nov  9 10:30:30 CST 2026: [tls] OK verified server=example.com address=172.66.147.243 port=443 attempt=1/1 chain="CN=example.com > CN=Cloudflare TLS Issuing ECC CA 3,O=SSL Corporation,C=US > CN=SSL.com TLS Transit ECC CA R2,O=SSL Corporation,C=US > CN=SSL.com TLS ECC Root CA 2022,O=SSL Corporation,C=US" trust=system
 Mon Nov  9 10:30:30 CST 2026: [tls] ERROR expires too soon server=example.com address=172.66.147.243 port=443 attempt=1/1 error="a certificate expires in 46d, within --fail-days 60"
 ```
@@ -159,6 +159,10 @@ shint tls 127.0.0.1 8443 --cacert ca.pem --delay 0 --json
       "port": 8443,
       "server_name": "127.0.0.1",
       "success": true,
+      "tls_versions_offered": [
+        "TLS 1.2",
+        "TLS 1.3"
+      ],
       "tls_version": "TLS 1.2",
       "cipher_suite": "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
       "verified": true,

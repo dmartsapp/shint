@@ -252,23 +252,26 @@ type HTTPListenEvent struct {
 // TLSStats is one tls check: one handshake with one address, what the server
 // presented, and whether it can be trusted.
 type TLSStats struct {
-	Address       string           `json:"address"`
-	Port          int              `json:"port"`
-	ServerName    string           `json:"server_name"` // sent as SNI (an address is not) and verified against
-	Success       bool             `json:"success"`
-	TLSVersion    string           `json:"tls_version"`
-	CipherSuite   string           `json:"cipher_suite"`
-	Verified      bool             `json:"verified"`
-	VerifyError   string           `json:"verify_error,omitempty"`
-	Trust         string           `json:"trust,omitempty"`          // "system", or "system and --cacert"
-	VerifiedChain []string         `json:"verified_chain,omitempty"` // subjects, from the server's certificate to the trust anchor
-	Certificates  []TLSCertificate `json:"certificates"`             // as the server sent them, its own first
-	ExpiresInDays float64          `json:"expires_in_days"`          // the soonest in the verified chain (or, unverified, of those sent); negative once expired
-	Warnings      []string         `json:"warnings"`
-	SentTime      int64            `json:"sent_unixtime_µs"`
-	RecvTime      int64            `json:"recv_unixtime_µs"`
-	TimeTaken     int64            `json:"time_taken_µs"`
-	Error         string           `json:"error,omitempty"`
+	Address    string `json:"address"`
+	Port       int    `json:"port"`
+	ServerName string `json:"server_name"` // sent as SNI (an address is not) and verified against
+	Success    bool   `json:"success"`
+	// OfferedVersions are the TLS versions shint offered ("TLS 1.2", "TLS 1.3");
+	// TLSVersion and CipherSuite are what the server chose from what it offered.
+	OfferedVersions []string         `json:"tls_versions_offered"`
+	TLSVersion      string           `json:"tls_version"`
+	CipherSuite     string           `json:"cipher_suite"`
+	Verified        bool             `json:"verified"`
+	VerifyError     string           `json:"verify_error,omitempty"`
+	Trust           string           `json:"trust,omitempty"`          // "system", or "system and --cacert"
+	VerifiedChain   []string         `json:"verified_chain,omitempty"` // subjects, from the server's certificate to the trust anchor
+	Certificates    []TLSCertificate `json:"certificates"`             // as the server sent them, its own first
+	ExpiresInDays   float64          `json:"expires_in_days"`          // the soonest in the verified chain (or, unverified, of those sent); negative once expired
+	Warnings        []string         `json:"warnings"`
+	SentTime        int64            `json:"sent_unixtime_µs"`
+	RecvTime        int64            `json:"recv_unixtime_µs"`
+	TimeTaken       int64            `json:"time_taken_µs"`
+	Error           string           `json:"error,omitempty"`
 }
 
 // TLSCertificate is one certificate a server presented.
