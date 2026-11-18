@@ -28,7 +28,7 @@ Includes:
 | `ss`: this machine's sockets, each with the process that owns it - one record per socket | [#68](https://github.com/dmartsapp/shint/issues/68) | Not started |
 | `ping`: sub-millisecond timings, unreachable replies told apart from timeouts, statistics on Ctrl+C - needs a new go-ping release | [#25](https://github.com/dmartsapp/shint/issues/25) | Not started |
 | `--interface`: send a check's traffic through a given interface or source address | [#69](https://github.com/dmartsapp/shint/issues/69) | Not started |
-| `nmap` upgrades: port lists (`--ports 22,80,443`), subnet sweeps, service names - moved from v4.3.0 | [#94](https://github.com/dmartsapp/shint/issues/94) | Not started |
+| `nmap` upgrades: port lists (`--ports 22,80,443`), subnet sweeps, service names - moved from v4.3.0 | [#94](https://github.com/dmartsapp/shint/issues/94) | Done - [`3554ffc`](https://github.com/dmartsapp/shint/commit/3554ffc): `--ports`/`-p`, several targets and prefixes (up to 65,536 addresses), `service=`; JSON `target`, `service`, `ports`, `targets`, `dns_lookups` |
 | `web --json`: say when certificate checks are skipped, and when a client certificate or a custom CA is used (security review) | [#100](https://github.com/dmartsapp/shint/issues/100) | Done - [`379da60`](https://github.com/dmartsapp/shint/commit/379da60): `input_params.tls`, top-level `warnings` |
 | `listen http`: default read timeouts, and a start-up line when it is reachable from the network (security review) | [#102](https://github.com/dmartsapp/shint/issues/102) | Done - [`cf919a5`](https://github.com/dmartsapp/shint/commit/cf919a5): the start-up warning; the timeouts were already there (`--timeout`, 5 s by default) - the issue's premise was wrong |
 
