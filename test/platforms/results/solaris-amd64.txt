@@ -1,0 +1,17 @@
+# shint platform test: solaris/amd64
+# Blank until test/platforms/solaris-amd64.sh has been run on solaris/amd64; the script rewrites this file.
+platform: solaris/amd64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

@@ -1,0 +1,17 @@
+# shint platform test: netbsd/arm64
+# Blank until test/platforms/netbsd-arm64.sh has been run on netbsd/arm64; the script rewrites this file.
+platform: netbsd/arm64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

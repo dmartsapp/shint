@@ -1,0 +1,17 @@
+# shint platform test: openbsd/arm64
+# Blank until test/platforms/openbsd-arm64.sh has been run on openbsd/arm64; the script rewrites this file.
+platform: openbsd/arm64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

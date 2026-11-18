@@ -1,0 +1,17 @@
+# shint platform test: darwin/arm64
+# Blank until test/platforms/darwin-arm64.sh has been run on darwin/arm64; the script rewrites this file.
+platform: darwin/arm64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

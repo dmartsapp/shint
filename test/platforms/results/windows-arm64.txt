@@ -1,0 +1,17 @@
+# shint platform test: windows/arm64
+# Blank until test/platforms/windows-arm64.ps1 has been run on windows/arm64; the script rewrites this file.
+platform: windows/arm64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

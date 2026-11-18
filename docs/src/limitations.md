@@ -23,23 +23,28 @@ So on everything below the first two rows, **you are the testing**. If shint mis
 
 ### Testers wanted
 
-Windows, the BSDs, Solaris, illumos and AIX need people who use them. You do not need to know Go. Download the binary for your platform from the [latest release](https://github.com/dmartsapp/shint/releases/latest) and run:
+Windows, the BSDs, Solaris, illumos, Android and AIX need people who use them. You do not need to know Go: every release binary has a test script of its own in [`test/platforms/`](https://github.com/dmartsapp/shint/tree/main/test/platforms) - a shell script, or PowerShell for Windows. It runs about 30 checks in a minute: it starts shint's own listeners on `127.0.0.1` and checks them, reads the machine's interfaces, routes and sockets, and, when example.com answers, tries a few checks over the internet. It changes nothing and needs no root. It knows what your platform should do, so `ss` saying "not supported yet" on FreeBSD counts as a pass.
+
+Download your platform's binary and its script, from the same release. On FreeBSD, for example (`fetch` or `wget` work too):
 
 ```bash
-shint --version
-shint ip
-shint ping 127.0.0.1 --count 3
-shint telnet example.com 443
-shint web https://example.com
-shint tls example.com
-shint dns example.com MX
-shint nmap 127.0.0.1 -p 22,80,443
-shint ntp pool.ntp.org
-shint ss -l
-shint ping example.com --count 20    # press Ctrl+C partway through
+curl -LO https://github.com/dmartsapp/shint/releases/download/v{{version}}/shint.freebsd.amd64
+curl -LO https://raw.githubusercontent.com/dmartsapp/shint/v{{version}}/test/platforms/freebsd-amd64.sh
+chmod +x shint.freebsd.amd64
+sh freebsd-amd64.sh ./shint.freebsd.amd64
 ```
 
-Then [open an issue](https://github.com/dmartsapp/shint/issues/new) with your platform and its version (`uname -a`, or `winver` on Windows) and the output: everything, or just the commands that surprised you. `shint ss` says it is not supported on most of these systems; that is expected (see below). If you have Go and Python, `make check` runs the whole test suite, which tells us far more.
+On Windows, in PowerShell:
+
+```powershell
+Invoke-WebRequest -OutFile shint.windows.amd64.exe https://github.com/dmartsapp/shint/releases/download/v{{version}}/shint.windows.amd64.exe
+Invoke-WebRequest -OutFile windows-amd64.ps1 https://raw.githubusercontent.com/dmartsapp/shint/v{{version}}/test/platforms/windows-amd64.ps1
+powershell -ExecutionPolicy Bypass -File .\windows-amd64.ps1 .\shint.windows.amd64.exe
+```
+
+The script writes `results/freebsd-amd64.txt` (`results\windows-amd64.txt`): which release you tested and the binary's SHA-256, the system and its version, how many checks passed, and the error lines of any that failed - never the machine's name or its addresses. [Open an issue](https://github.com/dmartsapp/shint/issues/new) and attach it: a check that fails on your system is exactly what we need to know. Results that come in are kept in [`test/platforms/results/`](https://github.com/dmartsapp/shint/tree/main/test/platforms/results), one file per platform, and each one is checked against the SHA-256 published with its release.
+
+If you have Go and Python, `make check` runs the whole test suite, which tells us far more.
 
 ## Commands that differ by platform
 

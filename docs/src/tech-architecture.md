@@ -34,7 +34,8 @@ shint/
 │                           files (_linux, _windows, ...), and internal/ (pace, term, wire)
 ├── test/
 │   ├── battery/            the black-box battery (make test-battery)
-│   └── live/               the live-internet smoke test (make test-live)
+│   ├── live/               the live-internet smoke test (make test-live)
+│   └── platforms/          a test script per release binary, and each one's results (make platform-tests)
 ├── docs/                   this documentation site: Markdown in src/, the built pages, assets/, build.py
 ├── releases/               each release's record (its working page, moved there on release day)
 ├── .profiling/             each release's performance profile (make profile)

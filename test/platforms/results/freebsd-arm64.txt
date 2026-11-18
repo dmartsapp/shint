@@ -1,0 +1,17 @@
+# shint platform test: freebsd/arm64
+# Blank until test/platforms/freebsd-arm64.sh has been run on freebsd/arm64; the script rewrites this file.
+platform: freebsd/arm64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

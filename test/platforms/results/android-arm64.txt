@@ -1,0 +1,17 @@
+# shint platform test: android/arm64
+# Blank until test/platforms/android-arm64.sh has been run on android/arm64; the script rewrites this file.
+platform: android/arm64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

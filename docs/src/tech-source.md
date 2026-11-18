@@ -20,6 +20,7 @@ nav: Source reference
 | `Dockerfile` | Two-stage image build: Go build stage, distroless final stage. |
 | `.dockerignore`, `.gitignore` | What stays out of the Docker build context and out of git (`bin/`, `*.json`, `.DS_Store`). |
 | `test/live/basic_module_test.sh` | Live-internet smoke test: builds the binary and runs one check per command against real hosts. Run it with `make test-live`. |
+| `test/platforms/` | Platform tests: `template.sh` and `template.ps1`, the script of each release binary that `platforms.py` makes from them (`make platform-tests`; never edited by hand), and `results/`, the latest results from each platform (`make platform-summary`). `test_platforms.py` tests `platforms.py`; `make check` checks the scripts are current and the results add up. See [Platform tests](tech-testing.md#platform-tests). |
 | `CHANGELOG.md` | The release history; also rendered as the [Changelog](changelog.md) page. |
 | `readme.md` | The short introduction that GitHub shows on the front page. On `main` it is the project README (all milestones and releases); a release branch's copy is `main`'s (release branches up to v4.2.2 kept a working page of their own here) - see [Releases and tagging](tech-release.md#branches-and-cadence). |
 | `LICENSE` | MIT. |

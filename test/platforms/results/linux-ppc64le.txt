@@ -1,0 +1,17 @@
+# shint platform test: linux/ppc64le
+# Blank until test/platforms/linux-ppc64le.sh has been run on linux/ppc64le; the script rewrites this file.
+platform: linux/ppc64le
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

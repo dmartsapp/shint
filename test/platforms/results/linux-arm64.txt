@@ -1,0 +1,17 @@
+# shint platform test: linux/arm64
+# Blank until test/platforms/linux-arm64.sh has been run on linux/arm64; the script rewrites this file.
+platform: linux/arm64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

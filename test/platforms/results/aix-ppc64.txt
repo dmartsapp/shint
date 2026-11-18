@@ -1,0 +1,17 @@
+# shint platform test: aix/ppc64
+# Blank until test/platforms/aix-ppc64.sh has been run on aix/ppc64; the script rewrites this file.
+platform: aix/ppc64
+release:
+commit:
+built:
+go:
+binary:
+binary_sha256:
+tested_at:
+os:
+privileges:
+internet:
+passed:
+failed:
+skipped:
+result: untested

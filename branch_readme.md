@@ -15,7 +15,7 @@ Includes:
 
 - [ ] every target and bug below is done, or moved to a later milestone
 - [x] the `ip route` target has an issue of its own ([#108](https://github.com/dmartsapp/shint/issues/108))
-- [ ] `ss`, `ip route` and `ip arp` have run on a real Windows machine (`shint.exe ss -l`, `shint.exe ip route`, `shint.exe ip arp`, each also with `--json`): their Windows code is unit-tested on recorded tables, but the system calls have only been compiled, never run
+- [ ] `ss`, `ip route` and `ip arp` have run on a real Windows machine - `test/platforms/windows-amd64.ps1` (or `windows-arm64.ps1`) with this branch's build, every check passing: their Windows code is unit-tested on recorded tables, but the system calls have only been compiled, never run
 - [x] `ping`'s targets ([#14](https://github.com/dmartsapp/shint/issues/14), [#25](https://github.com/dmartsapp/shint/issues/25)): moved to v4.6.0 - go-ping becomes go-net there ([#70](https://github.com/dmartsapp/shint/issues/70)), and fixing go-ping first would do the work twice
 - [x] the changelog has an entry for every change a user would notice (checked against every commit since v4.3.0; the docs entry added last)
 - [x] `Summary:` above says what this release is, in plain language
@@ -51,9 +51,11 @@ Includes:
 |---|---|---|
 | `tls`: the TLS versions offered (`offered=`, JSON `tls_versions_offered`) next to the one the server chose | `tls` | Done - [`3a37a34`](https://github.com/dmartsapp/shint/commit/3a37a34) |
 | Release process: a release that passed is announced - a second Slack post, and a discussion in Announcements | Notify Slack | Done - [`37b1c2e`](https://github.com/dmartsapp/shint/commit/37b1c2e); takes effect with this release's tag |
+| Platform tests: a script per release binary (`test/platforms/<os>-<arch>.sh`, `.ps1` on Windows), made from two templates, and a results file each - release, binary SHA-256, system, passed/failed/skipped; `make platform-tests`, `make platform-summary` (`VERIFY=1`), and `make check` keeps them consistent | `test/platforms` | Done - this branch; run for real on macOS (32/32), Debian 13 (34/34, dash) and against v4.3.0 (23/11: the v4.4.0 features), whose SHA-256 verified against the release |
 | CI: actions pinned to commits, base images to digests, and a check that refuses unpinned ones (security review) - [#103](https://github.com/dmartsapp/shint/issues/103) | `main` (CI only, no release needed) | Done on `main` - [`db0fe0b`](https://github.com/dmartsapp/shint/commit/db0fe0b): 56 `uses:` pinned to commits, both base images to digests, and `check-pins.py` in `make workflows`; merged in by `make release` |
 
 ## After the release
 
 - `main`'s README: link the Limitations page (`https://dmartsapp.github.io/shint/docs/limitations.html`) from its Limitations section, and say there that `ss` covers Linux and Windows only and is not in the AIX binary, and that a sweep of public addresses warns and is paced by `--delay` (#106). Add `ss` to the Commands table if the reconcile has not.
 - Record the README demo again with an `ss -l` line (`vhs docs/assets/demo.tape`), now that `ss` is released.
+- The first platform results: run `test/platforms/darwin-arm64.sh` and `linux-amd64.sh` with the released v4.4.0 binaries, commit `test/platforms/results/` on `main`, and check `make platform-summary VERIFY=1` says verified.

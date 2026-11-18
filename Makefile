@@ -130,7 +130,7 @@ HADOLINT ?= hadolint
 # Keep in step with the golangci-lint version pinned in .github/workflows/*.yaml.
 GOLANGCI_LINT_VERSION = 2.15.0
 
-.PHONY: help check check-quick attest hooks test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-start release release-check readme-reconcile profile profile-compare profile-history profile-machines profile-ab
+.PHONY: help check check-quick attest hooks test-full test-live tools tools-quick fmt-check vet vet-host test test-go test-quick test-battery lint vuln docs-check workflows release-start release release-check readme-reconcile profile profile-compare profile-history profile-machines profile-ab platform-tests platform-summary
 
 help:
 	echo "make check       fmt, vet, race tests, black-box battery, lint, vulncheck, docs and workflow checks (no network)"
@@ -139,6 +139,8 @@ help:
 	echo "make check-quick the short subset CI runs when that status exists: fmt, vet, quick tests, CLI battery groups, vulncheck, docs"
 	echo "make test-live   smoke test against real hosts (needs the internet and ICMP)"
 	echo "make test-full   check + test-live"
+	echo "make platform-tests     write test/platforms/<os>-<arch>.sh|.ps1 from the templates, and a blank results file for any platform without one"
+	echo "make platform-summary   every platform's results: release, passed/failed/skipped, when (VERIFY=1 checks each binary against its release's SHA-256)"
 	echo "make release-start VERSION=X.Y.Z   start release/vX.Y.Z from main: its changelog heading and its working page releases/vX.Y.Z.md"
 	echo "make release         on release/vX.Y.Z, on release day: stamp, check, commit, then (after one yes) push main, wait for Check, tag, verify (DRY_RUN=1 rehearses)"
 	echo "make release-check   on a release branch, after the release commit: is it safe to fast-forward main and tag?"
@@ -293,6 +295,8 @@ workflows:
 	bash .github/scripts/test-attest.sh
 	bash .github/scripts/test-changelog-section.sh
 	python3 test/profile/test_profile.py
+	python3 test/platforms/test_platforms.py
+	python3 test/platforms/platforms.py check
 	$(ACTIONLINT) -shellcheck= .github/workflows/*.yaml
 
 # Runtime stats and profiles of this tree's build, kept as history (test/profile/profile.py, and
@@ -336,6 +340,16 @@ readme-reconcile:
 test-live:
 	echo "==> live smoke test"
 	bash test/live/basic_module_test.sh
+
+# Platform tests (test/platforms, and docs: Testing, "Platform tests"): one script per release
+# binary, made from template.sh / template.ps1, run by a tester on that platform; each writes
+# test/platforms/results/<os>-<arch>.txt. make check checks the scripts are current and the
+# results files add up.
+platform-tests:
+	python3 test/platforms/platforms.py generate
+
+platform-summary:
+	python3 test/platforms/platforms.py summary $(if $(VERIFY),--verify)
 
 # Start a release: release/vX.Y.Z from origin/main, with "## vX.Y.Z - unreleased" in
 # CHANGELOG.md and the branch's working page releases/vX.Y.Z.md, committed and pushed.

@@ -12,3 +12,6 @@ artifacts/
 # summary.json despite *.json above; your own (make profile without TAG) stay here
 .profiling/dev/
 !.profiling/**/*.json
+
+# a platform test's scratch files while it runs (test/platforms/template.sh removes them)
+test/platforms/results/.work.*
