@@ -59,6 +59,8 @@ class Platforms(unittest.TestCase):
         self.assertEqual({p.ss for p in P.platforms() if p.goos in ("linux", "android", "windows")}, {"yes"})
         self.assertEqual({p.route for p in P.platforms() if p.goos in ("aix", "solaris", "illumos")}, {"no"})
         self.assertEqual({p.ping for p in P.platforms() if p.goos in ("linux", "android")}, {"sysctl"})
+        self.assertEqual(by["freebsd-amd64"].ping, "no")             # seen on FreeBSD 14.4 (#112)
+        self.assertEqual({p.ping for p in P.platforms() if p.goos in ("darwin", "windows")}, {"yes"})
 
 
 class Render(unittest.TestCase):

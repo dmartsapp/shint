@@ -31,25 +31,28 @@ REPO = "dmartsapp/shint"
 #          absent = not in the binary at all (AIX: main_ss.go is built !aix), exit 2
 #   route: ip route and ip arp - yes on Linux, macOS, the BSDs and Windows; no elsewhere (exit 1)
 #   ping:  yes = 127.0.0.1 must answer; sysctl = Linux kernels, where a normal user may ping
-#          only if net.ipv4.ping_group_range allows it, so a permission error is a skip
+#          only if net.ipv4.ping_group_range allows it, so a permission error is a skip;
+#          no = no unprivileged ICMP socket (#112), so ping must fail saying so (#111) -
+#          seen on FreeBSD 14.4, expected (not yet seen) on the other BSDs, Solaris,
+#          illumos and AIX, whose own ping is setuid root or needs a privilege
 PLATFORMS = [
     # os, arch, ss, route, ping
-    ("aix", "ppc64", "absent", "no", "yes"),
+    ("aix", "ppc64", "absent", "no", "no"),
     ("android", "arm64", "yes", "yes", "sysctl"),
     ("darwin", "amd64", "no", "yes", "yes"),
     ("darwin", "arm64", "no", "yes", "yes"),
-    ("freebsd", "amd64", "no", "yes", "yes"),
-    ("freebsd", "arm64", "no", "yes", "yes"),
-    ("illumos", "amd64", "no", "no", "yes"),
+    ("freebsd", "amd64", "no", "yes", "no"),
+    ("freebsd", "arm64", "no", "yes", "no"),
+    ("illumos", "amd64", "no", "no", "no"),
     ("linux", "amd64", "yes", "yes", "sysctl"),
     ("linux", "arm", "yes", "yes", "sysctl"),
     ("linux", "arm64", "yes", "yes", "sysctl"),
     ("linux", "ppc64le", "yes", "yes", "sysctl"),
-    ("netbsd", "amd64", "no", "yes", "yes"),
-    ("netbsd", "arm64", "no", "yes", "yes"),
-    ("openbsd", "amd64", "no", "yes", "yes"),
-    ("openbsd", "arm64", "no", "yes", "yes"),
-    ("solaris", "amd64", "no", "no", "yes"),
+    ("netbsd", "amd64", "no", "yes", "no"),
+    ("netbsd", "arm64", "no", "yes", "no"),
+    ("openbsd", "amd64", "no", "yes", "no"),
+    ("openbsd", "arm64", "no", "yes", "no"),
+    ("solaris", "amd64", "no", "no", "no"),
     ("windows", "amd64", "yes", "yes", "yes"),
     ("windows", "arm64", "yes", "yes", "yes"),
 ]
@@ -92,7 +95,7 @@ def render(p, here=HERE):
                     "$Asset = '%s'" % p.asset,
                     "$ExpectSS = '%s'      # ss: yes = works; no = says \"not supported yet\"; absent = not in this binary" % p.ss,
                     "$ExpectRoute = '%s'   # ip route and ip arp: yes = work; no = say \"not supported yet\"" % p.route,
-                    "$ExpectPing = '%s'    # ping 127.0.0.1: yes = must answer" % p.ping]
+                    "$ExpectPing = '%s'    # ping 127.0.0.1: yes = must answer; no = must say it cannot open an ICMP socket" % p.ping]
         template = "template.ps1"
     else:
         run = "sh %s ./%s" % (p.script, p.asset)
@@ -101,7 +104,7 @@ def render(p, here=HERE):
                     "ASSET=%s" % p.asset,
                     "EXPECT_SS=%s      # ss: yes = works; no = says \"not supported yet\"; absent = not in this binary" % p.ss,
                     "EXPECT_ROUTE=%s   # ip route and ip arp: yes = work; no = say \"not supported yet\"" % p.route,
-                    "EXPECT_PING=%s    # ping 127.0.0.1: yes = must answer; sysctl = a permission error is a skip" % p.ping]
+                    "EXPECT_PING=%s    # ping 127.0.0.1: yes = must answer; sysctl = a permission error is a skip; no = must say it cannot open an ICMP socket" % p.ping]
         template = "template.sh"
     header = ["# shint platform test for %s - made by test/platforms/platforms.py from %s:" % (p.name, template),
               "# edit the template, not this file, then run `make platform-tests`.",

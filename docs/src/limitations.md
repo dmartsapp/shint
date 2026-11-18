@@ -17,7 +17,8 @@ shint is built for 18 platforms. Every release ships all of them. But only two a
 | Linux on amd64 | `shint.linux.amd64` | **Every merge.** The same test suite runs on GitHub's Ubuntu runners after each merge to `main`. `ss` was also checked against a real Linux host when it was written. |
 | Linux on arm64, 32-bit arm and ppc64le; macOS on Intel | `shint.linux.arm64`, `shint.linux.arm`, `shint.linux.ppc64le`, `shint.darwin.amd64` | **Built, never run by the project.** The code is the same as on their tested siblings, so problems are unlikely, but nobody checks. |
 | Windows | `shint.windows.amd64.exe`, `shint.windows.arm64.exe` | **Built, never run by the project.** The code written for Windows (`ss`'s socket tables, where `dns` finds the hosts file) is compiled, and unit-tested on recorded data where it can be, but it has never run on Windows. Neither has stopping a run with `Ctrl+C`. |
-| FreeBSD, OpenBSD, NetBSD, Solaris, illumos, Android, AIX | the rest | **Built, never run by the project.** |
+| FreeBSD on amd64 | `shint.freebsd.amd64` | **Run once**, on FreeBSD 14.4 before v4.4.0, with its [platform test](#testers-wanted): `ip arp` saw no neighbours (fixed before the release) and `ping` cannot work there ([#112](https://github.com/dmartsapp/shint/issues/112)); the other 30 checks passed. |
+| FreeBSD on arm64, OpenBSD, NetBSD, Solaris, illumos, Android, AIX | the rest | **Built, never run by the project.** |
 
 So on everything below the first two rows, **you are the testing**. If shint misbehaves there, an issue with what you ran and what it printed is the only way anyone finds out.
 
@@ -51,7 +52,7 @@ If you have Go and Python, `make check` runs the whole test suite, which tells u
 - **`ss` works on Linux and Windows only.** On macOS, the BSDs, Solaris and illumos it says it is not supported yet and exits `1`; the BSDs are planned ([#105](https://github.com/dmartsapp/shint/issues/105)). **The AIX binary has no `ss` at all.** AIX has no way to list its sockets, with the process holding each, without root. Its own tools read kernel memory as root, and shint never asks for root. So the command is left out of that binary rather than shipped as one that can never work. See [ss](ss.md#platforms).
 - **`ip route` and `ip arp` work on Linux, macOS, the BSDs and Windows.** On Solaris, illumos and AIX they say they are not supported yet and exit `1`; `ip` itself works everywhere. The Windows tables, like `ss`'s, have not been read on a real Windows machine by the project.
 - **`--interface` is not on `ping` yet**: its ICMP library cannot send from an address so far ([#69](https://github.com/dmartsapp/shint/issues/69)). The other commands that send take it.
-- **`ping` on Linux may need a setting.** It uses unprivileged ICMP, which Linux allows only to the groups in `net.ipv4.ping_group_range`. Most desktop distributions allow everyone; a hardened server may not. See [troubleshooting](troubleshooting.md). macOS, the BSDs and Windows need nothing.
+- **`ping` needs an unprivileged ICMP socket, which few systems have.** macOS has one. Linux allows it only to the groups in `net.ipv4.ping_group_range`: most desktop distributions allow everyone, a hardened server may not (see [troubleshooting](troubleshooting.md)). **FreeBSD has none, so `ping` does not work there, not even as root** - it says `socket: protocol not supported` and exits `1`. The other BSDs, Solaris, illumos and AIX are probably the same, and on Windows shint uses a raw socket that may need an administrator; none of these has been tried yet ([#112](https://github.com/dmartsapp/shint/issues/112)).
 - **`listen --bind ::` accepting IPv4 too** has been verified on macOS and Linux only.
 - **Some systems get no binary at all**, because Go, which shint is written in, does not build for them: HP-UX, Solaris on SPARC, and AIX on anything but IBM POWER.
 
@@ -73,8 +74,9 @@ At the time of writing. The [issue tracker](https://github.com/dmartsapp/shint/i
 
 - **`ping --timeout` does not limit the name lookup** ([#14](https://github.com/dmartsapp/shint/issues/14)). The ping library resolves with its own fixed 5-second limit.
 - **`ping` stopped with `Ctrl+C` ends without its statistics** ([#25](https://github.com/dmartsapp/shint/issues/25)).
+- **`ping` does not work on FreeBSD**, and probably not on the other BSDs, Solaris, illumos and AIX, nor on Windows without an administrator ([#112](https://github.com/dmartsapp/shint/issues/112)).
 
-Both are in `ping`'s library, and are planned with its replacement ([#70](https://github.com/dmartsapp/shint/issues/70)).
+All three are in `ping`'s library, and are planned with its replacement ([#70](https://github.com/dmartsapp/shint/issues/70)).
 
 ## Quirks kept on purpose
 

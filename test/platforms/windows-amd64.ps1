@@ -23,7 +23,7 @@ $Slug = 'windows-amd64'
 $Asset = 'shint.windows.amd64.exe'
 $ExpectSS = 'yes'      # ss: yes = works; no = says "not supported yet"; absent = not in this binary
 $ExpectRoute = 'yes'   # ip route and ip arp: yes = work; no = say "not supported yet"
-$ExpectPing = 'yes'    # ping 127.0.0.1: yes = must answer
+$ExpectPing = 'yes'    # ping 127.0.0.1: yes = must answer; no = must say it cannot open an ICMP socket
 
 $ErrorActionPreference = 'Continue'
 
@@ -223,7 +223,12 @@ try {
         'absent' { Check 'ss: not in this binary (unknown command, exit 2)' 2 'unknown command' @('ss', '-l') }
     }
 
-    Check 'ping: 127.0.0.1 answers' 0 'received reply' @('ping', '127.0.0.1')
+    if ($ExpectPing -eq 'no') {
+        # No ICMP socket for this user here (#112): ping must say so, not fail silently (#111).
+        Check 'ping: says it cannot open an ICMP socket (exit 1)' 1 'ping failed .*socket:' @('ping', '127.0.0.1')
+    } else {
+        Check 'ping: 127.0.0.1 answers' 0 'received reply' @('ping', '127.0.0.1')
+    }
 
     # --- over the internet, when there is one ---
     Invoke-Shint @('telnet', 'example.com', '443', '-4')

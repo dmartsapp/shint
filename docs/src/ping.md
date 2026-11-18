@@ -86,7 +86,7 @@ shint ping 127.0.0.1 --json
   "error": ""
 }
 ```
-Ping times in JSON are in **milliseconds**, unlike the other commands, which use microseconds.
+Ping times in JSON are in **milliseconds**, unlike the other commands, which use microseconds. A request that got no reply has `"success": false`, `"time_taken_ms": 0` and an `error` saying why (a timeout, a send error, a socket that would not open).
 
 ### A host that does not answer
 
@@ -119,11 +119,15 @@ The exit status is `0` only if every echo request was answered, and `1` if any w
 
 ## Permissions
 
-ICMP normally needs privileges, but shint uses the unprivileged ICMP sockets that modern systems offer:
+ICMP normally needs privileges. shint uses the unprivileged ICMP sockets some systems offer instead, so it needs no root - where such a socket exists:
 
-- **macOS, the BSDs and Windows:** works for a normal user.
-- **Linux:** depends on the `net.ipv4.ping_group_range` setting. If `ping` reports a permission error, run it as root or widen the range with `sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"`.
+- **macOS:** works for a normal user.
+- **Linux:** depends on the `net.ipv4.ping_group_range` setting. If `ping` fails with `socket: permission denied`, run it as root or widen the range with `sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"`.
+- **FreeBSD:** does not work, not even as root. FreeBSD has no unprivileged ICMP socket (`socket: protocol not supported`), and shint does not use the raw socket that FreeBSD's own `ping` is setuid root for ([#112](https://github.com/dmartsapp/shint/issues/112)). The other BSDs, Solaris, illumos and AIX are probably the same, but have not been tried yet.
+- **Windows:** shint uses a raw ICMP socket there, which Windows may allow only to administrators. Not tried yet ([#112](https://github.com/dmartsapp/shint/issues/112)).
 - **Docker:** the same rules apply as on the host.
+
+When the socket cannot be opened, the run says so before its statistics - `ERROR ping failed host=127.0.0.1 error="socket: protocol not supported" note="could not open an ICMP socket: ..."` - and exits `1`. With `--json`, the document's `error` holds the same reason.
 
 ## Good to know
 

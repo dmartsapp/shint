@@ -174,7 +174,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 |---|---|
 | `address`, `success`, `sequence` | Target, whether it was answered, and the request number. |
 | `payload_size_bytes` | The echo payload size in bytes (`--payload`). |
-| `sent_unixtime_ms`, `recv_unixtime_ms`, `time_taken_ms` | Timing of the echo request and its reply. |
+| `sent_unixtime_ms`, `recv_unixtime_ms`, `time_taken_ms` | Timing of the echo request and its reply. A request without a reply has `recv_unixtime_ms` and `time_taken_ms` `0`. |
+| `error` | Why a request got no reply: a timeout, a send error, or an ICMP socket that would not open. Absent for a reply. |
 
 **web**
 

@@ -31,7 +31,7 @@ Unprivileged ICMP is controlled by `net.ipv4.ping_group_range`. Run as root, or 
 sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
 ```
 
-macOS, the BSDs and Windows do not need this.
+macOS does not need this. On FreeBSD `ping` fails with `socket: protocol not supported` whoever runs it: FreeBSD has no unprivileged ICMP socket ([ping](ping.md#permissions)).
 
 ## ping and telnet report an IPv6 failure but the host works
 

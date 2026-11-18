@@ -83,6 +83,48 @@ func withPayloadSize(line string, payload int) string {
 	return line
 }
 
+// permissionsPage is where the ping page explains which systems let a normal
+// user open an ICMP socket.
+const permissionsPage = "https://dmartsapp.github.io/shint/docs/ping.html#permissions"
+
+// socketErrors is each distinct reason a request could not be sent at all
+// because the ICMP socket would not open ("socket: protocol not supported" on
+// FreeBSD, "socket: permission denied" on Linux outside
+// net.ipv4.ping_group_range). The library records it on the request but logs
+// only send errors and timeouts, so without this a run that sent nothing ended
+// with no ERROR line (#111).
+func socketErrors(packets []netutils.ICMPPacket) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, p := range packets {
+		if p.ErrorEncountered && strings.Contains(p.ErrorStr, "socket:") && !seen[p.ErrorStr] {
+			seen[p.ErrorStr] = true
+			out = append(out, p.ErrorStr)
+		}
+	}
+	return out
+}
+
+// icmpStat is one request's JSON entry. A request without a reply has no
+// receive time, so its time_taken_ms is 0, not the negative send time (#111),
+// and its error says why.
+func icmpStat(p netutils.ICMPPacket) lib.ICMPStats {
+	stat := lib.ICMPStats{
+		Address:     p.Destination.String(),
+		Success:     !p.ErrorEncountered,
+		Sequence:    p.Sequence,
+		PayloadSize: p.PayloadSize,
+		SentTime:    p.SentDateTimeUNIX,
+		RecvTime:    p.ReceiveDateTimeUNIX,
+	}
+	if p.ErrorEncountered {
+		stat.Error = p.ErrorStr
+	} else {
+		stat.TimeTaken = p.ReceiveDateTimeUNIX - p.SentDateTimeUNIX
+	}
+	return stat
+}
+
 // configurePinger applies the shared flags to a pinger. timeout (seconds) is
 // how long each echo request waits for its reply before it counts as lost.
 // The name lookup is not covered: netutils.NewPinger resolves inside its
@@ -188,7 +230,11 @@ func Run(host string, jsonoutput *bool, iterations int, delay int, throttle *boo
 	wg.Wait()
 	pinger.MeasureStats()
 	totalPings := pinger.Count * len(pinger.Destination)
+	sockErrs := socketErrors(pinger.Stats.Packets)
 	if !*jsonoutput {
+		for _, e := range sockErrs {
+			fmt.Println(lib.LogWithTimestamp(icmpModule, "ping failed "+lib.Fields("host", host, "error", e, "note", "could not open an ICMP socket: see "+permissionsPage), true))
+		}
 		durations := make([]time.Duration, 0, len(pinger.Stats.Packets))
 		for _, pckt := range pinger.Stats.Packets {
 			if !pckt.ErrorEncountered {
@@ -210,15 +256,10 @@ func Run(host string, jsonoutput *bool, iterations int, delay int, throttle *boo
 		output.TotalTimeTaken = output.EndTime - output.StartTime
 		output.Stats = make([]lib.ICMPStats, 0, len(pinger.Stats.Packets))
 		for _, pckts := range pinger.Stats.Packets {
-			stat := lib.ICMPStats{}
-			stat.Address = pckts.Destination.String()
-			stat.Success = !pckts.ErrorEncountered
-			stat.Sequence = pckts.Sequence
-			stat.PayloadSize = pckts.PayloadSize
-			stat.SentTime = pckts.SentDateTimeUNIX
-			stat.RecvTime = pckts.ReceiveDateTimeUNIX
-			stat.TimeTaken = stat.RecvTime - stat.SentTime
-			output.Stats = append(output.Stats.([]lib.ICMPStats), stat)
+			output.Stats = append(output.Stats.([]lib.ICMPStats), icmpStat(pckts))
+		}
+		if len(sockErrs) > 0 {
+			output.Error = strings.Join(sockErrs, "; ")
 		}
 
 		JS, _ := json.MarshalIndent(output, "", "  ")

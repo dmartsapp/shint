@@ -206,3 +206,42 @@ func TestRestrictFamily(t *testing.T) {
 		t.Errorf("a host with nothing of the requested family must fail like a lookup failure: %v", err)
 	}
 }
+
+// A socket that would not open is reported once per distinct reason; timeouts
+// and send errors are not socket errors (the library logs those itself) (#111).
+func TestSocketErrors(t *testing.T) {
+	lost := func(e string) netutils.ICMPPacket { return netutils.ICMPPacket{ErrorEncountered: true, ErrorStr: e} }
+	got := socketErrors([]netutils.ICMPPacket{
+		lost("socket: protocol not supported"),
+		{ErrorEncountered: false},
+		lost("socket: protocol not supported"),
+		lost("listen ip4:icmp 0.0.0.0: socket: operation not permitted"),
+		lost("read udp 0.0.0.0:0: raw-read udp 0.0.0.0:0: i/o timeout"),
+	})
+	want := []string{"socket: protocol not supported", "listen ip4:icmp 0.0.0.0: socket: operation not permitted"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("socketErrors = %q, want %q", got, want)
+	}
+	if got := socketErrors(nil); got != nil {
+		t.Errorf("socketErrors(nil) = %q, want nil", got)
+	}
+}
+
+// A reply's time is receive minus send; a request without a reply has no
+// receive time, so its time is 0 (it was minus the send time) and its error
+// says why (#111).
+func TestICMPStat(t *testing.T) {
+	dst := net.IPAddr{IP: net.ParseIP("127.0.0.1")}
+	reply := icmpStat(netutils.ICMPPacket{Destination: dst, Sequence: 1, PayloadSize: 4, SentDateTimeUNIX: 1795042613612, ReceiveDateTimeUNIX: 1795042613615})
+	if !reply.Success || reply.TimeTaken != 3 || reply.Error != "" || reply.Address != "127.0.0.1" || reply.PayloadSize != 4 {
+		t.Errorf("reply = %+v", reply)
+	}
+	lost := icmpStat(netutils.ICMPPacket{Destination: dst, Sequence: 2, SentDateTimeUNIX: 1795042613612, ErrorEncountered: true, ErrorStr: "socket: protocol not supported"})
+	if lost.Success || lost.TimeTaken != 0 || lost.Error != "socket: protocol not supported" || lost.Sequence != 2 {
+		t.Errorf("lost = %+v", lost)
+	}
+	b, _ := json.Marshal(reply)
+	if strings.Contains(string(b), `"error"`) {
+		t.Errorf("a reply's JSON has an error field: %s", b)
+	}
+}

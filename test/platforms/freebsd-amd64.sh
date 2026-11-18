@@ -24,7 +24,7 @@ SLUG=freebsd-amd64
 ASSET=shint.freebsd.amd64
 EXPECT_SS=no      # ss: yes = works; no = says "not supported yet"; absent = not in this binary
 EXPECT_ROUTE=yes   # ip route and ip arp: yes = work; no = say "not supported yet"
-EXPECT_PING=yes    # ping 127.0.0.1: yes = must answer; sysctl = a permission error is a skip
+EXPECT_PING=no    # ping 127.0.0.1: yes = must answer; sysctl = a permission error is a skip; no = must say it cannot open an ICMP socket
 
 set -u
 
@@ -242,9 +242,19 @@ case $EXPECT_SS in
 esac
 
 run ping 127.0.0.1
-if [ "$code" = 0 ] && grep -q "received reply" "$work/out"; then
+if [ "$EXPECT_PING" = no ]; then
+  # No unprivileged ICMP socket here (#112): ping must say so, not fail silently (#111).
+  if [ "$code" = 1 ] && grep -q "ping failed .*socket:" "$work/out"; then
+    record PASS "ping: says it cannot open an ICMP socket (exit 1)"
+  elif [ "$code" = 0 ]; then
+    record FAIL "ping: says it cannot open an ICMP socket (exit 1)" "127.0.0.1 answered: ping works here after all - set EXPECT_PING=yes for $PLATFORM in test/platforms/platforms.py"
+  else
+    record FAIL "ping: says it cannot open an ICMP socket (exit 1)" "exit=$code (wanted 1), wanted a line matching: ping failed .*socket:
+$(errors)"
+  fi
+elif [ "$code" = 0 ] && grep -q "received reply" "$work/out"; then
   record PASS "ping: 127.0.0.1 answers"
-elif [ "$EXPECT_PING" = sysctl ] && grep -qiE "permission|not permitted" "$work/out"; then
+elif [ "$EXPECT_PING" = sysctl ] && grep -qiE "socket: (permission denied|operation not permitted)" "$work/out"; then
   record SKIP "ping: 127.0.0.1 answers" "this system does not allow ICMP for normal users (net.ipv4.ping_group_range); run as root, or see the ping page
 $(errors)"
 else

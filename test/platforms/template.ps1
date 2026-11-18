@@ -212,7 +212,12 @@ try {
         'absent' { Check 'ss: not in this binary (unknown command, exit 2)' 2 'unknown command' @('ss', '-l') }
     }
 
-    Check 'ping: 127.0.0.1 answers' 0 'received reply' @('ping', '127.0.0.1')
+    if ($ExpectPing -eq 'no') {
+        # No ICMP socket for this user here (#112): ping must say so, not fail silently (#111).
+        Check 'ping: says it cannot open an ICMP socket (exit 1)' 1 'ping failed .*socket:' @('ping', '127.0.0.1')
+    } else {
+        Check 'ping: 127.0.0.1 answers' 0 'received reply' @('ping', '127.0.0.1')
+    }
 
     # --- over the internet, when there is one ---
     Invoke-Shint @('telnet', 'example.com', '443', '-4')

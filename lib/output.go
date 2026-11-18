@@ -205,7 +205,10 @@ type ICMPStats struct {
 	PayloadSize int    `json:"payload_size_bytes"`
 	RecvTime    int64  `json:"recv_unixtime_ms"`
 	SentTime    int64  `json:"sent_unixtime_ms"`
-	TimeTaken   int64  `json:"time_taken_ms"`
+	TimeTaken   int64  `json:"time_taken_ms"` // 0 for a request without a reply
+	// Error is why a request got no reply - a timeout, a send error, or the
+	// ICMP socket that would not open; absent for a reply.
+	Error string `json:"error,omitempty"`
 }
 
 // UDPStats holds the outcome of a single UDP probe attempt. Because UDP is
