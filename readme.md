@@ -10,6 +10,8 @@
 [![Vulnerability check](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/farhanssiddique)
 
+![shint checking a connection, an HTTP request with timing, DNS, a TLS certificate as JSON, and open ports](docs/assets/demo.gif)
+
 `ping`, `telnet`, `curl`, `openssl`, `nmap`, `dig`: each is great at its job, and each has its own syntax and its own output. shint does the everyday checks of all of them in **one static binary**, with:
 
 - **one output format**: `<time>: [command] OK|ERROR <what happened> key=value ...`, the same for every command;
