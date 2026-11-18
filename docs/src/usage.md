@@ -257,7 +257,7 @@ What counts as a failure, per command:
 | `wol` | a magic packet could not be sent. A packet that was sent is a success: there is no reply to check |
 | `cidr` | never. Bad input is exit `2` and nothing is printed |
 | `ip` | the named interface does not exist, or the interface table (or one interface's addresses) could not be read |
-| `ss` | no socket matches the filters (so `ss -l --ports 5432` fails when nothing listens there), the socket tables could not be read, or the system is not supported (only Linux and Windows are, so far) |
+| `ss` | no socket matches the filters (so `ss -l --ports 5432` fails when nothing listens there), the socket tables could not be read, or the system is not supported yet (only Linux and Windows are, so far; the AIX binary has no `ss` - see [ss](ss.md#platforms)) |
 | `listen` | the port could not be bound |
 
 Results, including `ERROR` lines about failed checks, go to **stdout**; usage errors go to **stderr**. So `shint ... --json | jq` only ever sees JSON.

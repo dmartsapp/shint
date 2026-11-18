@@ -126,7 +126,8 @@ for cid, args in [("argument", ["extra"]), ("both-families", ["-4", "-6"]), ("pi
                   ("ports-zero", ["--ports", "0"]), ("ports-empty", ["--ports", ""]), ("ports-bad-range", ["--ports", "1-x"]),
                   ("ports-backwards", ["--ports", "80-22"]), ("ports-injection", ["--ports", "22;id"]), ("ports-too-big", ["--ports", "65536"])]:
     ss(cid, args, rc=2)
-ss("help", ["--help"], rc=0, contains=["--listening", "--ports", "--pid", "--tcp", "--udp"])
+if not sys.platform.startswith("aix"):
+    ss("help", ["--help"], rc=0, contains=["--listening", "--ports", "--pid", "--tcp", "--udp"])
 
 if sys.platform.startswith("linux"):
     ss("lists", [], rc=0, contains=["[ss] OK socket proto=", "[ss] OK done sockets="])
@@ -142,6 +143,8 @@ if sys.platform.startswith("linux"):
     ss("ipv6-only", ["-6"], absent=["local=0.", "local=1", "local=2", "local=3", "local=4", "local=5", "local=6", "local=7", "local=8", "local=9"])
     ss("pid-that-holds-nothing", ["--pid", "999999999"], rc=1, contains=["no socket matches: held by process 999999999"])
     ss("ignores-shared-flags", ["-l", "--count", "5", "--timeout", "1", "--delay", "3000"], rc=0)
+elif sys.platform.startswith("aix"):
+    ss("not-in-the-aix-binary", [], rc=2)  # left out at build time: AIX has no unprivileged way to list sockets and their processes
 else:
     ss("not-supported", [], rc=1, contains=["[ss] ERROR failed error=\"ss is not supported on "])
     ss("not-supported-json", ["--json"], rc=1,

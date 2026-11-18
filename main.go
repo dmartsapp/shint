@@ -63,13 +63,6 @@ var (
 	// nmapPorts is nmap --ports, a port list read by lib.ParsePorts.
 	nmapPorts string
 
-	// ss: -t, -u, -l, --ports (a port list read by lib.ParsePorts), --pid
-	ssTCP       bool
-	ssUDP       bool
-	ssListening bool
-	ssPorts     string
-	ssPID       int
-
 	// web
 	httpmethod          string
 	httpdata            string
@@ -550,42 +543,13 @@ It reads the operating system's interface table and sends nothing, so it needs n
 	},
 }
 
-var ssCmd = &cobra.Command{
-	Use:   "ss",
-	Short: "List this machine's TCP and UDP sockets and the process holding each",
-	Long: `This command lists this machine's own TCP and UDP sockets, IPv4 and IPv6, one line (or one JSON entry) per socket with everything known about it: the protocol, the state (LISTEN, ESTABLISHED, TIME-WAIT, ...; UNCONN for a UDP socket with no peer), the local and remote address and port, the bytes queued, the user it belongs to, and the process holding it - its name, PID and file descriptor number.
-
-It reads the operating system's socket tables and sends nothing. It needs no privileges: without them, a socket of another user's process is still listed, but not which process holds it - the line says owner=hidden, and a WARN line counts them. Run it as root to see every process. It works on Linux and Windows; on other systems it says it is not supported yet (exit status 1).
-
--t and -u list only TCP or only UDP sockets, -l only listening ones, --ports only those with one of these ports at either end, --pid only those a process holds. When nothing matches, that is a failed check (exit status 1), so "ss -l --ports 5432" tells a script whether anything listens on port 5432. Only --json, -4 and -6 of the shared flags apply.`,
-	Args: cobra.NoArgs,
-	Example: rootCmd.Name() + ` ss -l` + "\n" +
-		rootCmd.Name() + ` ss -t --ports 22,443` + "\n" +
-		rootCmd.Name() + ` ss -l --ports 5432 --json`,
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := lib.SetIPFamily(ipv4Only, ipv6Only); err != nil {
-			usage(err.Error())
-			return
-		}
-		query := handlers.SSQuery{TCP: ssTCP, UDP: ssUDP, Listening: ssListening}
-		if cmd.Flags().Changed("ports") {
-			ports, err := lib.ParsePorts("ports", ssPorts)
-			if err != nil {
-				usage(err.Error())
-				return
-			}
-			query.Ports, query.PortsText = ports, lib.PortsText(ports)
-		}
-		if cmd.Flags().Changed("pid") {
-			if ssPID < 1 {
-				usage(fmt.Sprintf("--pid %d is not a process ID: give a number of 1 or more", ssPID))
-				return
-			}
-			query.PID = ssPID
-		}
-		finish(handlers.SSHandler(&jsonoutput, query))
-	},
-}
+// platformCommands are the commands that exist only on some platforms. Each is
+// defined in a file of its own whose build tag leaves it out where it cannot
+// work, and that file's init adds it here: main_ss.go, for one, is not built
+// for AIX. Leaving a command out of a binary is for what no version of shint
+// could do on that system; what is merely not written yet stays in and says
+// so.
+var platformCommands []*cobra.Command
 
 var wolCmd = &cobra.Command{
 	Use:   "wol [mac]",
@@ -772,12 +736,6 @@ func init() {
 	nmapCmd.Flags().IntVar(&endport, "to", 80, "End port for TCP scan")
 	nmapCmd.Flags().StringVarP(&nmapPorts, "ports", "p", "", "Ports to scan as a list, instead of --from/--to: 22,80,443 and ranges like 8000-8100")
 
-	ssCmd.Flags().BoolVarP(&ssTCP, "tcp", "t", false, "List only TCP sockets")
-	ssCmd.Flags().BoolVarP(&ssUDP, "udp", "u", false, "List only UDP sockets")
-	ssCmd.Flags().BoolVarP(&ssListening, "listening", "l", false, "List only listening sockets: TCP in LISTEN, UDP with no peer")
-	ssCmd.Flags().StringVar(&ssPorts, "ports", "", "List only sockets with one of these ports at either end: 22,80,443 and ranges like 8000-8100")
-	ssCmd.Flags().IntVar(&ssPID, "pid", 0, "List only the sockets this process holds")
-
 	udpCmd.Flags().StringVarP(&udpData, "data", "D", "", "Explicit payload data to send instead of the generated --payload filler")
 	udpCmd.Flags().StringVar(&udpHex, "hex", "", "Exact payload bytes as hex digits, e.g. 00010203ff or \"00 01 02 03 ff\" (spaces and colons are ignored; not with --data)")
 
@@ -812,7 +770,8 @@ var stopProfiling = func() {}
 // variables above are fully initialised first), runs cobra, and exits with the
 // status the chosen command recorded - see the exit-status notes above.
 func main() {
-	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, tlsCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, dnsCmd, cidrCmd, ipCmd, ssCmd, listenCmd)
+	rootCmd.AddCommand(telnetCmd, pingCmd, webCmd, tlsCmd, nmapCmd, udpCmd, ntpCmd, wolCmd, rdnsCmd, dnsCmd, cidrCmd, ipCmd, listenCmd)
+	rootCmd.AddCommand(platformCommands...)
 	// cobra adds its completion command only when it executes. Adding it here - after
 	// the commands above, since cobra skips it while the root has none - lets it treat
 	// an argument it does not know as a mistake, like listen.

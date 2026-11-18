@@ -11,7 +11,8 @@ nav: Source reference
 
 | File | Purpose |
 |---|---|
-| `main.go` | The command line. Defines the cobra commands (`telnet`, `ping`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `ss`, `listen tcp|udp|http`), every flag, argument validation, the exit-status scheme, and `scanContext`. Holds the `Version` constant. |
+| `main.go` | The command line. Defines the cobra commands (`telnet`, `ping`, `web`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `listen tcp|udp|http`), every flag, argument validation, the exit-status scheme, and `scanContext`. Holds the `Version` constant. |
+| `main_ss.go` | The `ss` command and its flags, built for every platform but AIX (`//go:build !aix`). Its `init` adds it to `platformCommands`. See [No `ss` on AIX](tech-design.md#no-ss-on-aix). |
 | `main_test.go` | End-to-end tests of the CLI. `TestMain` makes the test binary behave as `shint` when `SHINT_TEST_RUN_MAIN=1`, so tests run it as a subprocess and assert real exit statuses and stdout/stderr. |
 | `go.mod`, `go.sum` | The module (`github.com/dmartsapp/shint/v4`), the Go version, and pinned dependencies. The `go` line ({{go}}) is the one place the Go release is chosen: see [Moving to a new Go release](tech-ci.md#moving-to-a-new-go-release). |
 | `toolchain_test.go` | Fails when the `Dockerfile`'s builder image is not the Go `go.mod` names, so the container images and the release binaries are built with the same Go. |
@@ -39,7 +40,7 @@ nav: Source reference
 | `rootCmd`, `telnetCmd`, `pingCmd`, `webCmd`, `nmapCmd`, `udpCmd`, `ntpCmd`, `wolCmd`, `rdnsCmd`, `dnsCmd`, `cidrCmd`, `ipCmd`, `listenCmd` (+ `listenTCPCmd`, `listenUDPCmd`, `listenHTTPCmd`) | The commands. Each `Run` validates, calls one handler, and passes its result to `finish`. |
 | `interruptContext()` | The context `nmap`, `telnet`, `web`, `udp`, `ntp`, `rdns` and `wol` run under: cancelled by `Ctrl+C`/`SIGTERM`, deliberately without any deadline, and un-registered after the first signal so a second `Ctrl+C` ends the process. |
 | `init()` | Registers all flags. Note `listenCmd` re-declares `--count` (default `0`) and `webCmd` re-declares `--payload` (`-P`, the body), shadowing the root flags. |
-| `main()` | Adds the commands, runs cobra, exits with `exitUsage` if cobra returned an error, otherwise with `exitCode`. |
+| `main()` | Adds the commands - and `platformCommands`, the ones only some platforms build - runs cobra, exits with `exitUsage` if cobra returned an error, otherwise with `exitCode`. |
 
 ## lib - shared code
 

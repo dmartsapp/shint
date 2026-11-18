@@ -101,6 +101,16 @@ What remains without a login is either already here or not iSCSI:
 - **Is the portal reachable?** `shint telnet <portal> 3260` - a connection, nothing sent.
 - **Is this host's own session up?** The host's iSCSI tooling (`iscsiadm -m session`) reports it. The kernel also publishes each session's state in files any user can read, so shint could show it without a login; that part is not planned either, and is the one piece to reconsider alongside the Fibre Channel checks (#81), which read the same kind of state.
 
+### No `ss` on AIX
+
+Decided on 2026-11-18, when `ss` ([#68](https://github.com/dmartsapp/shint/issues/68)) was built for Linux and Windows. AIX has no documented interface that lists TCP and UDP sockets, with the process holding each, to a user without root. Its own tools read kernel memory as root: `netstat -A` gives each connection's control block address, `rmsock` turns that into a process, and `lsof` does the same. Its `/proc/<pid>/fd` lists a process's descriptors, but cannot open a socket entry, and does not say that an entry is one. Nothing on AIX plays the part of Linux's `/proc/net`. IBM's documentation for `/proc` and the network library routines was checked for exactly this, and has nothing.
+
+shint never asks for root, and going through kernel memory or running other programs would break its rules anyway. So no version of `ss` could work on AIX. **The AIX binary is built without the command.** This is the first command that differs between binaries.
+
+How it is done: a command that only some platforms build lives in a file of its own whose build tag leaves it out (`main_ss.go`, `//go:build !aix`). That file's `init` adds the command to `platformCommands`, which `main` registers with the others. With nothing calling it, the linker drops the handler code from that binary too.
+
+The rule for next time: **leave a command out of a binary only when no version of shint could do it on that system.** When it is merely not written yet - `ss` on macOS and the BSDs ([#105](https://github.com/dmartsapp/shint/issues/105)) - the command stays in and says plainly that it is not supported there yet (exit `1`). A user then learns what is missing, and a script can tell "not yet" from "not on this system" (an unknown command, exit `2`).
+
 ## Output stability and known quirks
 
 JSON keys are a contract (see [Command-line design](tech-cli.md#the-output-contract)). Three historical quirks are kept for compatibility rather than fixed, and are documented so nobody is surprised: `timeout_ms` holds seconds; `ping` reports milliseconds where the rest report microseconds; and `ping`'s `from_port`/`to_port` hold `7`, the echo port, which means nothing for ICMP.

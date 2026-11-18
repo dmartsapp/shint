@@ -13,7 +13,7 @@ nav: ss
 
 It reads the operating system's socket tables and **sends nothing**. It needs no privileges: run as a normal user, it lists every socket, but for a socket that belongs to another user's process it cannot say which process holds it. Such a socket shows `owner=hidden`, and a `WARN` line counts them. Run it as root to see every process.
 
-It works on **Linux** (including Android, although apps built for Android 10 and later may not read the socket tables) and **Windows**. On macOS, the BSDs and other systems it says it is not supported yet and exits `1`. The BSDs are planned ([#105](https://github.com/dmartsapp/shint/issues/105)).
+It works on **Linux** and **Windows**. Other systems are covered under [Platforms](#platforms): most say `ss` is not supported yet, and the AIX binary does not have it at all.
 
 ## Syntax
 
@@ -171,11 +171,20 @@ shint ss -l -t --ports 80 --json
 
 One object per socket, holding everything about it. A field a platform does not report is left out rather than written as zero: `recv_q`, `send_q`, `uid` and `user` on Windows, `fd` on Windows, `state` for UDP on Windows. So `"uid": 0` always means root, never "unknown". `remote_address` and `remote_port` are left out for a socket with no peer. `processes` is left out when no process holds the socket, and when `"owner_hidden": true` says they could not be seen. Like [`ip`](ip.md), the document has no `dns_lookup`: nothing is looked up. `input_params` records the filters: `protocol` (`tcp`, `udp` or `tcp,udp`), `ports`, `listening` and `pid`. See [Output](output.md#stats-entries) for every field.
 
+## Platforms
+
+| System | `ss` |
+|---|---|
+| Linux | Supported: it reads `/proc`. Android too, although apps built for Android 10 and later may not read the socket tables. |
+| Windows | Supported. Any user may see which process holds every socket, so nothing is hidden. |
+| macOS, FreeBSD, NetBSD, OpenBSD, Solaris, illumos | Not supported yet: `ss` says so and exits `1`. The BSDs are planned ([#105](https://github.com/dmartsapp/shint/issues/105)). |
+| AIX | **Not in the AIX binary.** AIX has no documented way to list its sockets, with the process holding each, without root. Its own tools (`netstat -A` with `rmsock`, and `lsof`) read kernel memory as root. Its `/proc/<pid>/fd` cannot open a socket, nor say that an entry is one. shint never asks for root, so `ss` is left out of the AIX binary rather than shipped as a command that can never work: `shint ss` there is an unknown command (exit `2`). |
+
 ## Exit status
 
 - `0` when at least one socket was listed.
-- `1` when nothing matched the filters, the socket tables could not be read, or the system is not supported.
-- `2` for using it wrongly: an argument, `-4` and `-6` together, a `--ports` list that is not one, or a `--pid` that is not a number of 1 or more.
+- `1` when nothing matched the filters, the socket tables could not be read, or the system is not supported yet.
+- `2` for using it wrongly: an argument, `-4` and `-6` together, a `--ports` list that is not one, or a `--pid` that is not a number of 1 or more. On AIX, `ss` itself, which the AIX binary does not have.
 
 ## Good to know
 
