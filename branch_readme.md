@@ -48,6 +48,8 @@ Includes:
 
 | Change | Where | State |
 |---|---|---|
+| `tls`: the TLS versions offered (`offered=`, JSON `tls_versions_offered`) next to the one the server chose | `tls` | Done - [`3a37a34`](https://github.com/dmartsapp/shint/commit/3a37a34) |
+| Release process: a release that passed is announced - a second Slack post, and a discussion in Announcements | Notify Slack | Done - [`37b1c2e`](https://github.com/dmartsapp/shint/commit/37b1c2e); takes effect with this release's tag |
 | CI: actions pinned to commits, base images to digests, and a check that refuses unpinned ones (security review) - [#103](https://github.com/dmartsapp/shint/issues/103) | `main` (CI only, no release needed) | Done on `main` - [`db0fe0b`](https://github.com/dmartsapp/shint/commit/db0fe0b): 56 `uses:` pinned to commits, both base images to digests, and `check-pins.py` in `make workflows`; merged in by `make release` |
 
 ## After the release
