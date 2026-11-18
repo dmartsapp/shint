@@ -31,18 +31,36 @@ var progressInterval = 3 * time.Second
 // slow or scripted one.
 var probePort = lib.IsPortUp
 
-// NmapHandler reports true if the scan ran to the end of the range. Finding no
-// open ports is a result, not a failure; a failed DNS lookup or a scan cut
-// short (Ctrl+C) is a failure.
-func NmapHandler(ctx context.Context, host string, fromport, endport, iterations, timeout int, throttle bool, jsonoutput *bool) (ok bool) {
-	output := lib.JSONOutput{}
+// NmapScan is what one nmap run covers: its targets, as ParseNmapTargets
+// checked them, and its ports, sorted and each once.
+type NmapScan struct {
+	Targets []NmapTarget
+	Ports   []int
+	// PortList is whether the ports were given as a list (--ports) rather than
+	// a --from/--to range; the JSON record of the run then has the list.
+	PortList bool
+}
+
+// scanAddress is one address to scan and the target it came from.
+type scanAddress struct {
+	target, ip string
+}
+
+// NmapHandler reports true if every target was looked up and the scan ran to
+// the end. Finding no open ports is a result, not a failure; a failed DNS
+// lookup or a scan cut short (Ctrl+C) is a failure. A target whose lookup
+// fails is reported and the others are still scanned. An address that more
+// than one target leads to is scanned once, for the first of them.
+func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, throttle bool, jsonoutput *bool) (ok bool) {
+	output := lib.NmapJSONOutput{}
 	istart := time.Now()
+	ports := scan.Ports
+	single := len(scan.Targets) == 1
 	if *jsonoutput {
 		output.InputParams = lib.InputParams{
 			Mode:     nmapModule,
-			Host:     host,
-			FromPort: fromport,
-			ToPort:   endport,
+			FromPort: ports[0],
+			ToPort:   ports[len(ports)-1],
 			Protocol: "tcp",
 			Timeout:  timeout,
 			Count:    iterations,
@@ -50,38 +68,93 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 			Payload:  0,
 			Throttle: throttle,
 		}
+		if single {
+			output.InputParams.Host = scan.Targets[0].Input
+		} else {
+			for _, t := range scan.Targets {
+				output.InputParams.Targets = append(output.InputParams.Targets, t.Input)
+			}
+		}
+		if scan.PortList {
+			output.InputParams.Ports = lib.PortsText(ports)
+		}
 		output.ModuleName = nmapModule
 		output.StartTime = istart.UnixMicro()
 		output.Stats = make([]lib.NmapStats, 0)
 	}
 
-	// The DNS lookup gets --timeout to itself; the scan that follows does
-	// not (--timeout is what each port gets, not a budget for the range).
-	ipaddresses, err := func() ([]string, error) {
-		dnsCtx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
-		defer cancel()
-		return lib.ResolveName(dnsCtx, host)
-	}()
-	ok = err == nil
-	if err != nil {
-		if *jsonoutput {
-			output.Error = err.Error()
-		} else {
-			fmt.Println(lib.LogWithTimestamp(nmapModule, "dns resolution failed "+lib.Fields("host", host, "error", err.Error(), "time", time.Since(istart)), true))
-		}
-	} else {
-		if !*jsonoutput {
-			fmt.Println(lib.LogWithTimestamp(nmapModule, "dns resolved "+lib.Fields("host", host, "addresses", len(ipaddresses), "ips", "["+strings.Join(ipaddresses, ",")+"]", "time", time.Since(istart)), false))
-			printAuthoritative(nmapModule, findAuthoritative(ctx, host, authoritativeTimeout(timeout)))
-		} else {
-			output.DNSLookup = lib.DNSLookup{
-				Hostname:          host,
-				Success:           true,
-				ResolvedAddresses: ipaddresses,
-				TimeTaken:         time.Since(istart).Microseconds(),
-				Authoritative:     findAuthoritative(ctx, host, authoritativeTimeout(timeout)),
+	ok = true
+	var problems []string // the JSON error: failed lookups, an interrupted scan
+	var addresses []scanAddress
+	seen := make(map[string]bool)
+	add := func(target string, ips []string) {
+		for _, ip := range ips {
+			if !seen[ip] {
+				seen[ip] = true
+				addresses = append(addresses, scanAddress{target: target, ip: ip})
 			}
 		}
+	}
+	for _, t := range scan.Targets {
+		if t.IsPrefix() {
+			ips := sweepAddresses(t.Prefix)
+			if !*jsonoutput {
+				fields := []any{"target", t.Input}
+				if network := t.Prefix.String(); network != t.Input {
+					fields = append(fields, "network", network)
+				}
+				fmt.Println(lib.LogWithTimestamp(nmapModule, "sweep "+lib.Fields(append(fields, "addresses", len(ips))...), false))
+			}
+			add(t.Input, ips)
+			continue
+		}
+		// Each lookup gets --timeout to itself; the scan that follows does
+		// not (--timeout is what each port gets, not a budget for the range).
+		start := time.Now()
+		ipaddresses, err := func() ([]string, error) {
+			dnsCtx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+			defer cancel()
+			return lib.ResolveName(dnsCtx, t.Input)
+		}()
+		if err != nil {
+			ok = false
+			if *jsonoutput {
+				failed := lib.DNSLookup{Hostname: t.Input, ResolvedAddresses: ipaddresses, Error: err.Error(), TimeTaken: time.Since(start).Microseconds()}
+				if single {
+					problems = append(problems, err.Error())
+					output.DNSLookup = &failed
+				} else {
+					problems = append(problems, "dns resolution failed for "+t.Input+": "+err.Error())
+					output.DNSLookups = append(output.DNSLookups, failed)
+				}
+			} else {
+				fmt.Println(lib.LogWithTimestamp(nmapModule, "dns resolution failed "+lib.Fields("host", t.Input, "error", err.Error(), "time", time.Since(start)), true))
+			}
+			continue
+		}
+		if !*jsonoutput {
+			fmt.Println(lib.LogWithTimestamp(nmapModule, "dns resolved "+lib.Fields("host", t.Input, "addresses", len(ipaddresses), "ips", "["+strings.Join(ipaddresses, ",")+"]", "time", time.Since(start)), false))
+			printAuthoritative(nmapModule, findAuthoritative(ctx, t.Input, authoritativeTimeout(timeout)))
+		} else {
+			lookup := lib.DNSLookup{
+				Hostname:          t.Input,
+				Success:           true,
+				ResolvedAddresses: ipaddresses,
+				TimeTaken:         time.Since(start).Microseconds(),
+				Authoritative:     findAuthoritative(ctx, t.Input, authoritativeTimeout(timeout)),
+			}
+			if single {
+				output.DNSLookup = &lookup
+			} else {
+				output.DNSLookups = append(output.DNSLookups, lookup)
+			}
+		}
+		add(t.Input, ipaddresses)
+	}
+
+	// Nothing to scan because every lookup failed: those failures are the
+	// result. (A lookup that succeeds always has an address.)
+	if len(addresses) > 0 || ok {
 		var WG sync.WaitGroup
 		var statsMutex sync.Mutex
 		inFlight := lib.InFlightLimit(maxConcurrentPortScans)
@@ -90,12 +163,17 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		// closed); a dial aborted by cancellation is neither, and is not
 		// counted. plannedScans is what the whole run would cover.
 		var openCount, scanned int
-		plannedScans := iterations * len(ipaddresses) * (endport - fromport + 1)
+		openHosts := make(map[string]bool)
+		plannedScans := iterations * len(addresses) * len(ports)
 
 		// Text mode only: --json output must stay one clean document.
 		stopProgress := func() {}
 		if !*jsonoutput {
-			fmt.Println(lib.LogWithTimestamp(nmapModule, "scan started "+lib.Fields("ports_total", plannedScans, "timeout", fmt.Sprintf("%ds", timeout), "max_in_flight", inFlight), false))
+			fields := []any{"ports_total", plannedScans}
+			if len(addresses) > 1 {
+				fields = append(fields, "hosts", len(addresses))
+			}
+			fmt.Println(lib.LogWithTimestamp(nmapModule, "scan started "+lib.Fields(append(fields, "timeout", fmt.Sprintf("%ds", timeout), "max_in_flight", inFlight)...), false))
 			done := make(chan struct{})
 			var progressWG sync.WaitGroup
 			progressWG.Add(1)
@@ -125,9 +203,9 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		}
 		defer stopProgress() // covers the early return inside the loop
 	scanLoop:
-		for i := 0; i < iterations; i++ { // loop over the ip addresses for the iterations required
-			for _, ip := range ipaddresses { //  we need to loop over all ip addresses returned, even for once
-				for port := fromport; port <= endport; port++ { // we need to loop over all ports individually
+		for i := 0; i < iterations; i++ { // the whole scan, --count times
+			for _, addr := range addresses { // every address of every target
+				for _, port := range ports {
 					// Stop launching new scans once ctx is done, so a wide
 					// range (e.g. 1-65535) doesn't keep spawning dials well
 					// past the caller's overall deadline just because each
@@ -149,10 +227,10 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 					}
 					WG.Add(1)
 					semaphore <- struct{}{}
-					go func(ip string, port int) {
+					go func(addr scanAddress, port int) {
 						defer WG.Done()
 						defer func() { <-semaphore }()
-						_, err := probePort(ctx, ip, port, timeout)
+						_, err := probePort(ctx, addr.ip, port, timeout)
 						if err != nil && ctx.Err() != nil {
 							// Aborted mid-dial by the scan being cancelled: this
 							// port was not found closed, it was never finished.
@@ -162,15 +240,20 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 						scanned++
 						if err == nil {
 							openCount++
+							openHosts[addr.ip] = true
 						}
 						if *jsonoutput {
-							output.Stats = append(output.Stats.([]lib.NmapStats), lib.NmapStats{Address: ip, Port: port, Success: err == nil})
+							output.Stats = append(output.Stats.([]lib.NmapStats), lib.NmapStats{Target: addr.target, Address: addr.ip, Port: port, Service: serviceName(port), Success: err == nil})
 						}
 						statsMutex.Unlock()
 						if err == nil && !*jsonoutput {
-							fmt.Println(lib.LogWithTimestamp(nmapModule, "port open "+lib.Fields("host", ip, "port", port), false))
+							fields := []any{"host", addr.ip, "port", port}
+							if name := serviceName(port); name != "" {
+								fields = append(fields, "service", name)
+							}
+							fmt.Println(lib.LogWithTimestamp(nmapModule, "port open "+lib.Fields(fields...), false))
 						}
-					}(ip, port)
+					}(addr, port)
 				}
 			}
 		}
@@ -179,19 +262,29 @@ func NmapHandler(ctx context.Context, host string, fromport, endport, iterations
 		// A scan can only fall short of its plan by being cancelled (Ctrl+C
 		// or the caller's context). Say so, rather than presenting a partial
 		// range as a finished scan.
+		summary := []any{"ports_scanned", scanned}
+		if scanned < plannedScans {
+			summary = append(summary, "ports_total", plannedScans)
+		}
+		summary = append(summary, "open", openCount)
+		if len(addresses) > 1 {
+			summary = append(summary, "hosts_with_open_ports", len(openHosts))
+		}
+		summary = append(summary, "time", time.Since(istart))
 		if scanned < plannedScans {
 			ok = false
 			if *jsonoutput {
-				output.Error = fmt.Sprintf("scan interrupted: %d of %d ports scanned", scanned, plannedScans)
+				problems = append(problems, fmt.Sprintf("scan interrupted: %d of %d ports scanned", scanned, plannedScans))
 			} else {
-				fmt.Println(lib.LogWithTimestamp(nmapModule, "scan interrupted "+lib.Fields("ports_scanned", scanned, "ports_total", plannedScans, "open", openCount, "time", time.Since(istart)), true))
+				fmt.Println(lib.LogWithTimestamp(nmapModule, "scan interrupted "+lib.Fields(summary...), true))
 			}
 		} else if !*jsonoutput {
-			fmt.Println(lib.LogWithTimestamp(nmapModule, "scan complete "+lib.Fields("ports_scanned", scanned, "open", openCount, "time", time.Since(istart)), false))
+			fmt.Println(lib.LogWithTimestamp(nmapModule, "scan complete "+lib.Fields(summary...), false))
 		}
 	}
 
 	if *jsonoutput {
+		output.Error = strings.Join(problems, "; ")
 		output.EndTime = time.Now().UnixMicro()
 		output.TotalTimeTaken = output.EndTime - output.StartTime
 		JS, jsonErr := json.MarshalIndent(output, "", "  ")

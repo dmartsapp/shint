@@ -51,7 +51,7 @@ func TestNmapInFlightFollowsTheDescriptorLimit(t *testing.T) {
 	})
 	jsonOutput := false
 	out := captureStdout(t, func() {
-		NmapHandler(context.Background(), "127.0.0.1", 20000, 20000+399, 1, 5, false, &jsonOutput)
+		NmapHandler(context.Background(), rangeScan("127.0.0.1", 20000, 20000+399), 1, 5, false, &jsonOutput)
 	})
 	want := lib.InFlightLimit(maxConcurrentPortScans)
 	if want != 64 {

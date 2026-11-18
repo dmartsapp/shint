@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>nmap · shint</title>
-<meta name="description" content="shint nmap scans a range of TCP ports on a host over IPv4 and IPv6, reports open ports, and shows progress on long scans.">
+<meta name="description" content="shint nmap scans TCP ports on hosts and subnets over IPv4 and IPv6 - ranges or port lists - names the usual service on each open port, and shows progress on long scans.">
 <meta name="google-site-verification" content="f8HZndbzPlmiY4bsjViQCpBxHRTPAp1wtew-RUsIJws" />
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -32,14 +32,21 @@
 <article>
 <p class="eyebrow">Commands</p>
 <h1>nmap</h1>
-<p class="lead">Find which TCP ports are open on a host, across a range you choose, with live progress so long scans never look stuck.</p>
+<p class="lead">Find which TCP ports are open on a host, several hosts or a whole subnet, across a range or a list of ports, with live progress so long scans never look stuck.</p>
 <h2 id="what-it-does">What it does<a class="anchor" href="#what-it-does" aria-label="Link to this section">#</a></h2>
-<p><code>shint nmap</code> tries to open a TCP connection to every port in a range and reports the ones that answer. It is a small, single-host scanner for everyday questions ("what is listening on this machine?"), not a replacement for the full <a href="https://nmap.org">nmap</a>. Up to 500 ports are tried at the same time, so even wide ranges are practical.</p>
-<p>If the host name resolves to several addresses, every address is scanned.</p>
+<p><code>shint nmap</code> tries to open a TCP connection to every port you ask about and reports the ones that answer, with the service usually found on each. It is a small scanner for everyday questions ("what is listening on this machine?", "which hosts on this subnet answer SSH?"), not a replacement for the full <a href="https://nmap.org">nmap</a>. Up to 500 ports are tried at the same time, so even wide ranges are practical.</p>
+<p>It makes plain TCP connections, the way any program does: no raw packets, so it needs no privileges, and what it finds is what an application on this machine could reach.</p>
+<p>Give it one target or several: host names, addresses and prefixes (<code>192.168.1.0/24</code>), in any mix. A host name that resolves to several addresses has every address scanned; a prefix has each of its addresses scanned. An address that more than one target leads to is scanned once.</p>
 <h2 id="syntax">Syntax<a class="anchor" href="#syntax" aria-label="Link to this section">#</a></h2>
-<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap &lt;host&gt; [<span class="tok-flag">--from</span> PORT] [<span class="tok-flag">--to</span> PORT] [<span class="tok-flag">--timeout</span> S] [<span class="tok-flag">--json</span>]</code></pre></div>
-<div class="tablewrap"><table><thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td><code>--from</code></td><td><code>1</code></td><td>First port to scan.</td></tr><tr><td><code>--to</code></td><td><code>80</code></td><td>Last port to scan (inclusive).</td></tr><tr><td><code>--timeout</code></td><td><code>5</code></td><td>Seconds <strong>each port</strong> is given to answer. It is not a limit on the whole scan.</td></tr><tr><td><code>--count</code></td><td><code>1</code></td><td>Scan the whole range this many times.</td></tr><tr><td><code>--throttle</code></td><td>off</td><td>Wait a random 0-10 seconds before each port (slow and quiet).</td></tr><tr><td><code>--json</code></td><td>off</td><td>One JSON document with every port's result.</td></tr></tbody></table></div>
-<p><code>--from</code> and <code>--to</code> must be between 1 and 65535, with <code>--from</code> not greater than <code>--to</code>.</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap &lt;target&gt;... [<span class="tok-flag">--from</span> PORT <span class="tok-flag">--to</span> PORT | <span class="tok-flag">--ports</span> LIST] [<span class="tok-flag">--timeout</span> S] [<span class="tok-flag">--json</span>]</code></pre></div>
+<p>A target is a host name, an IPv4 or IPv6 address, or a prefix to sweep.</p>
+<div class="tablewrap"><table><thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead><tbody><tr><td><code>--from</code></td><td><code>1</code></td><td>First port to scan.</td></tr><tr><td><code>--to</code></td><td><code>80</code></td><td>Last port to scan (inclusive).</td></tr><tr><td><code>--ports</code>, <code>-p</code></td><td></td><td>The ports to scan as a list, instead of <code>--from</code>/<code>--to</code>: <code>22,80,443</code>, ranges like <code>8000-8100</code>, or both (<code>22,80,8000-8100</code>). Each port is scanned once, in order, however often the list names it.</td></tr><tr><td><code>--timeout</code></td><td><code>5</code></td><td>Seconds <strong>each port</strong> is given to answer. It is not a limit on the whole scan.</td></tr><tr><td><code>--count</code></td><td><code>1</code></td><td>Scan the whole range this many times.</td></tr><tr><td><code>--throttle</code></td><td>off</td><td>Wait a random 0-10 seconds before each port (slow and quiet).</td></tr><tr><td><code>--json</code></td><td>off</td><td>One JSON document with every port's result.</td></tr></tbody></table></div>
+<p><code>--from</code> and <code>--to</code> must be between 1 and 65535, with <code>--from</code> not greater than <code>--to</code>. <code>--ports</code> takes the same ports, as decimal numbers only; it cannot be combined with <code>--from</code> or <code>--to</code>.</p>
+<h3 id="prefixes">Prefixes<a class="anchor" href="#prefixes" aria-label="Link to this section">#</a></h3>
+<p>A prefix is swept: every address in it is scanned. An IPv4 prefix leaves out its network and broadcast addresses, which no host has, so <code>192.168.1.0/24</code> is its 254 host addresses, <code>.1</code> to <code>.254</code> (a <code>/31</code> and a <code>/32</code> have neither, and every address is scanned). An IPv6 prefix has no broadcast address, and every address in it is scanned.</p>
+<p>A prefix with host bits set is read as its network: <code>192.168.1.77/24</code> sweeps <code>192.168.1.0/24</code>, and the <code>sweep</code> line says so with <code>network=</code>.</p>
+<p>One run sweeps at most <strong>65,536 addresses</strong> - an IPv4 <code>/16</code>, or an IPv6 <code>/112</code> - across all its prefixes. A wider sweep is a usage error that says how many addresses it would have been; split it into smaller prefixes, or narrow it to the hosts you mean. An IPv6 <code>/64</code> holds 2^64 addresses, which no scanner can sweep by trying each one.</p>
+<p><code>-4</code> and <code>-6</code> apply to prefixes as they do to addresses: an IPv6 prefix with <code>-4</code> is a usage error.</p>
 <h2 id="examples">Examples<a class="anchor" href="#examples" aria-label="Link to this section">#</a></h2>
 <h3 id="a-small-range">A small range<a class="anchor" href="#a-small-range" aria-label="Link to this section">#</a></h3>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">--from</span> 2220 <span class="tok-flag">--to</span> 2225</code></pre></div>
@@ -49,6 +56,27 @@
 <span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan complete <span class="tok-key">ports_scanned</span>=6 <span class="tok-key">open</span>=1 <span class="tok-key">time</span>=705.125µs
 <span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=723.167µs</code></pre></div>
 <p>Only <strong>open</strong> ports are printed in text mode. The <code>scan started</code> line tells you how much is about to happen, and <code>scan complete</code> confirms every port was tried.</p>
+<h3 id="a-list-of-ports">A list of ports<a class="anchor" href="#a-list-of-ports" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">--ports</span> 22,80,443,2222,5432,8080-8090</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Tue Nov 17 22:03:53 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=61.333µs
+<span class="tok-ts">Tue Nov 17 22:03:53 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan started <span class="tok-key">ports_total</span>=16 <span class="tok-key">timeout</span>=5s <span class="tok-key">max_in_flight</span>=500
+<span class="tok-ts">Tue Nov 17 22:03:53 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=5432 <span class="tok-key">service</span>=postgresql
+<span class="tok-ts">Tue Nov 17 22:03:53 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=2222
+<span class="tok-ts">Tue Nov 17 22:03:53 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=8080 <span class="tok-key">service</span>=http-alt
+<span class="tok-ts">Tue Nov 17 22:03:53 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan complete <span class="tok-key">ports_scanned</span>=16 <span class="tok-key">open</span>=3 <span class="tok-key">time</span>=1.730333ms
+<span class="tok-ts">Tue Nov 17 22:03:53 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=1.745375ms</code></pre></div>
+<p>Each open port shows the service usually found on it (<code>service=</code>), when shint has a name for that port: 2222 has none. See <a href="#service-names">Service names</a>.</p>
+<h3 id="several-hosts-and-a-subnet">Several hosts and a subnet<a class="anchor" href="#several-hosts-and-a-subnet" aria-label="Link to this section">#</a></h3>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.0/29 ::1 <span class="tok-flag">-p</span> 22,8080 <span class="tok-flag">--timeout</span> 1</code></pre></div>
+<div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Tue Nov 17 22:03:42 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> sweep <span class="tok-key">target</span>=127.0.0.0/29 <span class="tok-key">addresses</span>=6
+<span class="tok-ts">Tue Nov 17 22:03:42 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=::1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[::1] <span class="tok-key">time</span>=42.833µs
+<span class="tok-ts">Tue Nov 17 22:03:42 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan started <span class="tok-key">ports_total</span>=14 <span class="tok-key">hosts</span>=7 <span class="tok-key">timeout</span>=1s <span class="tok-key">max_in_flight</span>=500
+<span class="tok-ts">Tue Nov 17 22:03:42 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=::1 <span class="tok-key">port</span>=8080 <span class="tok-key">service</span>=http-alt
+<span class="tok-ts">Tue Nov 17 22:03:42 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> port open <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">port</span>=8080 <span class="tok-key">service</span>=http-alt
+<span class="tok-ts">Tue Nov 17 22:03:43 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> scan complete <span class="tok-key">ports_scanned</span>=14 <span class="tok-key">open</span>=2 <span class="tok-key">hosts_with_open_ports</span>=2 <span class="tok-key">time</span>=1.002719875s
+<span class="tok-ts">Tue Nov 17 22:03:43 CST 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> done <span class="tok-key">total_time</span>=1.003067875s</code></pre></div>
+<p>A prefix gets a <code>sweep</code> line saying how many addresses it has; a host name or an address is looked up as usual. With more than one address, <code>scan started</code> adds <code>hosts=</code> (how many addresses are scanned) and <code>scan complete</code> adds <code>hosts_with_open_ports=</code>. The addresses of <code>127.0.0.0/29</code> other than <code>127.0.0.1</code> do not exist on this machine, so their ports ran out the one-second timeout.</p>
+<p>If a host name cannot be looked up, its <code>dns resolution failed</code> line says so and the other targets are still scanned; the run then exits <code>1</code>.</p>
 <h3 id="a-wider-range">A wider range<a class="anchor" href="#a-wider-range" aria-label="Link to this section">#</a></h3>
 <div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">--from</span> 2000 <span class="tok-flag">--to</span> 3000</code></pre></div>
 <div class="codeblock lang-text"><div class="codebar"><span class="codelabel">Output</span></div><pre><code><span class="tok-ts">Sun Sep 20 01:50:37 MDT 2026:</span> <span class="tok-mod">[nmap]</span> <span class="tok-ok">OK</span> dns resolved <span class="tok-key">host</span>=127.0.0.1 <span class="tok-key">addresses</span>=1 <span class="tok-key">ips</span>=[127.0.0.1] <span class="tok-key">time</span>=53.167µs
@@ -114,22 +142,55 @@
   <span class="tok-key">"total_time_taken_µs"</span>: <span class="tok-num">304</span>,
   <span class="tok-key">"error"</span>: <span class="tok-str">""</span>
 }</code></pre></div>
-<p>Every port scanned appears in <code>stats</code>, open or not.</p>
+<p>Every port scanned appears in <code>stats</code>, open or not. Each entry also has <code>target</code>, the argument its address came from, and <code>service</code> for a port shint has a name for:</p>
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">shint</span> nmap 127.0.0.1 <span class="tok-flag">-p</span> 2222,8080 <span class="tok-flag">--json</span></code></pre></div>
+<div class="codeblock lang-json"><div class="codebar"><span class="codelabel">JSON</span></div><pre><code>{
+  <span class="tok-key">"input_params"</span>: {
+    ...
+    <span class="tok-key">"host"</span>: <span class="tok-str">"127.0.0.1"</span>,
+    <span class="tok-key">"from_port"</span>: <span class="tok-num">2222</span>,
+    <span class="tok-key">"to_port"</span>: <span class="tok-num">8080</span>,
+    ...
+    <span class="tok-key">"ports"</span>: <span class="tok-str">"2222,8080"</span>
+  },
+  <span class="tok-key">"module_name"</span>: <span class="tok-str">"nmap"</span>,
+  <span class="tok-key">"dns_lookup"</span>: { ... },
+  <span class="tok-key">"stats"</span>: [
+    {
+      <span class="tok-key">"target"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">2222</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>
+    },
+    {
+      <span class="tok-key">"target"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"address"</span>: <span class="tok-str">"127.0.0.1"</span>,
+      <span class="tok-key">"port"</span>: <span class="tok-num">8080</span>,
+      <span class="tok-key">"service"</span>: <span class="tok-str">"http-alt"</span>,
+      <span class="tok-key">"success"</span>: <span class="tok-lit">true</span>
+    }
+  ],
+  ...
+}</code></pre></div>
+<p>With <code>--ports</code>, <code>input_params.ports</code> is the list, sorted and with runs written as ranges, and <code>from_port</code>/<code>to_port</code> are its lowest and highest port. A run given more than one target lists them in <code>input_params.targets</code> (and <code>host</code> is empty) and has <code>dns_lookups</code>, one lookup per host name or address, in place of <code>dns_lookup</code>; a prefix is swept without a lookup. See <a href="output.html#inputparams">Output formats</a>.</p>
+<h2 id="service-names">Service names<a class="anchor" href="#service-names" aria-label="Link to this section">#</a></h2>
+<p>The <code>service</code> an open port shows is the service usually found on that port number - <code>ssh</code> on 22, <code>https</code> on 443, <code>postgresql</code> on 5432, <code>consul-http</code> on 8500 - from a table built into shint. It is a convention, not a check: shint reads nothing from the port, so a web server moved to port 22 still shows <code>service=ssh</code>. A port the table has no name for shows none.</p>
+<p>The names are the ones people know the services by (<code>dns</code> for 53, <code>rdp</code> for 3389, rather than IANA's <code>domain</code> and <code>ms-wbt-server</code>), and the table also knows common unregistered ports: Redis, Docker, Kubernetes, Consul, Prometheus, Elasticsearch, MongoDB and others. A port that several unrelated services commonly use - 3000, 5000, 9000 - is left out rather than guessed at.</p>
 <h2 id="how-long-will-it-take">How long will it take?<a class="anchor" href="#how-long-will-it-take" aria-label="Link to this section">#</a></h2>
 <p><code>--timeout</code> is what each port gets, so total time depends on <strong>how many ports do not answer</strong>:</p>
 <div class="tablewrap"><table><thead><tr><th>Port behaviour</th><th>Cost</th></tr></thead><tbody><tr><td>Open, or actively refused (<code>connection refused</code>)</td><td>Milliseconds - the host answers at once</td></tr><tr><td>Silently dropped by a firewall</td><td>The full <code>--timeout</code>, for every such port</td></tr></tbody></table></div>
-<p>With up to 500 ports in flight (<code>max_in_flight</code> on the <code>scan started</code> line says how many; it is lower where the process may open few files - half its descriptor limit), a worst case (a host that drops everything) takes about <strong>ports ÷ 500 × timeout</strong> seconds:</p>
-<div class="tablewrap"><table><thead><tr><th>Range</th><th><code>--timeout 5</code> (default)</th><th><code>--timeout 1</code></th></tr></thead><tbody><tr><td>1-1024</td><td>about 15 s</td><td>about 3 s</td></tr><tr><td>20-9000</td><td>about 90 s</td><td>about 18 s</td></tr><tr><td>1-65535</td><td>about 11 min</td><td>about 2 min</td></tr></tbody></table></div>
-<p>On a fast, reliable network, <code>--timeout 1</code> is usually plenty and makes silent hosts much quicker to scan.</p>
+<p>With up to 500 ports in flight (<code>max_in_flight</code> on the <code>scan started</code> line says how many; it is lower where the process may open few files - half its descriptor limit), a worst case (a host that drops everything) takes about <strong>ports ÷ 500 × timeout</strong> seconds, where ports is <code>ports_total</code> on the <code>scan started</code> line - every port of every address:</p>
+<div class="tablewrap"><table><thead><tr><th>Range</th><th><code>--timeout 5</code> (default)</th><th><code>--timeout 1</code></th></tr></thead><tbody><tr><td>1-1024</td><td>about 15 s</td><td>about 3 s</td></tr><tr><td>20-9000</td><td>about 90 s</td><td>about 18 s</td></tr><tr><td>1-65535</td><td>about 11 min</td><td>about 2 min</td></tr><tr><td>A <code>/24</code> (254 addresses), one port</td><td>about 5 s</td><td>about 1 s</td></tr><tr><td>A <code>/24</code>, 1-1024</td><td>about 43 min</td><td>about 9 min</td></tr></tbody></table></div>
+<p>On a fast, reliable network, <code>--timeout 1</code> is usually plenty and makes silent hosts much quicker to scan. Addresses with nothing on them are the silent ones in a sweep, so sweep for a few ports (<code>-p 22,80,443</code>) rather than a wide range.</p>
 <h2 id="reading-the-results">Reading the results<a class="anchor" href="#reading-the-results" aria-label="Link to this section">#</a></h2>
-<ul><li><strong>A port listed as open</strong> accepted the connection.</li><li><strong>A port not listed</strong> was refused, or nothing answered in time. TCP scanning cannot tell a stopped service from a firewall that drops packets - a filtered port and a closed one look the same here.</li><li>The exit status is <code>0</code> for a completed scan (whether or not anything was open), and <code>1</code> if the lookup failed or the scan was cut short.</li></ul>
+<ul><li><strong>A port listed as open</strong> accepted the connection.</li><li><strong>A port not listed</strong> was refused, or nothing answered in time. TCP scanning cannot tell a stopped service from a firewall that drops packets - a filtered port and a closed one look the same here.</li><li>The exit status is <code>0</code> for a completed scan (whether or not anything was open), and <code>1</code> if a lookup failed or the scan was cut short.</li></ul>
 <h2 id="good-to-know">Good to know<a class="anchor" href="#good-to-know" aria-label="Link to this section">#</a></h2>
-<ul><li>Only TCP is scanned. For UDP, use <a href="udp.html"><code>udp</code></a>, one port at a time.</li><li>Scanning hosts you do not own or manage may be against the rules of the network you are on. Scan your own systems, or ones you have permission to test.</li></ul>
+<ul><li>Only TCP is scanned. For UDP, use <a href="udp.html"><code>udp</code></a>, one port at a time.</li><li>The service names are a guess from the port number; to check what a web or TLS port really serves, use <a href="web.html"><code>web</code></a> or <a href="tls.html"><code>tls</code></a>.</li><li>Scanning hosts you do not own or manage may be against the rules of the network you are on. Scan your own systems, or ones you have permission to test.</li></ul>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="tls.html"><span>Previous</span>tls</a><a class="next" href="udp.html"><span>Next</span>udp</a></nav>
 <footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/nmap.md">Edit this page on GitHub</a><span>shint v4.3.0 &middot; MIT License</span></footer>
 </main>
-<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-small-range">A small range</a></li><li class="toc3"><a href="#a-wider-range">A wider range</a></li><li class="toc3"><a href="#a-host-that-does-not-answer">A host that does not answer</a></li><li class="toc3"><a href="#stopping-early">Stopping early</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#how-long-will-it-take">How long will it take?</a></li><li class="toc2"><a href="#reading-the-results">Reading the results</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
+<aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#what-it-does">What it does</a></li><li class="toc2"><a href="#syntax">Syntax</a></li><li class="toc3"><a href="#prefixes">Prefixes</a></li><li class="toc2"><a href="#examples">Examples</a></li><li class="toc3"><a href="#a-small-range">A small range</a></li><li class="toc3"><a href="#a-list-of-ports">A list of ports</a></li><li class="toc3"><a href="#several-hosts-and-a-subnet">Several hosts and a subnet</a></li><li class="toc3"><a href="#a-wider-range">A wider range</a></li><li class="toc3"><a href="#a-host-that-does-not-answer">A host that does not answer</a></li><li class="toc3"><a href="#stopping-early">Stopping early</a></li><li class="toc3"><a href="#json">JSON</a></li><li class="toc2"><a href="#service-names">Service names</a></li><li class="toc2"><a href="#how-long-will-it-take">How long will it take?</a></li><li class="toc2"><a href="#reading-the-results">Reading the results</a></li><li class="toc2"><a href="#good-to-know">Good to know</a></li></ul></aside>
 </div>
 <script src="assets/site.js" defer></script>
 </body>

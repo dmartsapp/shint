@@ -60,6 +60,8 @@ var (
 	// nmap
 	fromport int
 	endport  int
+	// nmapPorts is nmap --ports, a port list read by lib.ParsePorts.
+	nmapPorts string
 
 	// web
 	httpmethod          string
@@ -328,30 +330,51 @@ A chain that does not verify - an unknown authority, an expired or not-yet-valid
 }
 
 var nmapCmd = &cobra.Command{
-	Use:   "nmap [host]",
-	Short: "Scan for open TCP ports on a host",
-	Long:  `This command scans for open TCP ports on a host within a given range. --timeout is how long each individual port is given to answer; the scan itself runs until the whole range has been covered (Ctrl+C stops it early and reports how far it got).`,
-	Args:  cobra.ExactArgs(1),
+	Use:   "nmap <host|address|prefix>...",
+	Short: "Scan for open TCP ports on hosts and subnets",
+	Long: `This command scans for open TCP ports: on a host, on several, or across a subnet (192.168.1.0/24), on a range of ports (--from/--to) or a list (--ports 22,80,443,8000-8100). An open port is shown with the service usually found on it. --timeout is how long each individual port is given to answer; the scan itself runs until every port has been covered (Ctrl+C stops it early and reports how far it got).
+
+A prefix sweeps its addresses (an IPv4 /24 is its 254 host addresses), up to 65536 addresses in one run. Only TCP connect scans are made: no raw packets, no privileges needed.`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if !applyFamily(args[0]) {
+		if !applyFamily("") {
 			return
 		}
 		if !checkRunFlags(false) {
 			return
 		}
-		if fromport < 1 || fromport > 65535 || endport < 1 || endport > 65535 {
-			usage("--from and --to must both be between 1 and 65535")
+		targets, err := handlers.ParseNmapTargets(args)
+		if err != nil {
+			usage(err.Error())
 			return
 		}
-		if fromport > endport {
-			usage("--from must be less than or equal to --to")
-			return
+		scan := handlers.NmapScan{Targets: targets}
+		if cmd.Flags().Changed("ports") {
+			if cmd.Flags().Changed("from") || cmd.Flags().Changed("to") {
+				usage("--ports and --from/--to cannot be used together: give a list (--ports 22,80,8000-8100) or a range (--from/--to)")
+				return
+			}
+			if scan.Ports, err = lib.ParsePorts("ports", nmapPorts); err != nil {
+				usage(err.Error())
+				return
+			}
+			scan.PortList = true
+		} else {
+			if fromport < 1 || fromport > 65535 || endport < 1 || endport > 65535 {
+				usage("--from and --to must both be between 1 and 65535")
+				return
+			}
+			if fromport > endport {
+				usage("--from must be less than or equal to --to")
+				return
+			}
+			scan.Ports = lib.PortRange(fromport, endport)
 		}
 
 		ctx, stop := interruptContext()
 		defer stop()
 
-		finish(handlers.NmapHandler(ctx, args[0], fromport, endport, iterations, timeout, throttle, &jsonoutput))
+		finish(handlers.NmapHandler(ctx, scan, iterations, timeout, throttle, &jsonoutput))
 	},
 }
 
@@ -703,6 +726,7 @@ func init() {
 
 	nmapCmd.Flags().IntVar(&fromport, "from", 1, "Start port for TCP scan")
 	nmapCmd.Flags().IntVar(&endport, "to", 80, "End port for TCP scan")
+	nmapCmd.Flags().StringVarP(&nmapPorts, "ports", "p", "", "Ports to scan as a list, instead of --from/--to: 22,80,443 and ranges like 8000-8100")
 
 	udpCmd.Flags().StringVarP(&udpData, "data", "D", "", "Explicit payload data to send instead of the generated --payload filler")
 	udpCmd.Flags().StringVar(&udpHex, "hex", "", "Exact payload bytes as hex digits, e.g. 00010203ff or \"00 01 02 03 ff\" (spaces and colons are ignored; not with --data)")

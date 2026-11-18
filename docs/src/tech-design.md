@@ -48,6 +48,8 @@ Both were false results presented as real ones, which is the worst kind of bug f
 
 ## The port scanner
 
+**What it is given.** Since v4.4.0 ([#94](https://github.com/dmartsapp/shint/issues/94)), any number of targets - host names, addresses and prefixes - and the ports as a range or a list. Every target is checked before anything is scanned (`ParseNmapTargets`), so a typo in the third is a usage error, not two scans and a failure. A prefix is capped at 65,536 addresses across the run: past that a sweep takes hours, and `--json` would hold every result in memory. Each address is scanned once, whichever target led to it first, and a failed lookup does not stop the other targets - it makes the run exit `1`. The scan stays a TCP connect scan: raw SYN packets would need root (or `CAP_NET_RAW`), and a tool that answers "can this machine connect there" should connect the way its applications do.
+
 **Concurrency.** One goroutine per port, but a buffered channel used as a semaphore holds at most `maxConcurrentPortScans` (500) in flight, so `--from 1 --to 65535` cannot exhaust file descriptors or flood the target.
 
 **Time is dominated by silence.** A port that refuses answers in milliseconds; a port whose packets are dropped costs the whole `--timeout`. Worst-case time is roughly `ports / 500 x timeout`, and results arrive in bursts because a whole batch times out together. That is why a scan prints `scan started` with the total, then a `progress` line every three seconds including `in_flight` - so a burst-wise scan does not look hung.
@@ -86,7 +88,7 @@ What is left is SSH, SMTP, FTP, POP3, IMAP and a few databases. `nc host port` a
 
 `--send`/`--expect` is where the cost was. One flag becomes a small protocol scripter: SMTP wants `\r\n` line endings, a binary protocol would need a `--hex` like `udp`'s, and an exchange with more than one step (`EHLO`, then `QUIT`) does not fit one send and one expect. Each of those is the next feature request, and together they are a lot to maintain for a *simple* inspection toolkit.
 
-So `telnet` stays what its name promises: can a connection be opened, from here, to that address and port, and how long did it take. Naming the service behind an open port is `nmap`'s job. Its service names (planned for v4.3.0) come from the port number; if they ever need evidence rather than convention, reading a banner there is where to reconsider it.
+So `telnet` stays what its name promises: can a connection be opened, from here, to that address and port, and how long did it take. Naming the service behind an open port is `nmap`'s job. Its service names (v4.4.0, [#94](https://github.com/dmartsapp/shint/issues/94)) come from the port number; if they ever need evidence rather than convention, reading a banner there is where to reconsider it.
 
 ### No iSCSI checks
 

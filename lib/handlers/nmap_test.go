@@ -22,10 +22,10 @@ func TestNmapHandlerFindsOpenPortIPv6(t *testing.T) {
 	defer cancel()
 
 	out := captureStdout(t, func() {
-		NmapHandler(ctx, "::1", port, port, 1, 2, false, &jsonOutput)
+		NmapHandler(ctx, rangeScan("::1", port, port), 1, 2, false, &jsonOutput)
 	})
 
-	var result lib.JSONOutput
+	var result lib.NmapJSONOutput
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("failed to unmarshal JSON output: %v\noutput:\n%s", err, out)
 	}
@@ -53,10 +53,10 @@ func TestNmapHandlerFindsOpenPortInRange(t *testing.T) {
 	defer cancel()
 
 	out := captureStdout(t, func() {
-		NmapHandler(ctx, "127.0.0.1", from, to, 1, 2, false, &jsonOutput)
+		NmapHandler(ctx, rangeScan("127.0.0.1", from, to), 1, 2, false, &jsonOutput)
 	})
 
-	var result lib.JSONOutput
+	var result lib.NmapJSONOutput
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("failed to unmarshal JSON output: %v\noutput:\n%s", err, out)
 	}
@@ -92,7 +92,7 @@ func TestNmapHandlerTextModeLogsOnlyOpenPorts(t *testing.T) {
 	defer cancel()
 
 	out := captureStdout(t, func() {
-		NmapHandler(ctx, "127.0.0.1", port, port, 1, 2, false, &jsonOutput)
+		NmapHandler(ctx, rangeScan("127.0.0.1", port, port), 1, 2, false, &jsonOutput)
 	})
 
 	if !strings.Contains(out, "[nmap] OK port open") {
@@ -109,7 +109,7 @@ func TestNmapHandlerDNSFailure(t *testing.T) {
 	defer cancel()
 
 	out := captureStdout(t, func() {
-		NmapHandler(ctx, "this-host-should-not-exist.invalid", 1, 10, 1, 1, false, &jsonOutput)
+		NmapHandler(ctx, rangeScan("this-host-should-not-exist.invalid", 1, 10), 1, 1, false, &jsonOutput)
 	})
 
 	if !strings.Contains(out, "[nmap] ERROR dns resolution failed") {
@@ -134,7 +134,7 @@ func TestNmapHandlerWideRangeCompletesUnderConcurrencyCap(t *testing.T) {
 	defer cancel()
 
 	out := captureStdout(t, func() {
-		NmapHandler(ctx, "127.0.0.1", from, to, 1, 1, false, &jsonOutput)
+		NmapHandler(ctx, rangeScan("127.0.0.1", from, to), 1, 1, false, &jsonOutput)
 	})
 
 	if !strings.Contains(out, `"module_name": "nmap"`) {
@@ -158,7 +158,7 @@ func TestNmapHandlerStopsScanningWhenContextExpires(t *testing.T) {
 	captureStdout(t, func() {
 		// A 10s per-dial timeout would make an unbounded scan of this
 		// range take a very long time if ctx cancellation were ignored.
-		NmapHandler(ctx, "127.0.0.1", from, to, 1, 10, false, &jsonOutput)
+		NmapHandler(ctx, rangeScan("127.0.0.1", from, to), 1, 10, false, &jsonOutput)
 	})
 	elapsed := time.Since(start)
 
@@ -175,9 +175,9 @@ func withProbe(t *testing.T, fake func(ctx context.Context, host string, port, t
 	t.Cleanup(func() { probePort = orig })
 }
 
-func nmapStatsFromJSON(t *testing.T, out string) ([]lib.NmapStats, lib.JSONOutput) {
+func nmapStatsFromJSON(t *testing.T, out string) ([]lib.NmapStats, lib.NmapJSONOutput) {
 	t.Helper()
-	var result lib.JSONOutput
+	var result lib.NmapJSONOutput
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("failed to unmarshal JSON output: %v\noutput:\n%s", err, out)
 	}
@@ -208,7 +208,7 @@ func TestNmapHandlerCoversWholeRangeEvenWhenItOutlastsPerPortTimeout(t *testing.
 	// 1..1100 is 3 waves of the 500-dial cap: ~1.2s, past the 1s per-port timeout.
 	jsonOutput := true
 	out := captureStdout(t, func() {
-		NmapHandler(context.Background(), "127.0.0.1", 1, 1100, 1, 1, false, &jsonOutput)
+		NmapHandler(context.Background(), rangeScan("127.0.0.1", 1, 1100), 1, 1, false, &jsonOutput)
 	})
 
 	stats, result := nmapStatsFromJSON(t, out)
@@ -238,7 +238,7 @@ func TestNmapHandlerTextSummaryCountsFinishedPorts(t *testing.T) {
 	})
 	jsonOutput := false
 	out := captureStdout(t, func() {
-		NmapHandler(context.Background(), "127.0.0.1", 1, 20, 1, 1, false, &jsonOutput)
+		NmapHandler(context.Background(), rangeScan("127.0.0.1", 1, 20), 1, 1, false, &jsonOutput)
 	})
 	if !strings.Contains(out, "[nmap] OK scan complete ports_scanned=20 open=1") {
 		t.Errorf("expected a complete-scan summary for 20 ports with 1 open, got:\n%s", out)
@@ -265,7 +265,7 @@ func TestNmapHandlerReportsInterruptedScan(t *testing.T) {
 			defer cancel()
 			jsonOutput := tc.json
 			out := captureStdout(t, func() {
-				NmapHandler(ctx, "127.0.0.1", 1, 2000, 1, 30, false, &jsonOutput)
+				NmapHandler(ctx, rangeScan("127.0.0.1", 1, 2000), 1, 30, false, &jsonOutput)
 			})
 
 			if tc.json {
@@ -302,7 +302,7 @@ func TestNmapHandlerThrottleDelayIsInterruptible(t *testing.T) {
 
 	start := time.Now()
 	captureStdout(t, func() {
-		NmapHandler(ctx, "127.0.0.1", 1, 50, 1, 1, true, &jsonOutput)
+		NmapHandler(ctx, rangeScan("127.0.0.1", 1, 50), 1, 1, true, &jsonOutput)
 	})
 	if elapsed := time.Since(start); elapsed > 3*time.Second {
 		t.Errorf("throttled scan took %v to stop after its context was cancelled at 200ms", elapsed)
@@ -335,7 +335,7 @@ func TestNmapHandlerReportsProgress(t *testing.T) {
 	// 1..1100 is 3 waves of the 500-dial cap: ~900ms, several ticks.
 	jsonOutput := false
 	out := captureStdout(t, func() {
-		NmapHandler(context.Background(), "127.0.0.1", 1, 1100, 1, 5, false, &jsonOutput)
+		NmapHandler(context.Background(), rangeScan("127.0.0.1", 1, 1100), 1, 5, false, &jsonOutput)
 	})
 
 	if !strings.Contains(out, "[nmap] OK scan started ports_total=1100 timeout=5s max_in_flight=500") {
@@ -380,7 +380,7 @@ func TestNmapHandlerFastScanPrintsNoProgress(t *testing.T) {
 	})
 	jsonOutput := false
 	out := captureStdout(t, func() {
-		NmapHandler(context.Background(), "127.0.0.1", 1, 50, 1, 1, false, &jsonOutput)
+		NmapHandler(context.Background(), rangeScan("127.0.0.1", 1, 50), 1, 1, false, &jsonOutput)
 	})
 	if strings.Contains(out, "progress") {
 		t.Errorf("a scan that finished well inside the progress interval printed progress:\n%s", out)
@@ -398,7 +398,7 @@ func TestNmapHandlerJSONHasNoProgressLines(t *testing.T) {
 
 	jsonOutput := true
 	out := captureStdout(t, func() {
-		NmapHandler(context.Background(), "127.0.0.1", 1, 600, 1, 5, false, &jsonOutput)
+		NmapHandler(context.Background(), rangeScan("127.0.0.1", 1, 600), 1, 5, false, &jsonOutput)
 	})
 	stats, _ := nmapStatsFromJSON(t, out) // fails the test if anything but the JSON document was printed
 	if len(stats) != 600 {
@@ -407,4 +407,14 @@ func TestNmapHandlerJSONHasNoProgressLines(t *testing.T) {
 	if strings.Contains(out, "progress") || strings.Contains(out, "scan started") {
 		t.Errorf("text-mode progress leaked into --json output:\n%s", out)
 	}
+}
+
+// rangeScan is the scan of one target across --from/--to; the target must be
+// valid (it panics otherwise, which keeps it usable from any goroutine).
+func rangeScan(target string, from, to int) NmapScan {
+	targets, err := ParseNmapTargets([]string{target})
+	if err != nil {
+		panic(err)
+	}
+	return NmapScan{Targets: targets, Ports: lib.PortRange(from, to)}
 }

@@ -37,6 +37,64 @@ add("G.dns-fail", ["nmap", "no-such-host.invalid"], group="G nmap", rc=1)
 add("G.filtered-target", ["nmap", "192.0.2.1", "--from", "80", "--to", "82", "--timeout", "1"], group="G nmap", rc=0, max=10)
 add("G.hostname-multi", ["nmap", "localhost", "--from", "{tcp_echo}", "--to", "{tcp_echo}", "--json"], group="G nmap", rc=None)
 
+
+# --ports lists, several targets, prefix sweeps, service names (#94)
+def nmap_json(r):
+    return json.loads(r["out"])
+
+
+def ports_list_json(r):
+    d = nmap_json(r)
+    want = ",".join(str(p) for p in sorted({PORTS["tcp_echo"], PORTS["tcp_closed"]}))
+    got = {(s["port"], s["success"]) for s in d["stats"]}
+    if d["input_params"].get("ports") != want:
+        return "input_params.ports = %r, want %r" % (d["input_params"].get("ports"), want)
+    if got != {(PORTS["tcp_echo"], True), (PORTS["tcp_closed"], False)}:
+        return "stats %s" % sorted(got)
+    return None
+
+
+def two_targets_json(r):
+    d = nmap_json(r)
+    if d["input_params"].get("targets") != ["127.0.0.1", "::1"] or d["input_params"]["host"] != "":
+        return "input_params %s" % d["input_params"]
+    if [l["hostname"] for l in d.get("dns_lookups", [])] != ["127.0.0.1", "::1"]:
+        return "dns_lookups %s" % d.get("dns_lookups")
+    open_ = {(s["target"], s["address"], s["port"]) for s in d["stats"] if s["success"]}
+    if open_ != {("127.0.0.1", "127.0.0.1", PORTS["tcp_echo"]), ("::1", "::1", PORTS["tcp_echo6"])}:
+        return "open %s" % sorted(open_)
+    return None
+
+
+add("G.ports-list", ["nmap", "127.0.0.1", "--ports", "{tcp_echo},{tcp_closed}"], group="G nmap", rc=0, contains=["port open host=127.0.0.1 port={tcp_echo}", "scan complete ports_scanned=2 open=1"])
+add("G.ports-short-p", ["nmap", "127.0.0.1", "-p", "{tcp_echo}"], group="G nmap", rc=0, contains=["port open", "ports_total=1"])
+add("G.ports-list-json", ["nmap", "127.0.0.1", "--ports", "{tcp_closed},{tcp_echo},{tcp_echo}", "--json"], group="G nmap", rc=0, check=ports_list_json)
+add("G.ports-range-in-list", ["nmap", "127.0.0.1", "--ports", "{tcp_echo}-{tcp_echo}"], group="G nmap", rc=0, contains=["port open"])
+for cid, spec in [("empty", ""), ("empty-item", "22,,80"), ("word", "ssh"), ("zero", "0"), ("too-big", "65536"), ("backwards", "80-22"),
+                  ("negative", "-5"), ("semicolon", "22;id"), ("hex", "0x16")]:
+    add("G.ports-" + cid, ["nmap", "127.0.0.1", "--ports=" + spec], group="G nmap", rc=2, contains=["--ports"], absent=["scan started"])
+add("G.ports-with-from", ["nmap", "127.0.0.1", "--ports", "22", "--from", "20"], group="G nmap", rc=2, contains=["cannot be used together"])
+add("G.ports-with-to", ["nmap", "127.0.0.1", "-p", "22", "--to", "30"], group="G nmap", rc=2, contains=["cannot be used together"])
+add("G.two-targets", ["nmap", "127.0.0.1", "::1", "--ports", "{tcp_echo},{tcp_echo6}"], group="G nmap", rc=0,
+    contains=["hosts=2", "port open host=127.0.0.1 port={tcp_echo}", "port open host=::1 port={tcp_echo6}", "hosts_with_open_ports=2"])
+add("G.two-targets-json", ["nmap", "127.0.0.1", "::1", "--ports", "{tcp_echo},{tcp_echo6}", "--json"], group="G nmap", rc=0, check=two_targets_json)
+add("G.same-address-twice-scanned-once", ["nmap", "127.0.0.1", "127.0.0.1/32", "-p", "{tcp_echo}"], group="G nmap", rc=0, contains=["scan complete ports_scanned=1 open=1"])
+add("G.sweep-host-route", ["nmap", "127.0.0.1/32", "-p", "{tcp_echo}"], group="G nmap", rc=0, contains=["sweep target=127.0.0.1/32 addresses=1", "port open host=127.0.0.1"])
+add("G.sweep-host-bits", ["nmap", "127.0.0.1/31", "-p", "{tcp_echo}", "--timeout", "1"], group="G nmap", rc=0, max=10,
+    contains=["sweep target=127.0.0.1/31 network=127.0.0.0/31 addresses=2", "port open host=127.0.0.1"])
+add("G.sweep-too-wide", ["nmap", "10.0.0.0/8"], group="G nmap", rc=2, contains=["16777214 addresses", "at most 65536"], absent=["scan started"])
+add("G.sweep-too-wide-together", ["nmap", "10.0.0.0/16", "10.1.0.0/16"], group="G nmap", rc=2, contains=["131068 addresses"])
+add("G.sweep-ipv6-too-wide", ["nmap", "fd00::/64"], group="G nmap", rc=2, contains=["18446744073709551616 addresses"])
+add("G.prefix-invalid", ["nmap", "127.0.0.1/33"], group="G nmap", rc=2, contains=["invalid prefix"])
+add("G.prefix-of-a-name", ["nmap", "localhost/24"], group="G nmap", rc=2, contains=["invalid prefix"])
+add("G.prefix-wrong-family", ["nmap", "-4", "::1/128"], group="G nmap", rc=2, contains=["IPv6 prefix, but -4/--ipv4"])
+add("G.target-with-space", ["nmap", "web 1"], group="G nmap", rc=2, contains=["invalid target"])
+add("G.target-with-semicolon", ["nmap", "127.0.0.1", "host;id"], group="G nmap", rc=2, contains=["invalid target"], absent=["dns resolved"])
+add("G.target-escape-sequence", ["nmap", "host\x1b[2J"], group="G nmap", rc=2, contains=["invalid target"])
+add("G.one-lookup-of-two-fails", ["nmap", "no-such-host.invalid", "127.0.0.1", "-p", "{tcp_echo}"], group="G nmap", rc=1,
+    contains=["dns resolution failed host=no-such-host.invalid", "port open host=127.0.0.1"])
+add("G.every-lookup-fails", ["nmap", "a.invalid", "b.invalid"], group="G nmap", rc=1, absent=["scan started"])
+
 # ---------------- H: udp
 def ud(cid, *a, **kw):
     port = kw.pop("port", "{udp_echo}")

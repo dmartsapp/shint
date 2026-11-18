@@ -109,7 +109,7 @@ Two package-level variables exist only so tests can control time and slowness de
 | C, D | hosts and ports written every odd way: `127.1`, `0x7f000001`, `::ffff:127.0.0.1`, 300-character names, Unicode, trailing dots, ports 0, 65536, `+80`, `0x50`, Arabic digits |
 | E | `telnet`: refused, silent and closing servers, a black-hole address, DNS failure, 100 fast attempts, file-descriptor pressure |
 | F | `web`: URL forms, every method, header edge cases including CR/LF injection and 200 headers, hostile servers, TLS and mutual-TLS options, proxy variables |
-| G, H, I | `nmap` (single ports, ranges, the whole port range, filtered targets), `udp` (payload sizes, closed and silent ports, big replies), `ping` (payload limits, unreachable, multicast, and a reply that belongs to another ping) |
+| G, H, I | `nmap` (single ports, ranges, the whole port range, filtered targets, port lists, several targets, prefix sweeps and the targets it refuses), `udp` (payload sizes, closed and silent ports, big replies), `ping` (payload limits, unreachable, multicast, and a reply that belongs to another ping) |
 | J | `listen`: 20 MB uploads, resets, binary data, idle timeouts, 150 concurrent connections, malformed and half-finished HTTP requests |
 | K, L | signals and closed pipes (SIGINT, SIGTERM, `| head -1`), and memory use on a 300 MB response |
 

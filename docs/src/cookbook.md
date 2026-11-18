@@ -81,6 +81,14 @@ shint nmap 192.168.1.10 --from 1 --to 1024 --timeout 1
 
 Lower `--timeout` makes scans of hosts with many filtered ports much quicker. See [nmap](nmap.md#how-long-will-it-take) for the timing rules.
 
+## Find which hosts on a subnet answer SSH
+
+```bash
+shint nmap 192.168.1.0/24 -p 22 --timeout 1
+```
+
+Every address of the `/24` is tried on port 22, and each one that answers gets a `port open ... service=ssh` line. List a few ports with `-p 22,80,443`, or give several subnets and hosts at once. See [Prefixes](nmap.md#prefixes).
+
 ## Check a private HTTPS service
 
 With an internal certificate authority:

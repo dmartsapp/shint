@@ -48,7 +48,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `icmp` | `dns resolved`, `dns authoritative`, `received reply for request #N from ADDR (ipv4/ipv6) in Nms bytes=N`, `ping failed`, `done` |
 | `web` | `dns resolved`, `dns authoritative`, `Response Received` (the level, with no message after it - see above), `timing` (with `--timing`), `request failed`, `tls verification disabled`, `using client certificate for mutual TLS`, `using custom CA bundle...`, `done` |
 | `tls` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `handshake`, `certificate`, `verified`, `verification failed`, `expires soon` (`WARN`), `expires too soon`, `handshake failed`, `done` |
-| `nmap` | `dns resolved`, `dns authoritative`, `scan started`, `progress`, `port open`, `scan complete`, `scan interrupted`, `done` |
+| `nmap` | `sweep`, `dns resolved`, `dns resolution failed`, `dns authoritative`, `scan started`, `progress`, `port open`, `scan complete`, `scan interrupted`, `done` |
 | `udp` | `dns resolved`, `dns authoritative`, `probe open`, `probe closed`, `probe open|filtered`, `probe error`, `done` |
 | `ntp` | `dns resolved`, `dns authoritative`, `dns resolution failed`, `response`, `query failed`, `done` |
 | `wol` | `magic packet sent`, `send failed`, `done` |
@@ -114,21 +114,24 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 |---|---|---|
 | `input_params` | object | The parameters the command ran with. |
 | `module_name` | string | `telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `rdns` or `dns` - and `wol`, `cidr` or `ip`, whose documents have no `dns_lookup`. |
-| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr`, `ip` and `dns`** (`dns` is itself the lookup), which never look up a name (an empty lookup would only read as a failed one). |
+| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr`, `ip` and `dns`** (`dns` is itself the lookup), which never look up a name (an empty lookup would only read as a failed one) - and for `nmap` given a prefix, which is swept without a lookup, or more than one target, which has `dns_lookups`. |
 | `stats` | array | One entry per check; the shape depends on the command (below). |
 | `start_time_unixtime_µs` | integer | When the run started, in Unix microseconds. |
 | `end_time_unixtime_µs` | integer | When it ended. |
 | `total_time_taken_µs` | integer | Duration of the whole run. |
 | `error` | string | A run-level error (for example a failed lookup); empty on success. |
 | `warnings` | array | The run's `WARN` lines, when it has any - `web -k`'s *tls verification disabled*, for one. Advisory: the run can pass. Absent when there are none. |
+| `dns_lookups` | array | `nmap` given more than one target: one [`dns_lookup`](#dnslookup) per host name or address, in the order given (a prefix has none), in place of `dns_lookup`. Absent otherwise. |
 
 ### input_params
 
 | Field | Meaning |
 |---|---|
 | `module_name` | The command. |
-| `host` | The target as given. |
-| `from_port`, `to_port` | The port, or the scanned range for `nmap`. (For `ping` these hold `7`, the echo port, and carry no meaning.) |
+| `host` | The target as given. Empty for `nmap` given more than one target, which lists them in `targets`. |
+| `targets` | `nmap` only, given more than one target: each as given - host names, addresses and prefixes. Absent otherwise. |
+| `from_port`, `to_port` | The port, or the scanned range for `nmap` (with `--ports`, the lowest and highest port of the list). (For `ping` these hold `7`, the echo port, and carry no meaning.) |
+| `ports` | `nmap --ports` only: the ports scanned, sorted, each once, with runs written as ranges (`"22,80,443,8000-8100"`). Absent for a `--from`/`--to` range. |
 | `protocol` | `tcp`, `udp`, `icmp` or `dns` (`rdns`). |
 | `timeout_ms` | The `--timeout` value. **Despite the name, it is in seconds.** |
 | `count`, `delay_ms`, `throttle` | `--count`, `--delay` (milliseconds) and `--throttle`. |
@@ -188,7 +191,9 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 
 | Field | Meaning |
 |---|---|
+| `target` | The argument the address came from: a host name, an address or a prefix. |
 | `address`, `port` | What was probed. |
+| `service` | The service usually found on that port (`ssh`, `https`), a guess from the number - see [Service names](nmap.md#service-names). Absent for a port shint has no name for. |
 | `success` | `true` if the port accepted the connection. Every scanned port is listed, open or not. |
 
 **udp**

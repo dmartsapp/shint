@@ -55,6 +55,12 @@ type InputParams struct {
 	// TLS is how web treats certificates (#100) - what its text mode notes in
 	// a line each; nil for every other command.
 	TLS *TLSSettings `json:"tls,omitempty"`
+	// Targets is what nmap was given when it was more than one target (host
+	// names, addresses, prefixes); Host is empty then. Ports is the port list
+	// nmap was given with --ports, written back sorted with runs as ranges
+	// ("22,80,443,8000-8100"); FromPort and ToPort are its lowest and highest.
+	Targets []string `json:"targets,omitempty"`
+	Ports   string   `json:"ports,omitempty"`
 }
 
 // TLSSettings is how a request treats certificates: whether the server's is
@@ -153,11 +159,16 @@ type WebHopTiming struct {
 	TotalUs    int64  `json:"total_µs"`
 }
 
-// NmapStats is one scanned port. Every port in the range is listed, open or
-// not; Success means the connection was accepted.
+// NmapStats is one scanned port. Every port scanned is listed, open or not;
+// Success means the connection was accepted. Target is the argument the
+// address came from (a host name, an address, a prefix); Service is the
+// service usually on that port, a guess from the number (empty for a port
+// shint has no name for).
 type NmapStats struct {
+	Target  string `json:"target"`
 	Address string `json:"address"`
 	Port    int    `json:"port"`
+	Service string `json:"service,omitempty"`
 	Success bool   `json:"success"`
 }
 
@@ -420,6 +431,23 @@ type DNSRecord struct {
 	TTL     uint32   `json:"ttl"`
 	Data    string   `json:"data"`
 	Strings []string `json:"strings,omitempty"`
+}
+
+// NmapJSONOutput is nmap's JSON document: JSONOutput, but with dns_lookup
+// only for a run of one host name or address. A run given several targets has
+// dns_lookups instead, one per host name or address in the order given, and a
+// prefix is swept without a lookup: an empty dns_lookup would only read as a
+// failed one.
+type NmapJSONOutput struct {
+	InputParams    InputParams `json:"input_params"`
+	ModuleName     string      `json:"module_name"`
+	DNSLookup      *DNSLookup  `json:"dns_lookup,omitempty"`
+	DNSLookups     []DNSLookup `json:"dns_lookups,omitempty"`
+	Stats          any         `json:"stats"`
+	EndTime        int64       `json:"end_time_unixtime_µs"`
+	StartTime      int64       `json:"start_time_unixtime_µs"`
+	TotalTimeTaken int64       `json:"total_time_taken_µs"`
+	Error          string      `json:"error"`
 }
 
 // LocalJSONOutput is the JSON document of a command that never looks up a
