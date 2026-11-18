@@ -119,7 +119,7 @@ func IPHandler(jsonoutput *bool, name string) (ok bool) {
 		for _, info := range all {
 			names = append(names, info.Name)
 		}
-		failure = fmt.Sprintf("no such interface %s (available: %s)", name, strings.Join(names, ", "))
+		failure = noSuchInterface(name, names)
 	case len(chosen) == 0:
 		failure = "this machine reports no network interfaces"
 	}
@@ -178,4 +178,25 @@ func IPHandler(jsonoutput *bool, name string) (ok bool) {
 	}
 	fmt.Println(lib.LogWithTimestamp(ipModule, "done "+lib.Fields("interfaces", len(stats), "addresses", addresses, "total_time", time.Since(start)), false))
 	return failure == ""
+}
+
+// noSuchInterface is what ip, ip arp and --interface say about an interface
+// name that does not exist: the name, and the ones that do - on Windows and
+// Solaris the names are long and easy to get wrong ("Ethernet 2", "Wi-Fi").
+// The name is printed escaped: it is what the user typed.
+func noSuchInterface(name string, available []string) string {
+	return lib.NoSuchInterface(name, available)
+}
+
+// InterfaceNames are this machine's interface names, in the system's order.
+func InterfaceNames() ([]string, error) {
+	all, err := systemInterfaces()
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(all))
+	for _, info := range all {
+		names = append(names, info.Name)
+	}
+	return names, nil
 }

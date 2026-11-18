@@ -66,6 +66,9 @@ type InputParams struct {
 	// --ports list.
 	Listening bool `json:"listening,omitempty"`
 	PID       int  `json:"pid,omitempty"`
+	// Interface is what --interface named (an interface or an address), for
+	// the commands that take it; absent without it.
+	Interface string `json:"interface,omitempty"`
 }
 
 // TLSSettings is how a request treats certificates: whether the server's is
@@ -397,6 +400,56 @@ type IPStats struct {
 	MTU   int      `json:"mtu"`
 	Flags []string `json:"flags"`
 	Error string   `json:"error,omitempty"`
+}
+
+// RouteStats is one route listed by "ip route" (#108). Destination is the
+// prefix it covers ("0.0.0.0/0" and "::/0" for a default route, which Default
+// also says). Gateway is the next hop, absent for a network reached directly
+// on Interface. Metric is the route's own metric where the system keeps one
+// (Linux, Windows; not macOS or the BSDs). Scoped (macOS) is a route that only
+// traffic bound to its interface uses - a VPN's default route, say - so the
+// unscoped default is the one everything else takes. Unreachable is a route
+// that drops what it matches (a reject or blackhole route).
+type RouteStats struct {
+	Family      string `json:"family"`
+	Destination string `json:"destination"`
+	Default     bool   `json:"default"`
+	Gateway     string `json:"gateway,omitempty"`
+	Interface   string `json:"interface,omitempty"`
+	Metric      *int   `json:"metric,omitempty"`
+	Scoped      bool   `json:"scoped,omitempty"`
+	Unreachable bool   `json:"unreachable,omitempty"`
+}
+
+// RouteLookup is "ip route <address>": which way traffic to Destination goes.
+// Route is the routing-table entry that matches it (the longest prefix), and
+// Gateway its next hop (absent when the address is on a directly reached
+// network). Interface and Source are the interface and source address the
+// system itself picks, found by connecting a UDP socket - nothing is sent.
+type RouteLookup struct {
+	Destination string `json:"destination"`
+	Route       string `json:"route,omitempty"`
+	Gateway     string `json:"gateway,omitempty"`
+	Interface   string `json:"interface,omitempty"`
+	Source      string `json:"source,omitempty"`
+}
+
+// NeighbourStats is one entry of the neighbour table listed by "ip arp"
+// (#109): an address on a local network and the hardware address learned for
+// it - ARP for IPv4, NDP for IPv6. MAC is absent while the address is being
+// resolved and when resolving it failed. State is the system's word for the
+// entry (REACHABLE, STALE, FAILED, PERMANENT, ...), absent where the system
+// does not say (macOS, the BSDs). Router marks an IPv6 neighbour that
+// announced itself as a router; Gateway marks the neighbour that is the next
+// hop of a default route.
+type NeighbourStats struct {
+	Family    string `json:"family"`
+	Address   string `json:"address"`
+	MAC       string `json:"mac,omitempty"`
+	Interface string `json:"interface,omitempty"`
+	State     string `json:"state,omitempty"`
+	Router    bool   `json:"router,omitempty"`
+	Gateway   bool   `json:"gateway,omitempty"`
 }
 
 // SSStats is one socket listed by "ss", everything known about it in this one

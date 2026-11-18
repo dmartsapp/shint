@@ -61,8 +61,12 @@ type tlsResult struct {
 func tlsHandshake(ctx context.Context, address string, port int, serverName string, timeoutSeconds int) (tlsResult, error) {
 	timeout := time.Duration(timeoutSeconds) * time.Second
 	dialer := net.Dialer{Timeout: timeout}
+	target := net.JoinHostPort(address, strconv.Itoa(port))
+	if err := lib.BindSource(&dialer, "tcp", target); err != nil {
+		return tlsResult{}, err
+	}
 	begin := time.Now()
-	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(address, strconv.Itoa(port)))
+	conn, err := dialer.DialContext(ctx, "tcp", target)
 	if err != nil {
 		return tlsResult{}, err
 	}
@@ -240,15 +244,16 @@ func TLSCheckHandler(ctx context.Context, jsonoutput *bool, iterations int, dela
 	}
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
-		Mode:     tlsModule,
-		Host:     host,
-		FromPort: opts.Port,
-		ToPort:   opts.Port,
-		Protocol: "tcp",
-		Timeout:  timeout,
-		Count:    iterations,
-		Delay:    delay,
-		Throttle: *throttle,
+		Mode:      tlsModule,
+		Interface: lib.SourceLabel(),
+		Host:      host,
+		FromPort:  opts.Port,
+		ToPort:    opts.Port,
+		Protocol:  "tcp",
+		Timeout:   timeout,
+		Count:     iterations,
+		Delay:     delay,
+		Throttle:  *throttle,
 	}
 	output.ModuleName = tlsModule
 	stats := make([]lib.TLSStats, 0)

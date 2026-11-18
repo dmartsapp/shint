@@ -96,7 +96,7 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
   <a class="card" href="rdns.html"><strong><code>rdns</code></strong><span>Which names does this IP address map back to? Reverse DNS.</span></a>
   <a class="card" href="dns.html"><strong><code>dns</code></strong><span>Ask a DNS server for A, MX, TXT, NS and more, and see the flags and TTLs.</span></a>
   <a class="card" href="cidr.html"><strong><code>cidr</code></strong><span>Network, mask, range and size of a subnet, offline.</span></a>
-  <a class="card" href="ip.html"><strong><code>ip</code></strong><span>What does this machine have? Its interfaces and addresses.</span></a>
+  <a class="card" href="ip.html"><strong><code>ip</code></strong><span>What does this machine have? Its interfaces, routes and neighbours.</span></a>
   <a class="card" href="ss.html"><strong><code>ss</code></strong><span>What is listening here, and which process holds each socket?</span></a>
   <a class="card" href="listen.html"><strong><code>listen</code></strong><span>Run a local TCP, UDP or HTTP server to test against.</span></a>
 </div>
@@ -120,6 +120,8 @@ Sun Sep 20 01:50:37 MDT 2026: [nmap] OK done total_time=15.9805ms
 | `dig example.com MX @1.1.1.1`, `nslookup` | `shint dns example.com MX @1.1.1.1` |
 | `ipcalc 192.168.1.0/24`, `sipcalc` | `shint cidr 192.168.1.0/24` |
 | `ip addr`, `ifconfig`, `ipconfig` | `shint ip` |
+| `ip route`, `netstat -rn`, `route print`, `ip route get 8.8.8.8` | `shint ip route`, `shint ip route 8.8.8.8` |
+| `arp -an`, `ip neigh` | `shint ip arp` |
 | `ss -tulpn`, `netstat -ano`, `lsof -i :5432` | `shint ss`, `shint ss -l --ports 5432` |
 
 shint covers the everyday checks; it does not replace the full feature sets of `curl` or `nmap`.

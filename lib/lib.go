@@ -93,7 +93,11 @@ func SortTimeDurationSlice(stats *[]time.Duration) {
 // promptly, instead of each one running out its full per-dial timeout.
 func IsPortUp(ctx context.Context, host string, port int, timeout int) (bool, error) {
 	var dialer = net.Dialer{Timeout: time.Duration(timeout) * time.Second}
-	conn, err := dialer.DialContext(ctx, Protocol, net.JoinHostPort(host, strconv.Itoa(port)))
+	address := net.JoinHostPort(host, strconv.Itoa(port))
+	if err := BindSource(&dialer, Protocol, address); err != nil {
+		return false, err
+	}
+	conn, err := dialer.DialContext(ctx, Protocol, address)
 	if err != nil {
 		return false, err
 	}

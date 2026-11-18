@@ -31,16 +31,17 @@ func TelnetHandler(ctx context.Context, jsonoutput *bool, iterations int, delay 
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
-		Mode:     telnetModule,
-		Host:     host,
-		FromPort: port,
-		ToPort:   port,
-		Protocol: "tcp",
-		Timeout:  timeout,
-		Count:    iterations,
-		Delay:    delay,
-		Payload:  payload_size,
-		Throttle: *throttle,
+		Mode:      telnetModule,
+		Interface: lib.SourceLabel(),
+		Host:      host,
+		FromPort:  port,
+		ToPort:    port,
+		Protocol:  "tcp",
+		Timeout:   timeout,
+		Count:     iterations,
+		Delay:     delay,
+		Payload:   payload_size,
+		Throttle:  *throttle,
 	}
 	output.ModuleName = telnetModule
 	istart := time.Now() // capture initial time

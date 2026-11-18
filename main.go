@@ -12,12 +12,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -81,6 +84,10 @@ var (
 	endport  int
 	// nmapPorts is nmap --ports, a port list read by lib.ParsePorts.
 	nmapPorts string
+
+	// sourceIface is --interface: the interface (or address) the checks of
+	// telnet, web, tls, nmap, udp, ntp, dns, rdns and wol send from.
+	sourceIface string
 
 	// web
 	httpmethod          string
@@ -185,6 +192,40 @@ func checkRunFlags(usesDelay bool) bool {
 	return true
 }
 
+// applyInterface resolves --interface for a command that takes it (#69),
+// just before the command runs, so a usage error found first still wins. An
+// interface that does not exist - with the ones that do - an address this
+// machine does not have, or an interface with no address is a failed check
+// (exit 1), not a usage error: what exists depends on the machine, as for ip.
+// It is reported in the command's own format, text or JSON. In text mode, a
+// line says what the checks will send from.
+func applyInterface(cmd *cobra.Command, module string) bool {
+	if !cmd.Flags().Changed("interface") {
+		return true
+	}
+	if err := lib.SetSourceInterface(sourceIface); err != nil {
+		if jsonoutput {
+			now := time.Now().UnixMicro()
+			JS, _ := json.MarshalIndent(lib.LocalJSONOutput{InputParams: lib.InputParams{Mode: module, Interface: sourceIface}, ModuleName: module,
+				Stats: []any{}, Error: err.Error(), StartTime: now, EndTime: now}, "", "  ")
+			fmt.Println(string(JS))
+		} else {
+			fmt.Println(lib.LogWithTimestamp(module, "failed "+lib.Fields("error", err.Error()), true))
+		}
+		finish(false)
+		return false
+	}
+	if !jsonoutput {
+		name, addrs := lib.SourceInterface()
+		list := make([]string, 0, len(addrs))
+		for _, a := range addrs {
+			list = append(list, a.String())
+		}
+		fmt.Println(lib.LogWithTimestamp(module, "source "+lib.Fields("interface", name, "addresses", "["+strings.Join(list, ",")+"]"), false))
+	}
+	return true
+}
+
 // usage reports a bad argument or flag value on stderr and marks the run as a
 // usage error. Callers return right after it; nothing is checked.
 func usage(msg string) {
@@ -229,6 +270,9 @@ var telnetCmd = &cobra.Command{
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "telnet") {
+			return
+		}
 		finish(handlers.TelnetHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, port, host))
 	},
 }
@@ -293,6 +337,9 @@ It connects straight to the address the name resolves to and never uses a proxy:
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "web") {
+			return
+		}
 		finish(handlers.WebHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, URL, httpmethod, httpdata, httpheaders, includeresponsebody, tlsConfig, webTiming, webShowCredentials, maxBody))
 	},
 }
@@ -344,6 +391,9 @@ A chain that does not verify - an unknown authority, an expired or not-yet-valid
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "tls") {
+			return
+		}
 		finish(handlers.TLSCheckHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, host, opts))
 	},
 }
@@ -397,6 +447,9 @@ Scan only networks you run, or have permission to test. A sweep that covers publ
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "nmap") {
+			return
+		}
 		finish(handlers.NmapHandler(ctx, scan, iterations, timeout, throttle, &jsonoutput))
 	},
 }
@@ -464,6 +517,9 @@ The payload is one of three things: --data sends a message, as text exactly as t
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "udp") {
+			return
+		}
 		finish(handlers.UDPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, payload_size, data, port, host))
 	},
 }
@@ -487,6 +543,9 @@ An address that has no PTR record is reported as a failed check (exit status 1);
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "rdns") {
+			return
+		}
 		finish(handlers.RDNSHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, args[0]))
 	},
 }
@@ -520,6 +579,9 @@ A question that gets no record of the type asked - the name does not exist (NXDO
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "dns") {
+			return
+		}
 		finish(handlers.DNSHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, query, handlers.DNSOptions{ForceTCP: dnsTCP, NoRecurse: dnsNoRecurse}))
 	},
 }
@@ -545,7 +607,7 @@ It works entirely offline: nothing is looked up and nothing is sent. Only --json
 
 var ipCmd = &cobra.Command{
 	Use:   "ip [interface]",
-	Short: "List this machine's network interfaces and addresses",
+	Short: "List this machine's interfaces and addresses - and with ip route and ip arp, its routes and neighbours",
 	Long: `This command lists the network interfaces of this machine and what is on them: for each interface its state (up or down), flags, MTU and hardware (MAC) address, and every address with its prefix length and what kind of address it is (loopback, private, link-local, global, ...). Give an interface name to see just that one.
 
 It reads the operating system's interface table and sends nothing, so it needs no network and no privileges. -4 and -6 list only the addresses of that family. An interface name that does not exist is a failed check (exit status 1) and names the ones that do. Only --json, -4 and -6 apply; the other shared flags are ignored.`,
@@ -573,6 +635,63 @@ It reads the operating system's interface table and sends nothing, so it needs n
 // could do on that system; what is merely not written yet stays in and says
 // so.
 var platformCommands []*cobra.Command
+
+var ipRouteCmd = &cobra.Command{
+	Use:   "route [address]",
+	Short: "Show this machine's routing table, or which way traffic to an address goes",
+	Long: `This command lists this machine's routing table: one line per route, with its destination prefix, the gateway it goes through (none for a network reached directly), the interface, the metric where the system keeps one, and - on macOS - whether it is scoped to its interface. Default routes come first.
+
+Given an address, it says which way traffic to it would go instead: the route that matches it, its gateway, and the interface and source address the system would use (found by connecting a UDP socket, which sends nothing). It takes an address, never a name: nothing is looked up.
+
+It reads the system's routing table and sends nothing, so it needs no network and no privileges. It works on Linux, macOS, the BSDs and Windows; elsewhere it says it is not supported yet (exit status 1). -4 and -6 list one family. Only --json, -4 and -6 apply.`,
+	Args: cobra.MaximumNArgs(1),
+	Example: rootCmd.Name() + ` ip route` + "\n" +
+		rootCmd.Name() + ` ip route 8.8.8.8` + "\n" +
+		rootCmd.Name() + ` ip route -6 --json`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := lib.SetIPFamily(ipv4Only, ipv6Only); err != nil {
+			usage(err.Error())
+			return
+		}
+		target := ""
+		if len(args) == 1 {
+			if _, err := netip.ParseAddr(args[0]); err != nil {
+				usage(fmt.Sprintf("%q is not an IP address: give one, like 8.8.8.8 or 2001:4860:4860::8888 (shint dns looks up a name)", args[0]))
+				return
+			}
+			if err := lib.HostFamilyConflict(args[0]); err != nil {
+				usage(err.Error())
+				return
+			}
+			target = args[0]
+		}
+		finish(handlers.IPRouteHandler(&jsonoutput, target))
+	},
+}
+
+var ipArpCmd = &cobra.Command{
+	Use:     "arp [interface]",
+	Aliases: []string{"neigh", "neighbour", "neighbor"},
+	Short:   "Show this machine's neighbour table: the hardware addresses learned for IPs (ARP and NDP)",
+	Long: `This command lists this machine's neighbour table - the hardware (MAC) address it has learned for each IP address on its local networks: ARP for IPv4, NDP for IPv6. One line per neighbour, with the interface and, where the system reports it (Linux, Windows), its state: REACHABLE, STALE, FAILED, ... An entry with no MAC is one still being resolved, or one that failed - often the answer to "why can't I reach that host on my own network?". The neighbour that is the next hop of a default route is marked gateway=true. Give an interface name to see only its neighbours; a name that does not exist is a failed check that lists the ones that do.
+
+Addresses are shown as they are: nothing is looked up, so it is instant and works when DNS does not (shint rdns looks up a name for an address). It reads the system's table and sends nothing, so it needs no network and no privileges. It works on Linux, macOS, the BSDs and Windows; elsewhere it says it is not supported yet (exit status 1). -4 and -6 list one family. Only --json, -4 and -6 apply.`,
+	Args: cobra.MaximumNArgs(1),
+	Example: rootCmd.Name() + ` ip arp` + "\n" +
+		rootCmd.Name() + ` ip arp en0 -4` + "\n" +
+		rootCmd.Name() + ` ip neigh --json`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := lib.SetIPFamily(ipv4Only, ipv6Only); err != nil {
+			usage(err.Error())
+			return
+		}
+		iface := ""
+		if len(args) == 1 {
+			iface = args[0]
+		}
+		finish(handlers.IPArpHandler(&jsonoutput, iface))
+	},
+}
 
 var wolCmd = &cobra.Command{
 	Use:   "wol [mac]",
@@ -608,6 +727,9 @@ The machine must have Wake-on-LAN enabled in its firmware and network card, and 
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "wol") {
+			return
+		}
 		finish(handlers.WOLHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, mac, broadcast, wolPort))
 	},
 }
@@ -639,6 +761,9 @@ A reply that cannot be trusted - it answers a different request, the server says
 		ctx, stop := interruptContext()
 		defer stop()
 
+		if !applyInterface(cmd, "ntp") {
+			return
+		}
 		finish(handlers.NTPHandler(ctx, &jsonoutput, iterations, delay, &throttle, timeout, ntpPort, time.Duration(ntpMaxOffset)*time.Millisecond, args[0]))
 	},
 }
@@ -782,6 +907,13 @@ func init() {
 	// unlike the "one check and done" default that fits telnet/ping/web/nmap/udp.
 	listenCmd.PersistentFlags().IntVar(&listenMaxCount, "count", 0, "Max connections/packets/requests to accept, 0 = unlimited (run until Ctrl+C)")
 	listenCmd.AddCommand(listenTCPCmd, listenUDPCmd, listenHTTPCmd)
+	ipCmd.AddCommand(ipRouteCmd, ipArpCmd)
+	// --interface goes on the commands that honour it, and only those: ping
+	// gets it when go-ping can send from an address (#69), so it never ignores
+	// a flag its help lists.
+	for _, c := range []*cobra.Command{telnetCmd, webCmd, tlsCmd, nmapCmd, udpCmd, ntpCmd, dnsCmd, rdnsCmd, wolCmd} {
+		c.Flags().StringVar(&sourceIface, "interface", "", "Send the checks from this interface (en0, eth0, \"Ethernet 2\") or this address of the machine; names are still looked up as usual")
+	}
 
 	rootCmd.SetVersionTemplate(`{{printf "%s\n" .Version}}`)
 	rootCmd.Version = versionLine()

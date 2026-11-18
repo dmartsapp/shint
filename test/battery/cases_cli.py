@@ -112,6 +112,45 @@ add("M.ip-both-families", ["ip", "-4", "-6"], rc=2, group="M ip", max=10)
 add("M.ip-two-arguments", ["ip", "a", "b"], rc=2, group="M ip", max=10)
 add("M.ip-ignores-shared-flags", ["ip", "--count", "5", "--timeout", "1", "--delay", "3000"], rc=0, group="M ip", max=6)
 
+# ip route and ip arp (#108, #109): read the system's tables; Linux, macOS, the BSDs, Windows
+TABLES = sys.platform.startswith(("linux", "darwin", "freebsd", "netbsd", "openbsd"))
+add("M.route-not-an-address", ["ip", "route", "example.com"], rc=2, group="M ip", max=6)
+add("M.route-two-arguments", ["ip", "route", "8.8.8.8", "1.1.1.1"], rc=2, group="M ip", max=6)
+add("M.route-wrong-family", ["ip", "route", "::1", "-4"], rc=2, group="M ip", max=6)
+add("M.arp-unknown-interface", ["ip", "arp", "no-such-iface0"], rc=1 if TABLES else None, group="M ip", max=6,
+    contains=["no such interface no-such-iface0 (available: "] if TABLES else [])
+add("M.neigh-is-arp", ["ip", "neigh", "no-such-iface0", "--json"], rc=1, group="M ip", max=6,
+    check=lambda r: None if json.loads(r["out"])["module_name"] == "ip-arp" else "neigh should be ip arp")
+if TABLES:
+    add("M.route", ["ip", "route"], rc=0, group="M ip", max=6, contains=["[ip-route] OK route destination=", "[ip-route] OK done routes="])
+    add("M.route-json", ["ip", "route", "--json"], rc=0, group="M ip", max=6,
+        check=lambda r: None if all(set(s) <= {"family", "destination", "default", "gateway", "interface", "metric", "scoped", "unreachable"} for s in json.loads(r["out"])["stats"]) and json.loads(r["out"])["stats"] else "no routes, or a route entry with a key it should not have")
+    add("M.route-4", ["ip", "route", "-4"], rc=0, group="M ip", max=6, absent=["family=ipv6"])
+    # macOS lists 127.0.0.0/8; Linux keeps it in the local table, so there is no route to show - and never another interface's gateway
+    add("M.route-lookup-loopback", ["ip", "route", "127.0.0.1"], rc=0, group="M ip", max=6,
+        contains=["[ip-route] OK route destination=127.0.0.1 ", "source=127.0.0.1"], absent=["gateway="])
+    add("M.arp", ["ip", "arp"], group="M ip", max=6)   # a CI runner may know no neighbours: exit 1 is fine, a crash is not
+    add("M.arp-json", ["ip", "arp", "--json"], group="M ip", max=6,
+        check=lambda r: None if all(set(s) <= {"family", "address", "mac", "interface", "state", "router", "gateway"} for s in json.loads(r["out"])["stats"]) else "a neighbour entry has a key it should not have")
+else:
+    add("M.route-not-supported", ["ip", "route"], rc=1, group="M ip", max=6, contains=["ip route is not supported on "])
+
+# --interface (#69): the checks send from an interface or an address of this machine
+add("M.interface-address", ["telnet", "127.0.0.1", "{tcp_echo}", "--delay", "0", "--interface", "127.0.0.1"], rc=0, group="M ip", max=10,
+    contains=["[telnet] OK source interface=127.0.0.1 addresses=[127.0.0.1]", "connect ok host=127.0.0.1"])
+add("M.interface-unknown", ["telnet", "127.0.0.1", "{tcp_echo}", "--interface", "no-such-iface0"], rc=1, group="M ip", max=10,
+    contains=['[telnet] ERROR failed error="no such interface no-such-iface0 (available: '], absent=["connect ok"])
+add("M.interface-unknown-json", ["nmap", "127.0.0.1", "-p", "{tcp_echo}", "--interface", "no-such-iface0", "--json"], rc=1, group="M ip", max=10,
+    check=lambda r: None if json.loads(r["out"])["error"].startswith("no such interface no-such-iface0") and json.loads(r["out"])["input_params"]["interface"] == "no-such-iface0" else "the JSON does not say which interface, or why")
+add("M.interface-not-this-machine", ["udp", "127.0.0.1", "{udp_echo}", "--interface", "192.0.2.99"], rc=1, group="M ip", max=10,
+    contains=["this machine has no address 192.0.2.99"])
+add("M.interface-nmap", ["nmap", "127.0.0.1", "-p", "{tcp_echo}", "--interface", "127.0.0.1"], rc=0, group="M ip", max=10, contains=["port open host=127.0.0.1"])
+add("M.interface-udp", ["udp", "127.0.0.1", "{udp_echo}", "--delay", "0", "--interface", "127.0.0.1"], rc=0, group="M ip", max=10, contains=["probe open"])
+add("M.interface-json-records-it", ["telnet", "127.0.0.1", "{tcp_echo}", "--delay", "0", "--interface", "127.0.0.1", "--json"], rc=0, group="M ip", max=10,
+    check=lambda r: None if json.loads(r["out"])["input_params"]["interface"] == "127.0.0.1" else "input_params.interface is missing")
+add("M.interface-not-on-ping", ["ping", "127.0.0.1", "--interface", "127.0.0.1"], rc=2, group="M ip", max=6)
+add("M.interface-not-on-ip", ["ip", "--interface", "127.0.0.1"], rc=2, group="M ip", max=6)
+
 # ---------------- P: ss (reads this machine's socket tables; Linux and Windows only)
 SS_KEYS = {"protocol", "family", "state", "local_address", "local_port", "remote_address", "remote_port",
            "recv_q", "send_q", "uid", "user", "processes", "owner_hidden"}

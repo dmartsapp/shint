@@ -70,7 +70,11 @@ func MagicPacket(mac net.HardwareAddr) []byte {
 // sendUDP sends one datagram to dest. Go enables SO_BROADCAST on UDP sockets,
 // so a broadcast address needs no special privilege.
 func sendUDP(dest netip.AddrPort, payload []byte, timeoutSeconds int) (int, error) {
-	conn, err := net.DialUDP("udp4", nil, net.UDPAddrFromAddrPort(dest))
+	var d net.Dialer
+	if err := lib.BindSource(&d, "udp4", dest.String()); err != nil {
+		return 0, err
+	}
+	conn, err := d.Dial("udp4", dest.String())
 	if err != nil {
 		return 0, err
 	}
@@ -95,17 +99,18 @@ func WOLHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 	packet := MagicPacket(mac)
 	output := lib.LocalJSONOutput{
 		InputParams: lib.InputParams{
-			Mode:     wolModule,
-			Host:     broadcast.String(),
-			FromPort: port,
-			ToPort:   port,
-			Protocol: "udp",
-			Timeout:  timeout,
-			Count:    iterations,
-			Delay:    delay,
-			Payload:  len(packet),
-			Throttle: *throttle,
-			Data:     mac.String(),
+			Mode:      wolModule,
+			Interface: lib.SourceLabel(),
+			Host:      broadcast.String(),
+			FromPort:  port,
+			ToPort:    port,
+			Protocol:  "udp",
+			Timeout:   timeout,
+			Count:     iterations,
+			Delay:     delay,
+			Payload:   len(packet),
+			Throttle:  *throttle,
+			Data:      mac.String(),
 		},
 		ModuleName: wolModule,
 		StartTime:  start.UnixMicro(),

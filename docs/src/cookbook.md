@@ -97,6 +97,30 @@ shint ss -l
 
 Every listening TCP and UDP socket, one line each, with the process holding it (`process=postgres pid=944 fd=7`). Run as a normal user, it cannot say which process holds a socket of another user's: those show `owner=hidden`, and `sudo shint ss -l` shows them too. On Linux and Windows. See [ss](ss.md).
 
+## Which way does traffic to an address go?
+
+```bash
+shint ip route 10.20.30.40
+```
+
+The route that matches it, the gateway, and the interface and source address this machine would send from - the answer to "is that going over the VPN?". `shint ip route` alone lists the whole table, default routes first. See [Routes](ip.md#routes-ip-route).
+
+## Is the gateway there?
+
+```bash
+shint ip arp
+```
+
+The neighbour marked `gateway=true` is your default gateway. With a `mac` and `state=REACHABLE` it answered on the local network; with no `mac` (`state=FAILED`), nothing at that address is answering ARP - a cable, VLAN or addressing problem, before anything further away is worth looking at. See [Neighbours](ip.md#neighbours-ip-arp).
+
+## Check from one interface
+
+```bash
+shint telnet db.internal 5432 --interface eth1
+```
+
+Sends the check from `eth1` - or from an address of this machine - rather than wherever the routing table sends it: does the service answer over the second NIC, the VPN, the management network? A wrong name lists the right ones. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
+
 ## Wait until a service is listening
 
 ```bash

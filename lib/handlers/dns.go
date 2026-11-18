@@ -457,6 +457,9 @@ func answersQuestion(req, reply dnsmessage.Message) error {
 // stray packet must not end the query - and counted, so a timeout can say so.
 func udpExchange(ctx context.Context, server string, req dnsmessage.Message, packed []byte, timeout time.Duration) (dnsmessage.Message, error) {
 	var d net.Dialer
+	if err := lib.BindSource(&d, lib.DialNetwork("udp"), server); err != nil {
+		return dnsmessage.Message{}, err
+	}
 	conn, err := d.DialContext(ctx, lib.DialNetwork("udp"), server)
 	if err != nil {
 		return dnsmessage.Message{}, err
@@ -494,6 +497,9 @@ func tcpExchange(ctx context.Context, server string, req dnsmessage.Message, pac
 	dctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	var d net.Dialer
+	if err := lib.BindSource(&d, lib.DialNetwork("tcp"), server); err != nil {
+		return dnsmessage.Message{}, err
+	}
 	conn, err := d.DialContext(dctx, lib.DialNetwork("tcp"), server)
 	if err != nil {
 		return dnsmessage.Message{}, err
@@ -750,16 +756,17 @@ func DNSHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 	port, _ := strconv.Atoi(q.Port)
 	output := lib.LocalJSONOutput{ModuleName: dnsModule, Stats: make([]lib.DNSStats, 0)}
 	output.InputParams = lib.InputParams{
-		Mode:     dnsModule,
-		Host:     q.Name,
-		FromPort: port,
-		ToPort:   port,
-		Protocol: "dns",
-		Timeout:  timeout,
-		Count:    iterations,
-		Delay:    delay,
-		Throttle: *throttle,
-		Data:     strings.Join(types, ","),
+		Mode:      dnsModule,
+		Interface: lib.SourceLabel(),
+		Host:      q.Name,
+		FromPort:  port,
+		ToPort:    port,
+		Protocol:  "dns",
+		Timeout:   timeout,
+		Count:     iterations,
+		Delay:     delay,
+		Throttle:  *throttle,
+		Data:      strings.Join(types, ","),
 	}
 	istart := time.Now()
 	output.StartTime = istart.UnixMicro()

@@ -1,7 +1,7 @@
 ---
 title: ip
-lead: What does this machine have? Every network interface on one line, with its state, addresses, hardware address and MTU - offline, no privileges.
-description: shint ip lists this machine's network interfaces, one line each, with their state, IPv4 and IPv6 addresses, hardware address, MTU and flags, offline and without privileges.
+lead: What does this machine have, and where does its traffic go? Its interfaces and addresses, its routing table, and its neighbour table - offline, no privileges.
+description: shint ip lists this machine's network interfaces and addresses; shint ip route its routing table, or which way traffic to an address goes; shint ip arp its neighbour table (ARP and NDP) - offline and without privileges.
 section: Commands
 order: 12
 nav: ip
@@ -9,9 +9,15 @@ nav: ip
 
 ## What it does
 
-When a check behaves strangely the first question is often about *this* machine: which addresses does it have, on which interface, is that interface up, what is its MTU? `shint ip` answers that in shint's usual format, on Linux, macOS and Windows alike, where the tool that does it otherwise differs on each (`ip addr`, `ifconfig`, `ipconfig`).
+When a check behaves strangely the first question is often about *this* machine. `shint ip` answers it in shint's usual format, on Linux, macOS and Windows alike, where the tools that do it otherwise differ on each:
 
-It reads the operating system's interface table and **sends nothing**: no network is needed and no privileges - it works as a normal user, offline, instantly.
+| Command | Question | Instead of |
+|---|---|---|
+| `shint ip [interface]` | Which interfaces and addresses does this machine have? Is the interface up, what is its MTU? | `ip addr`, `ifconfig`, `ipconfig` |
+| [`shint ip route [address]`](#routes-ip-route) | Where does this machine's traffic go: its routing table and default gateway - or which way traffic to one address goes | `ip route`, `netstat -rn`, `route print` |
+| [`shint ip arp [interface]`](#neighbours-ip-arp) | Which hardware addresses has it learned for the IPs on its networks (ARP and NDP)? | `arp -an`, `ip neigh`, `Get-NetNeighbor` |
+
+All three read the operating system's tables and **send nothing**: no network is needed and no privileges - they work as a normal user, offline, instantly. Nothing is looked up either: addresses are shown as they are.
 
 ## Syntax
 
@@ -110,7 +116,9 @@ One object per interface, and nothing nested in it: the addresses are plain stri
 
 ## Exit status
 
-`0` when at least one interface was listed. `1` when the named interface does not exist, the interface table could not be read, or the addresses of an interface could not be read (that interface is reported with an `ERROR` line and the others are still listed). `2` for using it wrongly: `-4` and `-6` together, or more than one interface name.
+- **`ip`**: `0` when at least one interface was listed. `1` when the named interface does not exist, the interface table could not be read, or the addresses of an interface could not be read (that interface is reported with an `ERROR` line and the others are still listed). `2` for using it wrongly: `-4` and `-6` together, or more than one interface name.
+- **`ip route`**: `0` when it listed routes, or found the way to the address. `1` when there is no route to the address, the table could not be read, or the system is not supported yet. `2` for a name or anything else that is not an IP address, an address of the family `-4`/`-6` excludes, or more than one argument.
+- **`ip arp`**: `0` when at least one neighbour was listed. `1` when the named interface does not exist, no neighbour is known (on it), the table could not be read, or the system is not supported yet. `2` for `-4` and `-6` together, or more than one interface name.
 
 ## Good to know
 
@@ -118,5 +126,90 @@ One object per interface, and nothing nested in it: the addresses are plain stri
 - **IPv6 link-local addresses** (`fe80::...`) are shown without the `%en0` zone: the interface name is on the same line.
 - **What kind of address is it?** `ip` lists what is configured and does not classify it. For private, link-local, global and the rest, ask [`cidr`](cidr.md): `shint cidr 192.168.1.20`.
 - **Names differ by platform** (`eth0` or `enp3s0` on Linux, `en0` on macOS, `Ethernet` on Windows) and this lists whatever the system calls them. The match is case-insensitive.
-- **It says nothing about routes.** Which interface a packet to a given destination would leave by, and the default gateway, are the routing table - planned as `ip route`.
+- **Routes and neighbours** are the subcommands below: [`ip route`](#routes-ip-route) and [`ip arp`](#neighbours-ip-arp). An interface literally named `route`, `arp` or `neigh` cannot be given to `shint ip`: the subcommand wins.
 - **It does not change anything.** There is no way to add an address or bring an interface up or down with shint, and there never will be: it needs privileges and shint never does.
+
+## Routes: ip route
+
+```bash
+shint ip route [address] [-4 | -6] [--json]
+```
+
+With no argument, `ip route` lists the routing table, one `route` line per route; the default routes come first:
+
+```text
+Wed Nov 18 09:19:41 CST 2026: [ip-route] OK route destination=default family=ipv4 gateway=192.168.1.254 interface=en0
+Wed Nov 18 09:19:41 CST 2026: [ip-route] OK route destination=default family=ipv4 interface=utun4 scoped=true
+Wed Nov 18 09:19:41 CST 2026: [ip-route] OK route destination=127.0.0.0/8 family=ipv4 interface=lo0
+Wed Nov 18 09:19:41 CST 2026: [ip-route] OK route destination=192.168.1.0/24 family=ipv4 interface=en0
+Wed Nov 18 09:19:41 CST 2026: [ip-route] OK route destination=default family=ipv6 gateway=fe80::62d8:a4ff:fe35:8b04%en0 interface=en0
+Wed Nov 18 09:19:41 CST 2026: [ip-route] OK done routes=5 ipv4=4 ipv6=1 total_time=1.013458ms
+```
+
+| Field | Meaning |
+|---|---|
+| `destination` | The prefix the route covers; `default` for `0.0.0.0/0` or `::/0`. |
+| `family` | `ipv4` or `ipv6`. |
+| `gateway` | The next hop. Absent for a network reached directly on the interface. |
+| `interface` | Where the traffic leaves. |
+| `metric` | The route's metric, where the system keeps one (Linux, Windows). |
+| `scoped` | macOS: the route is used only by traffic bound to its interface - a VPN's own default route, say. The unscoped default is the one everything else takes. |
+| `unreachable` | The route drops what it matches (a reject or blackhole route). |
+
+What is listed is the table of routes, as `ip route` shows it: macOS's ARP cache entries and cloned host routes, multicast and broadcast routes, and Linux's local-address table are left out (the neighbours are [`ip arp`](#neighbours-ip-arp)).
+
+### Which way traffic goes
+
+Give an address, and `ip route` says which way traffic to it would go:
+
+```text
+$ shint ip route 8.8.8.8
+Wed Nov 18 09:19:41 CST 2026: [ip-route] OK route destination=8.8.8.8 route=0.0.0.0/0 gateway=192.168.1.254 interface=en0 source=192.168.1.204
+```
+
+`route` is the routing-table entry that matches it - the longest prefix - and `gateway` its next hop. `interface` and `source` are what the system itself picks, found by connecting a UDP socket, which sends nothing - so they are right even where policy routing is in play. Only a route on that interface is shown: when no listed route covers it (Linux keeps loopback and local addresses in a table of its own), the line has the interface and source and no route, rather than another interface's gateway. An address with no way there at all is a failed check: `no route to 10.66.1.1: network is unreachable`.
+
+It takes an **address, never a name** - nothing is looked up; `shint dns` finds a name's addresses. A name is a usage error (exit `2`), and so is an IPv6 address with `-4` (or the other way round).
+
+## Neighbours: ip arp
+
+```bash
+shint ip arp [interface] [-4 | -6] [--json]     # ip neigh is the same command
+```
+
+The neighbour table: the hardware (MAC) address this machine has learned for each IP address on its local networks - ARP for IPv4, NDP for IPv6. One `neighbour` line each:
+
+```text
+Wed Nov 18 09:22:38 CST 2026: [ip-arp] OK neighbour address=192.168.1.42 family=ipv4 mac=08:27:a8:20:71:52 interface=en0 state=STALE
+Wed Nov 18 09:22:38 CST 2026: [ip-arp] OK neighbour address=192.168.1.77 family=ipv4 interface=en0 state=FAILED
+Wed Nov 18 09:22:38 CST 2026: [ip-arp] OK neighbour address=192.168.1.254 family=ipv4 mac=60:d8:a4:35:8b:04 interface=en0 state=REACHABLE gateway=true
+Wed Nov 18 09:22:38 CST 2026: [ip-arp] OK done neighbours=3 ipv4=3 ipv6=0 total_time=1.127936ms
+```
+
+| Field | Meaning |
+|---|---|
+| `address` | The neighbour's IP address, as it is: never looked up, so the list is instant and works when DNS does not (`shint rdns` finds a name for one). |
+| `mac` | The hardware address learned for it. **Absent** while it is being resolved and when resolving failed - often the answer to "why can't I reach that host on my own network?". |
+| `interface` | The network it is on. |
+| `state` | Where the system reports it (Linux, Windows; not macOS or the BSDs): `REACHABLE`, `STALE`, `DELAY`, `PROBE`, `INCOMPLETE`, `FAILED`, `PERMANENT` (Windows says `UNREACHABLE` where Linux says `FAILED`). |
+| `router` | An IPv6 neighbour that announced itself as a router. |
+| `gateway` | The neighbour is the next hop of a default route - the first thing to check when nothing outside the local network answers. |
+
+Give an interface name to list only its neighbours. A name that does not exist is a failed check that names the ones that do - the same answer `shint ip <name>` and `--interface` give:
+
+```text
+Wed Nov 18 09:22:38 CST 2026: [ip-arp] ERROR failed error="no such interface wlan9 (available: lo0, en0, utun3)"
+```
+
+The machine's own addresses, multicast and broadcast entries are not neighbours, and are left out.
+
+## Platforms
+
+| | `ip` | `ip route` | `ip arp` |
+|---|---|---|---|
+| Linux (and Android, where apps may read the tables) | yes | yes (`/proc`) | yes (netlink) |
+| macOS, FreeBSD, NetBSD, OpenBSD | yes | yes (the routing socket) | yes (the routing socket) |
+| Windows | yes | yes | yes |
+| Solaris, illumos, AIX | yes | not supported yet (exit `1`) | not supported yet (exit `1`) |
+
+The Windows tables are read through `GetIpForwardTable2` and `GetIpNetTable2`, which any user may call.

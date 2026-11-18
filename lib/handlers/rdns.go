@@ -19,6 +19,18 @@ const rdnsModule = "rdns"
 // the system resolver's PTR query.
 var lookupAddr = func(ctx context.Context, address string) ([]string, error) {
 	var resolver net.Resolver
+	if name, _ := lib.SourceInterface(); name != "" {
+		// --interface: the PTR query leaves from it too, through Go's own
+		// resolver (the system's cannot be told where to send from).
+		resolver.PreferGo = true
+		resolver.Dial = func(ctx context.Context, network, server string) (net.Conn, error) {
+			var d net.Dialer
+			if err := lib.BindSource(&d, network, server); err != nil {
+				return nil, err
+			}
+			return d.DialContext(ctx, network, server)
+		}
+	}
 	return resolver.LookupAddr(ctx, address)
 }
 
@@ -54,15 +66,16 @@ func ReverseName(ip netip.Addr) string {
 func RDNSHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int, throttle *bool, timeout int, host string) (ok bool) {
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
-		Mode:     rdnsModule,
-		Host:     host,
-		FromPort: 53,
-		ToPort:   53,
-		Protocol: "dns",
-		Timeout:  timeout,
-		Count:    iterations,
-		Delay:    delay,
-		Throttle: *throttle,
+		Mode:      rdnsModule,
+		Interface: lib.SourceLabel(),
+		Host:      host,
+		FromPort:  53,
+		ToPort:    53,
+		Protocol:  "dns",
+		Timeout:   timeout,
+		Count:     iterations,
+		Delay:     delay,
+		Throttle:  *throttle,
 	}
 	output.ModuleName = rdnsModule
 	istart := time.Now()

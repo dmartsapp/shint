@@ -26,7 +26,7 @@ Available Commands:
   completion  Generate the autocompletion script for the specified shell
   dns         Look up DNS records (A, AAAA, MX, TXT, NS, ...) like dig
   help        Help about any command
-  ip          List this machine's network interfaces and addresses
+  ip          List this machine's interfaces and addresses - and with ip route and ip arp, its routes and neighbours
   listen      Start a local TCP, UDP, or HTTP listener for testing
   nmap        Scan for open TCP ports on hosts and subnets
   ntp         Check this machine's clock against an NTP time server
@@ -150,6 +150,22 @@ The flags work on every command that resolves a name - `telnet`, `ping`, `nmap`,
 - If a name has no address of the requested family, that is reported like a failed lookup (exit `1`).
 - `wol` is IPv4 only (IPv6 has no broadcast), so `-6` is refused there. `cidr`, `ip`, `ss` and `listen` do not resolve names: `cidr` and `listen` ignore the flags (`listen` takes `--bind`), `ip` uses them to list only the addresses of that family, and `ss` only the sockets of that family.
 
+### Sending from an interface: --interface
+
+`telnet`, `web`, `tls`, `nmap`, `udp`, `ntp`, `dns`, `rdns` and `wol` take `--interface`: their checks leave from that interface, or from that address of this machine, instead of wherever the system's routing table sends them - the question "does it work over the VPN / the second NIC / the management network?".
+
+```bash
+shint telnet db.internal 5432 --interface eth1
+shint web https://example.com --interface "Ethernet 2"     # Windows names have spaces: quote them
+shint nmap 10.0.0.0/24 -p 22 --interface 10.0.0.5          # an address of this machine works too
+```
+
+- **A name that does not exist is a failed check (exit `1`) that lists the ones that do.** Interface names differ on every system and are easy to get wrong - `en0`, `enp3s0`, `Ethernet 2`, `net0` - so the answer is the list, in the command's own format (and in `error` with `--json`): `[telnet] ERROR failed error="no such interface eth9 (available: lo, eth0, eth1)"`. The match ignores case. An address this machine does not have, and an interface with no address (one that is down), are failed checks too.
+- **It binds the source address**, the portable way that needs no privileges (`curl --interface` does the same). Each address checked gets a source of its own family: a host with IPv4 and IPv6 addresses is checked from the interface's IPv4 address and from its IPv6 one; one of them missing fails that address, saying so. `web`, which dials host names, sends from the interface's IPv4 address when it has one; add `-6` for its IPv6 address.
+- **Names are still looked up as usual**, through the system's resolver and its route: `--interface` is about the checks' own traffic. `rdns`'s queries do leave from it.
+- In text mode a first line says what the checks send from: `[telnet] OK source interface=eth1 addresses=[10.0.0.5,fe80::5%eth1]`. In the JSON, `input_params.interface` records it.
+- `ping` does not take it yet: its ICMP library cannot send from an address so far ([#69](https://github.com/dmartsapp/shint/issues/69)). `cidr`, `ip` and `listen` send nothing of their own to bind (`listen` has `--bind`).
+
 ### What --timeout limits
 
 `--timeout` always bounds one operation, never the whole run - so `--count 20 --delay 2000` is free to take 40 seconds.
@@ -188,7 +204,7 @@ Requests sent: 1, Response received: 1, Success: 100%
 Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 Sun Sep 20 01:50:10 MDT 2026: [telnet] OK done total_time=1.006831458s
 ```
-- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `ss`, `listen-tcp`, `listen-udp`, `listen-http`).
+- The **module** in brackets says which command spoke (`telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `wol`, `rdns`, `dns`, `cidr`, `ip`, `ip-route`, `ip-arp`, `ss`, `listen-tcp`, `listen-udp`, `listen-http`).
 - **OK, ERROR or WARN** is the level of that one line. `ERROR` means a check failed, and the run exits 1; `WARN` is advisory and does not fail it (`web -k`, a certificate expiring within `tls --warn-days`); `web` marks a line that shows a response `Response Received`.
 - The `key=value` pairs are easy to `grep` and `awk`; values with spaces are quoted.
 - Commands that repeat a check finish with a **statistics** block: requests sent, responses received, and minimum, average and maximum latency.
@@ -257,6 +273,8 @@ What counts as a failure, per command:
 | `wol` | a magic packet could not be sent. A packet that was sent is a success: there is no reply to check |
 | `cidr` | never. Bad input is exit `2` and nothing is printed |
 | `ip` | the named interface does not exist, or the interface table (or one interface's addresses) could not be read |
+| `ip route` | there is no route to the address asked about, the routing table could not be read, or the system is not supported yet |
+| `ip arp` | the named interface does not exist, no neighbour is known, the table could not be read, or the system is not supported yet |
 | `ss` | no socket matches the filters (so `ss -l --ports 5432` fails when nothing listens there), the socket tables could not be read, or the system is not supported yet (only Linux and Windows are, so far; the AIX binary has no `ss` - see [ss](ss.md#platforms)) |
 | `listen` | the port could not be bound |
 

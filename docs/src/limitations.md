@@ -44,6 +44,8 @@ Then [open an issue](https://github.com/dmartsapp/shint/issues/new) with your pl
 ## Commands that differ by platform
 
 - **`ss` works on Linux and Windows only.** On macOS, the BSDs, Solaris and illumos it says it is not supported yet and exits `1`; the BSDs are planned ([#105](https://github.com/dmartsapp/shint/issues/105)). **The AIX binary has no `ss` at all.** AIX has no way to list its sockets, with the process holding each, without root. Its own tools read kernel memory as root, and shint never asks for root. So the command is left out of that binary rather than shipped as one that can never work. See [ss](ss.md#platforms).
+- **`ip route` and `ip arp` work on Linux, macOS, the BSDs and Windows.** On Solaris, illumos and AIX they say they are not supported yet and exit `1`; `ip` itself works everywhere. The Windows tables, like `ss`'s, have not been read on a real Windows machine by the project.
+- **`--interface` is not on `ping` yet**: its ICMP library cannot send from an address so far ([#69](https://github.com/dmartsapp/shint/issues/69)). The other commands that send take it.
 - **`ping` on Linux may need a setting.** It uses unprivileged ICMP, which Linux allows only to the groups in `net.ipv4.ping_group_range`. Most desktop distributions allow everyone; a hardened server may not. See [troubleshooting](troubleshooting.md). macOS, the BSDs and Windows need nothing.
 - **`listen --bind ::` accepting IPv4 too** has been verified on macOS and Linux only.
 - **Some systems get no binary at all**, because Go, which shint is written in, does not build for them: HP-UX, Solaris on SPARC, and AIX on anything but IBM POWER.

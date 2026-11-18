@@ -70,6 +70,12 @@ UDP has no handshake, so `probeUDP` uses a *connected* UDP socket and reads the 
 
 `listen http` answers `{"status":"ok"}` on `/` and 404 elsewhere, for any method, and does nothing else. It makes no attempt to interpret requests, so it is a *fixed point* to measure against: the same request always gets the same response, byte for byte. On shutdown it flushes the response and waits (`Server.Shutdown` plus a short grace period) so the process cannot exit a beat before the operating system has sent the last response - a real race that once produced `curl: (52) Empty reply from server` on the final request.
 
+## Sending from an interface
+
+`--interface` ([#69](https://github.com/dmartsapp/shint/issues/69)) binds the **source address** of each connection (`net.Dialer.LocalAddr`) - never the device by name (`SO_BINDTODEVICE`, `IP_BOUND_IF`), which is platform-specific and needs privileges on some systems; shint never does. A name is turned into that interface's addresses once, at startup, and each dial takes the one of its destination's family, link-local for a link-local destination. That keeps dual-stack checks working: a host's IPv4 and IPv6 addresses are each checked from a source of their own family. Name lookups are not bound (curl draws the same line); `rdns`'s are, since they are its check.
+
+The interface names a user types are the weak point - `Ethernet 2` on Windows, long names on Solaris - so a name that does not exist is never just "no": it is a failed check that lists the names that do, the same message `ip <name>` and `ip arp <name>` give (`lib.NoSuchInterface`).
+
 ## Checking, not reconnaissance
 
 shint is for checking infrastructure you are responsible for. Any network tool can be pointed elsewhere. Skilled attackers have far better tools already, so shint is no help to them. The realistic risk is a well-meaning user sweeping a network that is not theirs. The rule for features, decided on 2026-11-18 ([#106](https://github.com/dmartsapp/shint/issues/106)):

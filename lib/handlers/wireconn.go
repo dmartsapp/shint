@@ -114,14 +114,22 @@ func newCountingTransport(tlsConfig *tls.Config) *http.Transport {
 	return &http.Transport{
 		TLSClientConfig: tlsConfig,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			conn, err := dialer.DialContext(ctx, lib.DialNetwork(network), addr)
+			d := dialer
+			if err := lib.BindSource(&d, lib.DialNetwork(network), addr); err != nil {
+				return nil, err
+			}
+			conn, err := d.DialContext(ctx, lib.DialNetwork(network), addr)
 			if err != nil {
 				return nil, err
 			}
 			return &countingConn{Conn: conn}, nil
 		},
 		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			raw, err := dialer.DialContext(ctx, lib.DialNetwork(network), addr)
+			d := dialer
+			if err := lib.BindSource(&d, lib.DialNetwork(network), addr); err != nil {
+				return nil, err
+			}
+			raw, err := d.DialContext(ctx, lib.DialNetwork(network), addr)
 			if err != nil {
 				return nil, err
 			}

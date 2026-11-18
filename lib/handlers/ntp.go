@@ -156,7 +156,11 @@ type ntpExchange struct {
 // is about the same in both directions.
 func queryNTP(ctx context.Context, address string, port int, timeoutSeconds int) (ntpExchange, error) {
 	dialer := net.Dialer{Timeout: time.Duration(timeoutSeconds) * time.Second}
-	conn, err := dialer.DialContext(ctx, "udp", net.JoinHostPort(address, strconv.Itoa(port)))
+	target := net.JoinHostPort(address, strconv.Itoa(port))
+	if err := lib.BindSource(&dialer, "udp", target); err != nil {
+		return ntpExchange{}, err
+	}
+	conn, err := dialer.DialContext(ctx, "udp", target)
 	if err != nil {
 		return ntpExchange{}, err
 	}
@@ -214,16 +218,17 @@ func NTPHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 	var statsMutex sync.Mutex
 	output := lib.JSONOutput{}
 	output.InputParams = lib.InputParams{
-		Mode:     ntpModule,
-		Host:     host,
-		FromPort: port,
-		ToPort:   port,
-		Protocol: "udp",
-		Timeout:  timeout,
-		Count:    iterations,
-		Delay:    delay,
-		Payload:  ntpPacketSize,
-		Throttle: *throttle,
+		Mode:      ntpModule,
+		Interface: lib.SourceLabel(),
+		Host:      host,
+		FromPort:  port,
+		ToPort:    port,
+		Protocol:  "udp",
+		Timeout:   timeout,
+		Count:     iterations,
+		Delay:     delay,
+		Payload:   ntpPacketSize,
+		Throttle:  *throttle,
 	}
 	output.ModuleName = ntpModule
 	istart := time.Now()

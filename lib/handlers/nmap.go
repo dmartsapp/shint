@@ -65,15 +65,16 @@ func NmapHandler(ctx context.Context, scan NmapScan, iterations, timeout int, th
 	single := len(scan.Targets) == 1
 	if *jsonoutput {
 		output.InputParams = lib.InputParams{
-			Mode:     nmapModule,
-			FromPort: ports[0],
-			ToPort:   ports[len(ports)-1],
-			Protocol: "tcp",
-			Timeout:  timeout,
-			Count:    iterations,
-			Delay:    0,
-			Payload:  0,
-			Throttle: throttle,
+			Mode:      nmapModule,
+			Interface: lib.SourceLabel(),
+			FromPort:  ports[0],
+			ToPort:    ports[len(ports)-1],
+			Protocol:  "tcp",
+			Timeout:   timeout,
+			Count:     iterations,
+			Delay:     0,
+			Payload:   0,
+			Throttle:  throttle,
 		}
 		if single {
 			output.InputParams.Host = scan.Targets[0].Input

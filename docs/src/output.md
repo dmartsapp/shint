@@ -56,6 +56,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `dns` | `server resolved`, `dns resolution failed`, `query`, `query failed`, `answer`, `authority`, `no server to ask`, `done` |
 | `cidr` | `subnet`, `done` |
 | `ip` | `interface`, `failed`, `done` |
+| `ip-route` | `route`, `failed`, `done` |
+| `ip-arp` | `neighbour`, `failed`, `done` |
 | `ss` | `socket`, `failed`, `done`, `owners hidden` (`WARN`) |
 | `listen-tcp` | `listening`, `connection accepted`, `data received`, `connection closed`, `done` |
 | `listen-udp` | `listening`, `packet received`, `done` |
@@ -114,8 +116,8 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | Field | Type | Meaning |
 |---|---|---|
 | `input_params` | object | The parameters the command ran with. |
-| `module_name` | string | `telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `rdns` or `dns` - and `wol`, `cidr`, `ip` or `ss`, whose documents have no `dns_lookup`. |
-| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr`, `ip`, `ss` and `dns`** (`dns` is itself the lookup), which never look up a name (an empty lookup would only read as a failed one) - and for `nmap` given a prefix, which is swept without a lookup, or more than one target, which has `dns_lookups`. |
+| `module_name` | string | `telnet`, `icmp`, `web`, `tls`, `nmap`, `udp`, `ntp`, `rdns` or `dns` - and `wol`, `cidr`, `ip`, `ip-route`, `ip-arp` or `ss`, whose documents have no `dns_lookup`. |
+| `dns_lookup` | object | Result of resolving the host name. **Absent for `wol`, `cidr`, `ip`, `ip-route`, `ip-arp`, `ss` and `dns`** (`dns` is itself the lookup), which never look up a name (an empty lookup would only read as a failed one) - and for `nmap` given a prefix, which is swept without a lookup, or more than one target, which has `dns_lookups`. |
 | `stats` | array | One entry per check; the shape depends on the command (below). |
 | `start_time_unixtime_µs` | integer | When the run started, in Unix microseconds. |
 | `end_time_unixtime_µs` | integer | When it ended. |
@@ -135,6 +137,7 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `ports` | `nmap --ports` and `ss --ports` only: the ports scanned or listed, sorted, each once, with runs written as ranges (`"22,80,443,8000-8100"`). Absent for a `--from`/`--to` range, and when `ss` was given no `--ports`. |
 | `protocol` | `tcp`, `udp`, `icmp` or `dns` (`rdns`); for `ss`, the protocols listed: `tcp`, `udp` or `tcp,udp`. |
 | `listening`, `pid` | `ss` only: `true` with `-l`, and the `--pid` asked for. Absent otherwise. |
+| `interface` | What `--interface` named - an interface, or an address - for the commands that take it. Absent without it. |
 | `timeout_ms` | The `--timeout` value. **Despite the name, it is in seconds.** |
 | `count`, `delay_ms`, `throttle` | `--count`, `--delay` (milliseconds) and `--throttle`. For `nmap`, `delay_ms` is the pace of a sweep of public addresses, and `0` when there is none. |
 | `payload_bytes` | Payload size: filler size for `ping`/`udp`, request body size for `web`. |
@@ -287,6 +290,28 @@ Latency: minimum: 4.606042ms, average: 4.606042ms, maximum: 4.606042ms
 | `name`, `state`, `mtu`, `mac`, `flags` | The interface. `state` is `up` or `down`; `flags` a list of words; `mac` is left out when the interface has none. |
 | `ipv4`, `ipv6` | Its addresses of that family as plain strings with their prefix length (`"192.168.1.20/24"`): lists that are empty, never `null`, when it has none (or after `-4`/`-6`). |
 | `error` | Present only when the addresses of this interface could not be read. |
+
+**ip-route** - `ip route`: one entry per route (see [ip](ip.md#routes-ip-route))
+
+| Field | Meaning |
+|---|---|
+| `family`, `destination`, `default` | `ipv4` or `ipv6`; the prefix covered (`0.0.0.0/0` and `::/0` for default routes, which `default` also says). |
+| `gateway` | The next hop; absent for a network reached directly. |
+| `interface` | Where the traffic leaves. |
+| `metric` | Where the system keeps one (Linux, Windows); absent otherwise, never `0` for "unknown". |
+| `scoped`, `unreachable` | macOS's interface-scoped routes, and routes that drop what they match. Absent when false. |
+
+`ip route <address>` has a single entry instead: `destination` (the address asked about), `route` (the matching prefix, absent when no listed route on the system's chosen interface covers it), `gateway`, and `interface` and `source` (what the system itself would use). `input_params.data` is the address.
+
+**ip-arp** - `ip arp`: one entry per neighbour (see [ip](ip.md#neighbours-ip-arp))
+
+| Field | Meaning |
+|---|---|
+| `family`, `address` | The neighbour's address, never looked up. |
+| `mac` | The hardware address learned for it; absent while resolving and when resolving failed. |
+| `interface` | The network it is on. |
+| `state` | `REACHABLE`, `STALE`, `FAILED`, ... where the system reports one (Linux, Windows). |
+| `router`, `gateway` | An IPv6 router, and the next hop of a default route. Absent when false. |
 
 **ss** - one entry per socket, everything about it in that one entry, no timing (see [ss](ss.md#what-it-reports) for what each field means)
 

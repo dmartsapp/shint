@@ -29,7 +29,11 @@ const udpModule = "udp"
 //     it cannot be told apart from a firewall silently dropping the packet.
 func probeUDP(ctx context.Context, ip string, port int, timeout int, payload []byte) (state string, received []byte, err error) {
 	dialer := net.Dialer{Timeout: time.Duration(timeout) * time.Second}
-	conn, dialErr := dialer.DialContext(ctx, "udp", net.JoinHostPort(ip, strconv.Itoa(port)))
+	target := net.JoinHostPort(ip, strconv.Itoa(port))
+	if err := lib.BindSource(&dialer, "udp", target); err != nil {
+		return "error", nil, err
+	}
+	conn, dialErr := dialer.DialContext(ctx, "udp", target)
 	if dialErr != nil {
 		return "error", nil, dialErr
 	}
@@ -138,16 +142,17 @@ func UDPHandler(ctx context.Context, jsonoutput *bool, iterations int, delay int
 		payload = []byte(strings.Repeat("d", payloadSize))
 	}
 	output.InputParams = lib.InputParams{
-		Mode:     udpModule,
-		Host:     host,
-		FromPort: port,
-		ToPort:   port,
-		Protocol: "udp",
-		Timeout:  timeout,
-		Count:    iterations,
-		Delay:    delay,
-		Payload:  len(payload),
-		Throttle: *throttle,
+		Mode:      udpModule,
+		Interface: lib.SourceLabel(),
+		Host:      host,
+		FromPort:  port,
+		ToPort:    port,
+		Protocol:  "udp",
+		Timeout:   timeout,
+		Count:     iterations,
+		Delay:     delay,
+		Payload:   len(payload),
+		Throttle:  *throttle,
 	}
 	output.ModuleName = udpModule
 	istart := time.Now()
