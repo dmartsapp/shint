@@ -33,8 +33,8 @@ REPO = "dmartsapp/shint"
 #   ping:  yes = 127.0.0.1 must answer; sysctl = Linux kernels, where a normal user may ping
 #          only if net.ipv4.ping_group_range allows it, so a permission error is a skip;
 #          no = no unprivileged ICMP socket (#112), so ping must fail saying so (#111) -
-#          seen on FreeBSD 14.4, NetBSD 11.1 and OpenBSD 8.0, expected (not yet seen) on Solaris,
-#          illumos and AIX, whose own ping is setuid root or needs a privilege
+#          seen on FreeBSD 14.4, NetBSD 11.1, OpenBSD 8.0 and Solaris 11.4, expected (not
+#          yet seen) on illumos and AIX, whose own ping is setuid root or needs a privilege
 PLATFORMS = [
     # os, arch, ss, route, ping
     ("aix", "ppc64", "absent", "no", "no"),
