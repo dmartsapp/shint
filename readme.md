@@ -47,7 +47,7 @@ Windows and the other platforms, checksums and signed attestations: see the [ins
 | `shint ping <host>` | `ping` | Is it up, and how fast does it answer? |
 | `shint web <url>` | `curl -v` | What does this URL return, and where did the time go? |
 | `shint tls <host> [port]` | `openssl s_client` | Is the certificate trusted, valid for the name, and when does it expire? |
-| `shint nmap <host> --from 1 --to 1024` | `nmap` | Which TCP ports are open? |
+| `shint nmap <host\|prefix> -p 22,80,443` | `nmap` | Which TCP ports are open, on one host or a whole subnet? |
 | `shint udp <host> <port>` | `nc -u` | Does this UDP service answer? |
 | `shint dns <name> [type] [@server]` | `dig` | What does DNS say about this name? |
 | `shint rdns <address>` | `dig -x` | Which names does this address map back to? |
@@ -55,6 +55,9 @@ Windows and the other platforms, checksums and signed attestations: see the [ins
 | `shint wol <mac>` | `wakeonlan` | Wake a machine on my network. |
 | `shint cidr <prefix>` | `ipcalc` | What are this subnet's network, mask, range and size? |
 | `shint ip [interface]` | `ip addr`, `ipconfig` | What interfaces and addresses does this machine have? |
+| `shint ip route [address]` | `ip route`, `netstat -rn` | Which way does traffic to this address go, and through which gateway? |
+| `shint ip arp` | `ip neigh`, `arp -a` | Which hardware addresses has this machine learned on its networks? |
+| `shint ss -l` | `ss`, `netstat -anp` | What is listening on this machine, and which process holds each socket? |
 | `shint listen tcp\|udp\|http <port>` | `nc -l` | Give me a local server to test against. |
 
 Every command takes `--json`, `-4`/`-6` and `--help`. In a script:
@@ -66,9 +69,12 @@ shint tls example.com --json | jq '.stats[0].expires_in_days'
 
 ## Limitations
 
-- **Use it on networks you run, or have permission to test.** Its scans are ordinary connections that the target's firewall and services log, and it deliberately has nothing for scanning unnoticed.
-- **Only two of the 18 builds are tested regularly:** macOS on Apple silicon and Linux on amd64. Windows, the BSDs, Solaris, illumos, AIX, Android, and Linux on ARM and Power are built for every release but not run by the project. If you use shint on one of them, you are its testing: [open an issue](https://github.com/dmartsapp/shint/issues/new) with what you ran and what it printed. Testers for Windows, the BSDs, Solaris and AIX are especially welcome.
+- **Use it on networks you run, or have permission to test.** Its scans are ordinary connections that the target's firewall and services log, and it deliberately has nothing for scanning unnoticed. A sweep of public addresses warns before it starts and is paced by `--delay` (a probe a second by default).
+- **7 of the 18 builds have been run by the project.** macOS on Apple silicon and Linux on amd64 are tested on every change; Windows 10, FreeBSD 14.4, NetBSD 11.1, OpenBSD 8.0 and Solaris 11.4 (all amd64) passed their [platform test](test/platforms/) for v4.4.0. Not run yet: illumos, AIX, Android, Linux on ARM and Power, macOS on Intel, and the arm64 builds for Windows and the BSDs. If you use one of those, a run of its platform test is the most useful thing you can send: see [Testers wanted](https://dmartsapp.github.io/shint/docs/limitations.html#testers-wanted).
+- **Some commands differ by platform.** `ss` lists sockets on Linux and Windows only (the BSDs, Solaris and illumos are planned; the AIX binary has no `ss`). `ip route` and `ip arp` work on Linux, macOS, the BSDs and Windows. `ping` does not work on FreeBSD, NetBSD, OpenBSD or Solaris, which have no ICMP socket a normal user may open ([#112](https://github.com/dmartsapp/shint/issues/112)).
 - **It never needs root**, so nothing that needs raw packets: no SYN scans, no packet capture, no traceroute.
+
+Everything else - what was tested where, what differs, the bugs still open - is on the [Limitations page](https://dmartsapp.github.io/shint/docs/limitations.html).
 
 ## Documentation
 
