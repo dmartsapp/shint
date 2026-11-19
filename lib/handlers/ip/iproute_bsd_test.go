@@ -32,6 +32,7 @@ func TestBSDRoute(t *testing.T) {
 		{"cloned", up | host | unix.RTF_WASCLONED, addrs(v4(8, 8, 8, 8), link, nil), ""},
 		{"multicast", up, addrs(v4(224, 0, 0, 0), link, v4(240, 0, 0, 0)), ""},
 		{"broadcast", up | host, addrs(v4(255, 255, 255, 255), link, nil), ""},
+		{"subnet broadcast (OpenBSD UHb)", up | host | unix.RTF_BROADCAST, addrs(v4(192, 168, 1, 255), v4(192, 168, 1, 89), nil), ""},
 		{"down", gw, addrs(v4(0, 0, 0, 0), v4(192, 168, 1, 254), v4(0, 0, 0, 0)), ""},
 	} {
 		r, ok := bsdRoute(c.flags, c.addrs, "en0")

@@ -48,7 +48,7 @@ func platformRoutes() ([]sysRoute, error) {
 // macOS), multicast destinations and the limited broadcast address - none of
 // them a route anyone set up.
 func bsdRoute(flags int, addrs []route.Addr, iface string) (sysRoute, bool) {
-	if flags&unix.RTF_UP == 0 || flags&unix.RTF_LLINFO != 0 || flags&rtfWasCloned != 0 || len(addrs) <= unix.RTAX_DST {
+	if flags&unix.RTF_UP == 0 || flags&unix.RTF_LLINFO != 0 || flags&rtfWasCloned != 0 || flags&rtfBroadcast != 0 || len(addrs) <= unix.RTAX_DST {
 		return sysRoute{}, false
 	}
 	dst, ok := routeAddr(addrs[unix.RTAX_DST])
