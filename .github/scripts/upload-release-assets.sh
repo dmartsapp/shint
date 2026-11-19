@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Uploads files to a tag's GitHub release - which the Binary Build & Release
-# workflow creates, while the image and vulnerability workflows run beside it -
-# waiting for the release to exist first:
+# Uploads files to a tag's GitHub release, waiting for the release to exist first
+# (the Release workflow's image-reports job runs once github-release has made it,
+# so it does not wait there; the wait is for a release made some other way):
 #
 #   GH_TOKEN=... bash .github/scripts/upload-release-assets.sh v4.3.0 image-sboms/*
 #

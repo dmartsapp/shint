@@ -7,7 +7,7 @@
 [![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Check](https://github.com/dmartsapp/shint/actions/workflows/check.yaml/badge.svg?branch=main)](https://github.com/dmartsapp/shint/actions/workflows/check.yaml)
-[![Vulnerability check](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml)
+[![Release](https://github.com/dmartsapp/shint/actions/workflows/release.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/release.yaml)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/farhanssiddique)
 
 ![shint checking a connection, an HTTP request with timing, DNS, a TLS certificate as JSON, and open ports](docs/assets/demo.gif)

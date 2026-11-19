@@ -63,11 +63,11 @@ SUPPORT_LINE = "If shint saves you time, you can [support its development](%s)."
 
 # (key that identifies the badge in the file, the badge's Markdown), in the order they appear.
 # Kept to what a reader of the README cares about: the release, the licence, whether
-# the tests and the vulnerability check pass, and the donate button.
+# the tests and the release pass, and the donate button.
 BADGES = [
     ("img.shields.io/github/v/release", "[![Latest release](https://img.shields.io/github/v/release/dmartsapp/shint?label=release)](https://github.com/dmartsapp/shint/releases/latest)"),
     ("img.shields.io/badge/license-MIT", "[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)"),
-    ("workflows/vulncheck.yaml/badge.svg", "[![Vulnerability check](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/vulncheck.yaml)"),
+    ("workflows/release.yaml/badge.svg", "[![Release](https://github.com/dmartsapp/shint/actions/workflows/release.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/release.yaml)"),
     ("workflows/check.yaml/badge.svg", "[![Check](https://github.com/dmartsapp/shint/actions/workflows/check.yaml/badge.svg?branch=main)](https://github.com/dmartsapp/shint/actions/workflows/check.yaml)"),
     ("img.shields.io/badge/Donate", "[![Donate](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](%s)" % SUPPORT_URL),
 ]

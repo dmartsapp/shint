@@ -124,7 +124,7 @@ Nothing. `main`'s README already shows the release, its row links to `releases/v
 | **Publish v4.4.0? [y/N]** | The summary of what is about to go out. The one question. | - |
 | Main | `main` is fast-forwarded to the release commit and pushed; then the wait for [Check](tech-ci.md#check-after-a-merge-to-main) on that commit. A red Check stops here: nothing is tagged. | a commit on `main` stays, but nothing is published |
 | Tag | The annotated tag - `vX.Y.Z: <Summary>` and the changelog - is pushed. This starts the release pipeline. | **no** |
-| Verify | The release workflows watched to the end; the binaries counted against the previous release's, and each checked for its checksum and its CycloneDX and SPDX SBOMs; each image's SBOMs and Grype report, and `govulncheck.txt`, looked for; this machine's binary downloaded and its checksum, [attestation](install.md) and `--version` checked; the milestone closed if it has no open issues. | - |
+| Verify | The Release workflow watched to the end, every job's result printed; the binaries counted against the previous release's, and each checked for its checksum and its CycloneDX and SPDX SBOMs; each image's SBOMs and Grype report, and `govulncheck.txt`, looked for; this machine's binary downloaded and its checksum, [attestation](install.md) and `--version` checked; the milestone closed if it has no open issues. | - |
 
 **Main first, then the tag, with a wait in between.** Pushing the commit and the tag together (`git push --follow-tags`) would start the irreversible part before anything outside this machine has checked the commit. The wait for Check is the gap where that happens; `make attest` makes it about a minute (`check-quick`) instead of the whole suite. The script does the waiting, so the order cannot be got wrong.
 
@@ -188,7 +188,7 @@ What each kind of push starts (see [CI/CD workflows](tech-ci.md)):
 |---|---|---|
 | `go build` from a clone | `{{version}}` | The default in `main.go` (`make release` stamps it) |
 | `make <target>` | `<tag-or-dev>-<commit date as ddmmyyyyHHMMSS>` | `Makefile` (`git tag --contains`, `git show --format=%cd`) |
-| Release binary (CI) | `v{{version}}/<full commit sha>/<UTC build time>` | `build.yaml` (`-X main.Version=${{ github.ref_name }}/${{ github.sha }}/$DT`) |
+| Release binary (CI) | `v{{version}}/<full commit sha>/<UTC build time>` | `release.yaml`'s `binaries` job (`-X main.Version=${GITHUB_REF_NAME}/${GITHUB_SHA}/$DT`) |
 | Docker image | `v{{version}}` | `Dockerfile` (`ARG VERSION`, passed as `VERSION=<tag>`; `dev` when built locally) |
 
 `--version` prints that string, then the Go toolchain the binary was built with and its platform, in brackets, as `go version` writes them: `v{{version}}/<full commit sha>/<UTC build time> (go{{go}} linux/amd64)` (since v4.2.3). So a release binary is traceable to an exact commit, moment and toolchain, and a source build tells you which release it descends from.

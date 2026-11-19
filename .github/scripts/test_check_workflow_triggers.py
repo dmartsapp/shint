@@ -95,7 +95,8 @@ class RealWorkflows(unittest.TestCase):
     def test_every_workflow_in_the_repository_follows_the_rule(self):
         root = os.path.normpath(os.path.join(here, "..", "workflows"))
         names = sorted(n for n in os.listdir(root) if n.endswith((".yaml", ".yml")))
-        self.assertGreaterEqual(len(names), 6)  # five release workflows + the tag guard
+        # the Release workflow (everything a tag starts) and Check (pushes to main)
+        self.assertEqual(sorted(os.path.basename(n) for n in names), ["check.yaml", "release.yaml"])
         for name in names:
             self.assertEqual(triggers.check_file(os.path.join(root, name)), [], name)
 

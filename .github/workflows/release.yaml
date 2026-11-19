@@ -1,0 +1,818 @@
+name: Release
+
+# Everything a release tag starts, in one workflow, so the run's graph shows what
+# waits for what (docs: Technical > CI/CD, "The release workflow"):
+#
+#   verify-tag ─┬─ lint ──────┐
+#               ├─ vulncheck ─┼─┬─ binaries (a job per platform) ── github-release ─┬─ readme
+#               └─ hadolint ──┘ ├─ docker-hub ─┐                                    │
+#                               └─ ghcr ───────┴─────────────────────── image-reports
+#   then:  report-failure (only when a job failed) ── announce (always)
+#
+# The checks run once, and nothing is published unless all three passed. The
+# binaries and the two images build side by side. Every job hands on what the
+# ones after it need as outputs (the version, the release's URL, each image's
+# digest, the vulnerability count), and the last jobs get every job's result
+# through `needs`: report-failure opens one issue naming each failed job and
+# step, and announce posts the outcome of every part to Slack - and, when the
+# release is published, announces it (Slack, Discussions).
+#
+# The trigger rule (.github/scripts/check-workflow-triggers.py): a vX.Y.Z tag
+# push, nothing else - and verify-tag refuses one that is not on main.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+# Nothing by default: each job asks for what it needs, and no more.
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # ---- the gate ---------------------------------------------------------------------
+
+  # A release tag must be strictly vX.Y.Z and point at a commit on main. The
+  # trigger filter covers the first half; verify-release-tag.sh repeats it and
+  # adds the second, which a filter cannot express. Every other job waits for it.
+  verify-tag:
+    name: Verify the tag (vX.Y.Z, on main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}   # 4.5.0
+      minor: ${{ steps.version.outputs.minor }}       # 4.5
+      major: ${{ steps.version.outputs.major }}       # 4
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Check the tag and the commit it points at
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: bash .github/scripts/verify-release-tag.sh
+
+      - name: The version, for the jobs after this one
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          MINOR="${VERSION%.*}"
+          MAJOR="${MINOR%.*}"
+          { echo "version=$VERSION"; echo "minor=$MINOR"; echo "major=$MAJOR"; } >> "$GITHUB_OUTPUT"
+          echo "Release **$GITHUB_REF_NAME** of \`$GITHUB_SHA\`: the tag is vX.Y.Z and on main." >> "$GITHUB_STEP_SUMMARY"
+
+  # ---- the checks, once, side by side -----------------------------------------------
+
+  lint:
+    name: golangci-lint
+    needs: verify-tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa # v7.0.1
+        with:
+          version: v2.15.0
+
+  # No "Set up Go" here: golang/govulncheck-action runs its own actions/setup-go,
+  # and two cache restores into the same paths collide (#75). Alone in its job,
+  # the action's own cache is the only one.
+  vulncheck:
+    name: govulncheck
+    needs: verify-tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      vulnerabilities: ${{ steps.summary.outputs.vulnerabilities }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: govulncheck
+        id: govulncheck
+        uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
+        with:
+          output-file: govulncheck-report.txt
+
+      # Runs whether the check passed or not: a failure's report is what says why.
+      - name: The report, in the run's summary
+        id: summary
+        if: always()
+        env:
+          CHECK: ${{ steps.govulncheck.conclusion }}
+        run: |
+          REPORT=govulncheck-report.txt
+          COUNT=$(grep 'Vulnerabilities found:' "$REPORT" 2>/dev/null | awk -F': ' '{print $2}')
+          echo "vulnerabilities=${COUNT:-unknown}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## govulncheck"
+            echo
+            if [ "$CHECK" = "success" ]; then
+              echo "Passed: ${COUNT:-0} vulnerabilities that affect shint."
+            else
+              echo "**Failed** (${CHECK:-did not run}): ${COUNT:-unknown} vulnerabilities - nothing is published."
+            fi
+            echo
+            echo "Checked modules: $(grep 'Checked modules:' "$REPORT" 2>/dev/null | awk -F': ' '{print $2}')"
+            echo
+            grep -A 1000 'Details:' "$REPORT" 2>/dev/null || true
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -f "$REPORT" ]; then cp "$REPORT" govulncheck.txt; fi
+
+      # Kept on the release by github-release (a run's summary ages out of
+      # GitHub's retention; the release does not). Uploaded even after a failure,
+      # for whoever reads the run.
+      - name: Hand the report on
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: govulncheck-report
+          path: govulncheck.txt
+          if-no-files-found: warn
+
+  # The Dockerfile, through Hadolint (pinned, its download checked in
+  # install-tools.sh): an error-level finding stops the release.
+  hadolint:
+    name: hadolint (Dockerfile)
+    needs: verify-tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: hadolint
+        run: |
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" hadolint
+          "$RUNNER_TEMP/tools/hadolint" --failure-threshold error Dockerfile
+
+  # ---- the binaries and the release --------------------------------------------------
+
+  binaries:
+    name: Build ${{ matrix.os }}/${{ matrix.arch }}
+    needs: [verify-tag, lint, vulncheck, hadolint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Only for the attestations: a short-lived OIDC token for a Sigstore
+      # signing certificate, and permission to store the attestation.
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [darwin, linux, windows, freebsd, openbsd, netbsd, solaris, android]
+        arch: [amd64, arm64]
+        exclude:
+          # Go's solaris port only targets amd64.
+          - os: solaris
+            arch: arm64
+          # android/amd64 needs cgo (external linking) for its libc syscall
+          # shims; android/arm64 (real devices, Termux, etc.) builds fine
+          # with CGO_ENABLED=0, which is what keeps every other binary here
+          # small and statically linked.
+          - os: android
+            arch: amd64
+        include:
+          # aix only has a ppc64 port - neither amd64 nor arm64 - so it is added
+          # rather than put in the os/arch lists above and excluded from the rest.
+          - os: aix
+            arch: ppc64
+          # illumos is its own GOOS, distinct from solaris; Go supports it on amd64 only.
+          - os: illumos
+            arch: amd64
+          # linux also gets 32-bit arm (older Raspberry Pi and a lot of embedded/IoT boards
+          # are still 32-bit; GOARM=6 for ARMv6 hardware, forward-compatible with ARMv7) and
+          # ppc64le (IBM Power Linux) - a third and fourth architecture on top of amd64/arm64.
+          - os: linux
+            arch: arm
+            goarm: 6
+          - os: linux
+            arch: ppc64le
+    env:
+      BINARY: bin/shint.${{ matrix.os }}.${{ matrix.arch }}${{ (matrix.os == 'windows' && '.exe') || '' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Build the binary
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          mkdir -p bin
+          DT=$(date +%Y-%m-%dT%H:%M:%S%z)
+          go build -buildvcs=true -trimpath -ldflags="-s -w -X main.Version=${GITHUB_REF_NAME}/${GITHUB_SHA}/$DT" -o "$BINARY"
+
+      # A signed statement that this exact file was built by this workflow from
+      # this commit (SLSA build provenance, keyless via Sigstore). Users check it
+      # with: gh attestation verify <file> --repo dmartsapp/shint
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ env.BINARY }}
+
+      # bin/ holds only the binary at this point; this adds <binary>.sha256 next
+      # to it (see .github/scripts/write-checksums.sh) and checks it.
+      - name: Write the SHA-256 checksum
+        run: bash .github/scripts/write-checksums.sh bin
+
+      # The binary's software bill of materials, in CycloneDX 1.6 and SPDX 2.3:
+      # the Go release and every module it was built from, read from the build
+      # information Go embeds in the binary (.github/scripts/sbom.py, standard
+      # library Python and `go version -m` - no third-party tool runs here).
+      # After the checksum, so the checksum is the binary's alone.
+      - name: Write the SBOMs (CycloneDX and SPDX)
+        run: python3 .github/scripts/sbom.py --version "$GITHUB_REF_NAME" "$BINARY"
+
+      # Signed statements that these SBOMs describe this exact file, as the
+      # provenance above is. Users check them with gh attestation verify <file>
+      # --repo dmartsapp/shint --predicate-type https://cyclonedx.org/bom (or
+      # https://spdx.dev/Document/v2.3).
+      - name: Attest the CycloneDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ env.BINARY }}
+          sbom-path: ${{ env.BINARY }}.cdx.json
+
+      - name: Attest the SPDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ env.BINARY }}
+          sbom-path: ${{ env.BINARY }}.spdx.json
+
+      - name: Hand the binary on
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: binary-for-${{ matrix.os }}-${{ matrix.arch }}
+          path: bin/
+          if-no-files-found: error
+
+  # Only when every binary built: a release is never published with some missing.
+  github-release:
+    name: Publish the GitHub release
+    needs: [verify-tag, vulncheck, binaries]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      url: ${{ steps.release.outputs.url }}
+      assets: ${{ steps.published.outputs.assets }}
+    steps:
+      - name: Checkout code for the changelog and the diff
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+
+      - name: Download the binaries
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: binary-for-*
+          path: release-artifacts
+
+      - name: Download the govulncheck report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: govulncheck-report
+          path: release-artifacts/govulncheck-report
+
+      - name: Generate release notes
+        env:
+          # Through env, never interpolated into the script: a commit message is
+          # text somebody chose, and inlined into `run:` it would be shell source.
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          TAG: ${{ github.ref_name }}
+          SERVER: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "## Release Notes for $TAG" >> release_notes.md
+          echo "" >> release_notes.md
+          # What's new is the changelog's section for this tag; the commit message
+          # is only the fallback for a tag with no changelog section.
+          SECTION="$(bash .github/scripts/changelog-section.sh "$TAG" || true)"
+          if [ -n "$SECTION" ]; then
+            echo "### What's new" >> release_notes.md
+            echo "" >> release_notes.md
+            printf '%s\n' "$SECTION" >> release_notes.md
+          else
+            echo "### Commit Message" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "\`\`\`code" >> release_notes.md
+            echo "$COMMIT_MSG" >> release_notes.md
+            echo "\`\`\`" >> release_notes.md
+          fi
+          echo "" >> release_notes.md
+          echo "### Verify your download" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "Every binary has a \`.sha256\` file next to it, a signed build attestation, and its software bill of materials (SBOM) in CycloneDX and SPDX." >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- Checksum: \`sha256sum -c shint.linux.amd64.sha256\` (Linux) or \`shasum -a 256 -c shint.darwin.arm64.sha256\` (macOS), in the folder you downloaded both files to." >> release_notes.md
+          echo "- Provenance: \`gh attestation verify shint.linux.amd64 --repo $REPO\` proves the file was built by this repository's workflow from this release's commit." >> release_notes.md
+          echo "- SBOM: \`shint.linux.amd64.cdx.json\` (CycloneDX 1.6) and \`shint.linux.amd64.spdx.json\` (SPDX 2.3) list what the binary is built from - the Go release and every module, with versions. Each is attested: \`gh attestation verify shint.linux.amd64 --repo $REPO --predicate-type https://cyclonedx.org/bom\` (\`https://spdx.dev/Document/v2.3\` for SPDX)." >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Code Changes" >> release_notes.md
+          # The tag being released won't necessarily sort to the top (a re-release
+          # of an older version), so it is excluded explicitly.
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -vF "$TAG" | head -n 1)
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Full diff: $SERVER/$REPO/compare/$PREVIOUS_TAG...$TAG" >> release_notes.md
+          else
+            echo "No previous tag found. Full history: $SERVER/$REPO/commits/$TAG" >> release_notes.md
+            PREVIOUS_TAG=4b825dc642cb6eb9a060e54bf8d69288fbee4904   # Git's empty tree
+          fi
+          echo "" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+          # A diffstat, not the diff: a long release's diff would pass GitHub's
+          # release body limit (~125,000 characters) and fail the release.
+          git diff --stat "$PREVIOUS_TAG..$TAG" | tail -c 60000 >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+
+      - name: Create the release
+        id: release
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
+        with:
+          tag_name: ${{ github.ref_name }}
+          body_path: release_notes.md
+          files: |
+            release-artifacts/*/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: What was published
+        id: published
+        env:
+          URL: ${{ steps.release.outputs.url }}
+        run: |
+          ASSETS=$(find release-artifacts -type f | wc -l | tr -d ' ')
+          echo "assets=$ASSETS" >> "$GITHUB_OUTPUT"
+          echo "Published [the release]($URL) with $ASSETS files: every binary, its checksum and SBOMs, and the govulncheck report." >> "$GITHUB_STEP_SUMMARY"
+
+  # Proposes main's README for the release (a branch readme/main-vX.Y.Z and a pull
+  # request, or an issue linking the branch where Actions may not open pull
+  # requests). It never commits to main. The same thing by hand:
+  # make readme-reconcile TAG=vX.Y.Z
+  readme:
+    name: Propose main's README
+    needs: github-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write        # push readme/main-vX.Y.Z (never main)
+      pull-requests: write   # open the pull request, where the repository allows it
+      issues: write          # ... or the issue that links the branch, where it does not
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0     # every tag and origin/main
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Propose the README
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          PUSH: '1'
+          NO_FETCH: '1'      # checkout fetched everything
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bash .github/scripts/readme-release.sh
+
+  # ---- the container images ----------------------------------------------------------
+  # The same build twice, once per registry. Two jobs rather than a matrix, so each
+  # holds only its own credentials: Docker Hub's secrets, or GHCR's packages: write.
+
+  docker-hub:
+    name: Docker Hub image
+    needs: [verify-tag, lint, vulncheck, hadolint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      # Only for the SBOM attestations: a short-lived OIDC token for a Sigstore
+      # signing certificate, and permission to store the attestations.
+      id-token: write
+      attestations: write
+    outputs:
+      image: ${{ steps.image-tags.outputs.image }}
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Set up QEMU (for cross-arch image builds)
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # The full tag and :latest, and the bare 4.5.0 / 4.5 / 4 roll-ups from verify-tag.
+      - name: Compute image tags
+        id: image-tags
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          VERSION: ${{ needs.verify-tag.outputs.version }}
+          MINOR: ${{ needs.verify-tag.outputs.minor }}
+          MAJOR: ${{ needs.verify-tag.outputs.major }}
+        run: |
+          IMAGE="docker.io/$DOCKERHUB_USERNAME/shint"
+          {
+            echo "image=$IMAGE"
+            echo "tags<<EOF"
+            echo "$IMAGE:${GITHUB_REF_NAME}"
+            echo "$IMAGE:$VERSION"
+            echo "$IMAGE:$MINOR"
+            echo "$IMAGE:$MAJOR"
+            echo "$IMAGE:latest"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          # Docker's own attestations in the image index, beside each platform's
+          # image: an SBOM (made by BuildKit's scanner) and the build's full
+          # provenance - what Docker Scout, on Docker Hub, and docker buildx
+          # imagetools inspect read.
+          sbom: true
+          provenance: mode=max
+          build-args: |
+            VERSION=${{ github.ref_name }}
+          tags: ${{ steps.image-tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.version=${{ needs.verify-tag.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      # The image's SBOMs, Grype's vulnerability reports and Dockle's checks, one
+      # set per platform, each by its platform's own digest
+      # (.github/scripts/image-sboms.py). An image holds the distroless base's
+      # Debian packages as well as shint's binary, which is why images get Syft
+      # while the release binaries get sbom.py. Syft and Grype are pinned, and
+      # their archives checked against SHA-256s pinned in install-tools.sh. Grype
+      # and Dockle report and do not gate: govulncheck gates the release.
+      - name: Install Syft, Grype and Dockle
+        run: |
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" syft grype dockle
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+
+      - name: SBOMs and reports of each platform's image
+        id: image-sboms
+        env:
+          IMAGE: ${{ steps.image-tags.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: python3 .github/scripts/image-sboms.py --image "$IMAGE" --digest "$DIGEST" --name dockerhub --out image-sboms
+
+      # Signed statements, like the binaries' (keyless, Sigstore), that each SBOM
+      # describes that exact image. Users check them with gh attestation verify
+      # oci://<image>@<platform digest> --repo dmartsapp/shint --predicate-type
+      # https://cyclonedx.org/bom (or https://spdx.dev/Document/v2.3).
+      # They stay on GitHub: gh attestation verify finds them there by digest.
+      - name: Attest the linux/amd64 image's CycloneDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image-tags.outputs.image }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_amd64 }}
+          sbom-path: image-sboms/image.dockerhub.linux.amd64.cdx.json
+          push-to-registry: false
+
+      - name: Attest the linux/amd64 image's SPDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image-tags.outputs.image }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_amd64 }}
+          sbom-path: image-sboms/image.dockerhub.linux.amd64.spdx.json
+          push-to-registry: false
+
+      - name: Attest the linux/arm64 image's CycloneDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image-tags.outputs.image }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_arm64 }}
+          sbom-path: image-sboms/image.dockerhub.linux.arm64.cdx.json
+          push-to-registry: false
+
+      - name: Attest the linux/arm64 image's SPDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image-tags.outputs.image }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_arm64 }}
+          sbom-path: image-sboms/image.dockerhub.linux.arm64.spdx.json
+          push-to-registry: false
+
+      - name: Hand the SBOMs and reports on
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-sboms-dockerhub
+          path: image-sboms/
+          if-no-files-found: error
+
+      - name: What was pushed
+        env:
+          IMAGE: ${{ steps.image-tags.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: echo "Pushed \`$IMAGE\` (index \`$DIGEST\`) for linux/amd64 and linux/arm64, with SBOMs, Grype and Dockle reports." >> "$GITHUB_STEP_SUMMARY"
+
+  ghcr:
+    name: GHCR image
+    needs: [verify-tag, lint, vulncheck, hadolint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      image: ${{ steps.image-tags.outputs.image }}
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Set up QEMU (for cross-arch image builds)
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags
+        id: image-tags
+        env:
+          VERSION: ${{ needs.verify-tag.outputs.version }}
+          MINOR: ${{ needs.verify-tag.outputs.minor }}
+          MAJOR: ${{ needs.verify-tag.outputs.major }}
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY}"
+          {
+            echo "image=$IMAGE"
+            echo "tags<<EOF"
+            echo "$IMAGE:${GITHUB_REF_NAME}"
+            echo "$IMAGE:$VERSION"
+            echo "$IMAGE:$MINOR"
+            echo "$IMAGE:$MAJOR"
+            echo "$IMAGE:latest"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          sbom: true
+          provenance: mode=max
+          build-args: |
+            VERSION=${{ github.ref_name }}
+          tags: ${{ steps.image-tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.version=${{ needs.verify-tag.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Install Syft, Grype and Dockle
+        run: |
+          bash .github/scripts/install-tools.sh "$RUNNER_TEMP/tools" syft grype dockle
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+
+      - name: SBOMs and reports of each platform's image
+        id: image-sboms
+        env:
+          IMAGE: ${{ steps.image-tags.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: python3 .github/scripts/image-sboms.py --image "$IMAGE" --digest "$DIGEST" --name ghcr --out image-sboms
+
+      # GHCR keeps the attestations as referrers of the image, too.
+      - name: Attest the linux/amd64 image's CycloneDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image-tags.outputs.image }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_amd64 }}
+          sbom-path: image-sboms/image.ghcr.linux.amd64.cdx.json
+          push-to-registry: true
+
+      - name: Attest the linux/amd64 image's SPDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image-tags.outputs.image }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_amd64 }}
+          sbom-path: image-sboms/image.ghcr.linux.amd64.spdx.json
+          push-to-registry: true
+
+      - name: Attest the linux/arm64 image's CycloneDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image-tags.outputs.image }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_arm64 }}
+          sbom-path: image-sboms/image.ghcr.linux.arm64.cdx.json
+          push-to-registry: true
+
+      - name: Attest the linux/arm64 image's SPDX SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.image-tags.outputs.image }}
+          subject-digest: ${{ steps.image-sboms.outputs.digest_linux_arm64 }}
+          sbom-path: image-sboms/image.ghcr.linux.arm64.spdx.json
+          push-to-registry: true
+
+      - name: Hand the SBOMs and reports on
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-sboms-ghcr
+          path: image-sboms/
+          if-no-files-found: error
+
+      - name: What was pushed
+        env:
+          IMAGE: ${{ steps.image-tags.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: echo "Pushed \`$IMAGE\` (index \`$DIGEST\`) for linux/amd64 and linux/arm64, with SBOMs, Grype and Dockle reports." >> "$GITHUB_STEP_SUMMARY"
+
+  # The images' SBOMs and reports go on the release too, for whoever has a binary
+  # and no registry access. It runs once the release exists, whatever the images
+  # did: it attaches the reports of each image that was pushed, and fails - naming
+  # the image - when one was not, so the gap is in the run's result, not hidden.
+  image-reports:
+    name: Attach the images' SBOMs and reports
+    needs: [github-release, docker-hub, ghcr]
+    if: always() && needs.github-release.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          sparse-checkout: .github/scripts
+
+      # Nothing to download when neither image was pushed: the next step says so.
+      - name: Download the images' SBOMs and reports
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: image-sboms-*
+          path: image-sboms
+          merge-multiple: true
+
+      - name: Attach them to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          DOCKER_HUB: ${{ needs.docker-hub.result }}
+          GHCR: ${{ needs.ghcr.result }}
+        run: |
+          shopt -s nullglob
+          files=(image-sboms/*)
+          if [ "${#files[@]}" -gt 0 ]; then
+            bash .github/scripts/upload-release-assets.sh "$GITHUB_REF_NAME" "${files[@]}"
+          fi
+          {
+            echo "Attached ${#files[@]} image SBOMs and reports to the release."
+            echo "- Docker Hub image: $DOCKER_HUB"
+            echo "- GHCR image: $GHCR"
+          } >> "$GITHUB_STEP_SUMMARY"
+          missing=""
+          [ "$DOCKER_HUB" = "success" ] || missing="$missing Docker Hub ($DOCKER_HUB)"
+          [ "$GHCR" = "success" ] || missing="$missing GHCR ($GHCR)"
+          if [ -n "$missing" ]; then
+            echo "::error title=Image reports missing::no SBOMs or reports for:$missing - that image was not pushed"
+            exit 1
+          fi
+
+  # ---- the outcome -------------------------------------------------------------------
+
+  # One issue for a failed release, naming each failed job and the step it failed
+  # in (from every job's result in `needs`, and the run's jobs). Not for a refused
+  # tag: nothing ran, and verify-tag's error says why.
+  report-failure:
+    name: Open an issue for the failure
+    needs: [verify-tag, lint, vulncheck, hadolint, binaries, github-release, readme, docker-hub, ghcr, image-reports]
+    if: always() && needs.verify-tag.result == 'success' && contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read      # the run's jobs and their failed steps
+      issues: write
+    outputs:
+      issue: ${{ steps.issue.outputs.issue-number }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          sparse-checkout: .github/scripts
+
+      - name: Write the issue body
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+          ISSUE_BODY: ${{ runner.temp }}/issue.md
+        run: python3 .github/scripts/notify-slack.py
+
+      - name: Open the issue
+        id: issue
+        uses: peter-evans/create-issue-from-file@e8ef132d6df98ed982188e460ebb3b5d4ef3a9cd # v5.0.1
+        with:
+          title: "CI Failure: Release ${{ github.ref_name }}"
+          content-filepath: ${{ runner.temp }}/issue.md
+          labels: bug, ci-failure
+          assignees: ${{ github.actor }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # The last word: every part's result to Slack (with the failure issue, if one was
+  # opened) - and, when the release was published, its announcement in Slack and
+  # in Discussions. It publishes nothing; without the webhook secret (a fork) it
+  # says so and succeeds.
+  announce:
+    name: Announce the result
+    needs: [verify-tag, lint, vulncheck, hadolint, binaries, github-release, readme, docker-hub, ghcr, image-reports, report-failure]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read      # the release and the commit message
+      actions: read       # the run's jobs, their steps and durations
+      discussions: write  # the release's announcement in Discussions
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 1
+
+      - name: Post the result, and announce a published release
+        # Everything reaches the script through env, never interpolated into the
+        # shell: the webhook is a credential, and the tag and actor are text
+        # somebody chose.
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          RUN_ID: ${{ github.run_id }}
+          SERVER_URL: ${{ github.server_url }}
+          ANNOUNCE_DISCUSSIONS: "1"
+        run: python3 -u .github/scripts/notify-slack.py

@@ -34,7 +34,7 @@ Without a subcommand, on release/vX.Y.Z, on release day:
     7. main fast-forwarded to the release commit and pushed; then the wait for Check on
        that commit - a red Check stops here, and nothing is tagged
     8. the annotated tag (its message from the changelog), pushed: the release pipeline
-    9. the release workflows watched, the binaries counted - each with its checksum and SBOMs - this machine's binary downloaded
+    9. the Release workflow watched (every job's result shown), the binaries counted - each with its checksum and SBOMs - this machine's binary downloaded
        and its checksum, attestation and --version checked, the milestone closed
 
 Every step recognises work already done, so after a failure (or a "no" at the prompt) the
@@ -552,21 +552,17 @@ def check_on_main(sha):
     return runs[0]
 
 
-def release_runs(tag):
-    fetch = lambda: gh_json("run", "list", "--repo", REPO, "--branch", tag, "--limit", "20",
-                            "--json", "databaseId,workflowName,status,conclusion,url", default=[]) or []
-    seen = {"n": -1, "stable": 0}
-
-    def settled(runs):
-        # every run has finished, and no new one has appeared for two polls in a row
-        if not runs or any(r.get("status") != "completed" for r in runs) or len(runs) < 5:
-            seen["stable"] = 0
-        elif len(runs) == seen["n"]:
-            seen["stable"] += 1
-        seen["n"] = len(runs)
-        return seen["stable"] >= 2
-
-    return wait_for("the release workflows", fetch, settled, 3600)
+def release_run(tag):
+    """The tag's Release workflow run, once it has finished, with its jobs."""
+    fetch = lambda: gh_json("run", "list", "--repo", REPO, "--workflow", "release.yaml", "--branch", tag, "--limit", "1",
+                            "--json", "databaseId,status,conclusion,url", default=[]) or []
+    runs = wait_for("the Release workflow to start", fetch, lambda r: bool(r), 600)
+    say("Release started: %s" % runs[0].get("url", ""))
+    runs = wait_for("the Release workflow", fetch, lambda r: r and r[0].get("status") == "completed", 3600)
+    run_ = runs[0]
+    view = gh_json("run", "view", str(run_.get("databaseId", "")), "--repo", REPO, "--json", "jobs", default={}) or {}
+    run_["jobs"] = view.get("jobs", [])
+    return run_
 
 
 def verify_binary(tag, assets):
@@ -605,8 +601,8 @@ def verify_binary(tag, assets):
 # Each binary of a release comes with these: its checksum, and its SBOMs (CycloneDX, SPDX).
 WITH_EACH_BINARY = (".sha256", ".cdx.json", ".spdx.json")
 BINARY_RE = re.compile(r"^shint\.[a-z0-9]+\.[a-z0-9]+(\.exe)?$")
-# And these from the other release workflows: the govulncheck report (Vulnerability Check), and each
-# registry's images' SBOMs, Grype reports and Dockle checks, per platform (Docker Hub Release, GHCR Release).
+# And these from the Release workflow's other jobs: the govulncheck report (vulncheck), and each registry's
+# images' SBOMs, Grype reports and Dockle checks, per platform (docker-hub and ghcr, attached by image-reports).
 REPORTS = ["govulncheck.txt"] + ["image.%s.linux.%s.%s" % (r, a, k) for r in ("dockerhub", "ghcr")
                                  for a in ("amd64", "arm64") for k in ("cdx.json", "spdx.json", "grype.json", "dockle.json")]
 
@@ -687,10 +683,13 @@ def publish(version, summary, includes):
         say("the tag %s is already on origin" % tag)
 
     step("the release pipeline")
-    runs = release_runs(tag)
-    failed = [r for r in runs if r.get("conclusion") not in ("success", "skipped")]
-    for r in runs:
-        say("%-26s %s" % (r.get("workflowName", "?"), r.get("conclusion")))
+    rr = release_run(tag)
+    for j in rr["jobs"]:
+        say("%-46s %s" % (j.get("name", "?"), j.get("conclusion")))
+    failed = rr.get("conclusion") != "success"
+    if failed:
+        say("FAIL the Release workflow ended '%s': %s (its announce job lists every part, and an issue names the "
+            "failed step)" % (rr.get("conclusion"), rr.get("url", "")))
     rel = gh_json("release", "view", tag, "--repo", REPO, "--json", "assets,url") or {"assets": []}
     assets = [a["name"] for a in rel.get("assets", [])]
     bins, missing, want = binaries(assets), missing_files(assets), previous_binary_count(tag)
