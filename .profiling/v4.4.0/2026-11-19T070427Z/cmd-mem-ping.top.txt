@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-19 01:06:38 CST
+Showing nodes accounting for 39825.75kB, 100% of 39825.75kB total
+Showing top 30 nodes out of 73
+      flat  flat%   sum%        cum   cum%
+11815.79kB 29.67% 29.67% 11815.79kB 29.67%  runtime/pprof.StartCPUProfile
+ 9739.41kB 24.46% 54.12%  9739.41kB 24.46%  runtime.mallocgc
+ 2621.17kB  6.58% 60.71%  3204.18kB  8.05%  compress/flate.NewWriter (inline)
+ 2560.47kB  6.43% 67.13%  2560.47kB  6.43%  github.com/dmartsapp/go-ping/v2/netutils.(*Pinger).consume (inline)
+ 2560.43kB  6.43% 73.56%  2560.43kB  6.43%  fmt.init.func1
+    2246kB  5.64% 79.20%     2246kB  5.64%  github.com/dmartsapp/go-ping/v2/netutils.NewPinger
+ 2065.68kB  5.19% 84.39%  2065.68kB  5.19%  compress/flate.(*fastGen).addBlock
+ 2048.31kB  5.14% 89.53%  2048.31kB  5.14%  compress/gzip.NewWriterLevel
+ 1024.30kB  2.57% 92.11%  1024.30kB  2.57%  github.com/spf13/pflag.(*FlagSet).AddFlag
+ 1024.25kB  2.57% 94.68%  1024.25kB  2.57%  github.com/spf13/pflag.NewFlagSet (inline)
+  583.01kB  1.46% 96.14%   583.01kB  1.46%  compress/flate.newFastEnc (inline)
+  512.88kB  1.29% 97.43%   512.88kB  1.29%  golang.org/x/net/ipv6.map.init.0
+  512.05kB  1.29% 98.71%   512.05kB  1.29%  regexp/syntax.(*parser).newRegexp
+  512.01kB  1.29%   100%  3072.44kB  7.71%  fmt.Sprint
+         0     0%   100%  2065.68kB  5.19%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%  2065.68kB  5.19%  compress/flate.(*compressor).close
+         0     0%   100%  2065.68kB  5.19%  compress/flate.(*compressor).deflateFast
+         0     0%   100%   583.01kB  1.46%  compress/flate.(*compressor).init
+         0     0%   100%  2065.68kB  5.19%  compress/flate.(*fastEncL1).encode
+         0     0%   100%  2065.68kB  5.19%  compress/gzip.(*Writer).Close
+         0     0%   100%  3204.18kB  8.05%  compress/gzip.(*Writer).Write
+         0     0%   100%  2560.43kB  6.43%  fmt.newPrinter
+         0     0%   100%  2560.47kB  6.43%  github.com/dmartsapp/go-ping/v2/netutils.(*Pinger).PingAll.func2
+         0     0%   100%  3072.44kB  7.71%  github.com/dmartsapp/shint/v4/lib.Fields
+         0     0%   100%     2246kB  5.64%  github.com/dmartsapp/shint/v4/lib/handlers/ping.Run
+         0     0%   100%  3072.44kB  7.71%  github.com/dmartsapp/shint/v4/lib/handlers/ping.Run.func1
+         0     0%   100%  3072.44kB  7.71%  github.com/dmartsapp/shint/v4/lib/handlers/ping.withPayloadSize
+         0     0%   100%     2246kB  5.64%  github.com/spf13/cobra.(*Command).Execute
+         0     0%   100%     2246kB  5.64%  github.com/spf13/cobra.(*Command).ExecuteC
+         0     0%   100%   512.12kB  1.29%  github.com/spf13/cobra.(*Command).Flags

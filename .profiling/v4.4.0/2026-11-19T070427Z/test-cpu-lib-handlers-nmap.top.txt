@@ -1,0 +1,37 @@
+File: lib-handlers-nmap.test
+Type: cpu
+Time: 2026-11-19 01:05:45 CST
+Duration: 4.34s, Total samples = 440ms (10.14%)
+Showing nodes accounting for 440ms, 100% of 440ms total
+Showing top 30 nodes out of 120
+      flat  flat%   sum%        cum   cum%
+     280ms 63.64% 63.64%      280ms 63.64%  syscall.rawsyscalln
+      80ms 18.18% 81.82%       80ms 18.18%  runtime.kevent
+      20ms  4.55% 86.36%       20ms  4.55%  runtime.pthread_cond_wait
+      10ms  2.27% 88.64%       10ms  2.27%  internal/poll.(*FD).Write
+      10ms  2.27% 90.91%       10ms  2.27%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+      10ms  2.27% 93.18%       10ms  2.27%  math/big.nat.setBytes
+      10ms  2.27% 95.45%       10ms  2.27%  runtime.memclrNoHeapPointers
+      10ms  2.27% 97.73%       10ms  2.27%  runtime.mmap
+      10ms  2.27%   100%       10ms  2.27%  runtime.pthread_kill
+         0     0%   100%       10ms  2.27%  crypto/rand.Int
+         0     0%   100%       10ms  2.27%  encoding/json.Unmarshal (inline)
+         0     0%   100%       10ms  2.27%  encoding/json/v2.Unmarshal
+         0     0%   100%       10ms  2.27%  encoding/json/v2.makeInterfaceArshaler.func2
+         0     0%   100%       10ms  2.27%  encoding/json/v2.makeMapArshaler.func3
+         0     0%   100%       10ms  2.27%  encoding/json/v2.makeSliceArshaler.func3
+         0     0%   100%       10ms  2.27%  encoding/json/v2.makeStructArshaler.func3
+         0     0%   100%       10ms  2.27%  encoding/json/v2.unmarshalDecode
+         0     0%   100%       10ms  2.27%  fmt.Fprintln
+         0     0%   100%       10ms  2.27%  fmt.Println (inline)
+         0     0%   100%       10ms  2.27%  fmt.Sprint
+         0     0%   100%       10ms  2.27%  fmt.init.func1
+         0     0%   100%       10ms  2.27%  fmt.newPrinter
+         0     0%   100%       10ms  2.27%  github.com/dmartsapp/shint/v4/lib.Fields
+         0     0%   100%      320ms 72.73%  github.com/dmartsapp/shint/v4/lib.IsPortUp
+         0     0%   100%       10ms  2.27%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.Run
+         0     0%   100%       10ms  2.27%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.Run.func4
+         0     0%   100%      330ms 75.00%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.Run.func6
+         0     0%   100%       10ms  2.27%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.TestNmapHandlerJSONHasNoProgressLines
+         0     0%   100%       10ms  2.27%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.TestNmapHandlerThrottleDelayIsInterruptible
+         0     0%   100%       10ms  2.27%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.TestNmapHandlerThrottleDelayIsInterruptible.func2

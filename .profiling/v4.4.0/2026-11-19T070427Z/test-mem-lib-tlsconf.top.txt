@@ -1,0 +1,36 @@
+File: lib-tlsconf.test
+Type: alloc_space
+Time: 2026-11-19 01:06:20 CST
+Showing nodes accounting for 3234.16kB, 100% of 3234.16kB total
+Showing top 30 nodes out of 38
+      flat  flat%   sum%        cum   cum%
+ 1184.27kB 36.62% 36.62%  1184.27kB 36.62%  runtime/pprof.StartCPUProfile
+     513kB 15.86% 52.48%      513kB 15.86%  runtime.mallocgc
+  512.75kB 15.85% 68.33%   512.75kB 15.85%  crypto/x509.parseCertificate
+  512.08kB 15.83% 84.17%   512.08kB 15.83%  compress/gzip.NewWriterLevel
+  512.06kB 15.83%   100%   512.06kB 15.83%  crypto/internal/fips140/hmac.New[go.shape.interface { BlockSize int; Reset; Size int; Sum []uint8; Write  }]
+         0     0%   100%   512.06kB 15.83%  crypto.SignMessage
+         0     0%   100%   512.06kB 15.83%  crypto/ecdsa.(*PrivateKey).Sign
+         0     0%   100%   512.06kB 15.83%  crypto/ecdsa.SignASN1
+         0     0%   100%   512.06kB 15.83%  crypto/ecdsa.signFIPS[go.shape.*crypto/internal/fips140/nistec.P256Point]
+         0     0%   100%   512.06kB 15.83%  crypto/internal/fips140/ecdsa.Sign[go.shape.*crypto/internal/fips140/nistec.P256Point,go.shape.interface { BlockSize int; Reset; Size int; Sum []uint8; Write  }]
+         0     0%   100%   512.06kB 15.83%  crypto/internal/fips140/ecdsa.newDRBG[go.shape.interface { BlockSize int; Reset; Size int; Sum []uint8; Write  }]
+         0     0%   100%   512.75kB 15.85%  crypto/tls.LoadX509KeyPair
+         0     0%   100%   512.75kB 15.85%  crypto/tls.X509KeyPair
+         0     0%   100%   512.06kB 15.83%  crypto/x509.CreateCertificate
+         0     0%   100%   512.75kB 15.85%  crypto/x509.ParseCertificate
+         0     0%   100%   512.06kB 15.83%  crypto/x509.signTBS
+         0     0%   100%   512.75kB 15.85%  github.com/dmartsapp/shint/v4/lib/internal/testutil.IssueCert
+         0     0%   100%  1024.81kB 31.69%  github.com/dmartsapp/shint/v4/lib/internal/testutil.NewCA
+         0     0%   100%   512.75kB 15.85%  github.com/dmartsapp/shint/v4/lib/tlsconf.TestBuildTLSConfigKeyWithoutCert
+         0     0%   100%   512.06kB 15.83%  github.com/dmartsapp/shint/v4/lib/tlsconf.TestBuildTLSConfigWithCACert
+         0     0%   100%  1184.27kB 36.62%  main.main
+         0     0%   100%      513kB 15.86%  runtime.allocm
+         0     0%   100%  1184.27kB 36.62%  runtime.main
+         0     0%   100%      513kB 15.86%  runtime.mstart
+         0     0%   100%      513kB 15.86%  runtime.mstart0
+         0     0%   100%      513kB 15.86%  runtime.mstart1
+         0     0%   100%      513kB 15.86%  runtime.newm
+         0     0%   100%      513kB 15.86%  runtime.newobject
+         0     0%   100%      513kB 15.86%  runtime.resetspinning
+         0     0%   100%      513kB 15.86%  runtime.schedule

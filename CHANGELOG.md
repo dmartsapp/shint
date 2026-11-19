@@ -4,7 +4,7 @@ Notable changes to shint, newest first. Versions follow [semantic versioning](ht
 
 Releases before v3.0.0 predate this file; see the [GitHub releases](https://github.com/dmartsapp/shint/releases) and tags.
 
-## v4.4.0 - unreleased
+## v4.4.0 - 2026-11-19
 
 - **New flag: `web --headers-only` shows each response's status and headers, and nothing else.** In text, a status line (`Response Received url=... status=200 status_text=OK proto=HTTP/1.1`) and one `header name=... value=...` line per value, sorted, escaped - no lookup lines, no statistics. **With `--json`, each stat holds only `url`, `success`, `status_code`, `status_text` and `headers`** (or `error`), and `input_params.headers_only` is `true`. The request is unchanged; add `-X HEAD` to skip downloading the body. It cannot be combined with `-W` or `--timing` (a usage error). See [Headers only](https://dmartsapp.github.io/shint/docs/web.html#headers-only).
 

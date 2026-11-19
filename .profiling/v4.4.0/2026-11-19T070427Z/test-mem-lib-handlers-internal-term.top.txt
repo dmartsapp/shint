@@ -1,0 +1,28 @@
+File: lib-handlers-internal-term.test
+Type: alloc_space
+Time: 2026-11-19 01:06:18 CST
+Showing nodes accounting for 2864.61kB, 100% of 2864.61kB total
+      flat  flat%   sum%        cum   cum%
+ 1184.27kB 41.34% 41.34%  1184.27kB 41.34%  runtime/pprof.StartCPUProfile
+ 1025.05kB 35.78% 77.12%  1025.05kB 35.78%  runtime.mallocgc
+  655.29kB 22.88%   100%   655.29kB 22.88%  compress/flate.NewWriter (inline)
+         0     0%   100%   655.29kB 22.88%  compress/gzip.(*Writer).Write
+         0     0%   100%  1184.27kB 41.34%  main.main
+         0     0%   100%   512.05kB 17.87%  runtime.(*scavengerState).init
+         0     0%   100%      513kB 17.91%  runtime.allocm
+         0     0%   100%   512.05kB 17.87%  runtime.bgscavenge
+         0     0%   100%  1184.27kB 41.34%  runtime.main
+         0     0%   100%      513kB 17.91%  runtime.mstart
+         0     0%   100%      513kB 17.91%  runtime.mstart0
+         0     0%   100%      513kB 17.91%  runtime.mstart1
+         0     0%   100%      513kB 17.91%  runtime.newm
+         0     0%   100%  1025.05kB 35.78%  runtime.newobject
+         0     0%   100%      513kB 17.91%  runtime.resetspinning
+         0     0%   100%      513kB 17.91%  runtime.schedule
+         0     0%   100%      513kB 17.91%  runtime.startm
+         0     0%   100%      513kB 17.91%  runtime.wakep
+         0     0%   100%   655.29kB 22.88%  runtime/pprof.(*profileBuilder).build
+         0     0%   100%   655.29kB 22.88%  runtime/pprof.profileWriter
+         0     0%   100%  1184.27kB 41.34%  testing.(*M).Run
+         0     0%   100%  1184.27kB 41.34%  testing.(*M).before
+         0     0%   100%  1184.27kB 41.34%  testing/internal/testdeps.TestDeps.StartCPUProfile

@@ -1,0 +1,30 @@
+File: lib-handlers-ss.test
+Type: cpu
+Time: 2026-11-19 01:06:08 CST
+Duration: 202.57ms, Total samples = 20ms ( 9.87%)
+Showing nodes accounting for 20ms, 100% of 20ms total
+      flat  flat%   sum%        cum   cum%
+      20ms   100%   100%       20ms   100%  syscall.rawsyscalln
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib/handlers/ss.TestReadProcSocketsErrors
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib/handlers/ss.fakeProc
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib/handlers/ss.fakeProc.func2
+         0     0%   100%       10ms 50.00%  internal/syscall/unix.Unlinkat (inline)
+         0     0%   100%       10ms 50.00%  os.Mkdir
+         0     0%   100%       10ms 50.00%  os.Mkdir.func1 (inline)
+         0     0%   100%       10ms 50.00%  os.MkdirAll
+         0     0%   100%       10ms 50.00%  os.RemoveAll (inline)
+         0     0%   100%       20ms   100%  os.ignoringEINTR (inline)
+         0     0%   100%       10ms 50.00%  os.removeAll
+         0     0%   100%       10ms 50.00%  os.removeAllFrom
+         0     0%   100%       10ms 50.00%  os.removefileat (inline)
+         0     0%   100%       10ms 50.00%  os.removefileat.func1 (inline)
+         0     0%   100%       10ms 50.00%  syscall.Mkdir
+         0     0%   100%       20ms   100%  syscall.syscall
+         0     0%   100%       20ms   100%  syscall.syscalln
+         0     0%   100%       10ms 50.00%  syscall.unlinkat
+         0     0%   100%       10ms 50.00%  testing.(*common).Cleanup.func1
+         0     0%   100%       10ms 50.00%  testing.(*common).makeTempDir.func1
+         0     0%   100%       10ms 50.00%  testing.(*common).runCleanup
+         0     0%   100%       10ms 50.00%  testing.removeAll
+         0     0%   100%       20ms   100%  testing.tRunner
+         0     0%   100%       10ms 50.00%  testing.tRunner.func2

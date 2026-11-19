@@ -21,7 +21,7 @@
 <header class="topbar">
   <label for="nav-toggle" class="burger" aria-hidden="true"><span></span><span></span><span></span></label>
   <a class="brand" href="index.html"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 11l6 5-6 5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="brandname">shint</span></a>
-  <span class="version">v4.3.0</span>
+  <span class="version">v4.4.0</span>
   <nav class="toplinks" aria-label="Site">
     <a href="install.html">Install</a>
     <a href="usage.html">Docs</a>
@@ -45,13 +45,13 @@
 <h3 id="testers-wanted">Testers wanted<a class="anchor" href="#testers-wanted" aria-label="Link to this section">#</a></h3>
 <p>Windows, the BSDs, Solaris, illumos, Android and AIX need people who use them. You do not need to know Go: every release binary has a test script of its own in <a href="https://github.com/dmartsapp/shint/tree/main/test/platforms"><code>test/platforms/</code></a> - a shell script, or PowerShell for Windows. It runs about 30 checks in a minute: it starts shint's own listeners on <code>127.0.0.1</code> and checks them, reads the machine's interfaces, routes and sockets, and, when example.com answers, tries a few checks over the internet. It changes nothing and needs no root. It knows what your platform should do, so <code>ss</code> saying "not supported yet" on FreeBSD counts as a pass.</p>
 <p>Download your platform's binary and its script, from the same release. On FreeBSD, for example (<code>fetch</code> or <code>wget</code> work too):</p>
-<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">curl</span> <span class="tok-flag">-LO</span> https://github.com/dmartsapp/shint/releases/download/v4.3.0/shint.freebsd.amd64
-<span class="tok-cmd">curl</span> <span class="tok-flag">-LO</span> https://raw.githubusercontent.com/dmartsapp/shint/v4.3.0/test/platforms/freebsd-amd64.sh
+<div class="codeblock lang-bash"><div class="codebar"><span class="codelabel">Shell</span></div><pre><code><span class="tok-cmd">curl</span> <span class="tok-flag">-LO</span> https://github.com/dmartsapp/shint/releases/download/v4.4.0/shint.freebsd.amd64
+<span class="tok-cmd">curl</span> <span class="tok-flag">-LO</span> https://raw.githubusercontent.com/dmartsapp/shint/v4.4.0/test/platforms/freebsd-amd64.sh
 <span class="tok-cmd">chmod</span> +x shint.freebsd.amd64
 <span class="tok-cmd">sh</span> freebsd-amd64.sh ./shint.freebsd.amd64</code></pre></div>
 <p>On Windows, in PowerShell:</p>
-<div class="codeblock lang-powershell"><div class="codebar"><span class="codelabel">POWERSHELL</span></div><pre><code>Invoke-WebRequest -OutFile shint.windows.amd64.exe https://github.com/dmartsapp/shint/releases/download/v4.3.0/shint.windows.amd64.exe
-Invoke-WebRequest -OutFile windows-amd64.ps1 https://raw.githubusercontent.com/dmartsapp/shint/v4.3.0/test/platforms/windows-amd64.ps1
+<div class="codeblock lang-powershell"><div class="codebar"><span class="codelabel">POWERSHELL</span></div><pre><code>Invoke-WebRequest -OutFile shint.windows.amd64.exe https://github.com/dmartsapp/shint/releases/download/v4.4.0/shint.windows.amd64.exe
+Invoke-WebRequest -OutFile windows-amd64.ps1 https://raw.githubusercontent.com/dmartsapp/shint/v4.4.0/test/platforms/windows-amd64.ps1
 powershell -ExecutionPolicy Bypass -File .\windows-amd64.ps1 .\shint.windows.amd64.exe</code></pre></div>
 <p>The script writes <code>results/freebsd-amd64.txt</code> (<code>results\windows-amd64.txt</code>): which release you tested and the binary's SHA-256, the system and its version, how many checks passed, and the error lines of any that failed - never the machine's name or its addresses. <a href="https://github.com/dmartsapp/shint/issues/new">Open an issue</a> and attach it: a check that fails on your system is exactly what we need to know. Results that come in are kept in <a href="https://github.com/dmartsapp/shint/tree/main/test/platforms/results"><code>test/platforms/results/</code></a>, one file per platform, and each one is checked against the SHA-256 published with its release.</p>
 <p>If you have Go and Python, <code>make check</code> runs the whole test suite, which tells us far more.</p>
@@ -68,7 +68,7 @@ powershell -ExecutionPolicy Bypass -File .\windows-amd64.ps1 .\shint.windows.amd
 <p>A few things in the JSON output are odd, and stay that way so that scripts written against them keep working: <code>timeout_ms</code> holds seconds, and <code>ping</code>'s <code>from_port</code>/<code>to_port</code> hold <code>7</code> and mean nothing. They are listed in <a href="output.html#inputparams">Output</a>.</p>
 </article>
 <nav class="pager" aria-label="Pagination"><a class="prev" href="output.html"><span>Previous</span>Output formats</a><a class="next" href="changelog.html"><span>Next</span>Changelog</a></nav>
-<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/limitations.md">Edit this page on GitHub</a><span>shint v4.3.0 &middot; MIT License</span></footer>
+<footer class="pagefoot"><a href="https://github.com/dmartsapp/shint/edit/main/docs/src/limitations.md">Edit this page on GitHub</a><span>shint v4.4.0 &middot; MIT License</span></footer>
 </main>
 <aside class="toc" aria-label="On this page"><p class="toctitle">On this page</p><ul><li class="toc2"><a href="#where-shint-is-tested-and-where-it-is-not">Where shint is tested, and where it is not</a></li><li class="toc3"><a href="#testers-wanted">Testers wanted</a></li><li class="toc2"><a href="#commands-that-differ-by-platform">Commands that differ by platform</a></li><li class="toc2"><a href="#what-shint-does-not-do">What shint does not do</a></li><li class="toc2"><a href="#bugs-still-open">Bugs still open</a></li><li class="toc2"><a href="#quirks-kept-on-purpose">Quirks kept on purpose</a></li></ul></aside>
 </div>

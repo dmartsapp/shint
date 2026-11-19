@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-19 01:06:21 CST
+Duration: 2.02s, Total samples = 190ms ( 9.39%)
+Showing nodes accounting for 190ms, 100% of 190ms total
+Showing top 30 nodes out of 57
+      flat  flat%   sum%        cum   cum%
+     180ms 94.74% 94.74%      180ms 94.74%  syscall.rawsyscalln
+      10ms  5.26%   100%       10ms  5.26%  runtime.kevent
+         0     0%   100%       10ms  5.26%  fmt.Fprintln
+         0     0%   100%       10ms  5.26%  fmt.Println (inline)
+         0     0%   100%      180ms 94.74%  github.com/dmartsapp/shint/v4/lib.IsPortUp
+         0     0%   100%       40ms 21.05%  github.com/dmartsapp/shint/v4/lib.IsPortUp.func1
+         0     0%   100%      190ms   100%  github.com/dmartsapp/shint/v4/lib/handlers/telnet.Run.func1
+         0     0%   100%       40ms 21.05%  internal/poll.(*FD).Close
+         0     0%   100%       10ms  5.26%  internal/poll.(*FD).Init
+         0     0%   100%       30ms 15.79%  internal/poll.(*FD).SetsockoptInt
+         0     0%   100%       10ms  5.26%  internal/poll.(*FD).Write
+         0     0%   100%       40ms 21.05%  internal/poll.(*FD).decref
+         0     0%   100%       40ms 21.05%  internal/poll.(*FD).destroy
+         0     0%   100%       40ms 21.05%  internal/poll.(*SysFile).destroy (inline)
+         0     0%   100%       10ms  5.26%  internal/poll.(*pollDesc).init
+         0     0%   100%       10ms  5.26%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%       10ms  5.26%  internal/poll.runtime_pollOpen
+         0     0%   100%      140ms 73.68%  net.(*Dialer).DialContext
+         0     0%   100%       30ms 15.79%  net.(*TCPConn).SetKeepAliveConfig
+         0     0%   100%       40ms 21.05%  net.(*conn).Close
+         0     0%   100%       40ms 21.05%  net.(*netFD).Close
+         0     0%   100%       70ms 36.84%  net.(*netFD).connect
+         0     0%   100%       80ms 42.11%  net.(*netFD).dial
+         0     0%   100%      140ms 73.68%  net.(*sysDialer).dialParallel
+         0     0%   100%      140ms 73.68%  net.(*sysDialer).dialSerial
+         0     0%   100%      140ms 73.68%  net.(*sysDialer).dialSingle
+         0     0%   100%      140ms 73.68%  net.(*sysDialer).dialTCP
+         0     0%   100%      140ms 73.68%  net.(*sysDialer).doDialTCP (inline)
+         0     0%   100%      140ms 73.68%  net.(*sysDialer).doDialTCPProto
+         0     0%   100%      110ms 57.89%  net.internetSocket

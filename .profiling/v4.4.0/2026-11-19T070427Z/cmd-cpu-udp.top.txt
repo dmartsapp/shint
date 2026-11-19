@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-19 01:06:32 CST
+Duration: 2.02s, Total samples = 220ms (10.87%)
+Showing nodes accounting for 220ms, 100% of 220ms total
+Showing top 30 nodes out of 92
+      flat  flat%   sum%        cum   cum%
+     130ms 59.09% 59.09%      130ms 59.09%  syscall.rawsyscalln
+      50ms 22.73% 81.82%       50ms 22.73%  runtime.kevent
+      10ms  4.55% 86.36%       10ms  4.55%  internal/runtime/atomic.(*UnsafePointer).StoreNoWB (inline)
+      10ms  4.55% 90.91%       10ms  4.55%  runtime.pthread_cond_wait
+      10ms  4.55% 95.45%       10ms  4.55%  runtime.pthread_mutex_unlock
+      10ms  4.55%   100%       10ms  4.55%  runtime.step
+         0     0%   100%       10ms  4.55%  fmt.Fprintln
+         0     0%   100%       10ms  4.55%  fmt.Println (inline)
+         0     0%   100%       10ms  4.55%  fmt.Sprintf
+         0     0%   100%      180ms 81.82%  github.com/dmartsapp/shint/v4/lib/handlers/udp.Run.func1
+         0     0%   100%      160ms 72.73%  github.com/dmartsapp/shint/v4/lib/handlers/udp.probeUDP
+         0     0%   100%       30ms 13.64%  github.com/dmartsapp/shint/v4/lib/handlers/udp.probeUDP.func1
+         0     0%   100%       30ms 13.64%  internal/poll.(*FD).Close
+         0     0%   100%       40ms 18.18%  internal/poll.(*FD).Init
+         0     0%   100%       10ms  4.55%  internal/poll.(*FD).Read
+         0     0%   100%       30ms 13.64%  internal/poll.(*FD).Write
+         0     0%   100%       30ms 13.64%  internal/poll.(*FD).decref
+         0     0%   100%       30ms 13.64%  internal/poll.(*FD).destroy
+         0     0%   100%       30ms 13.64%  internal/poll.(*SysFile).destroy (inline)
+         0     0%   100%       40ms 18.18%  internal/poll.(*pollDesc).init
+         0     0%   100%       40ms 18.18%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%       40ms 18.18%  internal/poll.runtime_pollOpen
+         0     0%   100%       10ms  4.55%  internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.spanSetBlockHeader2; runtime.spans [512]runtime.atomicMSpanPointer }]).StoreNoWB
+         0     0%   100%      100ms 45.45%  net.(*Dialer).DialContext
+         0     0%   100%       30ms 13.64%  net.(*conn).Close
+         0     0%   100%       10ms  4.55%  net.(*conn).Read
+         0     0%   100%       20ms  9.09%  net.(*conn).Write
+         0     0%   100%       30ms 13.64%  net.(*netFD).Close
+         0     0%   100%       10ms  4.55%  net.(*netFD).Read
+         0     0%   100%       20ms  9.09%  net.(*netFD).Write

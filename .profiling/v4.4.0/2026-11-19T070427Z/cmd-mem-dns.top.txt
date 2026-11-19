@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-19 01:06:40 CST
+Showing nodes accounting for 55.93MB, 100% of 55.93MB total
+Showing top 30 nodes out of 86
+      flat  flat%   sum%        cum   cum%
+   15.02MB 26.85% 26.85%    15.02MB 26.85%  runtime.mallocgc
+   12.13MB 21.69% 48.54%    12.13MB 21.69%  runtime/pprof.StartCPUProfile
+   11.70MB 20.92% 69.46%    12.70MB 22.71%  github.com/dmartsapp/shint/v4/lib/handlers/dns.udpExchange
+    4.03MB  7.21% 76.68%     4.03MB  7.21%  compress/flate.(*fastGen).addBlock
+    3.20MB  5.72% 82.40%     6.54MB 11.69%  compress/flate.NewWriter (inline)
+    2.28MB  4.07% 86.47%     2.28MB  4.07%  compress/flate.newFastEnc (inline)
+    1.50MB  2.68% 89.15%     1.50MB  2.68%  os/signal.NotifyContext
+    1.06MB  1.90% 91.06%     3.34MB  5.97%  compress/flate.(*compressor).init
+    0.50MB   0.9% 91.95%     0.50MB   0.9%  regexp.(*bitState).reset
+    0.50MB  0.89% 92.85%     0.50MB  0.89%  github.com/dmartsapp/shint/v4/lib/handlers/dns.map.init.0
+    0.50MB  0.89% 93.74%     0.50MB  0.89%  golang.org/x/net/dns/dnsmessage.(*Parser).AllQuestions
+    0.50MB  0.89% 94.64%     0.50MB  0.89%  crypto/internal/impl.Register
+    0.50MB  0.89% 95.53%     1.50MB  2.68%  github.com/dmartsapp/shint/v4/lib.Fields
+    0.50MB  0.89% 96.42%     0.50MB  0.89%  compress/gzip.NewWriterLevel
+    0.50MB  0.89% 97.32%     0.50MB  0.89%  github.com/dmartsapp/shint/v4/lib/handlers/internal/pace.WatchCancel.func1
+    0.50MB  0.89% 98.21%     0.50MB  0.89%  syscall.anyToSockaddr
+    0.50MB  0.89% 99.11%        1MB  1.79%  fmt.Sprint
+    0.50MB  0.89%   100%     0.50MB  0.89%  time.Duration.String
+         0     0%   100%     4.03MB  7.21%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%     4.03MB  7.21%  compress/flate.(*compressor).close
+         0     0%   100%     4.03MB  7.21%  compress/flate.(*compressor).deflateFast
+         0     0%   100%     4.03MB  7.21%  compress/flate.(*fastEncL1).encode
+         0     0%   100%     4.03MB  7.21%  compress/gzip.(*Writer).Close
+         0     0%   100%     6.54MB 11.69%  compress/gzip.(*Writer).Write
+         0     0%   100%     0.50MB  0.89%  crypto/internal/fips140/sha512.init.1
+         0     0%   100%     0.50MB  0.89%  fmt.(*pp).doPrint
+         0     0%   100%     0.50MB  0.89%  fmt.(*pp).handleMethods
+         0     0%   100%     0.50MB  0.89%  fmt.(*pp).printArg
+         0     0%   100%    14.20MB 25.39%  github.com/dmartsapp/shint/v4/lib/handlers/dns.Run
+         0     0%   100%    12.70MB 22.71%  github.com/dmartsapp/shint/v4/lib/handlers/dns.exchangeOne

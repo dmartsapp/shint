@@ -1,0 +1,36 @@
+File: lib-handlers-ip.test
+Type: alloc_space
+Time: 2026-11-19 01:06:07 CST
+Showing nodes accounting for 5595.69kB, 100% of 5595.69kB total
+Showing top 30 nodes out of 46
+      flat  flat%   sum%        cum   cum%
+ 1762.94kB 31.51% 31.51%  1762.94kB 31.51%  runtime/pprof.StartCPUProfile
+ 1025.05kB 18.32% 49.82%  1025.05kB 18.32%  runtime.mallocgc
+  688.56kB 12.31% 62.13%   688.56kB 12.31%  compress/flate.(*fastGen).addBlock
+  583.01kB 10.42% 72.55%   583.01kB 10.42%  compress/flate.newFastEnc (inline)
+  512.06kB  9.15% 81.70%   512.06kB  9.15%  internal/routebsd.parseAddrs
+  512.05kB  9.15% 90.85%   512.05kB  9.15%  internal/routebsd.(*wireFormat).parseInterfaceMessage
+  512.02kB  9.15%   100%   512.02kB  9.15%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout.func1
+         0     0%   100%   688.56kB 12.31%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%   688.56kB 12.31%  compress/flate.(*compressor).close
+         0     0%   100%   688.56kB 12.31%  compress/flate.(*compressor).deflateFast
+         0     0%   100%   583.01kB 10.42%  compress/flate.(*compressor).init
+         0     0%   100%   688.56kB 12.31%  compress/flate.(*fastEncL1).encode
+         0     0%   100%   583.01kB 10.42%  compress/flate.NewWriter (inline)
+         0     0%   100%   688.56kB 12.31%  compress/gzip.(*Writer).Close
+         0     0%   100%   583.01kB 10.42%  compress/gzip.(*Writer).Write
+         0     0%   100%  1024.12kB 18.30%  github.com/dmartsapp/shint/v4/lib/handlers/ip.TestPlatformNeighboursReadsTheTable
+         0     0%   100%   512.06kB  9.15%  github.com/dmartsapp/shint/v4/lib/handlers/ip.bsdNeighbours
+         0     0%   100%  1024.12kB 18.30%  github.com/dmartsapp/shint/v4/lib/handlers/ip.platformNeighbours
+         0     0%   100%   512.06kB  9.15%  github.com/dmartsapp/shint/v4/lib/handlers/ip.routeAddr
+         0     0%   100%   512.06kB  9.15%  internal/routebsd.(*wireFormat).parseInterfaceAddrMessage
+         0     0%   100%  1024.12kB 18.30%  internal/routebsd.FetchRIBMessages
+         0     0%   100%  1024.12kB 18.30%  internal/routebsd.parseRIB
+         0     0%   100%  1762.94kB 31.51%  main.main
+         0     0%   100%   512.06kB  9.15%  net.InterfaceByIndex
+         0     0%   100%   512.05kB  9.15%  net.Interfaces
+         0     0%   100%  1024.12kB 18.30%  net.interfaceMessages (inline)
+         0     0%   100%  1024.12kB 18.30%  net.interfaceTable
+         0     0%   100%   512.05kB  9.15%  runtime.(*scavengerState).init
+         0     0%   100%      513kB  9.17%  runtime.allocm
+         0     0%   100%   512.05kB  9.15%  runtime.bgscavenge

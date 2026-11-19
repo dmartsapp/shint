@@ -1,0 +1,37 @@
+File: lib-handlers-listen.test
+Type: cpu
+Time: 2026-11-19 01:06:09 CST
+Duration: 7.38s, Total samples = 110ms ( 1.49%)
+Showing nodes accounting for 110ms, 100% of 110ms total
+Showing top 30 nodes out of 84
+      flat  flat%   sum%        cum   cum%
+      70ms 63.64% 63.64%       70ms 63.64%  syscall.rawsyscalln
+      20ms 18.18% 81.82%       20ms 18.18%  runtime.pthread_cond_signal
+      10ms  9.09% 90.91%       10ms  9.09%  runtime.madvise
+      10ms  9.09%   100%       10ms  9.09%  runtime.pthread_cond_wait
+         0     0%   100%       10ms  9.09%  fmt.Fprintln
+         0     0%   100%       10ms  9.09%  fmt.Println (inline)
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers/listen.HTTP
+         0     0%   100%       20ms 18.18%  github.com/dmartsapp/shint/v4/lib/handlers/listen.TCP.func3
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers/listen.TestHTTPListenHandlerJSONEventMeasurements
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers/listen.TestTCPListenHandlerJSONEvent
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers/listen.TestTCPListenerLogsABulkTransferAsAFewLines
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers/listen.TestTCPListenerLogsABulkTransferAsAFewLines.func1
+         0     0%   100%       20ms 18.18%  github.com/dmartsapp/shint/v4/lib/handlers/listen.handleTCPConnection
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers/listen.runHTTPListener.func1
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers/listen.runHTTPListener.func1.1
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/handlers/listen.runTCPListener
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout
+         0     0%   100%       10ms  9.09%  github.com/dmartsapp/shint/v4/lib/internal/testutil.FreeTCPPort
+         0     0%   100%       20ms 18.18%  internal/poll.(*FD).Read
+         0     0%   100%       10ms  9.09%  internal/poll.(*FD).SetsockoptInt
+         0     0%   100%       20ms 18.18%  internal/poll.(*FD).Write
+         0     0%   100%       40ms 36.36%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%       10ms  9.09%  net.(*Dialer).Dial (inline)
+         0     0%   100%       20ms 18.18%  net.(*Dialer).DialContext
+         0     0%   100%       10ms  9.09%  net.(*ListenConfig).Listen
+         0     0%   100%       20ms 18.18%  net.(*conn).Read
+         0     0%   100%       10ms  9.09%  net.(*conn).Write
+         0     0%   100%       20ms 18.18%  net.(*netFD).Read
+         0     0%   100%       10ms  9.09%  net.(*netFD).Write
+         0     0%   100%       20ms 18.18%  net.(*sysDialer).dialParallel

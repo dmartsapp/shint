@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-19 01:06:24 CST
+Showing nodes accounting for 68.94MB, 100% of 68.94MB total
+Showing top 30 nodes out of 114
+      flat  flat%   sum%        cum   cum%
+   36.56MB 53.04% 53.04%    36.56MB 53.04%  runtime.mallocgc
+    9.25MB 13.42% 66.46%     9.25MB 13.42%  runtime/pprof.StartCPUProfile
+       5MB  7.25% 73.71%        5MB  7.25%  internal/strconv.FormatInt
+    3.84MB  5.57% 79.28%     4.87MB  7.07%  compress/flate.NewWriter
+    2.69MB  3.90% 83.18%     2.69MB  3.90%  compress/flate.(*fastGen).addBlock
+    1.50MB  2.18% 85.35%     1.50MB  2.18%  compress/gzip.NewWriterLevel
+    1.01MB  1.46% 86.82%     3.54MB  5.14%  github.com/dmartsapp/shint/v4/lib/handlers/telnet.Run
+    0.53MB  0.77% 87.59%     1.03MB  1.50%  compress/flate.(*compressor).init
+    0.52MB  0.75% 88.34%     0.52MB  0.75%  reflect.compiledTypelinks
+    0.52MB  0.75% 89.09%     0.52MB  0.75%  regexp.(*bitState).reset
+    0.51MB  0.74% 89.82%     0.51MB  0.74%  slices.Grow[go.shape.[]uint8,go.shape.uint8] (inline)
+    0.51MB  0.73% 90.56%     0.51MB  0.73%  internal/strconv.AppendBool (inline)
+    0.50MB  0.73% 91.29%     0.50MB  0.73%  runtime/pprof.(*profMap).lookup
+    0.50MB  0.73% 92.02%     0.50MB  0.73%  internal/strconv.AppendUint
+    0.50MB  0.73% 92.75%     2.53MB  3.68%  encoding/json/v2.makeStructArshaler.func2
+    0.50MB  0.73% 93.47%     0.50MB  0.73%  compress/flate.newHuffmanEncoder (inline)
+    0.50MB  0.73% 94.20%     0.50MB  0.73%  runtime/pprof.(*profileBuilder).emitLocation
+    0.50MB  0.73% 94.92%     0.50MB  0.73%  github.com/spf13/pflag.(*FlagSet).VarPF
+    0.50MB  0.73% 95.65%     0.50MB  0.73%  context.(*cancelCtx).Done
+    0.50MB  0.73% 96.37%     0.50MB  0.73%  main.interruptContext.func1
+    0.50MB  0.73% 97.10%        1MB  1.45%  os/signal.NotifyContext.func1
+    0.50MB  0.73% 97.82%     0.50MB  0.73%  net.sockaddrToTCP
+    0.50MB  0.73% 98.55%     0.50MB  0.73%  time.map.init.0
+    0.50MB  0.73% 99.27%     0.50MB  0.73%  internal/poll.runtime_pollSetDeadline
+    0.50MB  0.73%   100%     0.50MB  0.73%  os/signal.NotifyContext
+         0     0%   100%     2.69MB  3.90%  compress/flate.(*Writer).Close
+         0     0%   100%     2.69MB  3.90%  compress/flate.(*compressor).close
+         0     0%   100%     2.69MB  3.90%  compress/flate.(*compressor).deflateFast
+         0     0%   100%     2.69MB  3.90%  compress/flate.(*fastEncL1).encode
+         0     0%   100%     0.50MB  0.73%  compress/flate.newHuffmanBitWriter

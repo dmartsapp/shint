@@ -1,0 +1,36 @@
+File: lib-handlers-ping.test
+Type: alloc_space
+Time: 2026-11-19 01:05:35 CST
+Showing nodes accounting for 5033.97kB, 100% of 5033.97kB total
+Showing top 30 nodes out of 47
+      flat  flat%   sum%        cum   cum%
+ 1184.27kB 23.53% 23.53%  1184.27kB 23.53%  runtime/pprof.StartCPUProfile
+ 1040.08kB 20.66% 44.19%  1040.08kB 20.66%  github.com/dmartsapp/go-ping/v2/netutils.NewPinger
+ 1025.05kB 20.36% 64.55%  1025.05kB 20.36%  runtime.mallocgc
+  688.56kB 13.68% 78.23%   688.56kB 13.68%  compress/flate.(*fastGen).addBlock
+  583.01kB 11.58% 89.81%   583.01kB 11.58%  compress/flate.newFastEnc (inline)
+     513kB 10.19%   100%      513kB 10.19%  bytes.growSlice
+         0     0%   100%      513kB 10.19%  bytes.(*Buffer).ReadFrom
+         0     0%   100%      513kB 10.19%  bytes.(*Buffer).grow
+         0     0%   100%   688.56kB 13.68%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%   688.56kB 13.68%  compress/flate.(*compressor).close
+         0     0%   100%   688.56kB 13.68%  compress/flate.(*compressor).deflateFast
+         0     0%   100%   583.01kB 11.58%  compress/flate.(*compressor).init
+         0     0%   100%   688.56kB 13.68%  compress/flate.(*fastEncL1).encode
+         0     0%   100%   583.01kB 11.58%  compress/flate.NewWriter (inline)
+         0     0%   100%   688.56kB 13.68%  compress/gzip.(*Writer).Close
+         0     0%   100%   583.01kB 11.58%  compress/gzip.(*Writer).Write
+         0     0%   100%  1040.08kB 20.66%  github.com/dmartsapp/shint/v4/lib/handlers/ping.Run
+         0     0%   100%   520.04kB 10.33%  github.com/dmartsapp/shint/v4/lib/handlers/ping.TestHandleICMPJSONMode
+         0     0%   100%   520.04kB 10.33%  github.com/dmartsapp/shint/v4/lib/handlers/ping.TestHandleICMPJSONMode.func1
+         0     0%   100%   520.04kB 10.33%  github.com/dmartsapp/shint/v4/lib/handlers/ping.TestHandleICMPShowsPayloadSize
+         0     0%   100%   520.04kB 10.33%  github.com/dmartsapp/shint/v4/lib/handlers/ping.TestHandleICMPShowsPayloadSize.func2
+         0     0%   100%  1040.08kB 20.66%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout
+         0     0%   100%      513kB 10.19%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout.func1
+         0     0%   100%      513kB 10.19%  io.Copy (inline)
+         0     0%   100%      513kB 10.19%  io.copyBuffer
+         0     0%   100%  1184.27kB 23.53%  main.main
+         0     0%   100%      513kB 10.19%  os.(*File).WriteTo
+         0     0%   100%      513kB 10.19%  os.genericWriteTo
+         0     0%   100%   512.05kB 10.17%  runtime.(*scavengerState).init
+         0     0%   100%      513kB 10.19%  runtime.allocm

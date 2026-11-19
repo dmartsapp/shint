@@ -1,0 +1,32 @@
+File: lib.test
+Type: cpu
+Time: 2026-11-19 01:06:19 CST
+Duration: 202.48ms, Total samples = 20ms ( 9.88%)
+Showing nodes accounting for 20ms, 100% of 20ms total
+      flat  flat%   sum%        cum   cum%
+      10ms 50.00% 50.00%       10ms 50.00%  runtime.memclrNoHeapPointers
+      10ms 50.00%   100%       10ms 50.00%  syscall.rawsyscalln
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib.ParsePorts
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib.TestParsePorts
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib.TestSetSourceInterface
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib.loopbackName
+         0     0%   100%       10ms 50.00%  internal/routebsd.FetchRIBMessages
+         0     0%   100%       10ms 50.00%  internal/routebsd.fetchRIB
+         0     0%   100%       10ms 50.00%  internal/runtime/maps.(*table).rehash
+         0     0%   100%       10ms 50.00%  internal/runtime/maps.(*table).reset
+         0     0%   100%       10ms 50.00%  internal/runtime/maps.(*table).split
+         0     0%   100%       10ms 50.00%  internal/runtime/maps.newGroups (inline)
+         0     0%   100%       10ms 50.00%  internal/runtime/maps.newTable
+         0     0%   100%       10ms 50.00%  internal/runtime/maps.newarray
+         0     0%   100%       10ms 50.00%  net.Interfaces
+         0     0%   100%       10ms 50.00%  net.interfaceMessages (inline)
+         0     0%   100%       10ms 50.00%  net.interfaceTable
+         0     0%   100%       10ms 50.00%  runtime.mallocgc
+         0     0%   100%       10ms 50.00%  runtime.mallocgcSmallNoscan
+         0     0%   100%       10ms 50.00%  runtime.mapassign_fast64
+         0     0%   100%       10ms 50.00%  runtime.newarray
+         0     0%   100%       10ms 50.00%  syscall.RouteRIB
+         0     0%   100%       10ms 50.00%  syscall.syscall6
+         0     0%   100%       10ms 50.00%  syscall.syscalln
+         0     0%   100%       10ms 50.00%  syscall.sysctl
+         0     0%   100%       20ms   100%  testing.tRunner

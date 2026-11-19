@@ -1,0 +1,37 @@
+File: lib-handlers-web.test
+Type: cpu
+Time: 2026-11-19 01:05:36 CST
+Duration: 7.68s, Total samples = 910ms (11.85%)
+Showing nodes accounting for 910ms, 100% of 910ms total
+Showing top 30 nodes out of 236
+      flat  flat%   sum%        cum   cum%
+     140ms 15.38% 15.38%      140ms 15.38%  encoding/json/internal/jsonwire.parseHexUint16 (inline)
+     140ms 15.38% 30.77%      140ms 15.38%  syscall.rawsyscalln
+     110ms 12.09% 42.86%      110ms 12.09%  runtime.memmove
+      70ms  7.69% 50.55%      150ms 16.48%  encoding/json/internal/jsonwire.AppendQuote
+      70ms  7.69% 58.24%       70ms  7.69%  runtime.usleep
+      60ms  6.59% 64.84%      230ms 25.27%  encoding/json/internal/jsonwire.ConsumeStringResumable
+      60ms  6.59% 71.43%       60ms  6.59%  runtime.madvise
+      40ms  4.40% 75.82%       40ms  4.40%  runtime.memclrNoHeapPointers
+      40ms  4.40% 80.22%       40ms  4.40%  runtime.pthread_cond_signal
+      20ms  2.20% 82.42%       70ms  7.69%  encoding/json/internal/jsonwire.appendEscapedASCII
+      20ms  2.20% 84.62%       50ms  5.49%  encoding/json/internal/jsonwire.appendEscapedUTF16 (inline)
+      20ms  2.20% 86.81%       20ms  2.20%  runtime.kevent
+      20ms  2.20% 89.01%       20ms  2.20%  runtime.mmap
+      20ms  2.20% 91.21%       20ms  2.20%  runtime.pthread_cond_wait
+      10ms  1.10% 92.31%       10ms  1.10%  crypto/x509/internal/macos.syscall
+      10ms  1.10% 93.41%       10ms  1.10%  encoding/json/internal/jsonwire.ConsumeSimpleString
+      10ms  1.10% 94.51%       10ms  1.10%  encoding/json/internal/jsonwire.ConsumeStringResumable.func1 (inline)
+      10ms  1.10% 95.60%       10ms  1.10%  internal/runtime/atomic.(*UnsafePointer).Load
+      10ms  1.10% 96.70%       10ms  1.10%  runtime.asyncPreempt
+      10ms  1.10% 97.80%       10ms  1.10%  runtime.execute
+      10ms  1.10% 98.90%       10ms  1.10%  runtime.pthread_kill
+      10ms  1.10%   100%       10ms  1.10%  unicode/utf8.DecodeRune (inline)
+         0     0%   100%       10ms  1.10%  _.goready.func1
+         0     0%   100%       10ms  1.10%  bufio.(*Reader).Read
+         0     0%   100%       20ms  2.20%  bufio.(*Reader).ReadLine
+         0     0%   100%       20ms  2.20%  bufio.(*Reader).ReadSlice
+         0     0%   100%       20ms  2.20%  bufio.(*Reader).fill
+         0     0%   100%       60ms  6.59%  bytes.(*Buffer).ReadFrom
+         0     0%   100%       10ms  1.10%  bytes.(*Buffer).String
+         0     0%   100%       40ms  4.40%  bytes.(*Buffer).grow

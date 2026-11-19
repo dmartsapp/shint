@@ -1,0 +1,36 @@
+File: shint-profiling
+Type: alloc_space
+Time: 2026-11-19 01:06:43 CST
+Showing nodes accounting for 75.96MB, 93.25% of 81.46MB total
+Showing top 30 nodes out of 179
+      flat  flat%   sum%        cum   cum%
+   18.03MB 22.13% 22.13%    18.03MB 22.13%  runtime.mallocgc
+   12.70MB 15.59% 37.72%    12.70MB 15.59%  runtime/pprof.StartCPUProfile
+    6.50MB  7.98% 45.70%        7MB  8.59%  net/textproto.(*Reader).ReadLine (inline)
+       5MB  6.14% 51.83%        5MB  6.14%  syscall.anyToSockaddr
+       5MB  6.14% 57.97%        5MB  6.14%  net.IP.String
+       3MB  3.68% 61.66%        3MB  3.68%  net/http.Header.Clone
+       3MB  3.68% 65.34%        3MB  3.68%  net.(*conn).Read
+    2.69MB  3.30% 68.64%     2.69MB  3.30%  compress/flate.(*fastGen).addBlock
+       2MB  2.46% 71.10%        2MB  2.46%  net/textproto.MIMEHeader.Set
+       2MB  2.46% 73.55%        2MB  2.46%  net/textproto.readMIMEHeader
+       2MB  2.46% 76.01%        4MB  4.91%  github.com/dmartsapp/shint/v4/lib/handlers/listen.HTTP.func2
+    1.92MB  2.36% 78.37%     3.02MB  3.71%  compress/flate.NewWriter
+       1MB  1.23% 79.59%    11.50MB 14.12%  net/http.(*conn).readRequest
+       1MB  1.23% 80.82%        1MB  1.23%  net/http.(*Server).newConn
+       1MB  1.23% 82.05%     1.50MB  1.84%  github.com/dmartsapp/shint/v4/lib.Fields
+       1MB  1.23% 83.28%        2MB  2.46%  github.com/dmartsapp/shint/v4/lib/handlers/listen.HTTP.func4
+       1MB  1.23% 84.51%        1MB  1.23%  net/http.init.func1
+       1MB  1.23% 85.73%        1MB  1.23%  github.com/dmartsapp/shint/v4/lib/handlers/internal/wire.(*Conn).FirstWritten
+    0.57MB   0.7% 86.43%     0.57MB   0.7%  compress/flate.newFastEnc (inline)
+    0.53MB  0.65% 87.08%     1.10MB  1.35%  compress/flate.(*compressor).init
+    0.52MB  0.63% 87.72%     0.52MB  0.63%  regexp.(*bitState).reset
+    0.50MB  0.62% 88.33%     0.50MB  0.62%  bufio.NewWriterSize
+    0.50MB  0.62% 88.95%     0.50MB  0.62%  time.readFile
+    0.50MB  0.61% 89.56%     0.50MB  0.61%  sync.(*Pool).pinSlow
+    0.50MB  0.61% 90.18%     0.50MB  0.61%  context.(*cancelCtx).propagateCancel
+    0.50MB  0.61% 90.79%     0.50MB  0.61%  compress/gzip.NewWriterLevel
+    0.50MB  0.61% 91.41%     0.50MB  0.61%  net/url.parse
+    0.50MB  0.61% 92.02%     0.50MB  0.61%  internal/bytealg.MakeNoZero
+    0.50MB  0.61% 92.63%        6MB  7.37%  github.com/dmartsapp/shint/v4/lib/handlers/internal/wire.Listener.Accept
+    0.50MB  0.61% 93.25%     0.50MB  0.61%  syscall.ByteSliceFromString

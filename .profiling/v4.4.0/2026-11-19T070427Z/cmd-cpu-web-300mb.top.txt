@@ -1,0 +1,33 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-19 01:06:29 CST
+Duration: 2.02s, Total samples = 400ms (19.78%)
+Showing nodes accounting for 400ms, 100% of 400ms total
+      flat  flat%   sum%        cum   cum%
+     340ms 85.00% 85.00%      340ms 85.00%  syscall.rawsyscalln
+      60ms 15.00%   100%       60ms 15.00%  runtime.kevent
+         0     0%   100%      340ms 85.00%  bufio.(*Reader).Read
+         0     0%   100%      340ms 85.00%  github.com/dmartsapp/shint/v4/lib/handlers/internal/wire.(*Conn).Read
+         0     0%   100%      340ms 85.00%  github.com/dmartsapp/shint/v4/lib/handlers/web.Run.func1
+         0     0%   100%      340ms 85.00%  internal/poll.(*FD).Read
+         0     0%   100%      340ms 85.00%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%      340ms 85.00%  io.(*LimitedReader).Read
+         0     0%   100%      340ms 85.00%  io.Copy (inline)
+         0     0%   100%      340ms 85.00%  io.copyBuffer
+         0     0%   100%      340ms 85.00%  io.discard.ReadFrom
+         0     0%   100%      340ms 85.00%  net.(*conn).Read
+         0     0%   100%      340ms 85.00%  net.(*netFD).Read
+         0     0%   100%      340ms 85.00%  net/http.(*body).Read
+         0     0%   100%      340ms 85.00%  net/http.(*body).readLocked
+         0     0%   100%      340ms 85.00%  net/http.(*bodyEOFSignal).Read
+         0     0%   100%      340ms 85.00%  net/http.(*cancelTimerBody).Read
+         0     0%   100%      340ms 85.00%  net/http.(*persistConn).Read
+         0     0%   100%       60ms 15.00%  runtime.findRunnable
+         0     0%   100%       60ms 15.00%  runtime.mcall
+         0     0%   100%       60ms 15.00%  runtime.netpoll
+         0     0%   100%       60ms 15.00%  runtime.park_m
+         0     0%   100%       60ms 15.00%  runtime.schedule
+         0     0%   100%      340ms 85.00%  syscall.Read (inline)
+         0     0%   100%      340ms 85.00%  syscall.read
+         0     0%   100%      340ms 85.00%  syscall.syscall
+         0     0%   100%      340ms 85.00%  syscall.syscalln

@@ -1,0 +1,37 @@
+File: shint-profiling
+Type: cpu
+Time: 2026-11-19 01:06:27 CST
+Duration: 2.02s, Total samples = 150ms ( 7.41%)
+Showing nodes accounting for 150ms, 100% of 150ms total
+Showing top 30 nodes out of 107
+      flat  flat%   sum%        cum   cum%
+      60ms 40.00% 40.00%       60ms 40.00%  syscall.rawsyscalln
+      30ms 20.00% 60.00%       30ms 20.00%  runtime.pthread_cond_wait
+      20ms 13.33% 73.33%       20ms 13.33%  runtime.kevent
+      10ms  6.67% 80.00%       10ms  6.67%  internal/runtime/atomic.(*UnsafePointer).StoreNoWB (inline)
+      10ms  6.67% 86.67%       10ms  6.67%  runtime.scanblock
+      10ms  6.67% 93.33%       10ms  6.67%  runtime.step
+      10ms  6.67%   100%       10ms  6.67%  runtime.usleep
+         0     0%   100%       10ms  6.67%  bufio.(*Reader).Peek
+         0     0%   100%       10ms  6.67%  bufio.(*Reader).fill
+         0     0%   100%       10ms  6.67%  fmt.Fprintln
+         0     0%   100%       10ms  6.67%  fmt.Println (inline)
+         0     0%   100%       10ms  6.67%  github.com/dmartsapp/shint/v4/lib/handlers/internal/wire.(*Conn).Close
+         0     0%   100%       10ms  6.67%  github.com/dmartsapp/shint/v4/lib/handlers/internal/wire.(*Conn).Close.func1
+         0     0%   100%       10ms  6.67%  github.com/dmartsapp/shint/v4/lib/handlers/internal/wire.(*Conn).Read
+         0     0%   100%       40ms 26.67%  github.com/dmartsapp/shint/v4/lib/handlers/internal/wire.NewTransport.func1
+         0     0%   100%       10ms  6.67%  github.com/dmartsapp/shint/v4/lib/handlers/web.Run.func1
+         0     0%   100%       10ms  6.67%  internal/poll.(*FD).Close
+         0     0%   100%       10ms  6.67%  internal/poll.(*FD).Init
+         0     0%   100%       10ms  6.67%  internal/poll.(*FD).Read
+         0     0%   100%       30ms 20.00%  internal/poll.(*FD).SetsockoptInt
+         0     0%   100%       10ms  6.67%  internal/poll.(*FD).Write
+         0     0%   100%       10ms  6.67%  internal/poll.(*FD).decref
+         0     0%   100%       10ms  6.67%  internal/poll.(*FD).destroy
+         0     0%   100%       10ms  6.67%  internal/poll.(*SysFile).destroy (inline)
+         0     0%   100%       10ms  6.67%  internal/poll.(*pollDesc).init
+         0     0%   100%       20ms 13.33%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%       10ms  6.67%  internal/poll.runtime_pollOpen
+         0     0%   100%       10ms  6.67%  internal/runtime/atomic.(*Pointer[go.shape.struct { runtime.spanSetBlockHeader2; runtime.spans [512]runtime.atomicMSpanPointer }]).StoreNoWB
+         0     0%   100%       40ms 26.67%  net.(*Dialer).DialContext
+         0     0%   100%       10ms  6.67%  net.(*TCPConn).SetKeepAliveConfig

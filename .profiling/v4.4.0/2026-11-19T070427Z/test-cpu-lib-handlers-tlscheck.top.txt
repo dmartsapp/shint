@@ -1,0 +1,37 @@
+File: lib-handlers-tlscheck.test
+Type: cpu
+Time: 2026-11-19 01:05:44 CST
+Duration: 202.39ms, Total samples = 30ms (14.82%)
+Showing nodes accounting for 30ms, 100% of 30ms total
+Showing top 30 nodes out of 31
+      flat  flat%   sum%        cum   cum%
+      20ms 66.67% 66.67%       20ms 66.67%  syscall.rawsyscalln
+      10ms 33.33%   100%       10ms 33.33%  runtime.madvise
+         0     0%   100%       10ms 33.33%  crypto/tls.(*Conn).Close
+         0     0%   100%       10ms 33.33%  crypto/tls.(*Conn).closeNotify
+         0     0%   100%       10ms 33.33%  crypto/tls.(*Conn).sendAlertLocked
+         0     0%   100%       10ms 33.33%  crypto/tls.(*Conn).write
+         0     0%   100%       10ms 33.33%  crypto/tls.(*Conn).writeRecordLocked
+         0     0%   100%       10ms 33.33%  fmt.Fprintln
+         0     0%   100%       10ms 33.33%  fmt.Println (inline)
+         0     0%   100%       10ms 33.33%  github.com/dmartsapp/shint/v4/lib/handlers/tlscheck.Run
+         0     0%   100%       10ms 33.33%  github.com/dmartsapp/shint/v4/lib/handlers/tlscheck.TestTLSServerNameIsSentAndVerified
+         0     0%   100%       10ms 33.33%  github.com/dmartsapp/shint/v4/lib/handlers/tlscheck.runTLS
+         0     0%   100%       10ms 33.33%  github.com/dmartsapp/shint/v4/lib/handlers/tlscheck.runTLS.func2
+         0     0%   100%       10ms 33.33%  github.com/dmartsapp/shint/v4/lib/handlers/tlscheck.tlsServerWith.func2.1
+         0     0%   100%       10ms 33.33%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout
+         0     0%   100%       20ms 66.67%  internal/poll.(*FD).Write
+         0     0%   100%       20ms 66.67%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%       10ms 33.33%  net.(*conn).Write
+         0     0%   100%       10ms 33.33%  net.(*netFD).Write
+         0     0%   100%       10ms 33.33%  os.(*File).Write
+         0     0%   100%       10ms 33.33%  os.(*File).write (inline)
+         0     0%   100%       10ms 33.33%  runtime.(*mheap).alloc.func1
+         0     0%   100%       10ms 33.33%  runtime.(*mheap).allocSpan
+         0     0%   100%       10ms 33.33%  runtime.sysUsed (inline)
+         0     0%   100%       10ms 33.33%  runtime.sysUsedOS (inline)
+         0     0%   100%       10ms 33.33%  runtime.systemstack
+         0     0%   100%       20ms 66.67%  syscall.Write (inline)
+         0     0%   100%       20ms 66.67%  syscall.syscall
+         0     0%   100%       20ms 66.67%  syscall.syscalln
+         0     0%   100%       20ms 66.67%  syscall.write

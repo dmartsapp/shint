@@ -1,0 +1,36 @@
+File: lib-handlers-tlscheck.test
+Type: alloc_space
+Time: 2026-11-19 01:05:45 CST
+Showing nodes accounting for 10138.65kB, 100% of 10138.65kB total
+Showing top 30 nodes out of 82
+      flat  flat%   sum%        cum   cum%
+ 1762.94kB 17.39% 17.39%  1762.94kB 17.39%  runtime/pprof.StartCPUProfile
+    1026kB 10.12% 27.51%     1026kB 10.12%  runtime.mallocgc
+    1025kB 10.11% 37.62%     1025kB 10.11%  crypto/tls.Client (inline)
+ 1024.41kB 10.10% 47.72%  1024.41kB 10.10%  crypto/tls.(*weakCertCache).newCert.func1
+ 1024.02kB 10.10% 57.82%  1024.02kB 10.10%  crypto/tls.(*Conn).unmarshalHandshakeMessage
+  688.56kB  6.79% 64.61%   688.56kB  6.79%  compress/flate.(*fastGen).addBlock
+     514kB  5.07% 69.68%      514kB  5.07%  bytes.(*Buffer).String
+  512.88kB  5.06% 74.74%   512.88kB  5.06%  bytes.Clone (inline)
+  512.62kB  5.06% 79.80%   512.62kB  5.06%  bytes.growSlice
+  512.10kB  5.05% 84.85%   512.10kB  5.05%  crypto/internal/fips140/sha512.(*Digest).MarshalBinary
+  512.08kB  5.05% 89.90%   512.08kB  5.05%  compress/gzip.NewWriterLevel
+  512.03kB  5.05% 94.95%   512.03kB  5.05%  encoding/json/jsontext.getBufferedEncoder
+  512.02kB  5.05%   100%  3074.55kB 30.33%  github.com/dmartsapp/shint/v4/lib/handlers/tlscheck.Run
+         0     0%   100%   512.62kB  5.06%  bytes.(*Buffer).Write
+         0     0%   100%   512.62kB  5.06%  bytes.(*Buffer).grow
+         0     0%   100%   688.56kB  6.79%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%   688.56kB  6.79%  compress/flate.(*compressor).close
+         0     0%   100%   688.56kB  6.79%  compress/flate.(*compressor).deflateFast
+         0     0%   100%   688.56kB  6.79%  compress/flate.(*fastEncL1).encode
+         0     0%   100%   688.56kB  6.79%  compress/gzip.(*Writer).Close
+         0     0%   100%   512.10kB  5.05%  crypto.SignMessage
+         0     0%   100%   512.10kB  5.05%  crypto/ecdsa.(*PrivateKey).Sign
+         0     0%   100%   512.10kB  5.05%  crypto/ecdsa.SignASN1
+         0     0%   100%   512.10kB  5.05%  crypto/ecdsa.signFIPS[go.shape.*crypto/internal/fips140/nistec.P256Point]
+         0     0%   100%   512.10kB  5.05%  crypto/internal/fips140/ecdsa.(*hmacDRBG).Generate
+         0     0%   100%   512.10kB  5.05%  crypto/internal/fips140/ecdsa.Sign[go.shape.*crypto/internal/fips140/nistec.P256Point,go.shape.interface { BlockSize int; Reset; Size int; Sum []uint8; Write  }]
+         0     0%   100%   512.10kB  5.05%  crypto/internal/fips140/ecdsa.randomPoint[go.shape.*crypto/internal/fips140/nistec.P256Point]
+         0     0%   100%   512.10kB  5.05%  crypto/internal/fips140/ecdsa.signGeneric[go.shape.*crypto/internal/fips140/nistec.P256Point]
+         0     0%   100%   512.10kB  5.05%  crypto/internal/fips140/ecdsa.signGeneric[go.shape.*crypto/internal/fips140/nistec.P256Point].func1
+         0     0%   100%   512.10kB  5.05%  crypto/internal/fips140/ecdsa.sign[go.shape.*crypto/internal/fips140/nistec.P256Point] (inline)

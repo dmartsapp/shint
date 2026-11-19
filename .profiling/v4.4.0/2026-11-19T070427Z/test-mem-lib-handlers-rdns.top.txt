@@ -1,0 +1,36 @@
+File: lib-handlers-rdns.test
+Type: alloc_space
+Time: 2026-11-19 01:06:01 CST
+Showing nodes accounting for 4533.23kB, 100% of 4533.23kB total
+Showing top 30 nodes out of 31
+      flat  flat%   sum%        cum   cum%
+ 1762.94kB 38.89% 38.89%  1762.94kB 38.89%  runtime/pprof.StartCPUProfile
+ 1025.05kB 22.61% 61.50%  1025.05kB 22.61%  runtime.mallocgc
+  688.56kB 15.19% 76.69%   688.56kB 15.19%  compress/flate.(*fastGen).addBlock
+  544.67kB 12.01% 88.71%   544.67kB 12.01%  compress/flate.(*compressor).init
+  512.02kB 11.29%   100%   512.02kB 11.29%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout.func1
+         0     0%   100%   688.56kB 15.19%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%   688.56kB 15.19%  compress/flate.(*compressor).close
+         0     0%   100%   688.56kB 15.19%  compress/flate.(*compressor).deflateFast
+         0     0%   100%   688.56kB 15.19%  compress/flate.(*fastEncL1).encode
+         0     0%   100%   544.67kB 12.01%  compress/flate.NewWriter (inline)
+         0     0%   100%   688.56kB 15.19%  compress/gzip.(*Writer).Close
+         0     0%   100%   544.67kB 12.01%  compress/gzip.(*Writer).Write
+         0     0%   100%  1762.94kB 38.89%  main.main
+         0     0%   100%   512.05kB 11.30%  runtime.(*scavengerState).init
+         0     0%   100%      513kB 11.32%  runtime.allocm
+         0     0%   100%   512.05kB 11.30%  runtime.bgscavenge
+         0     0%   100%  1762.94kB 38.89%  runtime.main
+         0     0%   100%      513kB 11.32%  runtime.mstart
+         0     0%   100%      513kB 11.32%  runtime.mstart0
+         0     0%   100%      513kB 11.32%  runtime.mstart1
+         0     0%   100%      513kB 11.32%  runtime.newm
+         0     0%   100%  1025.05kB 22.61%  runtime.newobject
+         0     0%   100%      513kB 11.32%  runtime.resetspinning
+         0     0%   100%      513kB 11.32%  runtime.schedule
+         0     0%   100%      513kB 11.32%  runtime.startm
+         0     0%   100%      513kB 11.32%  runtime.wakep
+         0     0%   100%  1233.22kB 27.20%  runtime/pprof.(*profileBuilder).build
+         0     0%   100%  1233.22kB 27.20%  runtime/pprof.profileWriter
+         0     0%   100%  1762.94kB 38.89%  testing.(*M).Run
+         0     0%   100%  1762.94kB 38.89%  testing.(*M).before

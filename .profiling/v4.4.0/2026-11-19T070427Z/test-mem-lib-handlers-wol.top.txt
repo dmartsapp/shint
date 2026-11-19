@@ -1,0 +1,31 @@
+File: lib-handlers-wol.test
+Type: alloc_space
+Time: 2026-11-19 01:05:59 CST
+Showing nodes accounting for 3955.34kB, 100% of 3955.34kB total
+      flat  flat%   sum%        cum   cum%
+ 1762.94kB 44.57% 44.57%  1762.94kB 44.57%  runtime/pprof.StartCPUProfile
+ 1025.05kB 25.92% 70.49%  1025.05kB 25.92%  runtime.mallocgc
+  655.29kB 16.57% 87.05%   655.29kB 16.57%  compress/flate.NewWriter (inline)
+  512.06kB 12.95%   100%   512.06kB 12.95%  github.com/dmartsapp/shint/v4/lib/handlers/wol.ParseMAC
+         0     0%   100%   655.29kB 16.57%  compress/gzip.(*Writer).Write
+         0     0%   100%   512.06kB 12.95%  github.com/dmartsapp/shint/v4/lib/handlers/wol.TestWOLHandlerJSONIsOneCleanDocument
+         0     0%   100%  1762.94kB 44.57%  main.main
+         0     0%   100%   512.05kB 12.95%  runtime.(*scavengerState).init
+         0     0%   100%      513kB 12.97%  runtime.allocm
+         0     0%   100%   512.05kB 12.95%  runtime.bgscavenge
+         0     0%   100%  1762.94kB 44.57%  runtime.main
+         0     0%   100%      513kB 12.97%  runtime.mstart
+         0     0%   100%      513kB 12.97%  runtime.mstart0
+         0     0%   100%      513kB 12.97%  runtime.mstart1
+         0     0%   100%      513kB 12.97%  runtime.newm
+         0     0%   100%  1025.05kB 25.92%  runtime.newobject
+         0     0%   100%      513kB 12.97%  runtime.resetspinning
+         0     0%   100%      513kB 12.97%  runtime.schedule
+         0     0%   100%      513kB 12.97%  runtime.startm
+         0     0%   100%      513kB 12.97%  runtime.wakep
+         0     0%   100%   655.29kB 16.57%  runtime/pprof.(*profileBuilder).build
+         0     0%   100%   655.29kB 16.57%  runtime/pprof.profileWriter
+         0     0%   100%  1762.94kB 44.57%  testing.(*M).Run
+         0     0%   100%  1762.94kB 44.57%  testing.(*M).before
+         0     0%   100%   512.06kB 12.95%  testing.tRunner
+         0     0%   100%  1762.94kB 44.57%  testing/internal/testdeps.TestDeps.StartCPUProfile

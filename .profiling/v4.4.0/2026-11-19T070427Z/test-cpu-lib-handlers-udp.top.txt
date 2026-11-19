@@ -1,0 +1,20 @@
+File: lib-handlers-udp.test
+Type: cpu
+Time: 2026-11-19 01:05:51 CST
+Duration: 2.92s, Total samples = 10ms ( 0.34%)
+Showing nodes accounting for 10ms, 100% of 10ms total
+      flat  flat%   sum%        cum   cum%
+      10ms   100%   100%       10ms   100%  syscall.rawsyscalln
+         0     0%   100%       10ms   100%  github.com/dmartsapp/shint/v4/lib/handlers/udp.Run.func1
+         0     0%   100%       10ms   100%  github.com/dmartsapp/shint/v4/lib/handlers/udp.probeUDP
+         0     0%   100%       10ms   100%  net.(*Dialer).DialContext
+         0     0%   100%       10ms   100%  net.(*sysDialer).dialParallel
+         0     0%   100%       10ms   100%  net.(*sysDialer).dialSerial
+         0     0%   100%       10ms   100%  net.(*sysDialer).dialSingle
+         0     0%   100%       10ms   100%  net.(*sysDialer).dialUDP
+         0     0%   100%       10ms   100%  net.internetSocket
+         0     0%   100%       10ms   100%  net.socket
+         0     0%   100%       10ms   100%  net.sysSocket
+         0     0%   100%       10ms   100%  syscall.Socket
+         0     0%   100%       10ms   100%  syscall.rawSyscall
+         0     0%   100%       10ms   100%  syscall.socket

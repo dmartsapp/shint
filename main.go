@@ -48,7 +48,7 @@ var (
 	// the release workflow (tag/commit/time) and the Dockerfile each override
 	// it at link time with -ldflags "-X main.Version=...", so every kind of
 	// build reports something traceable. See docs/src/tech-release.md.
-	Version string = "4.3.0"
+	Version string = "4.4.0"
 )
 
 // releaseVersion is the release a version string names - "4.4.0" from

@@ -1,0 +1,36 @@
+File: lib-handlers-cidr.test
+Type: alloc_space
+Time: 2026-11-19 01:06:06 CST
+Showing nodes accounting for 3959.61kB, 100% of 3959.61kB total
+Showing top 30 nodes out of 38
+      flat  flat%   sum%        cum   cum%
+ 1184.27kB 29.91% 29.91%  1184.27kB 29.91%  runtime/pprof.StartCPUProfile
+ 1025.01kB 25.89% 55.80%  1025.01kB 25.89%  runtime.mallocgc
+  655.29kB 16.55% 72.34%  1238.30kB 31.27%  compress/flate.NewWriter (inline)
+  583.01kB 14.72% 87.07%   583.01kB 14.72%  compress/flate.newFastEnc (inline)
+  512.03kB 12.93%   100%   512.03kB 12.93%  math/big.nat.make (inline)
+         0     0%   100%   583.01kB 14.72%  compress/flate.(*compressor).init
+         0     0%   100%  1238.30kB 31.27%  compress/gzip.(*Writer).Write
+         0     0%   100%   512.03kB 12.93%  github.com/dmartsapp/shint/v4/lib/handlers/cidr.TestSubnetStatsAgreeWithNetParseCIDR
+         0     0%   100%   512.03kB 12.93%  github.com/dmartsapp/shint/v4/lib/handlers/cidr.mustSubnet
+         0     0%   100%   512.03kB 12.93%  github.com/dmartsapp/shint/v4/lib/handlers/cidr.subnetStats
+         0     0%   100%  1184.27kB 29.91%  main.main
+         0     0%   100%   512.03kB 12.93%  math/big.(*Int).Lsh (inline)
+         0     0%   100%   512.03kB 12.93%  math/big.nat.lsh
+         0     0%   100%   512.01kB 12.93%  runtime.(*timer).maybeAdd
+         0     0%   100%   512.01kB 12.93%  runtime.(*timer).modify
+         0     0%   100%   512.01kB 12.93%  runtime.(*timer).reset (inline)
+         0     0%   100%   512.01kB 12.93%  runtime.(*timers).addHeap
+         0     0%   100%      513kB 12.96%  runtime.allocm
+         0     0%   100%   512.01kB 12.93%  runtime.growslice
+         0     0%   100%  1184.27kB 29.91%  runtime.main
+         0     0%   100%   512.01kB 12.93%  runtime.mcall
+         0     0%   100%      513kB 12.96%  runtime.mstart
+         0     0%   100%      513kB 12.96%  runtime.mstart0
+         0     0%   100%      513kB 12.96%  runtime.mstart1
+         0     0%   100%      513kB 12.96%  runtime.newm
+         0     0%   100%      513kB 12.96%  runtime.newobject
+         0     0%   100%   512.01kB 12.93%  runtime.park_m
+         0     0%   100%   512.01kB 12.93%  runtime.resetForSleep
+         0     0%   100%      513kB 12.96%  runtime.resetspinning
+         0     0%   100%      513kB 12.96%  runtime.schedule

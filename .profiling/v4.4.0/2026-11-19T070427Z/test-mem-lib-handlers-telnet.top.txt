@@ -1,0 +1,36 @@
+File: lib-handlers-telnet.test
+Type: alloc_space
+Time: 2026-11-19 01:05:34 CST
+Showing nodes accounting for 4770.43kB, 100% of 4770.43kB total
+Showing top 30 nodes out of 47
+      flat  flat%   sum%        cum   cum%
+ 2050.10kB 42.98% 42.98%  2050.10kB 42.98%  runtime.mallocgc
+ 1184.27kB 24.83% 67.80%  1184.27kB 24.83%  runtime/pprof.StartCPUProfile
+ 1024.03kB 21.47% 89.27%  1024.03kB 21.47%  syscall.anyToSockaddr
+  512.02kB 10.73%   100%   512.02kB 10.73%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout.func1
+         0     0%   100%   512.02kB 10.73%  github.com/dmartsapp/shint/v4/lib.IsPortUp
+         0     0%   100%   512.02kB 10.73%  github.com/dmartsapp/shint/v4/lib/handlers/telnet.Run.func1
+         0     0%   100%   512.02kB 10.73%  github.com/dmartsapp/shint/v4/lib/internal/testutil.EchoListener.func1
+         0     0%   100%   512.02kB 10.73%  internal/poll.(*FD).Accept
+         0     0%   100%   512.02kB 10.73%  internal/poll.accept
+         0     0%   100%  1184.27kB 24.83%  main.main
+         0     0%   100%   512.02kB 10.73%  net.(*Dialer).DialContext
+         0     0%   100%   512.02kB 10.73%  net.(*TCPListener).Accept
+         0     0%   100%   512.02kB 10.73%  net.(*TCPListener).accept
+         0     0%   100%   512.02kB 10.73%  net.(*netFD).accept
+         0     0%   100%   512.02kB 10.73%  net.(*netFD).connect
+         0     0%   100%   512.02kB 10.73%  net.(*netFD).dial
+         0     0%   100%   512.02kB 10.73%  net.(*sysDialer).dialParallel
+         0     0%   100%   512.02kB 10.73%  net.(*sysDialer).dialSerial
+         0     0%   100%   512.02kB 10.73%  net.(*sysDialer).dialSingle
+         0     0%   100%   512.02kB 10.73%  net.(*sysDialer).dialTCP
+         0     0%   100%   512.02kB 10.73%  net.(*sysDialer).doDialTCP (inline)
+         0     0%   100%   512.02kB 10.73%  net.(*sysDialer).doDialTCPProto
+         0     0%   100%   512.02kB 10.73%  net.internetSocket
+         0     0%   100%   512.02kB 10.73%  net.socket
+         0     0%   100%   512.05kB 10.73%  runtime.(*scavengerState).init
+         0     0%   100%   512.05kB 10.73%  runtime.acquireSudog
+         0     0%   100%     1026kB 21.51%  runtime.allocm
+         0     0%   100%   512.05kB 10.73%  runtime.bgscavenge
+         0     0%   100%   512.05kB 10.73%  runtime.gcBgMarkWorker
+         0     0%   100%   512.05kB 10.73%  runtime.gcMarkDone

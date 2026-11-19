@@ -1,0 +1,36 @@
+File: lib-handlers-nmap.test
+Type: alloc_space
+Time: 2026-11-19 01:05:50 CST
+Showing nodes accounting for 36166.33kB, 100% of 36166.33kB total
+Showing top 30 nodes out of 125
+      flat  flat%   sum%        cum   cum%
+ 3790.11kB 10.48% 10.48%  8398.63kB 23.22%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.Run.func6
+ 3072.05kB  8.49% 18.97%  3072.05kB  8.49%  net/netip.Addr.String
+ 2562.70kB  7.09% 26.06%  2562.70kB  7.09%  runtime.mallocgc
+ 2368.55kB  6.55% 32.61%  5440.59kB 15.04%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.sweepAddresses
+ 2368.55kB  6.55% 39.16%  2368.55kB  6.55%  slices.Clone[go.shape.[]string,go.shape.string]
+ 1866.22kB  5.16% 44.32%  2415.06kB  6.68%  encoding/json/jsontext.(*encoderState).reformatObject
+ 1665.05kB  4.60% 48.92%  7517.21kB 20.79%  github.com/dmartsapp/shint/v4/lib/handlers/nmap.Run
+ 1588.15kB  4.39% 53.31%  1588.15kB  4.39%  slices.Grow[go.shape.[]uint8,go.shape.uint8] (inline)
+ 1229.29kB  3.40% 56.71%  1229.29kB  3.40%  bytes.growSlice
+ 1211.07kB  3.35% 60.06%  3626.13kB 10.03%  encoding/json/jsontext.AppendFormat[go.shape.[]uint8]
+ 1184.27kB  3.27% 63.34%  1184.27kB  3.27%  runtime/pprof.StartCPUProfile
+ 1102.01kB  3.05% 66.38%  1634.27kB  4.52%  encoding/json/v2.makeStructArshaler.func2
+ 1024.28kB  2.83% 69.21%  1024.28kB  2.83%  reflect.mapassign_faststr0
+ 1024.20kB  2.83% 72.05%  1024.20kB  2.83%  context.(*cancelCtx).propagateCancel
+ 1024.19kB  2.83% 74.88%  4096.47kB 11.33%  net.(*Dialer).DialContext
+ 1024.03kB  2.83% 77.71%  1024.03kB  2.83%  os.NewSyscallError (inline)
+ 1024.02kB  2.83% 80.54%  1024.02kB  2.83%  reflect.unsafe_New
+  636.73kB  1.76% 82.30%   636.73kB  1.76%  bytes.(*Buffer).String (inline)
+  591.75kB  1.64% 83.94%   591.75kB  1.64%  bytes.Clone (inline)
+  583.01kB  1.61% 85.55%   583.01kB  1.61%  compress/flate.newFastEnc (inline)
+  548.84kB  1.52% 87.07%  2415.06kB  6.68%  encoding/json/jsontext.(*encoderState).reformatValue
+  544.67kB  1.51% 88.57%  1127.67kB  3.12%  compress/flate.(*compressor).init
+  532.26kB  1.47% 90.05%  1588.15kB  4.39%  encoding/json/jsontext.(*encoderState).WriteToken
+  528.17kB  1.46% 91.51%   528.17kB  1.46%  regexp.(*bitState).reset
+  512.05kB  1.42% 92.92%   512.05kB  1.42%  time.Sleep
+  512.04kB  1.42% 94.34%  3072.29kB  8.49%  net.(*sysDialer).dialSingle
+  512.03kB  1.42% 95.75%   512.03kB  1.42%  sync.OnceValue[go.shape.string]
+  512.02kB  1.42% 97.17%  2378.04kB  6.58%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout.func1
+  512.01kB  1.42% 98.58%  2560.25kB  7.08%  net.(*netFD).connect
+  512.01kB  1.42%   100%   512.01kB  1.42%  encoding/json/v2.makeString

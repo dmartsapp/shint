@@ -1,0 +1,36 @@
+File: lib.test
+Type: alloc_space
+Time: 2026-11-19 01:06:19 CST
+Showing nodes accounting for 11677.94kB, 100% of 11677.94kB total
+Showing top 30 nodes out of 55
+      flat  flat%   sum%        cum   cum%
+ 6243.59kB 53.46% 53.46%  6243.59kB 53.46%  github.com/dmartsapp/shint/v4/lib.ParsePorts
+ 1537.05kB 13.16% 66.63%  1537.05kB 13.16%  runtime.mallocgc
+ 1184.27kB 10.14% 76.77%  1184.27kB 10.14%  runtime/pprof.StartCPUProfile
+ 1000.34kB  8.57% 85.33%  1000.34kB  8.57%  internal/bytealg.MakeNoZero
+  688.56kB  5.90% 91.23%   688.56kB  5.90%  compress/flate.(*fastGen).addBlock
+  512.06kB  4.38% 95.62%   512.06kB  4.38%  internal/routebsd.(*wireFormat).parseInterfaceMessage
+  512.05kB  4.38%   100%   512.05kB  4.38%  net.doBlockingWithCtx[go.shape.[]net.IPAddr]
+         0     0%   100%   688.56kB  5.90%  compress/flate.(*Writer).Close (inline)
+         0     0%   100%   688.56kB  5.90%  compress/flate.(*compressor).close
+         0     0%   100%   688.56kB  5.90%  compress/flate.(*compressor).deflateFast
+         0     0%   100%   688.56kB  5.90%  compress/flate.(*fastEncL1).encode
+         0     0%   100%   688.56kB  5.90%  compress/gzip.(*Writer).Close
+         0     0%   100%  6243.59kB 53.46%  github.com/dmartsapp/shint/v4/lib.TestParsePorts
+         0     0%   100%  1000.34kB  8.57%  github.com/dmartsapp/shint/v4/lib.TestParsePortsRefuses
+         0     0%   100%   512.06kB  4.38%  github.com/dmartsapp/shint/v4/lib.TestSetSourceInterface
+         0     0%   100%   512.06kB  4.38%  github.com/dmartsapp/shint/v4/lib.loopbackName
+         0     0%   100%   512.06kB  4.38%  internal/routebsd.FetchRIBMessages
+         0     0%   100%   512.06kB  4.38%  internal/routebsd.parseRIB
+         0     0%   100%   512.05kB  4.38%  internal/singleflight.(*Group).doCall
+         0     0%   100%  1184.27kB 10.14%  main.main
+         0     0%   100%   512.05kB  4.38%  net.(*Resolver).lookupIP
+         0     0%   100%   512.05kB  4.38%  net.(*Resolver).lookupIPAddr.func1
+         0     0%   100%   512.06kB  4.38%  net.Interfaces
+         0     0%   100%   512.05kB  4.38%  net.cgoLookupIP
+         0     0%   100%   512.05kB  4.38%  net.init.func1
+         0     0%   100%   512.06kB  4.38%  net.interfaceMessages (inline)
+         0     0%   100%   512.06kB  4.38%  net.interfaceTable
+         0     0%   100%   512.05kB  4.38%  runtime.(*scavengerState).init
+         0     0%   100%   512.01kB  4.38%  runtime.(*scavengerState).sleep
+         0     0%   100%   512.01kB  4.38%  runtime.(*timer).maybeAdd

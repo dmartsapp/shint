@@ -1,0 +1,27 @@
+File: lib-handlers-wol.test
+Type: cpu
+Time: 2026-11-19 01:05:57 CST
+Duration: 1.92s, Total samples = 20ms ( 1.04%)
+Showing nodes accounting for 20ms, 100% of 20ms total
+      flat  flat%   sum%        cum   cum%
+      10ms 50.00% 50.00%       10ms 50.00%  runtime.kevent
+      10ms 50.00%   100%       10ms 50.00%  syscall.rawsyscalln
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib/handlers/wol.Run
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib/handlers/wol.TestWOLHandlerJSONIsOneCleanDocument
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib/handlers/wol.TestWOLHandlerJSONIsOneCleanDocument.func1
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib/handlers/wol.sendUDP
+         0     0%   100%       10ms 50.00%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout
+         0     0%   100%       10ms 50.00%  internal/poll.(*FD).Write
+         0     0%   100%       10ms 50.00%  internal/poll.ignoringEINTRIO (inline)
+         0     0%   100%       10ms 50.00%  net.(*conn).Write
+         0     0%   100%       10ms 50.00%  net.(*netFD).Write
+         0     0%   100%       10ms 50.00%  runtime.findRunnable
+         0     0%   100%       10ms 50.00%  runtime.mcall
+         0     0%   100%       10ms 50.00%  runtime.netpoll
+         0     0%   100%       10ms 50.00%  runtime.park_m
+         0     0%   100%       10ms 50.00%  runtime.schedule
+         0     0%   100%       10ms 50.00%  syscall.Write (inline)
+         0     0%   100%       10ms 50.00%  syscall.syscall
+         0     0%   100%       10ms 50.00%  syscall.syscalln
+         0     0%   100%       10ms 50.00%  syscall.write
+         0     0%   100%       10ms 50.00%  testing.tRunner

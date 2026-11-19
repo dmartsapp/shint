@@ -1,0 +1,36 @@
+File: lib-handlers-dns.test
+Type: alloc_space
+Time: 2026-11-19 01:06:05 CST
+Showing nodes accounting for 14998.95kB, 100% of 14998.95kB total
+Showing top 30 nodes out of 57
+      flat  flat%   sum%        cum   cum%
+ 4357.33kB 29.05% 29.05%  4869.34kB 32.46%  github.com/dmartsapp/shint/v4/lib/handlers/dns.startFakeDNS.func3
+ 2723.33kB 18.16% 47.21%  2723.33kB 18.16%  github.com/dmartsapp/shint/v4/lib/handlers/dns.udpExchange
+ 1538.06kB 10.25% 57.46%  1538.06kB 10.25%  runtime.mallocgc
+ 1184.27kB  7.90% 65.36%  1184.27kB  7.90%  runtime/pprof.StartCPUProfile
+  583.01kB  3.89% 69.24%   583.01kB  3.89%  compress/flate.newFastEnc (inline)
+  516.01kB  3.44% 72.69%   516.01kB  3.44%  runtime/pprof.(*profMap).lookup
+  512.28kB  3.42% 76.10%   512.28kB  3.42%  github.com/dmartsapp/shint/v4/lib/handlers/dns.startFakeDNS.func2
+  512.25kB  3.42% 79.52%   512.25kB  3.42%  golang.org/x/net/dns/dnsmessage.(*Message).Pack (inline)
+  512.14kB  3.41% 82.93%   512.14kB  3.41%  github.com/dmartsapp/shint/v4/lib/handlers/dns.TestDNSForceTCPNeverUsesUDP.func1
+  512.12kB  3.41% 86.34%   512.12kB  3.41%  github.com/dmartsapp/shint/v4/lib/handlers/dns.zonesServer.start.func1
+  512.08kB  3.41% 89.76%   512.08kB  3.41%  compress/gzip.NewWriterLevel
+  512.05kB  3.41% 93.17%   512.05kB  3.41%  github.com/dmartsapp/shint/v4/lib/handlers/internal/pace.WatchCancel.func1
+  512.01kB  3.41% 96.59%  1056.67kB  7.04%  github.com/dmartsapp/shint/v4/lib/handlers/dns.init.func3
+  512.01kB  3.41%   100%   512.01kB  3.41%  net.(*UDPConn).readFrom
+         0     0%   100%   583.01kB  3.89%  compress/flate.(*compressor).init
+         0     0%   100%   583.01kB  3.89%  compress/flate.NewWriter (inline)
+         0     0%   100%   583.01kB  3.89%  compress/gzip.(*Writer).Write
+         0     0%   100%  1056.67kB  7.04%  github.com/dmartsapp/shint/v4/lib/handlers/dns.FindAuthoritative.func2
+         0     0%   100%  2690.91kB 17.94%  github.com/dmartsapp/shint/v4/lib/handlers/dns.Run
+         0     0%   100%   512.25kB  3.42%  github.com/dmartsapp/shint/v4/lib/handlers/dns.TestDNSJSONIsOneDocument
+         0     0%   100%   544.67kB  3.63%  github.com/dmartsapp/shint/v4/lib/handlers/dns.TestDNSNegativeAnswersAreFailedChecksWithTheirReason.func1
+         0     0%   100%  1089.33kB  7.26%  github.com/dmartsapp/shint/v4/lib/handlers/dns.TestDNSRecordFormats.func1
+         0     0%   100%   544.67kB  3.63%  github.com/dmartsapp/shint/v4/lib/handlers/dns.TestDNSReverseLookupOfAnAddress
+         0     0%   100%  3235.58kB 21.57%  github.com/dmartsapp/shint/v4/lib/handlers/dns.exchangeOne
+         0     0%   100%  3235.58kB 21.57%  github.com/dmartsapp/shint/v4/lib/handlers/dns.queryServers
+         0     0%   100%  2690.91kB 17.94%  github.com/dmartsapp/shint/v4/lib/handlers/dns.runDNS
+         0     0%   100%  2690.91kB 17.94%  github.com/dmartsapp/shint/v4/lib/handlers/dns.runDNS.func1
+         0     0%   100%  1024.41kB  6.83%  github.com/dmartsapp/shint/v4/lib/handlers/dns.startFakeDNS.func3.1
+         0     0%   100%   512.14kB  3.41%  github.com/dmartsapp/shint/v4/lib/handlers/dns.startFakeDNS.func4.1
+         0     0%   100%  2690.91kB 17.94%  github.com/dmartsapp/shint/v4/lib/internal/testutil.CaptureStdout
