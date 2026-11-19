@@ -177,7 +177,7 @@ One object per socket, holding everything about it. A field a platform does not 
 |---|---|
 | Linux | Supported: it reads `/proc`. Android too, although apps built for Android 10 and later may not read the socket tables. |
 | Windows | Supported. Any user may see which process holds every socket, so nothing is hidden. |
-| macOS, FreeBSD, NetBSD, OpenBSD, Solaris, illumos | Not supported yet: `ss` says so and exits `1`. The BSDs are planned ([#105](https://github.com/dmartsapp/shint/issues/105)). |
+| macOS, FreeBSD, NetBSD, OpenBSD, Solaris, illumos | Not supported yet: `ss` says so and exits `1`. Planned: the BSDs ([#105](https://github.com/dmartsapp/shint/issues/105)), Solaris 11 ([#113](https://github.com/dmartsapp/shint/issues/113)) and illumos ([#114](https://github.com/dmartsapp/shint/issues/114)). |
 | AIX | **Not in the AIX binary.** AIX has no documented way to list its sockets, with the process holding each, without root. Its own tools (`netstat -A` with `rmsock`, and `lsof`) read kernel memory as root. Its `/proc/<pid>/fd` cannot open a socket, nor say that an entry is one. shint never asks for root, so `ss` is left out of the AIX binary rather than shipped as a command that can never work: `shint ss` there is an unknown command (exit `2`). |
 
 ## Exit status
