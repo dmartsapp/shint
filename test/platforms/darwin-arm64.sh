@@ -28,6 +28,15 @@ EXPECT_PING=yes    # ping 127.0.0.1: yes = must answer; sysctl = a permission er
 
 set -u
 
+# Solaris and illumos keep their POSIX tools (grep -E, id -u, ...) in /usr/xpg4/bin;
+# /usr/bin has the older System V ones, whose grep has no -E.
+if [ -d /usr/xpg4/bin ]; then PATH=/usr/xpg4/bin:$PATH; export PATH; fi
+if echo shint | grep -E -q 'x|shint' >/dev/null 2>&1; then :; else
+  echo "This system's grep does not take -E, which this script needs." >&2
+  echo "Put a POSIX grep first in PATH (on Solaris and illumos: /usr/xpg4/bin) and run it again." >&2
+  exit 2
+fi
+
 here=$(cd "$(dirname "$0")" && pwd)
 results_dir="$here/results"
 out="$results_dir/$SLUG.txt"

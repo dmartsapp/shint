@@ -94,6 +94,12 @@ class Render(unittest.TestCase):
                 if not line.lstrip().startswith("#"):
                     self.assertIsNone(re.search(r"\$\{[^}]*[()]", line), "template.sh:%d: %s" % (n, line.strip()))
 
+    def test_posix_tools_come_first_on_solaris(self):
+        # Solaris's /usr/bin/grep has no -E (found on Solaris 11.4): the script puts
+        # /usr/xpg4/bin first, and refuses to run with a grep that lacks -E.
+        text = P.render(platform("solaris-amd64"))
+        self.assertLess(text.index("PATH=/usr/xpg4/bin:$PATH"), text.index("grep -E -q"))
+
     @unittest.skipUnless(shutil.which("sh"), "no sh")
     def test_every_unix_script_parses(self):
         for p in P.platforms():
