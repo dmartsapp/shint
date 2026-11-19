@@ -55,6 +55,7 @@ Windows and the other platforms, checksums and signed attestations: see the [ins
 | `shint wol <mac>` | `wakeonlan` | Wake a machine on my network. |
 | `shint cidr <prefix>` | `ipcalc` | What are this subnet's network, mask, range and size? |
 | `shint ip [interface]` | `ip addr`, `ipconfig` | What interfaces and addresses does this machine have? |
+| `shint ss` | List this machine's TCP and UDP sockets and the process holding each |
 | `shint listen tcp\|udp\|http <port>` | `nc -l` | Give me a local server to test against. |
 
 Every command takes `--json`, `-4`/`-6` and `--help`. In a script:
