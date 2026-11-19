@@ -45,7 +45,8 @@ case $bin in */*) ;; *) bin=./$bin ;; esac
 version=$("$bin" --version 2>&1) || true
 binplat=$(printf '%s\n' "$version" | sed -n 's/.*(go[^ ]* \([^)]*\)).*/\1/p')
 goversion=$(printf '%s\n' "$version" | sed -n 's/.*(\(go[^ ]*\) .*/\1/p')
-stamp=${version%% (*}
+# (sed, not ${version%% (*}: OpenBSD's ksh cannot parse a parenthesis in a ${...} pattern)
+stamp=$(printf '%s\n' "$version" | sed 's/ (.*//')
 release=${stamp%%/*}
 commit=""
 built=""

@@ -85,6 +85,15 @@ class Render(unittest.TestCase):
         text = P.render(platform("windows-amd64"))
         self.assertLess(text.index("$Platform = "), text.index("$ErrorActionPreference"))
 
+    def test_no_parenthesis_in_a_parameter_expansion(self):
+        # OpenBSD's ksh cannot parse ${v%% (*} (found on OpenBSD 8.0): dash and bash can,
+        # so sh -n here would not catch it.
+        import re
+        with open(os.path.join(P.HERE, "template.sh")) as f:
+            for n, line in enumerate(f, 1):
+                if not line.lstrip().startswith("#"):
+                    self.assertIsNone(re.search(r"\$\{[^}]*[()]", line), "template.sh:%d: %s" % (n, line.strip()))
+
     @unittest.skipUnless(shutil.which("sh"), "no sh")
     def test_every_unix_script_parses(self):
         for p in P.platforms():
