@@ -35,7 +35,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Look for a signed local check report
         id: receipt
@@ -45,7 +45,7 @@ jobs:
         run: bash .github/scripts/verify-local-check.sh
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           check-latest: true
@@ -94,7 +94,7 @@ jobs:
       issues: write
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 1
           sparse-checkout: .github/scripts
@@ -109,7 +109,7 @@ jobs:
         run: bash .github/scripts/write-ci-failure-issue.sh "$RUNNER_TEMP/issue.md"
 
       - name: Create issue on make check failure
-        uses: peter-evans/create-issue-from-file@v5
+        uses: peter-evans/create-issue-from-file@e8ef132d6df98ed982188e460ebb3b5d4ef3a9cd # v5.0.1
         with:
           title: "CI Failure: make check"
           content-filepath: ${{ runner.temp }}/issue.md
