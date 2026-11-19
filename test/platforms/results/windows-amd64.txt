@@ -7,9 +7,9 @@ built:
 go: go1.27.4
 binary: shint.windows.amd64.exe
 binary_sha256: b4e5fc0847cb2fc808fdbc15f26efe0aa760570fccf2611d1faf491797c9a116
-tested_at: 2026-11-19T06:35:16Z
+tested_at: 2026-11-19T06:40:48Z
 os: Microsoft Windows 10 Pro Education 10.0.19045
-privileges: administrator
+privileges: normal user
 internet: yes
 passed: 34
 failed: 0

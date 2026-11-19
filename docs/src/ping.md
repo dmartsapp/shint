@@ -124,7 +124,7 @@ ICMP normally needs privileges. shint uses the unprivileged ICMP sockets some sy
 - **macOS:** works for a normal user.
 - **Linux:** depends on the `net.ipv4.ping_group_range` setting. If `ping` fails with `socket: permission denied`, run it as root or widen the range with `sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"`.
 - **FreeBSD, NetBSD, OpenBSD and Solaris:** does not work, not even as root. None of them has an unprivileged ICMP socket (`socket: protocol not supported`), and shint does not use the raw socket that their own `ping` is setuid root for ([#112](https://github.com/dmartsapp/shint/issues/112)). DragonFly, illumos and AIX are probably the same, but have not been tried yet.
-- **Windows:** works for an administrator (seen on Windows 10). shint uses a raw ICMP socket there, which Windows may allow only to administrators; not yet tried as a normal user ([#112](https://github.com/dmartsapp/shint/issues/112)).
+- **Windows:** works for a normal user (seen on Windows 10, with and without administrator rights). shint uses a raw ICMP socket there, which Windows lets a normal user open for ICMP.
 - **Docker:** the same rules apply as on the host.
 
 When the socket cannot be opened, the run says so before its statistics - `ERROR ping failed host=127.0.0.1 error="socket: protocol not supported" note="could not open an ICMP socket: ..."` - and exits `1`. With `--json`, the document's `error` holds the same reason.
