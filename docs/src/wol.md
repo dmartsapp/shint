@@ -26,7 +26,7 @@ Wake-on-LAN has no reply. `shint wol` can tell you the packet was handed to the 
 ## Syntax
 
 ```bash
-shint wol <mac> [--broadcast ADDR] [--port N] [--count N] [--delay MS] [--json]
+shint wol <mac> [--broadcast ADDR] [--port N] [--count N] [--delay MS] [--interface NAME|ADDR] [--json]
 ```
 
 | Flag | Default | Meaning |
@@ -129,6 +129,7 @@ Standard error, exit status `2`. `--broadcast ::1` is refused the same way: Wake
 
 ## Good to know
 
+- **`--interface`** sends the magic packet from one of a given interface's IPv4 addresses (`--interface eth1`, or `--interface "Ethernet 2"` on Windows), or from an IPv4 address of this machine - a magic packet is IPv4 only, so an interface without one is a failed check. With `--broadcast` set to that network's broadcast address, it wakes a machine on a network that is not the default one: `shint wol aa:bb:cc:dd:ee:ff --interface eth1 --broadcast 10.20.0.255`. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the packet is sent from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - **`Ctrl+C` shows how far it got.** With a large `--count`, the run stops, prints an `interrupted` line and its `done` line, and exits `1` (cut short); an attempt still in flight is dropped, not counted as a failure - see [Stopping early](usage.md#stopping-early).
 - **It did not wake?** Check the machine's firmware and network-card settings first; then try `--broadcast` with the subnet's own broadcast address; then check the machine is on the same segment (wired, same VLAN).
 - **A machine that is fully powered off** (not just asleep) often needs Wake-on-LAN enabled for the "S5" state, a separate setting on many boards.

@@ -131,5 +131,6 @@ When the socket cannot be opened, the run says so before its statistics - `ERROR
 
 ## Good to know
 
+- **`--interface` is not on `ping` yet.** The ping library opens its ICMP socket on every address of the machine (`0.0.0.0` and `::`, fixed in it) and cannot be told another, so shint cannot choose the source. It comes with `ping`'s new library, go-net ([#70](https://github.com/dmartsapp/shint/issues/70)), with its other fixes. The other commands that send take it already ([Sending from an interface](usage.md#sending-from-an-interface-interface)).
 - The size of each request's payload is `--payload` (default 4 bytes). It can be at most 1448 bytes, so an echo request never has to fragment; a larger or negative value is a usage error (exit status `2`) rather than being quietly changed.
 - Some networks block ICMP entirely. A failed ping does not always mean a host is down - try [`telnet`](telnet.md) against a port you know should be open.

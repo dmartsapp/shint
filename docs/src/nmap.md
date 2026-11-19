@@ -20,7 +20,7 @@ Give it one target or several: host names, addresses and prefixes (`192.168.1.0/
 ## Syntax
 
 ```bash
-shint nmap <target>... [--from PORT --to PORT | --ports LIST] [--timeout S] [--json]
+shint nmap <target>... [--from PORT --to PORT | --ports LIST] [--timeout S] [--interface NAME|ADDR] [--json]
 ```
 
 A target is a host name, an IPv4 or IPv6 address, or a prefix to sweep.
@@ -282,6 +282,7 @@ The `/24` rows are for a local range. A sweep of **public** addresses is also pa
 
 ## Good to know
 
+- **`--interface`** sends the probes from a given interface (`--interface eth1`, or `--interface "Ethernet 2"` on Windows) or from one of this machine's addresses (`--interface 10.0.0.5`) - to scan a network behind a second network card or a VPN: `shint nmap 10.20.0.0/24 -p 22 --interface eth1`. Each address is probed from a source of its own family. Host names are still looked up through the system's resolver. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the checks send from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - Only TCP is scanned. For UDP, use [`udp`](udp.md), one port at a time.
 - The service names are a guess from the port number; to check what a web or TLS port really serves, use [`web`](web.md) or [`tls`](tls.md).
 - Scanning hosts you do not own or manage may be against the rules of the network you are on, and against the law in some places. Scan your own systems, or ones you have permission to test. shint's scans are plain connections that the target's firewall and services log, and it deliberately has nothing for scanning unnoticed - see [Responsible use](security.md#responsible-use).

@@ -16,7 +16,7 @@ It sends a single **SNTP** (the simple form of NTP, [RFC 4330](https://www.rfc-e
 ## Syntax
 
 ```bash
-shint ntp <server> [--port N] [--max-offset MS] [--count N] [--timeout S] [--json]
+shint ntp <server> [--port N] [--max-offset MS] [--count N] [--timeout S] [--interface NAME|ADDR] [--json]
 ```
 
 | Flag | Default | Meaning |
@@ -141,6 +141,7 @@ shint ntp time.cloudflare.com --json
 
 ## Good to know
 
+- **`--interface`** sends the queries from a given interface (`--interface eth1`, or `--interface "Ethernet 2"` on Windows) or from one of this machine's addresses (`--interface 10.0.0.5`) - to check a time server as it is reached from another network. The server's name is still looked up through the system's resolver. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the checks send from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - **`Ctrl+C` shows how far it got.** With a large `--count`, the run stops, prints an `interrupted` line and its `done` line, and exits `1` (cut short); an attempt still in flight is dropped, not counted as a failure - see [Stopping early](usage.md#stopping-early).
 - **An answer that cannot be trusted is a failed query, not a result.** That covers: a reply that does not echo this request's timestamp (someone else's packet, or a spoof); a "kiss-o'-death" (stratum 0 with a code such as `RATE` - the server asks you to slow down - or `DENY`); a server that reports itself unsynchronized (leap indicator `3`, or stratum 16); and a reply with no transmit time.
 - **Be gentle with public servers.** Many limit how often one address may ask; a `RATE` reply means you asked too often. The default `--delay` of a second already keeps `--count` polite; do not run it in a tight loop.

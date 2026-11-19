@@ -165,7 +165,7 @@ shint nmap 10.0.0.0/24 -p 22 --interface 10.0.0.5          # an address of this 
 - **Names are still looked up as usual**, through the system's resolver and its route: `--interface` is about the checks' own traffic. `rdns`'s queries do leave from it.
 - **On Solaris and illumos, an interface's logical interfaces count as the interface.** Those systems list `net0:1`, `net0:2`, ... separately and put addresses on them (Solaris 11.4 puts the global IPv6 address on `net0:1`), so `--interface net0` sends from any of them; `--interface net0:1` names just that one.
 - In text mode a first line says what the checks send from: `[telnet] OK source interface=eth1 addresses=[10.0.0.5,fe80::5%eth1]`. In the JSON, `input_params.interface` records it.
-- `ping` does not take it yet: its ICMP library cannot send from an address so far ([#69](https://github.com/dmartsapp/shint/issues/69)). `cidr`, `ip` and `listen` send nothing of their own to bind (`listen` has `--bind`).
+- `ping` does not take it yet: its ICMP library cannot send from an address so far (it comes with go-net, [#70](https://github.com/dmartsapp/shint/issues/70)). `cidr`, `ip` and `listen` send nothing of their own to bind (`listen` has `--bind`).
 
 ### What --timeout limits
 

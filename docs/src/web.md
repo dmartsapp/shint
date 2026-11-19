@@ -16,7 +16,7 @@ It is a diagnostic tool, not a browser: it follows redirects (up to 10 - with th
 ## Syntax
 
 ```bash
-shint web <url> [-X METHOD] [-H "Name: value"]... [-P body] [-W] [flags]
+shint web <url> [-X METHOD] [-H "Name: value"]... [-P body] [-W] [--interface NAME|ADDR] [flags]
 ```
 
 | Flag | Meaning |
@@ -497,6 +497,7 @@ With `--json`, each stat gains a `timing` object (and only with `--timing`: with
 
 ## Good to know
 
+- **`--interface`** sends the requests from a given interface (`--interface eth1`, or `--interface "Ethernet 2"` on Windows) or from one of this machine's addresses (`--interface 10.0.0.5`). `web` dials host names, so it sends from the interface's IPv4 address when it has one; add `-6` for its IPv6 address. The URL's host is still looked up through the system's resolver, and a redirect is followed from the same source. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the checks send from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - **`Ctrl+C` shows the summary.** A run with a large `--count` stops, prints how far it got, the statistics and the `done` line, and exits `1` (cut short) - see [Stopping early](usage.md#stopping-early).
 - **Redirects** are followed (up to 10); the final response is what is reported, and the bytes of every hop are counted - except a redirect to another origin when the request carries credentials: see [Redirects and credentials](#redirects-and-credentials).
 - **Timeouts.** `--timeout` limits each request from connecting to the last byte of the response.
