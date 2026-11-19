@@ -16,7 +16,7 @@ Use it to answer "can I reach this service from here?" before blaming the applic
 ## Syntax
 
 ```bash
-shint telnet <host> <port> [--count N] [--delay MS] [--timeout S] [--throttle] [--json]
+shint telnet <host> <port> [--count N] [--delay MS] [--timeout S] [--throttle] [--interface NAME|ADDR] [--json]
 ```
 
 `<host>` is a name or an IP address; `<port>` is 1-65535. The [shared flags](usage.md#flags-shared-by-every-command) apply; `--payload` is not used.
@@ -142,6 +142,7 @@ Each attempt is one entry in `stats`; failed attempts have `"success": false` an
 
 ## Good to know
 
+- **`--interface`** opens the connections from a given interface (`--interface eth1`, or `--interface "Ethernet 2"` on Windows) or from one of this machine's addresses (`--interface 10.0.0.5`), instead of wherever the routing table sends them: can I reach it over the VPN, the second network card, the management network? Each address is checked from a source of its own family, so a dual-stack host is checked from the interface's IPv4 and its IPv6 address. The host name is still looked up through the system's resolver. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the checks send from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - **`Ctrl+C` shows the summary.** A run with a large `--count` stops, prints how far it got, the statistics and the `done` line, and exits `1` (cut short) - see [Stopping early](usage.md#stopping-early).
 - `--timeout` applies to each connection attempt (and to the DNS lookup), not to the whole run.
 - With `--count N`, N attempts are made against **every** address, one after another, each preceded by `--delay`.

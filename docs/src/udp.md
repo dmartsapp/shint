@@ -22,7 +22,7 @@ If the name resolves to several addresses, each one is probed.
 ## Syntax
 
 ```bash
-shint udp <host> <port> [--data TEXT | --hex BYTES | --payload N] [--count N] [--timeout S] [--json]
+shint udp <host> <port> [--data TEXT | --hex BYTES | --payload N] [--count N] [--timeout S] [--interface NAME|ADDR] [--json]
 ```
 
 | Flag | Meaning |
@@ -141,6 +141,7 @@ shint udp 127.0.0.1 9001 --payload 16 --json
 
 ## Good to know
 
+- **`--interface`** sends the probes from a given interface (`--interface eth1`, or `--interface "Ethernet 2"` on Windows) or from one of this machine's addresses (`--interface 10.0.0.5`). Each address is probed from a source of its own family. The host name is still looked up through the system's resolver. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the checks send from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - **`Ctrl+C` shows the summary.** A run with a large `--count` stops, prints how far it got, the statistics and the `done` line, and exits `1` (cut short) - see [Stopping early](usage.md#stopping-early).
 - On networks that drop ICMP, a genuinely closed UDP port looks like `open|filtered`.
 - `--payload` is filler; use `--data` when the service expects something specific.

@@ -16,7 +16,7 @@ It is the general tool; [`rdns`](rdns.md) stays the quick reverse lookup through
 ## Syntax
 
 ```bash
-shint dns <name> [type] [@server] [--tcp] [--no-recurse] [--count N] [--timeout S] [--json]
+shint dns <name> [type] [@server] [--tcp] [--no-recurse] [--count N] [--timeout S] [--interface NAME|ADDR] [--json]
 ```
 
 | Argument | Meaning |
@@ -192,6 +192,7 @@ Like [`cidr`](cidr.md), the document has no `dns_lookup`: `dns` *is* the lookup.
 
 ## Good to know
 
+- **`--interface`** sends the queries themselves - to the system's name server, or the `@server` you name, over UDP and TCP alike - from a given interface (`--interface eth1`, or `--interface "Ethernet 2"` on Windows) or from one of this machine's addresses (`--interface 10.0.0.5`): a server that answers only on the VPN or the management network can be asked through it. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the checks send from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - **A reply is believed only if it answers this question.** The query carries a random ID; a reply with another ID, that is not a response, or that repeats a different question is ignored and the wait goes on, so a stray or forged packet cannot end - or answer - your query. A timeout then says how many replies were ignored. (Over UDP the socket is also connected to the server, so the operating system drops datagrams from anywhere else.)
 - **UDP first, TCP when needed.** The query announces EDNS with a 1232-byte buffer, the size that avoids IP fragmentation. If the answer still does not fit, the server sets the `tc` flag and shint asks again over TCP (`retried=tcp`). A server that rejects EDNS (some old ones answer `FORMERR`) is asked again without it. `--tcp` skips UDP altogether.
 - **No DNSSEC validation.** The `ad` flag is shown when the server says it validated the answer, but shint does not check signatures itself.

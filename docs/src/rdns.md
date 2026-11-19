@@ -16,7 +16,7 @@ Forward DNS turns a name into addresses. **Reverse DNS** goes the other way: giv
 ## Syntax
 
 ```bash
-shint rdns <ip-or-host> [--count N] [--timeout S] [--delay MS] [--json]
+shint rdns <ip-or-host> [--count N] [--timeout S] [--delay MS] [--interface NAME|ADDR] [--json]
 ```
 
 The [shared flags](usage.md#flags-shared-by-every-command) apply: `--timeout` is how long each lookup gets, `--count` repeats them, `--delay` pauses before each. There are no flags of its own.
@@ -108,6 +108,7 @@ shint rdns 8.8.8.8 --json
 
 ## Good to know
 
+- **`--interface`** sends the reverse lookups from a given interface (`--interface eth1`, or `--interface "Ethernet 2"` on Windows) or from one of this machine's addresses (`--interface 10.0.0.5`): with it, `rdns` asks with Go's own resolver, which reads the name servers this system is configured with and can be told where to send from (the system's resolver cannot), so a name server reached only over a VPN answers. A host name you give is first looked up the usual way. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the checks send from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - **`Ctrl+C` shows how far it got.** With a large `--count`, the run stops, prints an `interrupted` line and its `done` line, and exits `1` (cut short); an attempt still in flight is dropped, not counted as a failure - see [Stopping early](usage.md#stopping-early).
 - **A PTR record is set by whoever owns the address block** (your ISP, your cloud provider, your own DNS), not by the machine itself, so it may be missing, generic (`ec2-...compute.amazonaws.com`) or out of date. It says nothing about whether the name maps *forward* to the same address: that "forward-confirmed" check is not done here.
 - **An address can have several names** - the PTR set - and all of them are listed.

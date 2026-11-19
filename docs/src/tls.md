@@ -16,7 +16,7 @@ It checks every address the name resolves to, so one load-balanced server with a
 ## Syntax
 
 ```bash
-shint tls <host> [port] [--servername NAME] [--cacert FILE] [--warn-days N] [--fail-days N] [--count N] [--timeout S] [--json]
+shint tls <host> [port] [--servername NAME] [--cacert FILE] [--warn-days N] [--fail-days N] [--count N] [--timeout S] [--interface NAME|ADDR] [--json]
 ```
 
 `port` is `443` unless given. `host` is a name or an address.
@@ -215,6 +215,7 @@ One stat per address and attempt, with every certificate in full each time. `exp
 
 ## Good to know
 
+- **`--interface`** makes the TLS connections from a given interface (`--interface eth1`, or `--interface "Ethernet 2"` on Windows) or from one of this machine's addresses (`--interface 10.0.0.5`) - to check the certificate a server presents on an internal network or a VPN. Each address is checked from a source of its own family. The host name is still looked up through the system's resolver. An interface name that does not exist is a failed check (exit `1`) that lists the names that do. The first line says what the checks send from (`source interface=eth1 addresses=[...]`), and the JSON records it in `input_params.interface`. See [Sending from an interface](usage.md#sending-from-an-interface-interface).
 - **Unprivileged**: an ordinary TCP connection and a TLS handshake.
 - **The handshake skips Go's own verification so every certificate can be shown**, trusted or not; the chain is then verified separately, against the name asked for and the system's roots (plus `--cacert`), as a browser would. Nothing is sent after the handshake.
 - **An address checked by itself is verified against the certificate's IP addresses**, and no SNI is sent - as browsers do. A server that serves several sites needs `--servername` to pick one.
