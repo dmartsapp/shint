@@ -123,7 +123,7 @@ ICMP normally needs privileges. shint uses the unprivileged ICMP sockets some sy
 
 - **macOS:** works for a normal user.
 - **Linux:** depends on the `net.ipv4.ping_group_range` setting. If `ping` fails with `socket: permission denied`, run it as root or widen the range with `sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"`.
-- **FreeBSD:** does not work, not even as root. FreeBSD has no unprivileged ICMP socket (`socket: protocol not supported`), and shint does not use the raw socket that FreeBSD's own `ping` is setuid root for ([#112](https://github.com/dmartsapp/shint/issues/112)). The other BSDs, Solaris, illumos and AIX are probably the same, but have not been tried yet.
+- **FreeBSD and NetBSD:** does not work, not even as root. Neither has an unprivileged ICMP socket (`socket: protocol not supported`), and shint does not use the raw socket that their own `ping` is setuid root for ([#112](https://github.com/dmartsapp/shint/issues/112)). OpenBSD, Solaris, illumos and AIX are probably the same, but have not been tried yet.
 - **Windows:** shint uses a raw ICMP socket there, which Windows may allow only to administrators. Not tried yet ([#112](https://github.com/dmartsapp/shint/issues/112)).
 - **Docker:** the same rules apply as on the host.
 
