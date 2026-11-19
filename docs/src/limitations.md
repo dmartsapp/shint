@@ -19,7 +19,8 @@ shint is built for 18 platforms. Every release ships all of them. But only two a
 | Windows | `shint.windows.amd64.exe`, `shint.windows.arm64.exe` | **Built, never run by the project.** The code written for Windows (`ss`'s socket tables, where `dns` finds the hosts file) is compiled, and unit-tested on recorded data where it can be, but it has never run on Windows. Neither has stopping a run with `Ctrl+C`. |
 | FreeBSD on amd64 | `shint.freebsd.amd64` | **Run once**, on FreeBSD 14.4 before v4.4.0, with its [platform test](#testers-wanted): `ip arp` saw no neighbours (fixed before the release) and `ping` cannot work there ([#112](https://github.com/dmartsapp/shint/issues/112)); the other 30 checks passed. |
 | NetBSD on amd64 | `shint.netbsd.amd64` | **Run once**, on NetBSD 11.1 before v4.4.0: all 32 checks of its platform test passed, `ip route` and `ip arp` (IPv4 and IPv6 neighbours) matched `netstat -rn`, `arp -an` and `ndp -an`, and `ping` fails as on FreeBSD ([#112](https://github.com/dmartsapp/shint/issues/112)). |
-| FreeBSD and NetBSD on arm64, OpenBSD, Solaris, illumos, Android, AIX | the rest | **Built, never run by the project.** |
+| OpenBSD on amd64 | `shint.openbsd.amd64` | **Run once**, on OpenBSD 8.0 before v4.4.0: the platform test itself had to be fixed first (OpenBSD's shell could not parse it), then all 32 checks passed; `ip arp` matched `arp -an`, `ip route` matched `netstat -rn` once the subnet's broadcast entry was left out (fixed), and `ping` fails as on FreeBSD ([#112](https://github.com/dmartsapp/shint/issues/112)). |
+| FreeBSD, NetBSD and OpenBSD on arm64, Solaris, illumos, Android, AIX | the rest | **Built, never run by the project.** |
 
 So on everything below the first two rows, **you are the testing**. If shint misbehaves there, an issue with what you ran and what it printed is the only way anyone finds out.
 
@@ -53,7 +54,7 @@ If you have Go and Python, `make check` runs the whole test suite, which tells u
 - **`ss` works on Linux and Windows only.** On macOS, the BSDs, Solaris and illumos it says it is not supported yet and exits `1`; the BSDs are planned ([#105](https://github.com/dmartsapp/shint/issues/105)). **The AIX binary has no `ss` at all.** AIX has no way to list its sockets, with the process holding each, without root. Its own tools read kernel memory as root, and shint never asks for root. So the command is left out of that binary rather than shipped as one that can never work. See [ss](ss.md#platforms).
 - **`ip route` and `ip arp` work on Linux, macOS, the BSDs and Windows.** On Solaris, illumos and AIX they say they are not supported yet and exit `1`; `ip` itself works everywhere. The Windows tables, like `ss`'s, have not been read on a real Windows machine by the project.
 - **`--interface` is not on `ping` yet**: its ICMP library cannot send from an address so far ([#69](https://github.com/dmartsapp/shint/issues/69)). The other commands that send take it.
-- **`ping` needs an unprivileged ICMP socket, which few systems have.** macOS has one. Linux allows it only to the groups in `net.ipv4.ping_group_range`: most desktop distributions allow everyone, a hardened server may not (see [troubleshooting](troubleshooting.md)). **FreeBSD and NetBSD have none, so `ping` does not work there, not even as root** - it says `socket: protocol not supported` and exits `1`. OpenBSD, Solaris, illumos and AIX are probably the same, and on Windows shint uses a raw socket that may need an administrator; none of these has been tried yet ([#112](https://github.com/dmartsapp/shint/issues/112)).
+- **`ping` needs an unprivileged ICMP socket, which few systems have.** macOS has one. Linux allows it only to the groups in `net.ipv4.ping_group_range`: most desktop distributions allow everyone, a hardened server may not (see [troubleshooting](troubleshooting.md)). **FreeBSD, NetBSD and OpenBSD have none, so `ping` does not work there, not even as root** - it says `socket: protocol not supported` and exits `1`. Solaris, illumos and AIX are probably the same, and on Windows shint uses a raw socket that may need an administrator; none of these has been tried yet ([#112](https://github.com/dmartsapp/shint/issues/112)).
 - **`listen --bind ::` accepting IPv4 too** has been verified on macOS and Linux only.
 - **Some systems get no binary at all**, because Go, which shint is written in, does not build for them: HP-UX, Solaris on SPARC, and AIX on anything but IBM POWER.
 
@@ -75,7 +76,7 @@ At the time of writing. The [issue tracker](https://github.com/dmartsapp/shint/i
 
 - **`ping --timeout` does not limit the name lookup** ([#14](https://github.com/dmartsapp/shint/issues/14)). The ping library resolves with its own fixed 5-second limit.
 - **`ping` stopped with `Ctrl+C` ends without its statistics** ([#25](https://github.com/dmartsapp/shint/issues/25)).
-- **`ping` does not work on FreeBSD and NetBSD**, and probably not on OpenBSD, Solaris, illumos and AIX, nor on Windows without an administrator ([#112](https://github.com/dmartsapp/shint/issues/112)).
+- **`ping` does not work on FreeBSD, NetBSD and OpenBSD**, and probably not on Solaris, illumos and AIX, nor on Windows without an administrator ([#112](https://github.com/dmartsapp/shint/issues/112)).
 
 All three are in `ping`'s library, and are planned with its replacement ([#70](https://github.com/dmartsapp/shint/issues/70)).
 
