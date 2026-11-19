@@ -220,7 +220,7 @@ def part_lines(needs, jobs, slack=True):
         extra = extra_for(part, needs.get(part, {}).get("outputs", {}))
         if extra and result == "success":
             bits.append(extra)
-        took = human(part_duration(part, jobs))
+        took = human(part_duration(part, jobs)) if result != "skipped" else None
         if took:
             bits.append(took)
         fails = failed_steps(part, jobs)

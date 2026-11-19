@@ -345,8 +345,10 @@ jobs:
           echo "" >> release_notes.md
           echo "### Code Changes" >> release_notes.md
           # The tag being released won't necessarily sort to the top (a re-release
-          # of an older version), so it is excluded explicitly.
-          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -vF "$TAG" | head -n 1)
+          # of an older version), so it is excluded explicitly. `|| true`: on the
+          # first release there is no other tag, grep exits 1, and under pipefail
+          # that would end the step before the fallback below.
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -vF "$TAG" | head -n 1 || true)
           if [ -n "$PREVIOUS_TAG" ]; then
             echo "Full diff: $SERVER/$REPO/compare/$PREVIOUS_TAG...$TAG" >> release_notes.md
           else

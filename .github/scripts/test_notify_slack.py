@@ -84,6 +84,10 @@ class ResultTests(unittest.TestCase):
         n = needs(binaries="failure", github_release="skipped", image_reports="skipped", readme="skipped")
         self.assertEqual(ns.why_skipped("github-release", n), "Binaries did not pass (failure)")
         self.assertEqual(ns.why_skipped("readme", n), "GitHub release was skipped")
+        # a skipped job's start and end are the same moment: no "0s" next to it (seen in the rehearsal)
+        jobs = [job("Attach the images' SBOMs and reports", "skipped", start="2026-11-30T10:05:00Z", end="2026-11-30T10:05:00Z")]
+        line = [l for l in ns.part_lines(n, jobs, slack=False) if l.startswith("| [Images'")][0]
+        self.assertNotIn("0s", line)
 
     def test_failed_steps_name_each_failed_leg(self):
         jobs = [job("Build linux/arm64", "failure", "Build the binary"), job("Build linux/amd64"),
