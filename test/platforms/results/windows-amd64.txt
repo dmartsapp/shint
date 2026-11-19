@@ -1,17 +1,52 @@
 # shint platform test: windows/amd64
-# Blank until test/platforms/windows-amd64.ps1 has been run on windows/amd64; the script rewrites this file.
+# Written by test/platforms/windows-amd64.ps1; run it again to replace this file.
 platform: windows/amd64
-release:
-commit:
-built:
-go:
-binary:
-binary_sha256:
-tested_at:
-os:
-privileges:
-internet:
-passed:
-failed:
-skipped:
-result: untested
+release: dev-18112026170556
+commit: 
+built: 
+go: go1.27.4
+binary: shint.windows.amd64.exe
+binary_sha256: b4e5fc0847cb2fc808fdbc15f26efe0aa760570fccf2611d1faf491797c9a116
+tested_at: 2026-11-19T06:35:16Z
+os: Microsoft Windows 10 Pro Education 10.0.19045
+privileges: administrator
+internet: yes
+passed: 34
+failed: 0
+skipped: 0
+result: pass
+
+PASS  version: --version names windows/amd64 (dev-18112026170556)
+PASS  help: lists the commands
+PASS  listen tcp: starts on 127.0.0.1
+PASS  listen udp: starts on 127.0.0.1, echoing
+PASS  listen http: starts on 127.0.0.1
+PASS  listen udp: a second one, for wol
+PASS  telnet: connects to the local TCP listener
+PASS  telnet: a closed port is a failed check (exit 1)
+PASS  telnet --interface 127.0.0.1: sends from that address
+PASS  --interface: an unknown name fails and lists the real ones
+PASS  nmap -p: one open port and one closed
+PASS  nmap --json: the open port in stats
+PASS  udp: the echoing listener answers
+PASS  wol: sends a magic packet
+PASS  wol: the listener received the 102-byte packet
+PASS  web: GET from the local HTTP listener
+PASS  web --json: status_code 200
+PASS  web --headers-only: the response's headers
+PASS  ip: lists the interfaces, loopback included
+PASS  cidr: a /24 has 254 hosts
+PASS  dns: localhost from the hosts file
+PASS  rdns: 127.0.0.1 has a name
+PASS  ip route: lists the routing table
+PASS  ip route 127.0.0.1: goes out through loopback
+PASS  ip arp: reads the neighbour table
+PASS  ss -l: finds the TCP listener and its process
+PASS  ss --json: the listener's process
+PASS  ss: nothing matching is a failed check (exit 1)
+PASS  ping: 127.0.0.1 answers
+PASS  telnet: example.com 443 over the internet
+PASS  dns: example.com through the system's name server
+PASS  web: https://example.com, its certificate trusted
+PASS  tls: example.com's chain verified
+PASS  ntp: pool.ntp.org answers
