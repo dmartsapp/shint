@@ -63,6 +63,57 @@ func TestSetSourceInterface(t *testing.T) {
 	}
 }
 
+// On Solaris and illumos an interface's addresses may sit on its logical
+// interfaces (net0:1 held the global IPv6 address on Solaris 11.4):
+// --interface net0 takes those too, and net0:1 on its own still works.
+func TestSourceInterfaceTakesLogicalInterfaces(t *testing.T) {
+	defer func() { _ = SetSourceInterface("") }()
+	origList, origAddrs := SystemInterfaces, addrsOf
+	defer func() { SystemInterfaces, addrsOf = origList, origAddrs }()
+	table := map[string][]string{
+		"lo0":    {"127.0.0.1/8"},
+		"net0":   {"192.168.1.127/24", "fe80::11:32ff:fe24:e691/10"},
+		"net0:1": {"2001:db8:1::127/64"},
+		"net0:a": {"192.0.2.1/24"},    // not a logical interface's name
+		"net01":  {"192.0.2.2/24"},    // another interface
+		"net1:1": {"198.51.100.1/24"}, // another interface's logical one
+	}
+	SystemInterfaces = func() ([]net.Interface, error) {
+		var out []net.Interface
+		for i, n := range []string{"lo0", "net0", "net0:1", "net0:a", "net01", "net1:1"} {
+			out = append(out, net.Interface{Index: i + 1, Name: n, Flags: net.FlagUp})
+		}
+		return out, nil
+	}
+	addrsOf = func(ifc net.Interface) ([]net.Addr, error) {
+		var out []net.Addr
+		for _, c := range table[ifc.Name] {
+			ip, n, _ := net.ParseCIDR(c)
+			n.IP = ip
+			out = append(out, n)
+		}
+		return out, nil
+	}
+	for value, want := range map[string]string{
+		"net0":   "192.168.1.127 fe80::11:32ff:fe24:e691%net0 2001:db8:1::127",
+		"NET0":   "192.168.1.127 fe80::11:32ff:fe24:e691%net0 2001:db8:1::127",
+		"net0:1": "2001:db8:1::127",
+		"net01":  "192.0.2.2",
+	} {
+		if err := SetSourceInterface(value); err != nil {
+			t.Fatalf("%s: %v", value, err)
+		}
+		_, addrs := SourceInterface()
+		var got []string
+		for _, a := range addrs {
+			got = append(got, a.String())
+		}
+		if strings.Join(got, " ") != want {
+			t.Errorf("%s: %v, want %s", value, got, want)
+		}
+	}
+}
+
 func slicesHas(addrs []netip.Addr, want netip.Addr) bool {
 	for _, a := range addrs {
 		if a == want {

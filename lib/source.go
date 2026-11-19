@@ -76,6 +76,11 @@ func SetSourceInterface(value string) error {
 		names = append(names, ifc.Name)
 		if strings.EqualFold(ifc.Name, value) {
 			addrs := interfaceAddrs(ifc)
+			for _, logical := range list {
+				if isLogicalOf(logical.Name, ifc.Name) {
+					addrs = append(addrs, interfaceAddrs(logical)...)
+				}
+			}
 			if len(addrs) == 0 {
 				return fmt.Errorf("interface %s has no address to send from (is it up?)", ifc.Name)
 			}
@@ -86,10 +91,30 @@ func SetSourceInterface(value string) error {
 	return fmt.Errorf("%s", NoSuchInterface(value, names))
 }
 
+// isLogicalOf is whether name is one of physical's logical interfaces on
+// Solaris and illumos: net0:1, net0:2, ... Those systems list each as an
+// interface of its own, and put addresses on them - Solaris 11.4 put the
+// machine's global IPv6 address on net0:1 - so --interface net0 means them too.
+func isLogicalOf(name, physical string) bool {
+	rest, ok := strings.CutPrefix(strings.ToLower(name), strings.ToLower(physical)+":")
+	if !ok || rest == "" {
+		return false
+	}
+	for _, c := range rest {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// addrsOf reads an interface's addresses from the system; tests replace it.
+var addrsOf = func(ifc net.Interface) ([]net.Addr, error) { return ifc.Addrs() }
+
 // interfaceAddrs are an interface's IP addresses, a link-local IPv6 one with
 // the interface as its zone.
 func interfaceAddrs(ifc net.Interface) []netip.Addr {
-	raw, err := ifc.Addrs()
+	raw, err := addrsOf(ifc)
 	if err != nil {
 		return nil
 	}
