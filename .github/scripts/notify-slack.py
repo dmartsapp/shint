@@ -1,35 +1,40 @@
 #!/usr/bin/env python3
-"""Post the outcome of a release tag's workflows to Slack, as one clean message.
+"""The outcome of a release, from the Release workflow's own jobs: to Slack, to a
+failure issue, and - for a release that was published - as an announcement.
 
     python3 .github/scripts/notify-slack.py
 
-Run by .github/workflows/notify-slack.yaml, which the tag push starts alongside
-the five release workflows. This waits until each of them has finished (or the
-wait runs out), then posts the result: the tag, whether everything passed, one
-line per workflow with its duration and a link to its run, what failed and where,
-and buttons for the release and the runs.
+Run by two jobs at the end of .github/workflows/release.yaml, which `need` every
+other job, so nothing is waited for: each job's result (success, failure,
+cancelled, skipped) and outputs arrive in NEEDS (the workflow's toJSON(needs)),
+and the run's job list (GitHub's API) adds durations and the step each failed
+job failed in.
 
-When everything passed, the release is announced, for the people who use shint
-rather than the ones who build it: in a second Slack post, and as a discussion in
-the repository's Announcements category (titled "vX.Y.Z released", once per
-version). Both hold the release's one-line summary (releases/vX.Y.Z.md), the
-headline of each changelog entry for the version (CHANGELOG.md), how to get it,
-and links to the release notes, the changelog and the documentation. A failed or
-unfinished release is never announced.
+- announce: posts one message to Slack - the tag, whether the release was
+  published, one line per part with its result, what failed and where (and why
+  a part was skipped: the part it needs did not pass), the failure issue if one
+  was opened - and, when the release was published, announces it, for the people
+  who use shint rather than the ones who build it: a second Slack post, and a
+  discussion in the repository's Announcements category ("vX.Y.Z released",
+  once per version). Both hold the release's one-line summary (releases/vX.Y.Z.md),
+  the headline of each changelog entry for the version, how to get it, and links
+  to the release notes, the changelog and the documentation.
+- report-failure (ISSUE_BODY set): writes the failure issue's body - every part
+  with its result, each failed job and step, the run's link - and posts nothing.
 
 Settings come from the environment:
 
+  NEEDS               toJSON(needs) of the calling job: {job: {result, outputs}}
   GH_TOKEN            token for the gh CLI (actions: read, contents: read)
-  REPO, TAG, SHA      owner/name, the tag (v4.0.6) and the commit it points at
-  RUN_ID              this workflow's own run, ignored while waiting
+  REPO, TAG, SHA      owner/name, the tag (v4.5.0) and the commit it points at
+  RUN_ID              the Release workflow's run (its jobs, their steps)
   ACTOR               who pushed the tag
   SERVER_URL          https://github.com
   SLACK_WEBHOOK_URL   the incoming webhook; without it nothing is posted to Slack
                       (a fork, or the secret not set) and the run still succeeds
-  ANNOUNCE_DISCUSSIONS=1  also announce a release that passed in Discussions
+  ANNOUNCE_DISCUSSIONS=1  also announce a published release in Discussions
                       (GH_TOKEN then needs discussions: write)
-  WAIT_SECONDS        how long to wait for the workflows (default 3000)
-  POLL_SECONDS        seconds between looks (default 20)
+  ISSUE_BODY          write the failure issue's body to this file, and only that
   DRY_RUN=1           print the messages instead of posting them
   CHANGELOG           the changelog to announce from (default CHANGELOG.md)
   RELEASES_DIR        where releases/vX.Y.Z.md lives (default releases)
@@ -47,21 +52,43 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 
-# The workflows a release tag starts, in the order they are shown:
-# (the workflow's `name:`, the label shown in Slack). A test keeps this list in
-# step with the workflow files, so adding a release workflow without listing it
-# here fails `make workflows`.
-WORKFLOWS = [
-    ("Binary Build & Release", "Binary build and release"),
-    ("Vulnerability Check", "Vulnerability check"),
-    ("Lint", "Linting"),
-    ("Docker Hub Release", "Docker Hub image"),
-    ("GHCR Release", "GHCR image"),
+# The Release workflow's jobs, in the order they are shown: (job id, the start of
+# the job's `name:` - a matrix job's names share it -, the label shown). Tests keep
+# this list, and NEEDS_OF, in step with release.yaml.
+PARTS = [
+    ("verify-tag", "Verify the tag", "Release tag"),
+    ("lint", "golangci-lint", "golangci-lint"),
+    ("vulncheck", "govulncheck", "govulncheck"),
+    ("hadolint", "hadolint", "Dockerfile (hadolint)"),
+    ("binaries", "Build ", "Binaries"),
+    ("github-release", "Publish the GitHub release", "GitHub release"),
+    ("docker-hub", "Docker Hub image", "Docker Hub image"),
+    ("ghcr", "GHCR image", "GHCR image"),
+    ("image-reports", "Attach the images", "Images' SBOMs and reports on the release"),
+    ("readme", "Propose main's README", "README proposal for main"),
 ]
+# What a release is: these all passed means it was published, whole. The README
+# proposal comes after and publishes nothing, so its failure is reported, not a
+# reason to withhold the announcement.
+PUBLISHING = [p[0] for p in PARTS if p[0] != "readme"]
+# Each part's `needs:` in release.yaml - to say why a part was skipped.
+NEEDS_OF = {
+    "verify-tag": [],
+    "lint": ["verify-tag"],
+    "vulncheck": ["verify-tag"],
+    "hadolint": ["verify-tag"],
+    "binaries": ["verify-tag", "lint", "vulncheck", "hadolint"],
+    "github-release": ["verify-tag", "vulncheck", "binaries"],
+    "docker-hub": ["verify-tag", "lint", "vulncheck", "hadolint"],
+    "ghcr": ["verify-tag", "lint", "vulncheck", "hadolint"],
+    "image-reports": ["github-release", "docker-hub", "ghcr"],
+    "readme": ["github-release"],
+}
+LABEL = {p[0]: p[2] for p in PARTS}
 
 GREEN, RED, AMBER = "#2EB67D", "#E01E5A", "#ECB22E"
-OK_CONCLUSIONS = ("success",)
-NOT_RUN_CONCLUSIONS = ("skipped", "neutral")
+ICON = {"success": ":white_check_mark:", "failure": ":x:", "cancelled": ":no_entry_sign:", "skipped": ":fast_forward:"}
+MARK = {"success": "✅", "failure": "❌", "cancelled": "🚫", "skipped": "⏭️"}
 
 
 def parse_time(text):
@@ -69,11 +96,6 @@ def parse_time(text):
         return datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ")
     except (TypeError, ValueError):
         return None
-
-
-def duration(run):
-    start, end = parse_time(run.get("startedAt")), parse_time(run.get("updatedAt"))
-    return int((end - start).total_seconds()) if start and end and end >= start else None
 
 
 def human(seconds):
@@ -91,114 +113,158 @@ def gh_json(args):
     return json.loads(done.stdout or "null")
 
 
-def fetch_runs(gh, repo, sha, tag, own_run):
-    """The newest run of each workflow that this tag push started."""
-    runs = gh(["run", "list", "--repo", repo, "--commit", sha, "--limit", "100", "--json",
-               "databaseId,workflowName,status,conclusion,url,startedAt,updatedAt,event,headBranch"])
-    latest = {}
-    for run in runs or []:
-        if run.get("event") != "push" or run.get("headBranch") != tag or str(run["databaseId"]) == str(own_run):
-            continue
-        name = run["workflowName"]
-        if name not in latest or run["databaseId"] > latest[name]["databaseId"]:
-            latest[name] = run
-    return latest
-
-
-def wait_for_runs(fetch, names, wait_seconds, poll_seconds, sleep=time.sleep, clock=time.monotonic, log=print):
-    """Poll until every named workflow has completed. Returns (runs, timed_out)."""
-    started = clock()
-    runs = {}
-    while True:
-        try:
-            runs = fetch()
-        except RuntimeError as err:  # a hiccup in the API: look again rather than give up
-            log("could not list the runs (%s); will retry" % err)
-        pending = [n for n in names if n not in runs or runs[n].get("status") != "completed"]
-        if not pending:
-            return runs, False
-        if clock() - started >= wait_seconds:
-            return runs, True
-        log("waiting for: " + ", ".join("%s (%s)" % (n, runs[n]["status"] if n in runs else "not started") for n in pending))
-        sleep(poll_seconds)
-
-
-def failed_steps(gh, repo, run, limit=3):
-    """'job > step' for what failed in a run, at most limit of them."""
+def parse_needs(text):
+    """NEEDS (toJSON(needs)) as {job: {"result": ..., "outputs": {...}}}; a job it does not
+    name is missing, which reads as "did not run"."""
     try:
-        jobs = gh(["run", "view", str(run["databaseId"]), "--repo", repo, "--json", "jobs"])["jobs"]
-    except (RuntimeError, KeyError, TypeError):
+        data = json.loads(text or "{}")
+    except ValueError:
+        return {}
+    out = {}
+    for job, v in (data or {}).items():
+        if isinstance(v, dict):
+            out[job] = {"result": v.get("result") or "unknown", "outputs": v.get("outputs") or {}}
+    return out
+
+
+def fetch_jobs(gh, repo, run_id):
+    """The run's jobs (name, conclusion, steps, times, URL), or [] when the API says nothing."""
+    if not run_id:
         return []
+    try:
+        return gh(["api", "repos/%s/actions/runs/%s/jobs?per_page=100" % (repo, run_id)]).get("jobs") or []
+    except (RuntimeError, AttributeError, TypeError):
+        return []
+
+
+def jobs_of(part, jobs):
+    """The run's jobs that are this part - one, or a matrix job's legs."""
+    prefix = next(p[1] for p in PARTS if p[0] == part)
+    return [j for j in jobs if (j.get("name") or "").startswith(prefix)]
+
+
+def failed_steps(part, jobs, limit=4):
+    """'job › step' for each failed job of a part (a matrix's legs each), at most limit."""
     found = []
-    for job in jobs:
-        if job.get("conclusion") != "failure":
+    for job in jobs_of(part, jobs):
+        if job.get("conclusion") not in ("failure", "timed_out"):
             continue
-        steps = [s["name"] for s in job.get("steps", []) if s.get("conclusion") == "failure"]
+        steps = [s["name"] for s in job.get("steps") or [] if s.get("conclusion") == "failure"]
         found.append("%s › %s" % (job["name"], steps[0]) if steps else job["name"])
     return found[:limit] + (["+%d more" % (len(found) - limit)] if len(found) > limit else [])
 
 
-def classify(runs, timed_out):
-    """('passed' | 'failed' | 'running', number passed)."""
-    conclusions = [runs[n]["conclusion"] if n in runs and runs[n].get("status") == "completed" else None
-                   for n, _ in WORKFLOWS]
-    passed = sum(1 for c in conclusions if c in OK_CONCLUSIONS)
-    if any(c is not None and c not in OK_CONCLUSIONS and c not in NOT_RUN_CONCLUSIONS for c in conclusions):
-        return "failed", passed
-    if any(c is None for c in conclusions) or timed_out:
-        return "running", passed
-    return ("passed" if passed == len(WORKFLOWS) else "failed"), passed
+def part_duration(part, jobs):
+    starts = [parse_time(j.get("started_at")) for j in jobs_of(part, jobs)]
+    ends = [parse_time(j.get("completed_at")) for j in jobs_of(part, jobs)]
+    starts, ends = [t for t in starts if t], [t for t in ends if t]
+    if not starts or not ends or max(ends) < min(starts):
+        return None
+    return (max(ends) - min(starts)).total_seconds()
 
 
-def line_for(label, run, extra, failures):
-    if run is None:
-        return ":grey_question:  *%s*  ·  did not start" % label
-    if run.get("status") != "completed":
-        icon, state = ":hourglass_flowing_sand:", "still running"
-    elif run["conclusion"] in OK_CONCLUSIONS:
-        icon, state = ":white_check_mark:", None
-    elif run["conclusion"] in NOT_RUN_CONCLUSIONS:
-        icon, state = ":fast_forward:", run["conclusion"]
-    else:
-        icon, state = ":x:", run["conclusion"].replace("_", " ")
-    parts = ["%s  *<%s|%s>*" % (icon, run["url"], label)]
-    for part in (state, extra, human(duration(run))):
-        if part:
-            parts.append(part)
-    text = "  ·  ".join(parts)
-    for failure in failures:
-        text += "\n        `%s`" % failure
-    return text
+def result_of(part, needs):
+    return needs.get(part, {}).get("result", "not run")
 
 
-def build_payload(tag, repo, sha, subject, actor, server, runs, timed_out, assets, release_url, failures):
+def why_skipped(part, needs):
+    """For a skipped part: which part it needs did not pass."""
+    for dep in NEEDS_OF.get(part, []):
+        r = result_of(dep, needs)
+        if r != "success":
+            return "%s %s" % (LABEL[dep], "was skipped" if r == "skipped" else "did not pass (%s)" % r)
+    return None
+
+
+def classify(needs):
+    """('refused' | 'published' | 'failed', parts that passed)."""
+    passed = sum(1 for p, _, _ in PARTS if result_of(p, needs) == "success")
+    if result_of("verify-tag", needs) != "success":
+        return "refused", passed
+    if all(result_of(p, needs) == "success" for p in PUBLISHING):
+        return "published", passed
+    return "failed", passed
+
+
+def published(needs):
+    """What went out: the GitHub release and each image that was pushed."""
+    return [LABEL[p] for p in ("github-release", "docker-hub", "ghcr") if result_of(p, needs) == "success"]
+
+
+def extra_for(part, outputs):
+    """What a part handed on, worth a word in its line."""
+    if part == "verify-tag" and outputs.get("version"):
+        return "version %s" % outputs["version"]
+    if part == "vulncheck" and outputs.get("vulnerabilities") not in (None, "", "unknown"):
+        return "%s vulnerabilities" % outputs["vulnerabilities"]
+    if part == "github-release" and outputs.get("assets"):
+        return "%s files" % outputs["assets"]
+    if part in ("docker-hub", "ghcr") and outputs.get("digest"):
+        return "`%s`" % outputs["digest"].replace("sha256:", "")[:12]
+    return None
+
+
+def part_lines(needs, jobs, slack=True):
+    """One line per part (Slack mrkdwn, or a Markdown table row): its result, what it
+    handed on, how long it took, and - when it did not pass - why: the failed job and
+    step, or the part it needed that did not pass."""
+    lines = []
+    for part, _, label in PARTS:
+        result = result_of(part, needs)
+        bits = []
+        if result == "skipped":
+            why = why_skipped(part, needs)
+            bits.append("skipped: " + why if why else "skipped")
+        elif result != "success":
+            bits.append(result)
+        extra = extra_for(part, needs.get(part, {}).get("outputs", {}))
+        if extra and result == "success":
+            bits.append(extra)
+        took = human(part_duration(part, jobs))
+        if took:
+            bits.append(took)
+        fails = failed_steps(part, jobs)
+        own = jobs_of(part, jobs)
+        url = own[0].get("html_url") if len(own) == 1 else None
+        if slack:
+            name = "*<%s|%s>*" % (url, label) if url else "*%s*" % label
+            text = "  ·  ".join(["%s  %s" % (ICON.get(result, ":grey_question:"), name)] + bits)
+            text += "".join("\n        `%s`" % f for f in fails)
+        else:
+            name = "[%s](%s)" % (label, url) if url else label
+            cell = "%s %s" % (MARK.get(result, "❔"), " · ".join(bits or [result]))
+            if fails:
+                cell += " - failed in " + ", ".join("`%s`" % f for f in fails)
+            text = "| %s | %s |" % (name, cell.replace("|", "/"))
+        lines.append(text)
+    return lines
+
+
+def build_payload(tag, repo, sha, subject, actor, server, run_id, needs, jobs, release_url, issue):
     """The Slack message (a legacy attachment holding Block Kit blocks, which is what
     gives it the coloured bar). Pure: no network, no environment."""
-    state, passed = classify(runs, timed_out)
-    total = len(WORKFLOWS)
-    starts = [parse_time(r.get("startedAt")) for r in runs.values() if r.get("startedAt")]
-    ends = [parse_time(r.get("updatedAt")) for r in runs.values() if r.get("status") == "completed"]
+    state, passed = classify(needs)
+    total = len(PARTS)
+    readme_ok = result_of("readme", needs) == "success"
+    starts = [parse_time(j.get("started_at")) for j in jobs if j.get("started_at")]
+    ends = [parse_time(j.get("completed_at")) for j in jobs if j.get("completed_at")]
     elapsed = human((max(ends) - min(starts)).total_seconds()) if starts and ends and max(ends) >= min(starts) else None
 
-    if state == "passed":
+    if state == "published" and readme_ok:
         color, headline = GREEN, ":rocket:  *shint %s is released*" % tag
-        summary = "All %d checks passed" % total
-    elif state == "failed":
-        color, headline = RED, ":rotating_light:  *shint %s - the release pipeline failed*" % tag
-        summary = "%d of %d checks passed" % (passed, total)
+        summary = "All %d parts passed" % total
+    elif state == "published":
+        color, headline = AMBER, ":rocket:  *shint %s is released* - the README proposal did not go through" % tag
+        summary = "%d of %d parts passed" % (passed, total)
+    elif state == "refused":
+        color, headline = RED, ":no_entry:  *shint %s - the tag was refused; nothing was built or published*" % tag
+        summary = "A release tag must be vX.Y.Z on a commit on main"
     else:
-        color, headline = AMBER, ":hourglass_flowing_sand:  *shint %s - the pipeline is still running*" % tag
-        summary = "%d of %d checks passed so far" % (passed, total)
+        color, headline = RED, ":rotating_light:  *shint %s - the release failed*" % tag
+        out = published(needs)
+        summary = "%d of %d parts passed  ·  published: %s" % (passed, total, ", ".join(out) if out else "nothing")
     if elapsed:
-        summary += "  ·  finished in %s" % elapsed if state != "running" else "  ·  after %s" % elapsed
-
-    lines = []
-    for name, label in WORKFLOWS:
-        run = runs.get(name)
-        extra = None
-        if name == "Binary Build & Release" and assets and run and run.get("conclusion") == "success":
-            extra = "%d files attached" % assets
-        lines.append(line_for(label, run, extra, failures.get(name, [])))
+        summary += "  ·  finished in %s" % elapsed
 
     short = sha[:7]
     context = ["Tag *%s*" % tag, "Commit <%s/%s/commit/%s|`%s`>" % (server, repo, sha, short)]
@@ -208,22 +274,44 @@ def build_payload(tag, repo, sha, subject, actor, server, runs, timed_out, asset
         context.append("pushed by %s" % actor)
 
     buttons = []
-    if release_url and state == "passed":
+    if release_url and state == "published":
         buttons.append({"type": "button", "text": {"type": "plain_text", "text": "Release notes"}, "url": release_url, "style": "primary"})
-    buttons.append({"type": "button", "text": {"type": "plain_text", "text": "Workflow runs"},
-                    "url": "%s/%s/actions?query=branch%%3A%s" % (server, repo, tag)})
+    run_url = "%s/%s/actions/runs/%s" % (server, repo, run_id) if run_id else "%s/%s/actions?query=branch%%3A%s" % (server, repo, tag)
+    buttons.append({"type": "button", "text": {"type": "plain_text", "text": "The run"}, "url": run_url})
+    if issue:
+        buttons.append({"type": "button", "text": {"type": "plain_text", "text": "Failure issue #%s" % issue},
+                        "url": "%s/%s/issues/%s" % (server, repo, issue)})
 
     blocks = [
         {"type": "section", "text": {"type": "mrkdwn", "text": headline + "\n" + summary}},
         {"type": "divider"},
-        {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(lines)}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(part_lines(needs, jobs))[:2900]}},
         {"type": "context", "elements": [{"type": "mrkdwn", "text": "  ·  ".join(context)}]},
         {"type": "actions", "elements": buttons},
     ]
-    fallback = {"passed": "shint %s released: all %d checks passed" % (tag, total),
-                "failed": "shint %s: release pipeline failed (%d of %d checks passed)" % (tag, passed, total),
-                "running": "shint %s: pipeline still running (%d of %d checks passed)" % (tag, passed, total)}[state]
+    fallback = {"published": "shint %s released: %d of %d parts passed" % (tag, passed, total),
+                "refused": "shint %s: the tag was refused, nothing was built" % tag,
+                "failed": "shint %s: the release failed (%d of %d parts passed)" % (tag, passed, total)}[state]
     return {"text": fallback, "attachments": [{"color": color, "blocks": blocks}]}
+
+
+def issue_body(tag, sha, server, repo, run_id, needs, jobs):
+    """The failure issue: every part with its result, each failed job and step, the run."""
+    state, passed = classify(needs)
+    run_url = "%s/%s/actions/runs/%s" % (server, repo, run_id)
+    out = published(needs)
+    went_out = ("**Published:** %s." % ", ".join(out) if out else "**Published:** nothing.") + (
+        " The release is whole: what failed came after it." if state == "published"
+        else " A part that did not pass stopped the parts that need it; the parts beside it ran.")
+    lines = ["### CI failure: Release %s" % tag, "",
+             "The Release workflow failed on `%s` (commit `%s`): %d of %d parts passed." % (tag, sha, passed, len(PARTS)), "",
+             "**Run:** %s" % run_url, "", went_out, "",
+             "| Part | Result |", "|---|---|"]
+    lines += part_lines(needs, jobs, slack=False)
+    lines += ["", "Open the run, find the step that failed and read its log. Once it is fixed, "
+              "**Re-run failed jobs** on the run starts the failed jobs again, and the ones that were "
+              "skipped because of them."]
+    return "\n".join(lines) + "\n"
 
 
 # --- the announcement ------------------------------------------------------------------
@@ -419,21 +507,31 @@ def post(url, payload, attempts=3, sleep=time.sleep):
     return False
 
 
-def write_step_summary(payload, tag):
+def write_step_summary(needs, jobs, tag):
     path = os.environ.get("GITHUB_STEP_SUMMARY")
     if not path:
         return
-    blocks = payload["attachments"][0]["blocks"]
     with open(path, "a", encoding="utf-8") as out:
-        out.write("### Slack notification for %s\n\n%s\n" % (tag, blocks[0]["text"]["text"].replace("*", "**")))
+        out.write("### Release %s\n\n| Part | Result |\n|---|---|\n%s\n" % (tag, "\n".join(part_lines(needs, jobs, slack=False))))
 
 
-def main(env=None, gh=gh_json, sleep=time.sleep, clock=time.monotonic):
+def main(env=None, gh=gh_json, sleep=time.sleep):
     env = os.environ if env is None else env
     repo, tag, sha = env.get("REPO", ""), env.get("TAG", ""), env.get("SHA", "")
     if not (repo and tag and sha):
         print("REPO, TAG and SHA are required", file=sys.stderr)
         return 2
+    needs = parse_needs(env.get("NEEDS", ""))
+    run_id = env.get("RUN_ID", "")
+    server = env.get("SERVER_URL", "https://github.com")
+
+    if env.get("ISSUE_BODY"):
+        body = issue_body(tag, sha, server, repo, run_id, needs, fetch_jobs(gh, repo, run_id))
+        with open(env["ISSUE_BODY"], "w", encoding="utf-8") as f:
+            f.write(body)
+        print(body)
+        return 0
+
     url = env.get("SLACK_WEBHOOK_URL", "")
     dry = env.get("DRY_RUN") == "1"
     discussions = env.get("ANNOUNCE_DISCUSSIONS") == "1"
@@ -442,35 +540,23 @@ def main(env=None, gh=gh_json, sleep=time.sleep, clock=time.monotonic):
         if not discussions:
             return 0
 
-    names = [n for n, _ in WORKFLOWS]
-    runs, timed_out = wait_for_runs(lambda: fetch_runs(gh, repo, sha, tag, env.get("RUN_ID", "")), names,
-                                    int(env.get("WAIT_SECONDS", "3000")), int(env.get("POLL_SECONDS", "20")),
-                                    sleep=sleep, clock=clock)
-    failures = {}
-    for name in names:
-        run = runs.get(name)
-        if run and run.get("status") == "completed" and run["conclusion"] not in OK_CONCLUSIONS + NOT_RUN_CONCLUSIONS:
-            failures[name] = failed_steps(gh, repo, run)
-
-    assets = release_url = subject = None
-    try:
-        release = gh(["release", "view", tag, "--repo", repo, "--json", "assets,url"])
-        assets, release_url = len(release.get("assets", [])), release.get("url")
-    except (RuntimeError, AttributeError):
-        pass  # no release (yet): the message simply has no release button
+    jobs = fetch_jobs(gh, repo, run_id)
+    state, _ = classify(needs)
+    release_url = needs.get("github-release", {}).get("outputs", {}).get("url") or None
+    issue = needs.get("report-failure", {}).get("outputs", {}).get("issue") or None
+    subject = None
     try:
         subject = gh(["api", "repos/%s/commits/%s" % (repo, sha), "--jq", "{message: .commit.message}"])["message"].splitlines()[0]
     except (RuntimeError, IndexError, KeyError, TypeError):
         pass
 
-    payload = build_payload(tag, repo, sha, subject, env.get("ACTOR", ""), env.get("SERVER_URL", "https://github.com"),
-                            runs, timed_out, assets, release_url, failures)
+    payload = build_payload(tag, repo, sha, subject, env.get("ACTOR", ""), server, run_id, needs, jobs, release_url, issue)
     print(payload["text"])
-    write_step_summary(payload, tag)
+    write_step_summary(needs, jobs, tag)
 
-    # The announcement: only for a release whose every check passed.
+    # The announcement: only for a release that was published, whole.
     announcement = discussion = None
-    if classify(runs, timed_out)[0] == "passed":
+    if state == "published":
         entries = changelog_entries(read_file(env.get("CHANGELOG", "CHANGELOG.md")), tag)
         summary = release_summary(read_file(os.path.join(env.get("RELEASES_DIR", "releases"), tag + ".md")))
         announcement = build_announcement(tag, summary, entries, release_url)

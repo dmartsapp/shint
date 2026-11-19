@@ -100,16 +100,12 @@ Each command is a package of its own under `lib/handlers/`, holding its code, it
 
 | File | Purpose |
 |---|---|
-| `.github/workflows/verify-release-tag.yaml` | The tag guard, a reusable workflow every other workflow calls first: the tag must be `vX.Y.Z` and its commit must be on `main`. No trigger of its own. |
-| `.github/scripts/verify-release-tag.sh` | The guard's checks (tag format, then the GitHub compare API). |
+| `.github/scripts/verify-release-tag.sh` | The release-tag guard (`release.yaml`'s first job): the tag must be `vX.Y.Z` (format), and its commit must be on `main` (the GitHub compare API). |
 | `.github/scripts/test-verify-release-tag.sh` | Offline tests for the guard, with a fake `gh`: `bash .github/scripts/test-verify-release-tag.sh`. |
 | `.github/scripts/check-workflow-triggers.py` | Fails if any workflow can be started by anything other than a `vX.Y.Z` tag (or a push to `main` that ignores `.github/**`). See [the trigger rule](tech-ci.md#the-workflow-trigger-rule). |
 | `.github/scripts/test_check_workflow_triggers.py` | Tests for that check, including a run over the real workflow files. |
-| `.github/workflows/lint.yaml` | Guard, then `golangci-lint`; opens an issue on failure. |
-| `.github/workflows/vulncheck.yaml` | Guard, then `govulncheck` with a step summary; opens an issue on failure. |
-| `.github/workflows/build.yaml` | Guard, gate, then 14 cross-builds (each attested and given a `.sha256` file), then the GitHub Release with the binaries and checksum files attached. |
-| `.github/workflows/docker-hub.yaml` | Guard, gate, then a multi-arch image pushed to Docker Hub. |
-| `.github/workflows/ghcr.yaml` | Guard, gate, then the same image pushed to GitHub Container Registry. |
+| `.github/workflows/release.yaml` | Everything a `vX.Y.Z` tag starts, as one workflow's jobs: the tag guard (`verify-tag`), the checks once (`lint`, `vulncheck`, `hadolint`), the 18 binaries and the GitHub release, the Docker Hub and GHCR images and their reports on the release, the README proposal (`readme`), and last the failure issue and the Slack/Discussions announcement - each job handing on what the next needs. See [The release workflow](tech-ci.md#the-release-workflow). |
+| `.github/scripts/notify-slack.py` | The outcome of a release, from every job's result (`toJSON(needs)`) and the run's jobs: the Slack message and, for a published release, the announcement (Slack, Discussions) - or, with `ISSUE_BODY`, the failure issue's body. Standard library only; tested by `test_notify_slack.py`, which also checks its list of parts against `release.yaml`. |
 | `.github/workflows/check.yaml` | After a merge to `main` (never a branch, PR or tag; ignores `.github/**`): `make check-quick` when a valid signed local check report is on the commit, the whole `make check` when it is not; opens an issue on failure. |
 | `.github/scripts/changelog-section.sh` | Prints one release's section of `CHANGELOG.md`: the release page's "What's new" (with `test-changelog-section.sh`). |
 | `.github/scripts/attest.sh` | `make attest`: runs `make check`, builds and signs the report, attaches it to the commit as a git note (`refs/notes/checks`) and pushes the note. |
@@ -119,7 +115,6 @@ Each command is a package of its own under `lib/handlers/`, holding its code, it
 | `.github/scripts/test-attest.sh` | Tests for `attest.sh`, the verifier and the hook, in throw-away repositories. |
 | `.githooks/pre-push` | Installed by `make hooks`: pushing `main` or a release tag with no valid signed report runs `make attest` first. |
 | `.github/allowed_signers` | The public keys whose signed reports CI accepts (namespace `shint-check`). |
-| `.github/workflows/readme-reconcile.yaml` | After a release tag, once the GitHub Release exists: proposes `main`'s README for it (a branch and a pull request, or an issue that links the branch). Never commits to `main`. |
 | `.github/scripts/readme-reconcile.py` | Brings a README in line with the release tags, the changelog, the milestones and the binary's `--help`, puts back what it must always have (expansion, badges with the donate button, support line), warns about what it cannot know; idempotent, fails closed. |
 | `.github/scripts/test_readme_reconcile.py` | Its tests, on README fixtures (35 of them). |
 | `.github/scripts/readme-release.sh` | `make readme-reconcile`: branches `readme/main-<tag>` off `main`, runs the script, commits, and with `PUSH=1` pushes and opens the pull request. |
@@ -132,7 +127,7 @@ Each command is a package of its own under `lib/handlers/`, holding its code, it
 | `releases/vX.Y.Z.md` | A release's record on `main`: its working page, as it was when it shipped. See [`releases/`](https://github.com/dmartsapp/shint/tree/main/releases). |
 | `.github/scripts/write-checksums.sh` | Writes `<binary>.sha256` next to each release binary and verifies it. |
 | `.github/scripts/test-write-checksums.sh` | Offline tests for it: format, an independent hash, the platform's own verifier, tampering. |
-| `.github/scripts/write-ci-failure-issue.sh` | Writes the body of the issue a failed check files, with the real run URL. |
+| `.github/scripts/write-ci-failure-issue.sh` | Writes the body of the issue a failed Check files, with the real run URL (a failed release's issue comes from `notify-slack.py`). |
 | `.github/scripts/test-write-ci-failure-issue.sh` | Offline tests for it. |
 
 Each workflow is explained in [CI/CD workflows](tech-ci.md).

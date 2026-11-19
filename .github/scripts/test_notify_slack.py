@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Tests for notify-slack.py: the message, the waiting, the posting, and that the
-webhook URL can never end up in the repository. No network beyond a local server.
+"""Tests for notify-slack.py: the result of every part, the message, the failure issue,
+the posting, that its lists match release.yaml, and that the webhook URL can never end up
+in the repository. No network beyond a local server.
 
     python3 .github/scripts/test_notify_slack.py
 """
@@ -10,6 +11,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import subprocess
 import tempfile
 import threading
@@ -22,166 +24,187 @@ spec = importlib.util.spec_from_file_location("notify_slack", os.path.join(HERE,
 ns = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ns)
 
-TAG, REPO, SHA = "v4.0.6", "dmartsapp/shint", "6607f211d296a90bb0a40ff92d278ef8aaf8e8ae"
+TAG, REPO, SHA = "v4.5.0", "dmartsapp/shint", "6607f211d296a90bb0a40ff92d278ef8aaf8e8ae"
 SERVER = "https://github.com"
+RELEASE_URL = "https://github.com/dmartsapp/shint/releases/tag/v4.5.0"
 
 
-def run(name, conclusion="success", status="completed", rid=1, start="2026-09-21T10:00:00Z", end="2026-09-21T10:06:12Z"):
-    return {"databaseId": rid, "workflowName": name, "status": status, "conclusion": conclusion if status == "completed" else "",
-            "url": "%s/%s/actions/runs/%d" % (SERVER, REPO, rid), "startedAt": start, "updatedAt": end,
-            "event": "push", "headBranch": TAG}
+def needs(**results):
+    """NEEDS as the workflow sends it: every part passed, unless a result is given
+    (keyword names use _ for -)."""
+    out = {}
+    for part, _, _ in ns.PARTS:
+        out[part] = {"result": results.get(part.replace("-", "_"), "success"), "outputs": {}}
+    out["verify-tag"]["outputs"] = {"version": "4.5.0", "minor": "4.5", "major": "4"}
+    if out["github-release"]["result"] == "success":
+        out["github-release"]["outputs"] = {"url": RELEASE_URL, "assets": "73"}
+    out["vulncheck"]["outputs"] = {"vulnerabilities": "0"}
+    out["docker-hub"]["outputs"] = {"digest": "sha256:" + "ab" * 32, "image": "docker.io/farhansabbir/shint"}
+    return out
 
 
-def all_runs(**overrides):
-    runs = {}
-    for i, (name, _) in enumerate(ns.WORKFLOWS):
-        runs[name] = overrides.get(name, run(name, rid=100 + i))
-    return runs
+def job(name, conclusion="success", failed_step=None, start="2026-11-30T10:00:00Z", end="2026-11-30T10:01:30Z", jid=1):
+    steps = [{"name": "Set up job", "conclusion": "success"}]
+    if failed_step:
+        steps.append({"name": failed_step, "conclusion": "failure"})
+    return {"name": name, "conclusion": conclusion, "steps": steps, "started_at": start, "completed_at": end,
+            "html_url": "%s/%s/actions/runs/9/job/%d" % (SERVER, REPO, jid)}
 
 
-def payload(runs, timed_out=False, assets=14, release_url="https://github.com/dmartsapp/shint/releases/tag/v4.0.6", failures=None):
-    return ns.build_payload(TAG, REPO, SHA, "fix: something (v4.0.6)", "farhansabbir", SERVER, runs, timed_out, assets, release_url, failures or {})
+JOBS = [job("Verify the tag (vX.Y.Z, on main)", end="2026-11-30T10:00:05Z", jid=1),
+        job("golangci-lint", start="2026-11-30T10:00:10Z", end="2026-11-30T10:00:50Z", jid=2),
+        job("Build linux/amd64", start="2026-11-30T10:01:00Z", end="2026-11-30T10:02:00Z", jid=3),
+        job("Build linux/arm64", start="2026-11-30T10:01:00Z", end="2026-11-30T10:02:30Z", jid=4),
+        job("Docker Hub image", start="2026-11-30T10:01:00Z", end="2026-11-30T10:08:00Z", jid=5)]
 
 
-def text_of(p):
-    return json.dumps(p)
+def payload(n, jobs=JOBS, release_url=RELEASE_URL, issue=None):
+    return ns.build_payload(TAG, REPO, SHA, "release: things (v4.5.0)", "farhansabbir", SERVER, "9", n, jobs, release_url, issue)
 
 
-class MessageTests(unittest.TestCase):
-    def test_all_passed(self):
-        p = payload(all_runs())
-        att = p["attachments"][0]
-        self.assertEqual(att["color"], ns.GREEN)
-        blocks = att["blocks"]
-        head = blocks[0]["text"]["text"]
-        self.assertIn("shint v4.0.6 is released", head)
-        self.assertIn("All 5 checks passed", head)
-        body = blocks[2]["text"]["text"]
-        order = [body.index(label) for _, label in ns.WORKFLOWS]
-        self.assertEqual(order, sorted(order), "workflows are listed in the order binary, vulnerability, lint, docker, ghcr")
-        self.assertEqual(body.count(":white_check_mark:"), 5)
-        self.assertIn("14 files attached", body)
-        self.assertIn("6m 12s", body)
-        buttons = blocks[-1]["elements"]
-        self.assertEqual([b["text"]["text"] for b in buttons], ["Release notes", "Workflow runs"])
-        self.assertIn("branch%3Av4.0.6", buttons[1]["url"])
-        self.assertIn("/commit/" + SHA, text_of(p))
-        self.assertIn("released", p["text"])
+def body_of(p):
+    return p["attachments"][0]["blocks"][2]["text"]["text"]
 
-    def test_failure_names_what_failed_and_offers_no_release_button(self):
-        runs = all_runs(**{"Lint": run("Lint", conclusion="failure", rid=7)})
-        p = payload(runs, failures={"Lint": ["golangci-lint › Run golangci-lint"]})
-        att = p["attachments"][0]
-        self.assertEqual(att["color"], ns.RED)
-        self.assertIn("release pipeline failed", att["blocks"][0]["text"]["text"])
-        self.assertIn("4 of 5 checks passed", att["blocks"][0]["text"]["text"])
-        body = att["blocks"][2]["text"]["text"]
-        self.assertIn(":x:", body)
-        self.assertIn("golangci-lint › Run golangci-lint", body)
-        self.assertEqual([b["text"]["text"] for b in att["blocks"][-1]["elements"]], ["Workflow runs"])
 
-    def test_missing_and_running_workflows(self):
-        runs = all_runs()
-        del runs["GHCR Release"]
-        runs["Docker Hub Release"] = run("Docker Hub Release", status="in_progress", rid=9)
-        p = payload(runs, timed_out=True, release_url=None)
-        att = p["attachments"][0]
-        self.assertEqual(att["color"], ns.AMBER)
-        body = att["blocks"][2]["text"]["text"]
-        self.assertIn("did not start", body)
-        self.assertIn("still running", body)
-        self.assertIn("still running", att["blocks"][0]["text"]["text"])
-
+class ResultTests(unittest.TestCase):
     def test_classify(self):
-        names = [n for n, _ in ns.WORKFLOWS]
-        self.assertEqual(ns.classify(all_runs(), False), ("passed", 5))
-        self.assertEqual(ns.classify(all_runs(Lint=run("Lint", "cancelled")), False)[0], "failed")
-        self.assertEqual(ns.classify(all_runs(Lint=run("Lint", "timed_out")), False)[0], "failed")
-        self.assertEqual(ns.classify({}, True)[0], "running")
-        self.assertEqual(ns.classify({names[0]: run(names[0])}, False), ("running", 1))
-        # a failure outranks a run that is still going
-        partial = {names[0]: run(names[0], "failure"), names[1]: run(names[1], status="in_progress")}
-        self.assertEqual(ns.classify(partial, False)[0], "failed")
+        self.assertEqual(ns.classify(needs()), ("published", len(ns.PARTS)))
+        self.assertEqual(ns.classify(needs(readme="failure"))[0], "published")      # after the release: reported, not a reason
+        self.assertEqual(ns.classify(needs(lint="failure"))[0], "failed")
+        self.assertEqual(ns.classify(needs(ghcr="cancelled"))[0], "failed")
+        self.assertEqual(ns.classify(needs(verify_tag="failure"))[0], "refused")
+        self.assertEqual(ns.classify({})[0], "refused")                              # nothing known: nothing claimed
 
-    def test_slack_limits(self):
-        p = payload(all_runs(**{"Binary Build & Release": run("Binary Build & Release", "failure", rid=3)}),
-                    failures={"Binary Build & Release": ["Build binaries (linux, arm64) › Build " * 3] * 4})
-        blocks = p["attachments"][0]["blocks"]
-        self.assertLessEqual(len(blocks), 50)
-        for b in blocks:
-            if b["type"] == "section":
-                self.assertLessEqual(len(b["text"]["text"]), 3000)
-        self.assertLessEqual(len(json.dumps(p)), 30000)
-        self.assertEqual(json.loads(json.dumps(p)), p)
+    def test_parse_needs(self):
+        self.assertEqual(ns.parse_needs('{"lint": {"result": "failure", "outputs": {}}}'), {"lint": {"result": "failure", "outputs": {}}})
+        self.assertEqual(ns.parse_needs("not json"), {})
+        self.assertEqual(ns.parse_needs(""), {})
 
-    def test_long_subject_is_cut(self):
-        p = ns.build_payload(TAG, REPO, SHA, "x" * 500, "a", SERVER, all_runs(), False, 14, None, {})
-        ctx = p["attachments"][0]["blocks"][3]["elements"][0]["text"]
-        self.assertLess(len(ctx), 300)
+    def test_a_skipped_part_says_which_part_it_needed(self):
+        n = needs(binaries="failure", github_release="skipped", image_reports="skipped", readme="skipped")
+        self.assertEqual(ns.why_skipped("github-release", n), "Binaries did not pass (failure)")
+        self.assertEqual(ns.why_skipped("readme", n), "GitHub release was skipped")
+
+    def test_failed_steps_name_each_failed_leg(self):
+        jobs = [job("Build linux/arm64", "failure", "Build the binary"), job("Build linux/amd64"),
+                job("Build aix/ppc64", "failure")]
+        self.assertEqual(ns.failed_steps("binaries", jobs), ["Build linux/arm64 › Build the binary", "Build aix/ppc64"])
+        many = [job("Build x/%d" % i, "failure") for i in range(6)]
+        self.assertEqual(ns.failed_steps("binaries", many)[-1], "+2 more")
 
     def test_durations(self):
         self.assertEqual(ns.human(372), "6m 12s")
         self.assertEqual(ns.human(45), "45s")
         self.assertIsNone(ns.human(None))
-        self.assertIsNone(ns.duration({"startedAt": "", "updatedAt": ""}))
+        self.assertEqual(ns.part_duration("binaries", JOBS), 90)                     # first leg's start to last leg's end
+        self.assertIsNone(ns.part_duration("ghcr", JOBS))
+
+    def test_published(self):
+        self.assertEqual(ns.published(needs()), ["GitHub release", "Docker Hub image", "GHCR image"])
+        self.assertEqual(ns.published(needs(binaries="failure", github_release="skipped")), ["Docker Hub image", "GHCR image"])
 
 
-class WaitTests(unittest.TestCase):
-    def test_fetch_keeps_only_this_tags_newest_push_runs(self):
-        listing = [
-            run("Lint", rid=10), run("Lint", rid=12, conclusion="failure"),        # a re-run: newest wins
-            dict(run("CodeQL", rid=11), headBranch="main"),                          # main's runs are not ours
-            dict(run("Pages", rid=13), event="dynamic"),   # not a push: ignored
-            run("Notify Slack", rid=99),                                              # ourselves
-        ]
-        got = ns.fetch_runs(lambda args: listing, REPO, SHA, TAG, own_run=99)
-        self.assertEqual(sorted(got), ["Lint"])
-        self.assertEqual(got["Lint"]["databaseId"], 12)
+class MessageTests(unittest.TestCase):
+    def test_published(self):
+        p = payload(needs())
+        att = p["attachments"][0]
+        self.assertEqual(att["color"], ns.GREEN)
+        head = att["blocks"][0]["text"]["text"]
+        self.assertIn("shint v4.5.0 is released", head)
+        self.assertIn("All %d parts passed" % len(ns.PARTS), head)
+        self.assertIn("finished in 8m 00s", head)
+        body = body_of(p)
+        order = [body.index(label) for _, _, label in ns.PARTS]
+        self.assertEqual(order, sorted(order), "parts are listed in the workflow's order")
+        self.assertEqual(body.count(":white_check_mark:"), len(ns.PARTS))
+        self.assertIn("version 4.5.0", body)
+        self.assertIn("73 files", body)
+        self.assertIn("`" + "ab" * 6 + "`", body)                                   # the image digest, short
+        self.assertIn("1m 30s", body)                                                # the binaries' span
+        self.assertIn("<%s/%s/actions/runs/9/job/2|golangci-lint>" % (SERVER, REPO), body)   # a single job links to itself
+        buttons = att["blocks"][-1]["elements"]
+        self.assertEqual([b["text"]["text"] for b in buttons], ["Release notes", "The run"])
+        self.assertTrue(buttons[1]["url"].endswith("/actions/runs/9"))
+        self.assertIn("/commit/" + SHA, json.dumps(p))
 
-    def test_waits_until_everything_finished(self):
-        names = [n for n, _ in ns.WORKFLOWS]
-        states = iter([{}, {names[0]: run(names[0], status="in_progress")}, all_runs()])
-        clock = [0]
-        slept = []
-        runs, timed_out = ns.wait_for_runs(lambda: next(states), names, 1000, 20,
-                                           sleep=lambda s: (slept.append(s), clock.__setitem__(0, clock[0] + s)),
-                                           clock=lambda: clock[0], log=lambda *_: None)
-        self.assertFalse(timed_out)
-        self.assertEqual(len(runs), 5)
-        self.assertEqual(slept, [20, 20])
+    def test_a_failure_names_what_failed_what_was_skipped_and_what_went_out(self):
+        n = needs(binaries="failure", github_release="skipped", image_reports="skipped", readme="skipped")
+        jobs = JOBS + [job("Build aix/ppc64", "failure", "Build the binary", jid=8)]
+        p = payload(n, jobs=jobs, release_url=None, issue="120")
+        att = p["attachments"][0]
+        self.assertEqual(att["color"], ns.RED)
+        head = att["blocks"][0]["text"]["text"]
+        self.assertIn("the release failed", head)
+        self.assertIn("published: Docker Hub image, GHCR image", head)
+        body = body_of(p)
+        self.assertIn(":x:  *Binaries*", body)
+        self.assertIn("`Build aix/ppc64 › Build the binary`", body)
+        self.assertIn("skipped: Binaries did not pass (failure)", body)
+        names = [b["text"]["text"] for b in att["blocks"][-1]["elements"]]
+        self.assertEqual(names, ["The run", "Failure issue #120"])                  # no release, so no release button
 
-    def test_gives_up_at_the_deadline_and_says_so(self):
-        names = [n for n, _ in ns.WORKFLOWS]
-        clock = [0]
-        runs, timed_out = ns.wait_for_runs(lambda: {}, names, 100, 30,
-                                           sleep=lambda s: clock.__setitem__(0, clock[0] + s),
-                                           clock=lambda: clock[0], log=lambda *_: None)
-        self.assertTrue(timed_out)
-        self.assertEqual(runs, {})
+    def test_published_with_a_failed_readme_proposal(self):
+        p = payload(needs(readme="failure"))
+        self.assertEqual(p["attachments"][0]["color"], ns.AMBER)
+        self.assertIn("is released", p["attachments"][0]["blocks"][0]["text"]["text"])
+        self.assertIn("README proposal did not go through", p["attachments"][0]["blocks"][0]["text"]["text"])
 
-    def test_an_api_hiccup_is_retried(self):
-        names = [n for n, _ in ns.WORKFLOWS]
+    def test_a_refused_tag(self):
+        # GitHub reports every job after a failed one as skipped
+        n = {part: {"result": "skipped", "outputs": {}} for part, _, _ in ns.PARTS}
+        n["verify-tag"]["result"] = "failure"
+        p = payload(n, jobs=[], release_url=None)
+        self.assertIn("the tag was refused", p["attachments"][0]["blocks"][0]["text"]["text"])
+        self.assertIn(":fast_forward:  *golangci-lint*  ·  skipped: Release tag did not pass (failure)", body_of(p))
+        self.assertEqual(ns.classify({})[0], "refused")   # and with nothing known, nothing is claimed
+
+    def test_slack_limits(self):
+        many = [job("Build x/%d %s" % (i, "y" * 80), "failure", "Build the binary " * 5) for i in range(30)]
+        p = payload(needs(binaries="failure", github_release="skipped"), jobs=many, release_url=None)
+        blocks = p["attachments"][0]["blocks"]
+        self.assertLessEqual(len(blocks), 50)
+        for b in blocks:
+            if b["type"] == "section":
+                self.assertLessEqual(len(b["text"]["text"]), 3000)
+        self.assertEqual(json.loads(json.dumps(p)), p)
+
+    def test_long_subject_is_cut(self):
+        p = ns.build_payload(TAG, REPO, SHA, "x" * 500, "a", SERVER, "9", needs(), JOBS, None, None)
+        self.assertLess(len(p["attachments"][0]["blocks"][3]["elements"][0]["text"]), 300)
+
+
+class IssueTests(unittest.TestCase):
+    def test_the_issue_lists_every_part_and_the_failed_step(self):
+        n = needs(binaries="failure", github_release="skipped", image_reports="skipped", readme="skipped")
+        jobs = JOBS + [job("Build aix/ppc64", "failure", "Build the binary", jid=8)]
+        body = ns.issue_body(TAG, SHA, SERVER, REPO, "9", n, jobs)
+        self.assertTrue(body.startswith("### CI failure: Release v4.5.0\n"))
+        self.assertIn("%s/%s/actions/runs/9" % (SERVER, REPO), body)
+        self.assertIn("**Published:** Docker Hub image, GHCR image.", body)
+        self.assertIn("| Binaries | ❌ failure · 2m 30s - failed in `Build aix/ppc64 › Build the binary` |", body)
+        self.assertIn("| GitHub release | ⏭️ skipped: Binaries did not pass (failure) |", body)
+        self.assertEqual(body.count("\n| "), len(ns.PARTS) + 1)                      # the header and a row per part
+
+    def test_main_writes_the_issue_body_and_posts_nothing(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = os.path.join(tmp.name, "issue.md")
+        n = needs(lint="failure", binaries="skipped", github_release="skipped", docker_hub="skipped", ghcr="skipped",
+                  image_reports="skipped", readme="skipped")
+        env = {"REPO": REPO, "TAG": TAG, "SHA": SHA, "RUN_ID": "9", "NEEDS": json.dumps(n), "ISSUE_BODY": path,
+               "SLACK_WEBHOOK_URL": "http://127.0.0.1:9/services/TSECRET/BSECRET/XSECRET"}
         calls = []
 
-        def fetch():
-            calls.append(1)
-            if len(calls) == 1:
-                raise RuntimeError("HTTP 502")
-            return all_runs()
-        runs, timed_out = ns.wait_for_runs(fetch, names, 1000, 1, sleep=lambda s: None, clock=lambda: 0, log=lambda *_: None)
-        self.assertFalse(timed_out)
-        self.assertEqual(len(calls), 2)
-
-    def test_failed_steps_names_job_and_step(self):
-        jobs = {"jobs": [{"name": "golangci-lint", "conclusion": "failure", "steps": [{"name": "Set up job", "conclusion": "success"}, {"name": "golangci-lint", "conclusion": "failure"}]},
-                         {"name": "other", "conclusion": "success", "steps": []}]}
-        self.assertEqual(ns.failed_steps(lambda args: jobs, REPO, {"databaseId": 5}), ["golangci-lint › golangci-lint"])
-        many = {"jobs": [{"name": "j%d" % i, "conclusion": "failure", "steps": []} for i in range(6)]}
-        self.assertEqual(ns.failed_steps(lambda args: many, REPO, {"databaseId": 5})[-1], "+3 more")
-
-        def boom(args):
-            raise RuntimeError("no")
-        self.assertEqual(ns.failed_steps(boom, REPO, {"databaseId": 5}), [])
+        def gh(args):
+            calls.append(args)
+            return {"jobs": [job("golangci-lint", "failure", "golangci-lint", jid=2)]}
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(ns.main(env, gh=gh), 0)
+        with open(path, encoding="utf-8") as f:
+            body = f.read()
+        self.assertIn("failed in `golangci-lint › golangci-lint`", body)
+        self.assertIn("**Published:** nothing.", body)
+        self.assertEqual(calls, [["api", "repos/%s/actions/runs/9/jobs?per_page=100" % REPO]])
 
 
 class FakeSlack(BaseHTTPRequestHandler):
@@ -249,48 +272,12 @@ class PostTests(unittest.TestCase):
         self.assertEqual(calls, [])
         self.assertIn("not set", out)
 
-    def test_main_end_to_end(self):
-        url = self.serve([(200, "ok")])
-        listing = list(all_runs().values())
-
+    def gh_for(self, created, jobs=JOBS):
         def gh(args):
-            if args[:2] == ["run", "list"]:
-                return listing
-            if args[:2] == ["release", "view"]:
-                return {"assets": [{}] * 14, "url": "https://github.com/dmartsapp/shint/releases/tag/v4.0.6"}
-            if args[0] == "api":
-                return {"message": "fix: a thing (v4.0.6)\n\nbody"}
-            raise AssertionError(args)
-        env = {"REPO": REPO, "TAG": TAG, "SHA": SHA, "ACTOR": "farhansabbir", "SLACK_WEBHOOK_URL": url, "RUN_ID": "1"}
-        result, out = self.call(lambda: ns.main(env, gh=gh, sleep=lambda s: None))
-        self.assertEqual(result, 0)
-        sent = FakeSlack.seen[0]
-        self.assertIn("released", sent["text"])
-        self.assertIn("14 files attached", json.dumps(sent))
-        self.assertIn("fix: a thing (v4.0.6)", json.dumps(sent))
-        self.assertNotIn("SECRET", out)
-
-    def announce_env(self, url=None):
-        tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(tmp.cleanup)
-        d = tmp.name
-        with open(os.path.join(d, "CHANGELOG.md"), "w") as f:
-            f.write(CHANGELOG)
-        os.mkdir(os.path.join(d, "releases"))
-        with open(os.path.join(d, "releases", TAG + ".md"), "w") as f:
-            f.write("# shint v4.0.6 - released\n\nSummary: Two wrong answers fixed\n")
-        env = {"REPO": REPO, "TAG": TAG, "SHA": SHA, "ANNOUNCE_DISCUSSIONS": "1",
-               "CHANGELOG": os.path.join(d, "CHANGELOG.md"), "RELEASES_DIR": os.path.join(d, "releases")}
-        if url:
-            env["SLACK_WEBHOOK_URL"] = url
-        return env
-
-    def gh_for(self, runs, created):
-        def gh(args):
-            if args[:2] == ["run", "list"]:
-                return list(runs.values())
-            if args[:2] == ["run", "view"]:
-                return {"jobs": []}
+            if args[0] == "api" and "/actions/runs/" in args[1]:
+                return {"jobs": jobs}
+            if args[0] == "api" and "/commits/" in args[1]:
+                return {"message": "release: a thing (v4.5.0)\n\nbody"}
             if args[:2] == ["api", "graphql"]:
                 query = next(a for a in args if a.startswith("query="))
                 if "createDiscussion" in query:
@@ -301,43 +288,60 @@ class PostTests(unittest.TestCase):
             raise RuntimeError("not needed")
         return gh
 
-    def test_main_announces_a_release_that_passed(self):
+    def announce_env(self, n, url=None):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        d = tmp.name
+        with open(os.path.join(d, "CHANGELOG.md"), "w") as f:
+            f.write(CHANGELOG.replace("## v4.0.6 ", "## v4.5.0 "))
+        os.mkdir(os.path.join(d, "releases"))
+        with open(os.path.join(d, "releases", TAG + ".md"), "w") as f:
+            f.write("# shint v4.5.0 - released\n\nSummary: Two wrong answers fixed\n")
+        env = {"REPO": REPO, "TAG": TAG, "SHA": SHA, "RUN_ID": "9", "ACTOR": "farhansabbir", "NEEDS": json.dumps(n),
+               "ANNOUNCE_DISCUSSIONS": "1", "CHANGELOG": os.path.join(d, "CHANGELOG.md"), "RELEASES_DIR": os.path.join(d, "releases")}
+        if url:
+            env["SLACK_WEBHOOK_URL"] = url
+        return env
+
+    def test_main_end_to_end_announces_a_published_release(self):
         url = self.serve([(200, "ok")])
         created = []
-        result, out = self.call(lambda: ns.main(self.announce_env(url), gh=self.gh_for(all_runs(), created), sleep=lambda s: None))
+        result, out = self.call(lambda: ns.main(self.announce_env(needs(), url), gh=self.gh_for(created), sleep=lambda s: None))
         self.assertEqual(result, 0, out)
         self.assertEqual(len(FakeSlack.seen), 2)                     # the result, then the announcement
         self.assertIn("released", FakeSlack.seen[0]["text"])
-        self.assertEqual(FakeSlack.seen[1]["text"], "shint v4.0.6 is out: Two wrong answers fixed")
+        self.assertIn("release: a thing (v4.5.0)", json.dumps(FakeSlack.seen[0]))
+        self.assertIn(RELEASE_URL, json.dumps(FakeSlack.seen[0]))   # the release's URL came from github-release's output
+        self.assertEqual(FakeSlack.seen[1]["text"], "shint v4.5.0 is out: Two wrong answers fixed")
         self.assertEqual(len(created), 1)
-        self.assertIn("Two wrong answers fixed", created[0])
         self.assertIn("Announced in Discussions", out)
         self.assertNotIn("SECRET", out)
 
     def test_main_never_announces_a_failed_release(self):
         url = self.serve([(200, "ok")])
         created = []
-        runs = all_runs(Lint=run("Lint", conclusion="failure", rid=7))
-        result, out = self.call(lambda: ns.main(self.announce_env(url), gh=self.gh_for(runs, created), sleep=lambda s: None))
+        n = needs(ghcr="failure", image_reports="failure")
+        n["report-failure"] = {"result": "success", "outputs": {"issue": "121"}}
+        result, out = self.call(lambda: ns.main(self.announce_env(n, url), gh=self.gh_for(created), sleep=lambda s: None))
         self.assertEqual(result, 0, out)
         self.assertEqual(len(FakeSlack.seen), 1)
         self.assertIn("failed", FakeSlack.seen[0]["text"])
+        self.assertIn("issues/121", json.dumps(FakeSlack.seen[0]))  # the failure issue, from report-failure's output
         self.assertEqual(created, [])
 
     def test_main_announces_in_discussions_without_a_webhook(self):
         created = []
-        result, out = self.call(lambda: ns.main(self.announce_env(), gh=self.gh_for(all_runs(), created), sleep=lambda s: None))
+        result, out = self.call(lambda: ns.main(self.announce_env(needs()), gh=self.gh_for(created), sleep=lambda s: None))
         self.assertEqual(result, 0, out)
         self.assertEqual(len(created), 1)
         self.assertIn("nothing to post to Slack", out)
 
     def test_main_reports_delivery_failure(self):
         url = self.serve([(404, "no_service")])
-        env = {"REPO": REPO, "TAG": TAG, "SHA": SHA, "SLACK_WEBHOOK_URL": url}
+        env = {"REPO": REPO, "TAG": TAG, "SHA": SHA, "SLACK_WEBHOOK_URL": url, "NEEDS": json.dumps(needs())}
+
         def gh(args):
-            if args[:2] == ["run", "list"]:
-                return list(all_runs().values())
-            raise RuntimeError("no release, no commit")   # both are optional in the message
+            raise RuntimeError("no jobs, no commit")   # both are optional in the message
         result, _ = self.call(lambda: ns.main(env, gh=gh, sleep=lambda s: None))
         self.assertEqual(result, 1)
 
@@ -444,30 +448,62 @@ class AnnouncementTests(unittest.TestCase):
 
 
 class RepositoryTests(unittest.TestCase):
-    def workflow_files(self):
-        return sorted(glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yaml")))
+    """PARTS and NEEDS_OF against .github/workflows/release.yaml itself."""
 
-    # Started by the tag too, but not part of the release: it publishes nothing and
-    # needs nothing from the release workflows, so the notifier must not wait for it.
-    NOT_PART_OF_THE_RELEASE = {"readme-reconcile.yaml"}
+    def release_yaml(self):
+        with open(os.path.join(ROOT, ".github", "workflows", "release.yaml"), encoding="utf-8") as f:
+            return f.read()
 
-    def test_the_list_matches_the_release_workflows(self):
-        """Every workflow a tag starts (except this notifier and the README proposal) is waited for, and nothing else is."""
-        tagged = set()
-        for path in self.workflow_files():
-            with open(path, encoding="utf-8") as f:
-                source = f.read()
-            if os.path.basename(path) in ({"notify-slack.yaml"} | self.NOT_PART_OF_THE_RELEASE) or "tags:" not in source:
+    def jobs(self):
+        """{job id: (its name:, its needs)} from release.yaml - read by indentation, no YAML library."""
+        source = self.release_yaml()
+        block = source[source.index("\njobs:\n"):]
+        found = {}
+        current = None
+        for line in block.splitlines():
+            m = re.match(r"^  ([a-z0-9-]+):\s*$", line)
+            if m:
+                current = m.group(1)
+                found[current] = ["", []]
                 continue
-            first = next(l for l in source.splitlines() if l.startswith("name:"))
-            tagged.add(first.split(":", 1)[1].strip())
-        self.assertEqual(tagged, {n for n, _ in ns.WORKFLOWS})
+            if current is None:
+                continue
+            m = re.match(r"^    name:\s*(.+)$", line)
+            if m:
+                found[current][0] = m.group(1).strip()
+            m = re.match(r"^    needs:\s*(.+)$", line)
+            if m:
+                value = m.group(1).strip()
+                found[current][1] = [x.strip() for x in value.strip("[]").split(",")] if value.startswith("[") else [value]
+        return found
 
-    def test_the_workflow_reads_the_secret_and_nothing_else(self):
-        with open(os.path.join(ROOT, ".github", "workflows", "notify-slack.yaml"), encoding="utf-8") as f:
-            source = f.read()
-        self.assertIn("secrets.SLACK_WEBHOOK_URL", source)
-        self.assertNotIn("${{ github.event", source)   # no event text interpolated anywhere
+    def test_the_parts_are_the_workflows_jobs(self):
+        jobs = self.jobs()
+        self.assertEqual({p[0] for p in ns.PARTS}, set(jobs) - {"report-failure", "announce"})
+        for part, prefix, _ in ns.PARTS:
+            self.assertTrue(jobs[part][0].startswith(prefix), "%s's name %r does not start with %r" % (part, jobs[part][0], prefix))
+            others = [j for j, (name, _) in jobs.items() if j != part and name.startswith(prefix)]
+            self.assertEqual(others, [], "%r would match another job's name too" % prefix)
+
+    def test_needs_of_is_the_workflows_needs(self):
+        jobs = self.jobs()
+        for part, _, _ in ns.PARTS:
+            self.assertEqual(sorted(ns.NEEDS_OF[part]), sorted(jobs[part][1]), part)
+
+    def test_the_last_jobs_need_every_part(self):
+        jobs = self.jobs()
+        parts = {p[0] for p in ns.PARTS}
+        self.assertEqual(set(jobs["report-failure"][1]), parts)
+        self.assertEqual(set(jobs["announce"][1]), parts | {"report-failure"})
+        source = self.release_yaml()
+        self.assertIn("NEEDS: ${{ toJSON(needs) }}", source)
+
+    def test_the_webhook_is_a_secret_and_event_text_never_reaches_a_shell(self):
+        source = self.release_yaml()
+        self.assertIn("SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}", source)
+        for line in source.splitlines():
+            if "${{ github.event" in line:
+                self.assertRegex(line.strip(), r"^[A-Z_]+: \$\{\{ github\.event", "event text only through env: " + line.strip())
         on_block = source[source.index("\non:"):source.index("\njobs:")]
         self.assertNotIn("workflow_run", on_block)      # the trigger rule allows only tag pushes
 

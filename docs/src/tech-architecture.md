@@ -39,7 +39,7 @@ shint/
 ├── docs/                   this documentation site: Markdown in src/, the built pages, assets/, build.py
 ├── releases/               each release's record (its working page, moved there on release day)
 ├── .profiling/             each release's performance profile (make profile)
-├── .github/workflows/      the CI/CD workflows: five release ones (with the tag guard), Check, Slack
+├── .github/workflows/      the CI/CD workflows: Release (everything a tag starts) and Check
 ├── .github/scripts/        release, reconcile, notification and check scripts, and their tests
 ├── Makefile                cross-compilation for every platform, and every check (make check)
 ├── Dockerfile              multi-arch container image
@@ -148,4 +148,4 @@ Cancellation is by `context`. `nmap`, `telnet`, `web`, `tls`, `udp`, `ntp`, `rdn
 | A log line's wording | the handler that prints it (and its test) |
 | A JSON field | `lib/output.go` (and update [Output formats](output.md)) |
 | How addresses are resolved or dialed | `lib/lib.go` |
-| The release build | `.github/workflows/build.yaml`, `Makefile`, `Dockerfile` |
+| The release build | `.github/workflows/release.yaml`, `Makefile`, `Dockerfile` |

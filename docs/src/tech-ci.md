@@ -1,7 +1,7 @@
 ---
 title: CI/CD workflows
-lead: The eight GitHub Actions workflows (five for releases, a notifier, a README proposal, and one that checks main) - what triggers them, what each job does, what they need, and how to watch them.
-description: Documentation of shint's GitHub Actions - lint, vulnerability check, binary build and release, Docker Hub and GHCR publishing - plus the GitHub-managed automation around them.
+lead: The two GitHub Actions workflows - Release, which a vX.Y.Z tag starts, and Check, which a merge to main starts - what triggers them, what each job does, what it hands on to the next, and how to watch them.
+description: Documentation of shint's GitHub Actions - the Release workflow (lint, vulnerability check, binaries and the GitHub release, Docker Hub and GHCR images, the README proposal, the Slack and Discussions announcement) and Check - plus the GitHub-managed automation around them.
 section: Technical
 order: 5
 nav: CI/CD workflows
@@ -9,58 +9,70 @@ nav: CI/CD workflows
 
 ## Overview
 
-**Five release workflows** - Lint, Vulnerability Check, Binary Build & Release, Docker Hub Release and GHCR Release - are triggered by **the same event: pushing a tag of the form `vX.Y.Z` (digits only) that points at a commit on `main`**. Nothing else starts them: not a push to a branch (whatever its name), not a push to `main`, not a pull request, not a manual run. That is a deliberate choice - a release is the unit of quality here - and it has consequences covered under [What CI does not do](#what-ci-does-not-do).
+**[Release](#the-release-workflow)** (`.github/workflows/release.yaml`) is triggered by **one event: pushing a tag of the form `vX.Y.Z` (digits only) that points at a commit on `main`**. Nothing else starts it: not a push to a branch (whatever its name), not a push to `main`, not a pull request, not a manual run. That is a deliberate choice - a release is the unit of quality here - and it has consequences covered under [What CI does not do](#what-ci-does-not-do). The "on `main`" half is enforced by a [guard](#the-release-tag-guard), the workflow's first job.
 
-The "on `main`" half is enforced by a [guard](#the-release-tag-guard) that every release workflow runs first.
+Everything a release does is a job in that one workflow, so the run's graph on GitHub shows what waits for what: the checks run once, side by side; the binaries and the two container images build side by side once all checks passed; the GitHub release, the images' reports and the README proposal follow what they need; and the last two jobs get every job's result - one opens an issue when something failed, the other posts the outcome to Slack and announces a published release. The run has **one result**: green only when every part passed. Which part failed, where, and what it held up is in the run's graph, its summary, the Slack message and the failure issue.
 
-**One more workflow, [Check](#check-after-a-merge-to-main)**, runs `make check` after a merge to `main` (and only then), so tests do not wait for release day. It publishes nothing.
-
-They are separate files so that each has its own status and its own failure mode: a Docker Hub credential problem shows up as *that* workflow failing, not as a vague failure of "the release".
-
-A sixth workflow, [Notify Slack](#slack-notification), starts with the same tag but builds and publishes nothing: it waits for the five and posts how each of them ended. A seventh, [README Reconcile](#readme-reconcile), starts with the tag too, publishes nothing and takes under a minute: it proposes `main`'s README for the release.
+**[Check](#check-after-a-merge-to-main)** (`.github/workflows/check.yaml`) runs `make check` after a merge to `main` (and only then), so tests do not wait for release day. It publishes nothing.
 
 :::html
 <div class="diagram">
-<svg viewBox="0 0 700 300" role="img" aria-label="Workflow graph: one tag push starts five workflows">
+<svg viewBox="0 0 760 340" role="img" aria-label="The Release workflow's jobs: verify-tag, then lint, vulncheck and hadolint side by side, then the binaries and the two images, then the GitHub release, the README proposal and the images' reports, and last the failure issue and the announcement">
   <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>
-  <rect class="box accent" x="10" y="122" width="130" height="56" rx="10"/>
-  <text class="h" x="75" y="146" text-anchor="middle">git push tag</text>
-  <text class="sub" x="75" y="164" text-anchor="middle">v{{version}}</text>
-  <path class="arrow" d="M140 150C170 150 170 30 200 30"/>
-  <path class="arrow" d="M140 150C170 150 170 90 200 90"/>
-  <path class="arrow" d="M140 150H200"/>
-  <path class="arrow" d="M140 150C170 150 170 210 200 210"/>
-  <path class="arrow" d="M140 150C170 150 170 270 200 270"/>
-  <rect class="box" x="200" y="8" width="150" height="44" rx="9"/><text class="h" x="275" y="34" text-anchor="middle">Lint</text>
-  <rect class="box" x="200" y="68" width="150" height="44" rx="9"/><text class="h" x="275" y="94" text-anchor="middle">Vulnerability Check</text>
-  <rect class="box" x="200" y="128" width="150" height="44" rx="9"/><text class="h" x="275" y="154" text-anchor="middle">Binary Build &amp; Release</text>
-  <rect class="box" x="200" y="188" width="150" height="44" rx="9"/><text class="h" x="275" y="214" text-anchor="middle">Docker Hub Release</text>
-  <rect class="box" x="200" y="248" width="150" height="44" rx="9"/><text class="h" x="275" y="274" text-anchor="middle">GHCR Release</text>
-  <text class="sub" x="372" y="34">reports failures as an issue</text>
-  <text class="sub" x="372" y="94">reports failures as an issue</text>
-  <text class="sub" x="372" y="146">gate → 14 builds → GitHub Release</text>
-  <text class="sub" x="372" y="206">gate → multi-arch image → docker.io</text>
-  <text class="sub" x="372" y="266">gate → multi-arch image → ghcr.io</text>
+  <rect class="box accent" x="6" y="118" width="104" height="52" rx="10"/>
+  <text class="h" x="58" y="140" text-anchor="middle">tag pushed</text>
+  <text class="sub" x="58" y="158" text-anchor="middle">v{{version}}</text>
+  <path class="arrow" d="M110 144H130"/>
+  <rect class="box" x="130" y="118" width="110" height="52" rx="10"/>
+  <text class="h" x="185" y="140" text-anchor="middle">verify-tag</text>
+  <text class="sub" x="185" y="158" text-anchor="middle">vX.Y.Z on main</text>
+  <path class="arrow" d="M240 144C252 144 252 52 266 52"/>
+  <path class="arrow" d="M240 144H266"/>
+  <path class="arrow" d="M240 144C252 144 252 236 266 236"/>
+  <rect class="box" x="266" y="32" width="112" height="40" rx="9"/><text class="h" x="322" y="57" text-anchor="middle">lint</text>
+  <rect class="box" x="266" y="124" width="112" height="40" rx="9"/><text class="h" x="322" y="149" text-anchor="middle">vulncheck</text>
+  <rect class="box" x="266" y="216" width="112" height="40" rx="9"/><text class="h" x="322" y="241" text-anchor="middle">hadolint</text>
+  <path class="arrow" d="M378 52H410"/>
+  <path class="arrow" d="M378 144H410"/>
+  <path class="arrow" d="M378 236H410"/>
+  <path class="arrow" d="M378 52C394 52 394 144 410 144"/>
+  <path class="arrow" d="M378 236C394 236 394 144 410 144"/>
+  <rect class="box" x="410" y="32" width="128" height="40" rx="9"/><text class="h" x="474" y="57" text-anchor="middle">binaries (x18)</text>
+  <rect class="box" x="410" y="124" width="128" height="40" rx="9"/><text class="h" x="474" y="149" text-anchor="middle">docker-hub</text>
+  <rect class="box" x="410" y="216" width="128" height="40" rx="9"/><text class="h" x="474" y="241" text-anchor="middle">ghcr</text>
+  <path class="arrow" d="M538 52H580"/>
+  <rect class="box" x="580" y="32" width="170" height="40" rx="9"/><text class="h" x="665" y="57" text-anchor="middle">github-release</text>
+  <path class="arrow" d="M665 72V98"/>
+  <rect class="box" x="580" y="98" width="170" height="36" rx="9"/><text class="h" x="665" y="121" text-anchor="middle">readme</text>
+  <path class="arrow" d="M538 144C560 144 560 190 580 190"/>
+  <path class="arrow" d="M538 236C560 236 560 196 580 196"/>
+  <rect class="box" x="580" y="172" width="170" height="40" rx="9"/><text class="h" x="665" y="197" text-anchor="middle">image-reports</text>
+  <text class="sub" x="584" y="230">also needs github-release</text>
+  <rect class="box" x="266" y="290" width="160" height="38" rx="9"/><text class="h" x="346" y="314" text-anchor="middle">report-failure</text>
+  <path class="arrow" d="M426 309H470"/>
+  <rect class="box accent" x="470" y="290" width="160" height="38" rx="9"/><text class="h" x="550" y="314" text-anchor="middle">announce</text>
+  <text class="sub" x="10" y="300">last: they need every job,</text>
+  <text class="sub" x="10" y="318">and get each one's result</text>
 </svg>
 </div>
 :::
 
 ## Common ground
 
-- **Trigger:** `on: push: tags: ['v[0-9]+.[0-9]+.[0-9]+']`, and no `branches`, `pull_request`, `schedule` or `workflow_dispatch` trigger anywhere. In GitHub's filter syntax `+` means "one or more of the previous item" and `.` is an ordinary dot, so this is `v`, digits, dot, digits, dot, digits - and nothing after. (The pattern must be quoted in YAML.)
-- **The guard:** the first job of every workflow is `verify-tag`, which calls the reusable workflow `verify-release-tag.yaml`; every other job waits for it. See [The release-tag guard](#the-release-tag-guard).
+- **Trigger:** Release has `on: push: tags: ['v[0-9]+.[0-9]+.[0-9]+']` and nothing else; Check has `on: push: branches: [main]`. There is no `pull_request`, `schedule` or `workflow_dispatch` trigger anywhere. In GitHub's filter syntax `+` means "one or more of the previous item" and `.` is an ordinary dot, so the tag pattern is `v`, digits, dot, digits, dot, digits - and nothing after. (The pattern must be quoted in YAML.)
+- **The guard:** Release's first job is `verify-tag`; every other job waits for it. See [The release-tag guard](#the-release-tag-guard).
 - **Go toolchain:** `actions/setup-go@v5` with `go-version-file: go.mod` and `check-latest: true`, so CI builds with the version the module declares (or the newest patch of it).
 - **Checkout:** `actions/checkout@v5`.
 - **Linter:** `golangci-lint` **pinned to `v2.15.0`** through `golangci/golangci-lint-action@v7` (Check installs the same version with `go install`). It is pinned because `latest` once resolved to a build made with an older Go than the module targets and failed for that reason alone; and action v6 does not support golangci-lint v2. **A new Go can need a newer golangci-lint**: golangci-lint reads the compiled packages the module's Go writes with its own copy of `golang.org/x/tools`, so when a Go release changes that format, an older golangci-lint fails on every package it type-checks - Go 1.27.3 introduced format version 5, which golangci-lint v2.13.2 (x/tools v0.49.0) cannot read (`export data version 5 is greater than maximum supported version 4`) and v2.14.0 and later (x/tools v0.50.0 and later) can. It is the x/tools inside golangci-lint that matters, not the Go it was built with.
 - **Vulnerabilities:** `golang/govulncheck-action@v1`.
-- **Third-party tools are pinned**: actions by major version, as everywhere; the four tools downloaded directly - Syft, Grype, Dockle, Hadolint - by version and SHA-256 (`.github/scripts/install-tools.sh`).
-- **Least privilege:** every job declares `permissions` explicitly (`contents: read` by default; `contents: write` only to create the release or add files to it - the release job, the image jobs, the vulnerability check; `issues: write` only to file failure issues; `packages: write` only to push to GHCR; `id-token: write` and `attestations: write` only in the binary build and the image jobs, to sign and store their attestations).
+- **Third-party code is pinned**: every action by commit SHA (see [Pinned actions and images](#pinned-actions-and-images)); the four tools downloaded directly - Syft, Grype, Dockle, Hadolint - by version and SHA-256 (`.github/scripts/install-tools.sh`).
+- **Least privilege:** Release grants nothing at the workflow level (`permissions: {}`), and each job asks for what it needs: `contents: read` by default; `contents: write` only to create the release or add files to it (`github-release`, `image-reports`) and to push the README proposal's branch (`readme`); `packages: write` only to push to GHCR (`ghcr`); `id-token: write` and `attestations: write` only where attestations are signed (`binaries`, the image jobs); `issues: write` only to open the failure issue; `actions: read` only to read the run's jobs (`report-failure`, `announce`); `discussions: write` only to announce (`announce`). Each secret is read only by the job that uses it: Docker Hub's by `docker-hub`, the Slack webhook by `announce`.
 
 ## The release-tag guard
 
-`.github/workflows/verify-release-tag.yaml` (a reusable workflow: it has no trigger of its own, so nothing can start it directly) and `.github/scripts/verify-release-tag.sh`.
+The `verify-tag` job of `.github/workflows/release.yaml`, running `.github/scripts/verify-release-tag.sh`.
 
-A trigger filter looks only at the tag's *name*. It cannot ask "is the tagged commit on `main`?", and a tag pushed from a release branch by mistake would otherwise build and publish an unreleased state under a release number. So each workflow's first job, `verify-tag`, checks both things, and a failure skips every other job in that workflow:
+A trigger filter looks only at the tag's *name*. It cannot ask "is the tagged commit on `main`?", and a tag pushed from a release branch by mistake would otherwise build and publish an unreleased state under a release number. So the workflow's first job, `verify-tag`, checks both things, and a failure skips every job but the announcement. It also hands on the version (`version`, `minor` and `major`: `{{version}}`, `{{minor}}`, `{{major}}`) as outputs, for the jobs that tag images:
 
 | Check | How | Refused when |
 |---|---|---|
@@ -68,8 +80,8 @@ A trigger filter looks only at the tag's *name*. It cannot ask "is the tagged co
 | The commit is on `main` | `gh api repos/<repo>/compare/main...<sha>` and its `status` | `ahead` (the commit is newer than `main`, e.g. a release branch tip) or `diverged`. `identical` (the tag is on `main`'s tip) and `behind` (an older commit of `main`) pass. |
 
 - **It fails closed.** If GitHub cannot answer the comparison, the release is refused rather than assumed fine.
-- **Order matters.** Push `main` first, then the tag - the checklist already says so. A tag pushed before `main` has the commit is refused with a message saying to merge first; pushing `main` and re-running the failed workflows (`gh run rerun <run-id> --failed`) then passes, because the comparison is made live.
-- **A refused tag builds and publishes nothing** and opens no "CI Failure" issue: the failure reports in each workflow's `report-failure` job are conditioned on the *check* failing (`always() && needs.<job>.result == 'failure'`), and a skipped job is not a failed one. (Plain `failure()` would not do: it is true when *any* ancestor job failed, which includes `verify-tag`. `always()` is there because an `if:` without a status function gets an implicit `success()`, which is false exactly when the check failed.) The refusal is one red `verify-tag` job with a plain-English annotation on the run.
+- **Order matters.** Push `main` first, then the tag - the checklist already says so. A tag pushed before `main` has the commit is refused with a message saying to merge first; pushing `main` and re-running the run's failed jobs (`gh run rerun <run-id> --failed`) then passes, because the comparison is made live.
+- **A refused tag builds and publishes nothing** and opens no "CI Failure" issue: `report-failure` runs only when `verify-tag` passed and another job failed (`always() && needs.verify-tag.result == 'success' && contains(needs.*.result, 'failure')`). (Plain `failure()` would not do: it is true when *any* ancestor job failed, which includes `verify-tag`. `always()` is there because an `if:` without a status function gets an implicit `success()`, which is false exactly when something failed.) The refusal is one red `verify-tag` job with a plain-English annotation on the run, and the Slack message says the tag was refused.
 - **What it is not.** It protects against mistakes, not against someone who can push tags *and* edit workflow files - they could change the guard too. Who may create tags is a repository-settings matter.
 - **Testing it.** Workflows only run on tags, so the script has its own offline test, with a fake `gh`: `bash .github/scripts/test-verify-release-tag.sh`. It covers accepted and refused names (a bad name must not reach GitHub at all), both compare outcomes, an API error, and missing inputs.
 
@@ -81,9 +93,9 @@ A trigger filter looks only at the tag's *name*. It cannot ask "is the tagged co
 |---|---|
 | A release tag | `push: tags: ['v[0-9]+.[0-9]+.[0-9]+']`, and no other filter |
 | A merge to `main` | `push: branches: [main]` **with** `paths-ignore: ['.github/**']`, so a merge that only changes workflow files runs nothing |
-| Another workflow | `workflow_call` alone (a reusable workflow, like the tag guard) |
+| Another workflow | `workflow_call` alone (a reusable workflow; none is used today) |
 
-Everything else - `pull_request`, `schedule`, `workflow_dispatch`, `workflow_run`, other branches, a bare `push:` - is refused, and so is any form the checker cannot read (it fails closed: the `on:` block must be written in block style). The check has its own tests (`python3 .github/scripts/test_check_workflow_triggers.py`), including one that runs it over the real workflow files. Today the five release workflows use the first shape, [Check](#check-after-a-merge-to-main) the second, and the tag guard the third.
+Everything else - `pull_request`, `schedule`, `workflow_dispatch`, `workflow_run`, other branches, a bare `push:` - is refused, and so is any form the checker cannot read (it fails closed: the `on:` block must be written in block style). The check has its own tests (`python3 .github/scripts/test_check_workflow_triggers.py`), including one that runs it over the real workflow files. Today [Release](#the-release-workflow) uses the first shape and [Check](#check-after-a-merge-to-main) the second.
 
 The GitHub-managed automation listed [below](#automation-github-manages) is not defined by workflow files, so this check cannot see it. Its default setups (CodeQL, Pages) have no path filter, so a merge that only touches `.github/` still redeploys the site and rescans; neither builds or publishes anything.
 
@@ -127,7 +139,7 @@ git push origin main
 |---|---|
 | Touches only `.github/**` | Nothing (see [the trigger rule](#the-workflow-trigger-rule)) |
 | Touches anything else | `Check` - `make check-quick` (about a minute) if the pushed commit carries a valid signed report, otherwise the whole `make check` (about three and a half minutes) |
-| ...plus, separately, a `vX.Y.Z` tag pushed on a commit that is now on `main` | The five release workflows, `Notify Slack` and `README Reconcile` - a different event; see [Releases and tagging](tech-release.md) |
+| ...plus, separately, a `vX.Y.Z` tag pushed on a commit that is now on `main` | The Release workflow - a different event; see [Releases and tagging](tech-release.md) |
 
 A plain push to `main` never builds a binary, never publishes an image or a release, and never touches the README by itself - all of that waits for the tag.
 
@@ -145,7 +157,7 @@ The whole of `make check` takes about three and a half minutes on a runner (roug
 1. `make attest` (`.github/scripts/attest.sh`) runs the whole `make check` on a clean tree, builds a **report** from what it printed (`.github/scripts/check-report.py build`: the tree and commit, the time, the machine and tool versions, every stage with its result, the battery's counts, a hash of the log), **signs the report's exact bytes with an SSH key** (`ssh-keygen -Y sign`, namespace `shint-check`), and attaches report plus signature to the commit as a **git note** in `refs/notes/checks`, which it pushes. A note is used rather than a file in the repository because a committed report would change the tree it certifies and conflict on every merge; a note is tied to the commit id and travels beside the code.
 2. A fast-forward merge keeps commit ids, so the note on the branch tip is the note on the commit pushed to `main`.
 3. `check` (`.github/scripts/verify-local-check.sh`) fetches the note and `check-report.py verify` accepts it only if **all** of these hold: the signing key is in `.github/allowed_signers` - **as it was on the commit before this push**, so a push cannot approve itself by adding its own key (a push that introduces the file gets the whole suite); the signature matches the report byte for byte and was made for this purpose (the namespace); the report is for **the tree that was checked out**; it lists **every stage** of `make check`, all ok, result `pass`; and it is **recent** (14 days) and not from the future. Anything else - no note, another tree, a forged, edited or stale one, a key that is not allowed, an API error - means *no report*, and the whole suite runs. A missing report costs time, never coverage.
-4. With a valid report, `make check-quick` runs what is cheap, what can differ on Linux, and what goes stale: `gofmt`, `go vet` for the runner, `go test` for the CLI tests and `lib`, the black-box battery's command-line groups (A to D), the documentation checks, and **`govulncheck` fresh** (the vulnerability database changes daily, so a report is no substitute; the CI run always asks it again). Left to the report: the race detector, the `lib/handlers` tests, the rest of the battery, `golangci-lint` (the release's own Lint workflow and gate run it again), the other operating systems' `go vet`, and the workflow tests. The job summary says which path ran and why.
+4. With a valid report, `make check-quick` runs what is cheap, what can differ on Linux, and what goes stale: `gofmt`, `go vet` for the runner, `go test` for the CLI tests and `lib`, the black-box battery's command-line groups (A to D), the documentation checks, and **`govulncheck` fresh** (the vulnerability database changes daily, so a report is no substitute; the CI run always asks it again). Left to the report: the race detector, the `lib/handlers` tests, the rest of the battery, `golangci-lint` (the Release workflow's `lint` job runs it again), the other operating systems' `go vet`, and the workflow tests. The job summary says which path ran and why.
 
 **Setting it up.** Your public key goes in `.github/allowed_signers` (one line, namespace `shint-check`); the key that signs is `$SHINT_SIGNING_KEY`, else git's `user.signingkey`, else `~/.ssh/id_ed25519`, used through `ssh-keygen`, so a passphrase is asked for or taken from `ssh-agent`. A key used only for this is better than a login key. `make hooks` installs a `pre-push` hook that runs `make attest` when you push `main` or a release tag without a valid report; it is a convenience (a hook lives on one machine and `--no-verify` skips it), and `SHINT_SKIP_ATTEST=1` skips it on purpose. The gate is CI, not the hook.
 
@@ -153,27 +165,10 @@ The whole of `make check` takes about three and a half minutes on a runner (roug
 
 ## Failure issues
 
-Lint, Vulnerability Check and Check each file an issue when their check fails: title "CI Failure: <name>", labels `bug` and `ci-failure`, assigned to the person who pushed. The body is written by `.github/scripts/write-ci-failure-issue.sh` from values the workflow passes in, so it names the workflow, the tag or branch, the commit and - the point of doing it this way - the **real URL of the failed run**. (Earlier issues used a template file, and GitHub expands `${{ }}` expressions only inside workflow files, so they showed the raw expression text; #6 to #10 are the examples.) The script has its own test, `.github/scripts/test-write-ci-failure-issue.sh`, part of `make workflows`.
+A failed check opens an issue, labels `bug` and `ci-failure`, assigned to the person who pushed:
 
-## Lint
-
-`.github/workflows/lint.yaml`
-
-| Job | Needs | What it does |
-|---|---|---|
-| `verify-tag` | - | The [guard](#the-release-tag-guard). |
-| `lint` | `verify-tag` | Runs `golangci-lint` with the default linter set, and Hadolint on the `Dockerfile` (`--failure-threshold error`: an error-level finding fails, warnings are printed). |
-| `report-failure` | `lint` | Runs only if `lint` itself failed (not if the tag was refused and `lint` never ran): files the "CI Failure: Lint" issue described under [Failure issues](#failure-issues), using `peter-evans/create-issue-from-file@v5`. |
-
-## Vulnerability check
-
-`.github/workflows/vulncheck.yaml`
-
-| Job | Needs | What it does |
-|---|---|---|
-| `verify-tag` | - | The [guard](#the-release-tag-guard). |
-| `govulncheck` | `verify-tag` | Runs `govulncheck`, writes its report to a file, and turns it into a step summary table (status, vulnerability count, checked modules, details). Then **keeps the report on the release** as `govulncheck.txt` (`.github/scripts/upload-release-assets.sh`, which waits for the build workflow to have created the release): a run's summary ages out of GitHub's retention, the release does not. |
-| `report-failure` | `govulncheck` | If the check itself failed, files an issue "CI Failure: Vulnerability Check" like the lint workflow does. |
+- **Check** files "CI Failure: make check". Its body is written by `.github/scripts/write-ci-failure-issue.sh` from values the workflow passes in, so it names the branch, the commit and - the point of doing it this way - the **real URL of the failed run**. (Earlier issues used a template file, and GitHub expands `${{ }}` expressions only inside workflow files, so they showed the raw expression text; #6 to #10 are the examples.) The script has its own test, `.github/scripts/test-write-ci-failure-issue.sh`, part of `make workflows`.
+- **Release** files one issue for a failed release, "CI Failure: Release vX.Y.Z", from its `report-failure` job: a table of **every part with its result**, the job and step each failure happened in (each failed binary build, by platform), why each skipped part was skipped (the part it needs did not pass), what was published anyway, and the run's URL. See [The outcome](#the-outcome-the-failure-issue-and-the-announcement).
 
 ## Moving to a new Go release
 
@@ -182,7 +177,7 @@ Lint, Vulnerability Check and Check each file an issue when their check fails: t
 1. Install the new Go locally and check `go version`.
 2. `go mod edit -go=X.Y.Z`, and move any `golang.org/x/...` module `govulncheck` names (`go get golang.org/x/net@vA.B.C`, then `go mod tidy`). Check the module's own `go` line first: it must not ask for a newer Go than the one you are moving to.
 3. `Dockerfile`: `FROM golang:X.Y.Z-alpine@sha256:<digest>`, once Docker Hub has that tag - the image is pinned to its digest, found as described in [Pinned actions and images](#pinned-actions-and-images).
-4. `make lint`. If golangci-lint fails on every package with `export data version N is greater than maximum supported version M`, the new Go writes compiled packages in a format the pinned golangci-lint cannot read: move the pin to a golangci-lint whose `golang.org/x/tools` can (check its `go.mod`, and x/tools' `internal/pkgbits/version.go`) - in `Makefile` (`GOLANGCI_LINT_VERSION`), `check.yaml`, and the `golangci-lint-action` steps of `lint.yaml`, `build.yaml`, `docker-hub.yaml` and `ghcr.yaml` - and install it: `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@vX.Y.Z`. A newer golangci-lint can find new problems; fix them in the same change. Clear its cache (`golangci-lint cache clean`) before believing a clean run: cached results can hide the failure.
+4. `make lint`. If golangci-lint fails on every package with `export data version N is greater than maximum supported version M`, the new Go writes compiled packages in a format the pinned golangci-lint cannot read: move the pin to a golangci-lint whose `golang.org/x/tools` can (check its `go.mod`, and x/tools' `internal/pkgbits/version.go`) - in `Makefile` (`GOLANGCI_LINT_VERSION`), `check.yaml`, and the `lint` job of `release.yaml` - and install it: `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@vX.Y.Z`. A newer golangci-lint can find new problems; fix them in the same change. Clear its cache (`golangci-lint cache clean`) before believing a clean run: cached results can hide the failure.
 5. `make check` - `govulncheck` must say *No vulnerabilities found* - and a changelog entry naming the advisories.
 
 Binaries already published keep the Go they were built with; only the next release carries the fix, so a serious advisory can be a reason for a patch release.
@@ -207,95 +202,127 @@ Pins do not move by themselves: there is no Dependabot. **To move one** - a newe
 2. **An image:** its index digest, which covers every platform - `docker buildx imagetools inspect golang:{{go}}-alpine` (the `Digest:` line), or Docker Hub's `https://hub.docker.com/v2/repositories/library/golang/tags/{{go}}-alpine` (`digest`).
 3. Replace the SHA and the comment (or the digest) everywhere it appears, run `make check`, and land it on `main` like any CI change.
 
-## Binary build and release
+## The release workflow
 
-`.github/workflows/build.yaml`
+`.github/workflows/release.yaml` - everything a release tag starts, as jobs of one workflow (the graph is at the top of this page):
 
-| Job | Needs | What it does |
-|---|---|---|
-| `verify-tag` | - | The [guard](#the-release-tag-guard). |
-| `gate` | `verify-tag` | Re-runs `golangci-lint`, `govulncheck` and Hadolint **quietly**. It does not report (the standalone workflows do); it exists so a failing check stops this workflow from shipping binaries. |
-| `build` | `gate` | A matrix of 8 operating systems x 2 architectures, minus two exclusions (Solaris has no arm64 port; Android/amd64 needs cgo), plus four additions (AIX and illumos, `ppc64`/amd64 only and not part of the 8; `linux/arm` at `GOARM=6` and `linux/ppc64le`, a third and fourth Linux architecture), giving **18 binaries**. Each builds with `CGO_ENABLED=0 -buildvcs=true -trimpath -ldflags "-s -w -X main.Version=<tag>/<sha>/<time>"`, then **attests** the binary (`actions/attest@v4`: a signed SLSA build-provenance statement, keyless through Sigstore), then writes its **`.sha256` file** (`.github/scripts/write-checksums.sh`, which verifies it straight away), then its **SBOMs**, `<binary>.cdx.json` (CycloneDX 1.6) and `<binary>.spdx.json` (SPDX 2.3) (`.github/scripts/sbom.py`, which reads the build information with `go version -m -json` - no third-party SBOM tool), **attests each** (`actions/attest@v4` with `sbom-path`), and uploads all four as a `binary-for-<os>-<arch>` artifact. `fail-fast` is off so one bad platform does not hide the others. |
-| `create-release` | `build` | Downloads every artifact, writes the release notes, and creates the GitHub Release (`softprops/action-gh-release@v3`) with all binaries attached. It needs `contents: write`. |
+| Job | Needs | What it does | Hands on |
+|---|---|---|---|
+| `verify-tag` | - | The [guard](#the-release-tag-guard). | `version`, `minor`, `major` |
+| `lint` | `verify-tag` | `golangci-lint` with the default linter set. | - |
+| `vulncheck` | `verify-tag` | `govulncheck`, its report in the run's summary (status, count, checked modules, details) - after a failure too, since the report is what says why. | `vulnerabilities`; the report, as the artifact `govulncheck-report` |
+| `hadolint` | `verify-tag` | Hadolint on the `Dockerfile` (`--failure-threshold error`: an error-level finding fails, warnings are printed). | - |
+| `binaries` | the checks | One job per platform, 18 in all: build, attest, checksum, SBOMs, attest those ([below](#the-binaries-and-the-github-release)). | each platform's files, as the artifact `binary-for-<os>-<arch>` |
+| `github-release` | `vulncheck`, `binaries` | Writes the release notes and creates the GitHub release with every binary's files and the govulncheck report. Runs only when **every** binary built: a release is never published with some missing. | `url`, `assets` |
+| `docker-hub`, `ghcr` | the checks | The multi-arch image for each registry, its SBOMs, reports and attestations ([below](#the-container-images)). | `image`, `digest`; the SBOMs and reports, as the artifacts `image-sboms-<registry>` |
+| `image-reports` | `github-release`, `docker-hub`, `ghcr` | Attaches each pushed image's SBOMs and reports to the release. | - |
+| `readme` | `github-release` | [README Reconcile](#readme-reconcile): proposes `main`'s README for the release. | - |
+| `report-failure` | every job above | Only when one of them failed: the [failure issue](#failure-issues). | `issue` |
+| `announce` | every job above, and `report-failure` | Always: the [Slack notification](#slack-notification) and, for a published release, the announcement. | - |
 
-### Verifying a release
+**The checks run once, and nothing is published unless all three passed.** The binaries and both images need `lint`, `vulncheck` and `hadolint`; the binaries and the images then build side by side, so the run takes as long as its slowest image (six to seven minutes), not the sum. Before, each of the binary and image workflows ran its own copy of the checks, and Lint and Vulnerability Check ran them again: golangci-lint and govulncheck ran four times a release.
+
+### What a job hands on, and how a failure shows
+
+The rule for this workflow: every part's success or failure is captured where the parts after it, and whoever reads the run, can see it.
+
+- **Outputs, not guesses.** A job that a later one depends on publishes what it produced as job outputs - `verify-tag` the version the image jobs tag with, `github-release` the release's URL and file count, the image jobs their digests, `vulncheck` its count - and files as artifacts (the binaries, the govulncheck report, the images' SBOMs and reports). The later job reads `needs.<job>.outputs` and downloads the artifacts; nothing is recomputed or polled for.
+- **Every result reaches the end.** `report-failure` and `announce` `need` every other job and run `if: always()`, so they run whatever happened, and get each job's `result` (`success`, `failure`, `cancelled`, `skipped`) and outputs as JSON (`toJSON(needs)`) - plus the run's jobs from GitHub's API, for durations and the step each failed job failed in. A skipped job is explained by the job it needs: `GitHub release: skipped - Binaries did not pass`.
+- **A job that must run after a failure says what it could not do.** `image-reports` runs once the release exists, whatever the images did (`always() && needs.github-release.result == 'success'`): it attaches the reports of each image that was pushed, and fails, naming the image, when one was not - so the gap is in the run's result, not hidden.
+- **One result, with the detail beside it.** The run is red when any job failed. Which job, which step, what was published anyway and what was held up is in the run's graph, the summary `announce` writes (a table of every part), the Slack message and the failure issue.
+
+Re-running: **Re-run failed jobs** on the run (or `gh run rerun <id> --failed`) starts the failed jobs again and the ones that were skipped because of them; the jobs that passed are not run again.
+
+### The binaries and the GitHub release
+
+`binaries` is a matrix of 8 operating systems x 2 architectures, minus two exclusions (Solaris has no arm64 port; Android/amd64 needs cgo), plus four additions (AIX and illumos, `ppc64`/amd64 only and not part of the 8; `linux/arm` at `GOARM=6` and `linux/ppc64le`, a third and fourth Linux architecture), giving **18 binaries**. Each builds with `CGO_ENABLED=0 -buildvcs=true -trimpath -ldflags "-s -w -X main.Version=<tag>/<sha>/<time>"`, then **attests** the binary (`actions/attest@v4`: a signed SLSA build-provenance statement, keyless through Sigstore), then writes its **`.sha256` file** (`.github/scripts/write-checksums.sh`, which verifies it straight away), then its **SBOMs**, `<binary>.cdx.json` (CycloneDX 1.6) and `<binary>.spdx.json` (SPDX 2.3) (`.github/scripts/sbom.py`, which reads the build information with `go version -m -json` - no third-party SBOM tool), **attests each** (`actions/attest@v4` with `sbom-path`), and hands all four on as a `binary-for-<os>-<arch>` artifact. `fail-fast` is off so one bad platform does not hide the others - the failure issue names each one that failed.
+
+`github-release` downloads the binaries' artifacts and the govulncheck report, writes the release notes, and creates the GitHub release (`softprops/action-gh-release@v3`) with all of them attached. It needs `contents: write`.
+
+#### Verifying a release
 
 Every binary has a `<binary>.sha256` next to it (a line in the format `sha256sum -c` and `shasum -a 256 -c` read), an attestation that `gh attestation verify <file> --repo dmartsapp/shint` checks, and its two SBOMs, each attested too (`--predicate-type https://cyclonedx.org/bom`, or `https://spdx.dev/Document/v2.3`). A release therefore has **89 assets: 18 binaries, each with its checksum file and its two SBOMs (72), the govulncheck report, and each registry's image SBOMs, Grype reports and Dockle checks for two platforms (16)**. v4.2.1 to v4.2.4 had 36 before their SBOMs were added afterwards (see [Software bill of materials](security.md#software-bill-of-materials)), and no image files or report (v4.2.4 has its images' SBOMs since, made afterwards: 80). `make release` checks that every binary has all three, that the images' files and the report are there, and that there are as many binaries as in the release before. Users' instructions are on the [Install page](install.md#verify-your-download). The attestation is created in the same job as the binary, before the checksum file is added, so it covers exactly the bytes that are uploaded; the workflow needs no key or certificate of its own.
 
-### Release notes
+#### Release notes
 
-The notes are assembled by the workflow and contain, in order:
+The notes are assembled by `github-release` and contain, in order:
 
-1. **The commit message of the tagged commit** (`github.event.head_commit.message`). *This is where the changelog for a release shows up on GitHub*, which is why the release commit's message should carry it. See [Releases and tagging](tech-release.md).
-2. A **build status table**: one row per platform, checking the artifact exists.
-3. A **Verify your download** paragraph with the checksum and `gh attestation verify` commands, and the SBOMs.
-4. A **compare link** from the previous tag, and a `git diff --stat` summary (limited to 60,000 characters, to stay under GitHub's release-body size limit).
+1. **What's new**: the changelog's section for the tag (`.github/scripts/changelog-section.sh`); the tagged commit's message only when the changelog has no section for it. See [Releases and tagging](tech-release.md).
+2. A **Verify your download** paragraph with the checksum and `gh attestation verify` commands, and the SBOMs.
+3. A **compare link** from the previous tag, and a `git diff --stat` summary (limited to 60,000 characters, to stay under GitHub's release-body size limit).
+
+(Until v4.4.0 a build status table followed What's new, a row per platform. It could only ever say "Success": the release is not created unless every platform built. The failure issue is where a failed platform shows now.)
 
 :::note A note on script injection
-The commit message is free text written by a person, so it is passed to the shell through an environment variable (`COMMIT_MSG`) and never interpolated into the script. Interpolating `${{ github.event.head_commit.message }}` directly would let a backtick in a commit message run as a command. This is GitHub's own documented footgun.
+The commit message is free text written by a person, so it is passed to the shell through an environment variable (`COMMIT_MSG`) and never interpolated into the script. Interpolating `${{ github.event.head_commit.message }}` directly would let a backtick in a commit message run as a command. This is GitHub's own documented footgun, and a test (`test_notify_slack.py`) checks that event text reaches a step only through `env`.
 :::
 
-## Docker Hub and GHCR
+### The container images
 
-`.github/workflows/docker-hub.yaml` and `ghcr.yaml` are identical except for the registry.
+`docker-hub` and `ghcr` are the same job for two registries. They are two jobs rather than a matrix so that each holds only its own credentials: Docker Hub's secrets, or GHCR's `packages: write`.
 
 | Step | Detail |
 |---|---|
-| `verify-tag` | The [guard](#the-release-tag-guard); the `gate` job waits for it. |
-| `gate` | The same quiet lint + vulnerability + Dockerfile gate. |
 | QEMU and Buildx | `docker/setup-qemu-action@v3`, `docker/setup-buildx-action@v3`, so one job builds for two architectures. |
 | Login | Docker Hub uses the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`. GHCR uses the workflow's own `GITHUB_TOKEN` (needs `packages: write`). |
-| Compute tags | From the tag `v{{version}}`: `v{{version}}`, `{{version}}`, `{{minor}}`, `{{major}}`, and `latest`. |
-| Build and push | `docker/build-push-action@v6`, platforms `linux/amd64,linux/arm64`, build argument `VERSION=<tag>`, and OCI labels for version, revision and source; `sbom: true` and `provenance: mode=max` put Docker's own attestations in the image index beside each platform's image - an SBOM made by BuildKit's scanner, and the build's full provenance - which Docker Scout (on Docker Hub) and `docker buildx imagetools inspect` read. |
+| Compute tags | From the tag and `verify-tag`'s outputs: `v{{version}}`, `{{version}}`, `{{minor}}`, `{{major}}`, and `latest`. |
+| Build and push | `docker/build-push-action@v6`, platforms `linux/amd64,linux/arm64`, build argument `VERSION=<tag>`, and OCI labels for version, revision and source; `sbom: true` and `provenance: mode=max` put Docker's own attestations in the image index beside each platform's image - an SBOM made by BuildKit's scanner, and the build's full provenance - which Docker Scout (on Docker Hub) and `docker buildx imagetools inspect` read. Its digest is the job's `digest` output. |
 | Syft, Grype and Dockle | `.github/scripts/install-tools.sh` downloads them at the versions pinned in it, and checks each download against the SHA-256 pinned beside the version before anything in it runs. |
 | SBOMs and vulnerability reports | `.github/scripts/image-sboms.py`: for each platform in the pushed image index (the build's attestation manifests skipped), by that platform's own digest, Syft writes the image's SBOM - `image.<registry>.linux.<arch>.cdx.json` and `.spdx.json` - Grype scans it into `image.<registry>.linux.<arch>.grype.json`, and Dockle checks the image (pulled by its digest and saved as an archive, whatever the runner's own platform) against the CIS Docker Benchmark into `image.<registry>.linux.<arch>.dockle.json`; the step summary gets a table of Grype's matches by severity and Dockle's findings by level. Grype and Dockle **report and do not gate**: govulncheck gates the release. |
 | Attest | Each SBOM, with `actions/attest@v4` (`subject-name` the image, `subject-digest` its platform's digest, `sbom-path`). GHCR's attestations are also pushed to the registry, as referrers of the image (`push-to-registry: true`); Docker Hub's stay on GitHub, where `gh attestation verify` finds them by digest. |
-| Upload | The eight files of each registry to the tag's release, `.github/scripts/upload-release-assets.sh` (waits for the release to exist). |
+| Hand on | The eight files, as the artifact `image-sboms-<registry>`; `image-reports` attaches them to the release (`.github/scripts/upload-release-assets.sh`). |
 
 Images get Syft rather than `sbom.py` because an image holds more than shint's binary: the distroless base's Debian packages (CA certificates, time zones, the user and group files), which Syft reads from the image's package database. The image's own shint binary is built in the Dockerfile, not the one on the release page, so its SBOM is its own.
+
+The images build beside the binaries, not after them, so a failed binary build does not stop them: a run can push images and still not create the GitHub release. The Slack message and the failure issue say what was published.
 
 **A new Syft, Grype, Dockle or Hadolint** is a new pin in `install-tools.sh`: a release at least two weeks old, and the SHA-256 of its linux/amd64 download from the project's own checksums file on that release. `test-install-tools.sh` checks the script against archives served from `file://`; the tools themselves first run on a release tag.
 
 Image names: `docker.io/<DOCKERHUB_USERNAME>/shint` and `ghcr.io/dmartsapp/shint`. The Dockerfile is described in the [Source reference](tech-source.md#build-and-packaging).
 
-## README Reconcile
+### README Reconcile
 
-`README Reconcile` (`.github/workflows/readme-reconcile.yaml`) is the safety net for `main`'s README after a release. A release made with `make release` already wrote its roadmap row in the release commit ([README after a release](tech-release.md#readme-after-a-release)), so the workflow finds nothing to do; it proposes a change only when the README is still behind the tags. It starts with the tag like the others and runs `.github/scripts/readme-release.sh` straight away - it needs only the tag, the changelog and `main`, so it does not wait for the release workflows, and a runner that only waits is billed time. The script branches `readme/main-vX.Y.Z` off `main`, runs `readme-reconcile.py` there, commits the result with the changes and warnings as the message, pushes the branch and opens a pull request. What the reconciliation does is in [README after a release](tech-release.md#readme-after-a-release).
+The `readme` job is the safety net for `main`'s README after a release. A release made with `make release` already wrote its roadmap row in the release commit ([README after a release](tech-release.md#readme-after-a-release)), so the job usually finds nothing to do; it proposes a change only when the README is still behind the tags. It runs once the GitHub release exists (it needs `github-release`), so it never proposes a README for a release that did not go out, and runs `.github/scripts/readme-release.sh`: it branches `readme/main-vX.Y.Z` off `main`, runs `readme-reconcile.py` there, commits the result with the changes and warnings as the message, pushes the branch and opens a pull request. What the reconciliation does is in [README after a release](tech-release.md#readme-after-a-release).
 
 | | |
 |---|---|
 | Permissions | `contents: write` (to push the branch, never `main`), `pull-requests: write` and `issues: write` |
 | If Actions may not open pull requests | Opening one fails with "GitHub Actions is not permitted to create pull requests" while the repository setting *Allow GitHub Actions to create and approve pull requests* is off. The script then opens an **issue** that links the branch (a compare link), so the proposal is not lost. Turn the setting on (Settings, Actions, General) to get the pull request instead |
-| Not part of the release | The notifier does not wait for it and it does not wait for the release: a failure here leaves the release untouched (a test keeps the notifier's list of workflows free of it on purpose). Whether the release itself passed is what the Slack message says - read it before merging the proposal |
-| The trigger rule | A `vX.Y.Z` tag push and nothing else, like every release workflow; there is no manual button. The same thing by hand is `make readme-reconcile TAG=vX.Y.Z` |
-| Serialised | `concurrency: readme-reconcile`, so two tags pushed together are proposed one after the other |
+| After the release | It publishes nothing. A failure here is reported like any other - the run is red, the failure issue names it - but the release was already published, so it is announced all the same (the Slack message is amber and says the proposal did not go through) |
+| By hand | `make readme-reconcile TAG=vX.Y.Z` |
 
-Everything reaches the script through environment variables, never interpolated into the shell. The script can commit a *clean* reconcile straight to `main` when asked (`AUTO_COMMIT=1`, see [README after a release](tech-release.md#readme-after-a-release)); this workflow does not ask, so it only ever proposes. Like the other workflows it can only be exercised for real by a tag, so what stands in for that is the tests: `test_readme_reconcile.py` (the reconciliation, on README fixtures) and `test-readme-release.sh` (the branch, the commit, the push, the pull request and the issue fallback, in throw-away repositories with a fake `gh`), both part of `make workflows`.
+Everything reaches the script through environment variables, never interpolated into the shell. The script can commit a *clean* reconcile straight to `main` when asked (`AUTO_COMMIT=1`, see [README after a release](tech-release.md#readme-after-a-release)); this job does not ask, so it only ever proposes. Like the rest of the workflow it can only be exercised for real by a tag, so what stands in for that is the tests: `test_readme_reconcile.py` (the reconciliation, on README fixtures) and `test-readme-release.sh` (the branch, the commit, the push, the pull request and the issue fallback, in throw-away repositories with a fake `gh`), both part of `make workflows`.
 
-## Slack notification
+### The outcome: the failure issue and the announcement
 
-`Notify Slack` (`.github/workflows/notify-slack.yaml`) is the last word on a release. It starts with the tag like the others, waits until the five release workflows have finished, and posts **one message** to Slack with the result:
+`report-failure` and `announce` both run `.github/scripts/notify-slack.py`, with `NEEDS` (every job's result and outputs) and the run's id.
+
+#### Slack notification
+
+`announce` is the last word on a release. It posts **one message** to Slack with the result:
 
 | Part | What it shows |
 |---|---|
-| Headline and colour | `shint v{{version}} is released` on green when everything passed; `the release pipeline failed` on red; `still running` on amber if the wait ran out |
-| One line per workflow | Binary build and release (with the number of files attached to the release), Vulnerability check, Linting, Docker Hub image, GHCR image - each with its duration and a link to its run |
-| What failed | For a failed workflow, the job and step (`golangci-lint › Run golangci-lint`), up to three |
+| Headline and colour | `shint v{{version}} is released` on green when every part passed; on amber when the release was published but the README proposal failed; `the release failed` on red, with what was published anyway (`published: Docker Hub image, GHCR image`); `the tag was refused` on red when `verify-tag` failed |
+| One line per part | The tag, golangci-lint, govulncheck, Hadolint, the binaries, the GitHub release, each image, the images' reports and the README proposal - each with its result, what it handed on (the version, the vulnerability count, the number of files, the image digest), its duration, and a link to its job |
+| What failed | For a failed part, each failed job and the step it failed in (`Build linux/arm64 › Build the binary`); for a skipped part, the part it needed that did not pass |
 | Footer | The tag, the commit (linked) and its subject, and who pushed the tag |
-| Buttons | The release notes (only when everything passed) and the tag's workflow runs |
+| Buttons | The release notes (when published), the run, and the failure issue (when one was opened) |
 
-**When everything passed, the release is announced too**, for the people who use shint rather than the ones who build it:
+It writes the same table, a row per part, to the run's summary.
+
+**When the release was published, it is announced too**, for the people who use shint rather than the ones who build it:
 
 - **A second Slack post**, right after the result: `shint v{{version}} is out`, the release's one-line summary (the `Summary:` line of `releases/vX.Y.Z.md`), the headline of each changelog entry for the version (its leading bold sentence; "Release process" entries are left out, and after eight the rest are counted), how to get it (the release, `docker pull`, `go install`), and buttons for the release notes, the changelog and the documentation.
 - **A discussion** in the repository's *Announcements* category, titled `vX.Y.Z released`, with the same content in Markdown and every highlight. It is made once: a re-run that finds a discussion with that title leaves it alone. This is why the job has `discussions: write`.
 
-A failed or unfinished release is never announced. The body goes to `gh` as a raw field (`-f`), so its text is never read as a file name - the mistake that once posted a file path as eight announcements' text.
+A release that was not published is never announced. The body goes to `gh` as a raw field (`-f`), so its text is never read as a file name - the mistake that once posted a file path as eight announcements' text.
 
-**It cannot start any other way and cannot hurt a release.** It obeys the [trigger rule](#the-workflow-trigger-rule) - a tag push, nothing else - so it cannot use `workflow_run` to be told when the others finish; it looks at the runs of its own tag every 20 seconds (`gh run list`, needing only `actions: read`) until all five have completed, for at most 50 minutes. It publishes nothing and changes nothing: if it fails, or Slack is down, the release is exactly as it was, and the failure shows only on this workflow's own run.
+**It cannot hurt a release.** It publishes nothing and changes nothing: if it fails, or Slack is down, the release is exactly as it was. Until v4.4.0 it was a workflow of its own that polled the release workflows every 20 seconds for up to 50 minutes, because workflows cannot `need` each other; as a job it needs no waiting at all.
 
-**The webhook is a credential.** It is the repository secret `SLACK_WEBHOOK_URL` (Settings, Secrets and variables, Actions), read into an environment variable and used only by `.github/scripts/notify-slack.py`, which never prints it - not in the log, not in an error. Nothing in the repository contains it, and a test fails `make workflows` if a Slack webhook URL is ever committed. Without the secret (a fork, or it was removed) the job says so and succeeds. To point the messages somewhere else, create a new incoming webhook in Slack, replace the secret (`gh secret set SLACK_WEBHOOK_URL`) and revoke the old one.
+**The webhook is a credential.** It is the repository secret `SLACK_WEBHOOK_URL` (Settings, Secrets and variables, Actions), read into an environment variable by `announce` alone and used only by `notify-slack.py`, which never prints it - not in the log, not in an error. Nothing in the repository contains it, and a test fails `make workflows` if a Slack webhook URL is ever committed. Without the secret (a fork, or it was removed) the job says so and succeeds. To point the messages somewhere else, create a new incoming webhook in Slack, replace the secret (`gh secret set SLACK_WEBHOOK_URL`) and revoke the old one.
 
-**Keeping it right.** The list of workflows it waits for is in the script; a test compares it with the workflow files and fails if a workflow that a tag starts is missing from it (or one that is listed no longer exists), so adding a release workflow means adding it there too. The rest of `test_notify_slack.py` covers the message (every state: passed, failed, still running), the waiting (late-starting workflows, an API hiccup, the deadline) and the posting (against a local server: success, a refusal that is not retried, a server error that is, the URL never in the output). `make workflows` runs it.
+**Keeping it right.** The script's list of parts, and of what each part needs, is checked against `release.yaml` by a test: a job added to the workflow without being listed there, or a `needs:` that changed, fails `make workflows`. The rest of `test_notify_slack.py` covers the results (published, failed, refused; why a part was skipped; what was published anyway), the message, the failure issue, and the posting (against a local server: success, a refusal that is not retried, a server error that is, the URL never in the output).
 
 ## Automation GitHub manages
 
@@ -310,17 +337,18 @@ A few more things run that are **not defined by files in this repository**; they
 
 ## Watching a release
 
-Push the tag and the result arrives in Slack when the last workflow finishes (see [Slack notification](#slack-notification)). To follow it from the terminal instead, use the GitHub CLI:
+Push the tag and the result arrives in Slack when the run's last job finishes (see [Slack notification](#slack-notification)); `make release` follows the run too and prints every job's result. To follow it from the terminal yourself, use the GitHub CLI:
 
 ```bash
-gh run list --limit 8                       # the five workflows for the tag, and the notifier (and Check, for a merge)
-gh run watch <run-id> --exit-status         # block until one finishes
-gh run view <run-id> --log-failed           # only the failing steps' logs
-gh run rerun <run-id> --failed              # retry just the failed jobs
-gh release view v{{version}}                      # the release and its assets
+gh run list --workflow release.yaml --limit 3    # the tag's Release run
+gh run watch <run-id> --exit-status              # every job, live, until the run finishes
+gh run view <run-id>                             # the jobs and their results
+gh run view <run-id> --log-failed                # only the failing steps' logs
+gh run rerun <run-id> --failed                   # the failed jobs again, and the ones they held up
+gh release view v{{version}}                           # the release and its assets
 ```
 
-Typical durations: lint and vulnerability check under a minute, the binary release about two minutes, the two image builds four to six.
+Typical durations (from v4.4.0's runs): the tag check a few seconds, the three checks under a minute each, the 18 binaries about a minute side by side, the release half a minute, the two image builds six to seven minutes - about eight minutes from the tag to the announcement.
 
 ## Reproducing the checks locally
 
@@ -333,7 +361,7 @@ The Makefile is the single place these are defined; see [Testing](tech-testing.m
 
 ## What CI does not do
 
-- **It does not run the tests before a merge.** The release workflows lint, check vulnerabilities and build; none runs `go test`. [Check](#check-after-a-merge-to-main) runs the whole suite, but only after a push to `main`; nothing runs on a branch or a pull request. Run `make check` locally first ([Testing](tech-testing.md#running-the-tests)).
+- **It does not run the tests before a merge.** The Release workflow lints, checks vulnerabilities and builds; it does not run `go test`. [Check](#check-after-a-merge-to-main) runs the whole suite, but only after a push to `main`; nothing runs on a branch or a pull request. Run `make check` locally first ([Testing](tech-testing.md#running-the-tests)).
 - **It does not run on branches or pull requests**, so problems surface after a merge or at tag time. (`main` does not pick up workflow runs from other branches either: a workflow file on a branch does nothing until it is merged, and even then only a `vX.Y.Z` tag on `main` can start it.)
 - **It does not accept just any tag.** A tag that is not `vX.Y.Z`, or is on a commit that is not on `main`, is refused by the [guard](#the-release-tag-guard) before anything is built.
 - **It cannot un-publish.** A tag push that fails halfway can leave a partial release or images; see the recovery notes in [Releases and tagging](tech-release.md#when-a-release-goes-wrong).

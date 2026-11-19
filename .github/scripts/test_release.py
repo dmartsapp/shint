@@ -32,10 +32,12 @@ if a[:1] == ["api"]:
     out(state.get("milestones", []))
 if a[:2] == ["issue", "list"]: out(state.get("issues", []))
 if a[:2] == ["run", "list"]:
-    if "--workflow" in a:
-        out([{"databaseId": 7, "status": "completed", "conclusion": state.get("check", "success"), "url": "https://example/check"}])
-    out([{"databaseId": i, "workflowName": w, "status": "completed", "conclusion": "success", "url": "u"}
-         for i, w in enumerate(["Lint", "Vulnerability Check", "Binary Build & Release", "Docker Hub Release", "GHCR Release"])])
+    if "release.yaml" in a:
+        out([{"databaseId": 8, "status": "completed", "conclusion": state.get("release", "success"), "url": "https://example/release-run"}])
+    out([{"databaseId": 7, "status": "completed", "conclusion": state.get("check", "success"), "url": "https://example/check"}])
+if a[:2] == ["run", "view"]:
+    out({"jobs": [{"name": n, "conclusion": "success"} for n in ["Verify the tag (vX.Y.Z, on main)", "golangci-lint", "govulncheck",
+                  "Build linux/amd64", "Publish the GitHub release", "Docker Hub image", "GHCR image", "Announce the result"]]})
 if a[:2] == ["release", "view"]:
     names = state.get("assets", ["shint.linux.amd64", "shint.linux.amd64.sha256", "shint.linux.amd64.cdx.json", "shint.linux.amd64.spdx.json",
                                  "govulncheck.txt"] + ["image.%s.linux.%s.%s" % (r, a, k) for r in ("dockerhub", "ghcr")
@@ -280,6 +282,7 @@ class Release(Fixture):
         self.assertIn("README    | [**v4.3.0**](releases/v4.3.0.md) | Released Nov 15 |", out)   # the summary card shows the row
         self.assertIn("every binary has its checksum and its CycloneDX and SPDX SBOMs; the images' SBOMs, Grype reports and Dockle", out)
         self.assertIn("release https://example/release: 1 binaries, 21 assets", out)
+        self.assertRegex(out, r"Docker Hub image +success")                 # the Release run's jobs, one line each
 
     def test_a_release_without_its_sboms_is_not_released(self):
         self.ready()
@@ -290,6 +293,15 @@ class Release(Fixture):
         self.assertIn("and 12 more", out)
         self.assertNotIn("v4.3.0 is released", out)
         self.assertEqual(self.origin_ref("refs/tags/v4.3.0^{commit}"), self.git(self.work, "rev-parse", "HEAD"))  # tagged all the same
+
+    def test_a_failed_release_run_is_not_released(self):
+        self.ready()
+        self.set_gh(release="failure")
+        rc, out = self.release()
+        self.assertNotEqual(rc, 0, out)
+        self.assertIn("FAIL the Release workflow ended 'failure': https://example/release-run", out)
+        self.assertIn("Publish the GitHub release", out)                    # each job's result is shown
+        self.assertNotIn("v4.3.0 is released", out)
 
     def test_main_that_moved_is_merged_in(self):
         self.ready()
