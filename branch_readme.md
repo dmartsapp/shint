@@ -19,7 +19,7 @@ Includes:
 - [x] `ping`'s targets ([#14](https://github.com/dmartsapp/shint/issues/14), [#25](https://github.com/dmartsapp/shint/issues/25)): moved to v4.6.0 - go-ping becomes go-net there ([#70](https://github.com/dmartsapp/shint/issues/70)), and fixing go-ping first would do the work twice
 - [x] the changelog has an entry for every change a user would notice (checked against every commit since v4.3.0; the docs entry added last)
 - [x] `Summary:` above says what this release is, in plain language
-- [ ] a clean rehearsal: `make release DRY_RUN=1`
+- [x] a clean rehearsal: `make release DRY_RUN=1`
 
 ## Targets
 
