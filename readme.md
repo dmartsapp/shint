@@ -10,6 +10,8 @@
 [![Release](https://github.com/dmartsapp/shint/actions/workflows/release.yaml/badge.svg)](https://github.com/dmartsapp/shint/actions/workflows/release.yaml)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/farhanssiddique)
 
+**[Documentation](https://dmartsapp.github.io/shint/)** &nbsp;|&nbsp; **[Latest release](https://github.com/dmartsapp/shint/releases/latest)** &nbsp;|&nbsp; [Changelog](CHANGELOG.md) &nbsp;|&nbsp; [Discussions](https://github.com/dmartsapp/shint/discussions)
+
 ![shint checking a connection, an HTTP request with timing, DNS, a TLS certificate as JSON, and open ports](docs/assets/demo.gif)
 
 `ping`, `telnet`, `curl`, `openssl`, `nmap`, `dig`: each is great at its job, and each has its own syntax and its own output. shint does the everyday checks of all of them in **one static binary**, with:
@@ -67,18 +69,31 @@ shint telnet db.internal 5432 > /dev/null && echo "database reachable"
 shint tls example.com --json | jq '.stats[0].expires_in_days'
 ```
 
+More in the documentation: [using shint](https://dmartsapp.github.io/shint/docs/usage.html), the [cookbook](https://dmartsapp.github.io/shint/docs/cookbook.html), [troubleshooting](https://dmartsapp.github.io/shint/docs/troubleshooting.html), [output and JSON](https://dmartsapp.github.io/shint/docs/output.html), and [how it is built and tested](https://dmartsapp.github.io/shint/docs/tech-architecture.html).
+
 ## Limitations
 
 - **Use it on networks you run, or have permission to test.** Its scans are ordinary connections that the target's firewall and services log, and it deliberately has nothing for scanning unnoticed. A sweep of public addresses warns before it starts and is paced by `--delay` (a probe a second by default).
-- **7 of the 18 builds have been run by the project.** macOS on Apple silicon and Linux on amd64 are tested on every change; Windows 10, FreeBSD 14.4, NetBSD 11.1, OpenBSD 8.0 and Solaris 11.4 (all amd64) passed their [platform test](test/platforms/) for v4.4.0. Not run yet: illumos, AIX, Android, Linux on ARM and Power, macOS on Intel, and the arm64 builds for Windows and the BSDs. If you use one of those, a run of its platform test is the most useful thing you can send: see [Testers wanted](https://dmartsapp.github.io/shint/docs/limitations.html#testers-wanted).
-- **Some commands differ by platform.** `ss` lists sockets on Linux and Windows only (the BSDs, Solaris and illumos are planned; the AIX binary has no `ss`). `ip route` and `ip arp` work on Linux, macOS, the BSDs and Windows. `ping` does not work on FreeBSD, NetBSD, OpenBSD or Solaris, which have no ICMP socket a normal user may open ([#112](https://github.com/dmartsapp/shint/issues/112)).
 - **It never needs root**, so nothing that needs raw packets: no SYN scans, no packet capture, no traceroute.
+- **Some commands differ by platform.** `ss` lists sockets on Linux and Windows only (the BSDs, Solaris and illumos are planned; the AIX binary has no `ss`). `ip route` and `ip arp` work on Linux, macOS, the BSDs and Windows. `ping` does not work on FreeBSD, NetBSD, OpenBSD or Solaris, which have no ICMP socket a normal user may open ([#112](https://github.com/dmartsapp/shint/issues/112)).
+- **Not every build has been run.** Every release ships 18 binaries; 7 have been run by the project:
+
+| Platform | amd64 | arm64 | Other |
+|---|:-:|:-:|:-:|
+| macOS | ⬜ | ✅ every change | - |
+| Linux | ✅ every change | ⬜ | ⬜ arm &nbsp; ⬜ ppc64le |
+| Windows | ✅ v4.4.0 | ⬜ | - |
+| FreeBSD | ✅ v4.4.0 | ⬜ | - |
+| NetBSD | ✅ v4.4.0 | ⬜ | - |
+| OpenBSD | ✅ v4.4.0 | ⬜ | - |
+| Solaris | ✅ v4.4.0 | - | - |
+| illumos | ⬜ | - | - |
+| Android | - | ⬜ | - |
+| AIX | - | - | ⬜ ppc64 |
+
+✅ **every change**: the whole test suite runs on it. ✅ **v4.4.0**: its [platform test](test/platforms/) passed for v4.4.0. ⬜ built for every release, not run by the project yet: if you use one, a run of its platform test is the most useful thing you can send ([Testers wanted](https://dmartsapp.github.io/shint/docs/limitations.html#testers-wanted)). A dash: there is no such build.
 
 Everything else - what was tested where, what differs, the bugs still open - is on the [Limitations page](https://dmartsapp.github.io/shint/docs/limitations.html).
-
-## Documentation
-
-**[dmartsapp.github.io/shint](https://dmartsapp.github.io/shint/)**: [using shint](https://dmartsapp.github.io/shint/docs/usage.html), [cookbook](https://dmartsapp.github.io/shint/docs/cookbook.html), [troubleshooting](https://dmartsapp.github.io/shint/docs/troubleshooting.html), [output and JSON](https://dmartsapp.github.io/shint/docs/output.html), and [how it is built and tested](https://dmartsapp.github.io/shint/docs/tech-architecture.html). What changed in each release is in the [changelog](CHANGELOG.md). Questions and ideas go to [Discussions](https://github.com/dmartsapp/shint/discussions).
 
 ## Roadmap
 
